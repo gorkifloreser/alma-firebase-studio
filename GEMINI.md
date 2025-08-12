@@ -33,6 +33,11 @@ This document outlines the development, testing, and debugging standards for the
     *   **Migrations:** Never edit a migration file after it has been applied. To make schema changes, create a *new* migration file. This ensures a linear, reproducible history.
     *   **Edge Functions:** When updating an Edge Function, deploy a new version rather than editing the existing one in place if it risks breaking changes. All migrations and functions should be organized in their respective folders within the `supabase` directory.
 
+### Sensitive File Handling
+*   **CRITICAL: Sensitive files such as `.env`, `.env.local`, or any files containing secrets MUST NEVER be deleted.**
+*   Changes to these files must be **surgical**. This means you must identify the *exact* line or variable that needs to be added or updated and use a precise replacement method to change only that specific part of the file.
+*   **NEVER** read an entire sensitive file, delete it, and write it back with changes. This is a high-risk operation and is forbidden.
+
 ### Tailwind CSS
 *   **Utility-First:** Embrace the utility-first approach of Tailwind CSS.
 *   **Theme Customization:** Define all custom colors, fonts, and spacing in the `tailwind.config.js` file to ensure brand consistency.
