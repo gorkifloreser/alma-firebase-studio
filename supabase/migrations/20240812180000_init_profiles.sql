@@ -1,0 +1,2 @@
+-- This migration has been archived because the profiles table already exists.
+-- A new migration (20240813120000_add_language_to_profiles.sql) has been created to alter the existing table.
