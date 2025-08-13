@@ -4,7 +4,7 @@
 /**
  * @fileOverview A simple text translation AI flow.
  *
- * - translate - A function that handles the text translation.
+ * - translateFlow - A function that handles the text translation.
  * - TranslateInput - The input type for the translate function.
  * - TranslateOutput - The return type for the translate function.
  */
@@ -35,7 +35,7 @@ Text to translate:
 Return only the translated text.`,
 });
 
-const translateFlow = ai.defineFlow(
+export const translateFlow = ai.defineFlow(
   {
     name: 'translateFlow',
     inputSchema: TranslateInputSchema,
@@ -49,7 +49,3 @@ const translateFlow = ai.defineFlow(
     return output;
   }
 );
-
-export async function translate(input: TranslateInput): Promise<TranslateOutput> {
-  return translateFlow(input);
-}

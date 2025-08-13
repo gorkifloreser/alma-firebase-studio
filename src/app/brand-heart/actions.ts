@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { translate, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
+import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 
 
 /**
@@ -110,7 +110,7 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
  */
 export async function translateText(input: TranslateInput): Promise<TranslateOutput> {
     try {
-        const result = await translate(input);
+        const result = await translateFlow(input);
         return result;
     } catch (error) {
         console.error("Translation action failed:", error);
