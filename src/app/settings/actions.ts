@@ -37,3 +37,22 @@ export async function updateUserLanguage(formData: FormData) {
     revalidatePath('/settings');
     return { message: 'Preferences updated successfully' };
 }
+
+
+export async function getProfile() {
+    const supabase = createClient();
+    const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('primary_language, secondary_language')
+        .eq('id', devUserId)
+        .single();
+
+    if (error) {
+        console.error('Error fetching profile:', error);
+        throw new Error('Could not fetch profile data.');
+    }
+
+    return data;
+}

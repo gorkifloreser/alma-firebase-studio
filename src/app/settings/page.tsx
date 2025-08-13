@@ -1,13 +1,12 @@
 
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { updateUserLanguage } from './actions';
+import { updateUserLanguage, getProfile } from './actions';
 import { useEffect, useState, useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -35,34 +34,18 @@ export default function SettingsPage() {
 
     useEffect(() => {
         const fetchProfile = async () => {
-            // This is a hardcoded user ID for development purposes.
-            // TODO: Remove this hardcoded data and re-enable user checks before production.
-            const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
-            const supabase = createClient();
-            
-            // const { data: { user } } = await supabase.auth.getUser();
-            // if (!user) {
-            //     setIsLoading(false);
-            //     return;
-            // }
-
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('primary_language, secondary_language')
-                .eq('id', devUserId)
-                .single();
-
-            if (error) {
-                console.error('Error fetching profile:', error);
-                toast({
+            try {
+                const data = await getProfile();
+                setProfile(data);
+            } catch (error: any) {
+                 toast({
                     variant: 'destructive',
                     title: 'Error',
                     description: 'Could not fetch your profile.',
                 });
-            } else {
-                setProfile(data);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         fetchProfile();
@@ -136,7 +119,7 @@ export default function SettingsPage() {
                                     <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
                                         <SelectTrigger id="secondary-language">
                                             <SelectValue placeholder="Select secondary language" />
-                                        </SelectTrigger>
+                                        </Trigger>
                                         <SelectContent>
                                             <SelectItem value="none">None</SelectItem>
                                             {languages.map((lang) => (
