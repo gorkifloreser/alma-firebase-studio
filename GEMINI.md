@@ -67,14 +67,15 @@ When a build or test fails, a precise and methodical "surgical" debugging approa
 
 1.  **Analyze the Error:** Carefully read the full error message to understand the root cause. Do not make assumptions.
 2.  **Formulate a Hypothesis:** Based on the error, form a specific, testable hypothesis about the problem.
-3.  **Research (For Hard Cases):** If the error is not immediately obvious, perform a targeted web search for the specific error message or technology involved to understand common causes and solutions.
+3.  **Research:** If the error is not immediately obvious, perform a targeted web search for the specific error message or technology involved to understand common causes and solutions.
 4.  **Isolate the Issue:** Create a minimal reproduction of the bug. This could be a new test case or a temporary component.
 5.  **Create a Surgical Plan:** Propose a minimal, targeted plan to fix the specific error. The plan should prioritize the smallest possible change and avoid broad or unrelated modifications.
 6.  **Implement and Verify:** Execute the plan and re-run all relevant tests to ensure the fix is effective and has not introduced any regressions.
-7.  **Iterate:** If the fix is unsuccessful, repeat the process with the new information gained.
+7.  **Iterate:** If the fix is unsuccessful, research on the web and repeat the process with the new information gained.
 
 ### Hard Rules for Debugging
 *   **NEVER** comment out or delete failing tests as a "fix."
 *   **NEVER** perform large-scale refactoring while debugging. The focus is solely on the surgical fix.
 *   **ALWAYS** write a new test that captures the bug before fixing it. This ensures the bug will not be reintroduced.
+*   **ALWAYS** write code to get the best performance on the website, no actions should take more than 3 seconds.
 *   If a fix is not found after three focused attempts, **HALT** and escalate with a summary of the actions taken.
