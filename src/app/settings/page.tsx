@@ -18,18 +18,21 @@ const languages = [
 ];
 
 export default async function SettingsPage() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // const supabase = createClient();
+    // const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect('/login');
-    }
+    // if (!user) {
+    //     redirect('/login');
+    // }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('primary_language, secondary_language')
-        .eq('id', user.id)
-        .single();
+    // const { data: profile } = await supabase
+    //     .from('profiles')
+    //     .select('primary_language, secondary_language')
+    //     .eq('id', user.id)
+    //     .single();
+    const user = { id: 'dev' };
+    const profile = { primary_language: 'en', secondary_language: 'es' };
+
 
     return (
         <DashboardLayout>
