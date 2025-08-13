@@ -24,11 +24,11 @@ type Profile = {
 
 type BrandHeart = {
     brand_name: string;
-    brand_brief: { primary: string, secondary: string };
-    mission: { primary: string, secondary: string };
-    vision: { primary: string, secondary: string };
-    values: { primary: string, secondary: string };
-    tone_of_voice: { primary: string, secondary: string };
+    brand_brief: { primary: string; secondary: string | null };
+    mission: { primary: string; secondary: string | null };
+    vision: { primary: string; secondary: string | null };
+    values: { primary: string; secondary: string | null };
+    tone_of_voice: { primary: string; secondary: string | null };
 } | null;
 
 
@@ -49,17 +49,18 @@ export default function BrandHeartPage() {
 
             setIsLoading(true);
             try {
-                const [profileData, brandHeartData] = await Promise.all([
-                    getProfile(),
-                    getBrandHeart()
-                ]);
+                const profileData = await getProfile();
+                const brandHeartData = await getBrandHeart();
+                
                 setProfile(profileData);
-                setBrandHeart(brandHeartData as BrandHeart);
+                if (brandHeartData) {
+                    setBrandHeart(brandHeartData as BrandHeart);
+                }
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
                     title: 'Error',
-                    description: 'Could not fetch your data.',
+                    description: error.message || 'Could not fetch your data.',
                 });
             } finally {
                 setIsLoading(false);
@@ -102,7 +103,7 @@ export default function BrandHeartPage() {
             <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
                      <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({profile?.primary_language})</Label>
-                    <Textarea id={`${id}_primary`} name={`${id}_primary`} defaultValue={primaryValue} className="mt-1" rows={5} />
+                    <Textarea id={`${id}_primary`} name={`${id}_primary`} defaultValue={primaryValue || ''} className="mt-1" rows={5} />
                 </div>
                 {profile?.secondary_language && (
                      <div>

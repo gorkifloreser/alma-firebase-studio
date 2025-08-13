@@ -33,24 +33,12 @@ export async function getBrandHeart() {
         .single();
 
     if (error && error.code !== 'PGRST116') { // Ignore 'range not found' error
-        console.error('Error fetching brand heart:', error);
+        console.error('Error fetching brand heart:', error.message);
+        // Don't throw, just return null so the page can render an empty form.
         return null;
     }
     
-    // The data is fetched, but we need to ensure it's in the right shape for the client.
-    // The form expects nested objects for bilingual fields.
-    if (data) {
-        return {
-            brand_name: data.brand_name,
-            brand_brief: data.brand_brief,
-            mission: data.mission,
-            vision: data.vision,
-            values: data.values,
-            tone_of_voice: data.tone_of_voice,
-        };
-    }
-    
-    return null;
+    return data;
 }
 
 export async function updateBrandHeart(formData: FormData) {
