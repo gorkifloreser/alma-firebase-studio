@@ -30,7 +30,10 @@ export default async function SettingsPage() {
     //     .select('primary_language, secondary_language')
     //     .eq('id', user.id)
     //     .single();
-    const user = { id: 'dev' };
+    
+    // This is a hardcoded user ID and profile for development purposes.
+    // TODO: Remove this hardcoded data and re-enable user checks before production.
+    const devUserId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
     const profile = { primary_language: 'en', secondary_language: 'es' };
 
 
@@ -71,7 +74,7 @@ export default async function SettingsPage() {
                                 <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
                                     <SelectTrigger id="secondary-language">
                                         <SelectValue placeholder="Select secondary language" />
-                                    </SelectTrigger>
+                                    </Trigger>
                                     <SelectContent>
                                         <SelectItem value="none">None</SelectItem>
                                         {languages.map((lang) => (
