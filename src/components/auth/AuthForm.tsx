@@ -19,9 +19,18 @@ import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '../ui/toaster';
 import { useRouter } from 'next/navigation';
 
-const formSchema = z.object({
+const signupFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+});
+
+const loginFormSchema = z.object({
+    email: z.string().email({ message: 'Invalid email address.' }),
+    password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
 type AuthFormProps = {
@@ -33,11 +42,14 @@ export function AuthForm({ type }: AuthFormProps) {
   const { toast } = useToast();
   const router = useRouter();
 
+  const formSchema = type === 'signup' ? signupFormSchema : loginFormSchema;
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
+      ...(type === 'signup' && { confirmPassword: '' }),
     },
   });
 
@@ -46,8 +58,9 @@ export function AuthForm({ type }: AuthFormProps) {
     try {
       if (type === 'login') {
         await login(values);
+        router.push('/');
       } else {
-        const result = await signup(values);
+        const result = await signup(values as z.infer<typeof signupFormSchema>);
         if (result?.error) {
             throw new Error(result.error);
         }
@@ -95,6 +108,21 @@ export function AuthForm({ type }: AuthFormProps) {
               </FormItem>
             )}
           />
+          {type === 'signup' && (
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Processing...' : (type === 'login' ? 'Log In' : 'Sign Up')}
           </Button>
