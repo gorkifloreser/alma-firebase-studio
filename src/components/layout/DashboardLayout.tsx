@@ -38,6 +38,9 @@ const menuItems = [
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
 ];
 
+const settingsMenuItem = { href: '/settings', label: 'Settings', icon: Settings };
+
+
 export default function DashboardLayout({
   children,
 }: {
@@ -91,6 +94,19 @@ export default function DashboardLayout({
           </SidebarContent>
           <SidebarFooter className="p-2">
              <SidebarMenu>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton
+                        href={settingsMenuItem.href}
+                        isActive={pathname === settingsMenuItem.href}
+                        asChild
+                        tooltip={settingsMenuItem.label}
+                    >
+                        <a href={settingsMenuItem.href}>
+                            <settingsMenuItem.icon className="h-5 w-5" />
+                            <span>{settingsMenuItem.label}</span>
+                        </a>
+                    </SidebarMenuButton>
+                 </SidebarMenuItem>
                  <SidebarMenuItem>
                     <LogoutButton />
                  </SidebarMenuItem>
