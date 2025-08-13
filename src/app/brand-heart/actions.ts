@@ -3,6 +3,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { translate, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
+
 
 /**
  * Defines the shape of the Brand Heart data, including the nested structure
@@ -41,11 +43,8 @@ export async function getBrandHeart(): Promise<BrandHeartData | null> {
         .eq('user_id', user.id)
         .single();
 
-    // This error code means no row was found, which is not a true error in our case.
-    // It can happen if the user hasn't created a brand heart yet.
     if (error && error.code !== 'PGRST116') {
         console.error('Error fetching brand heart:', error.message);
-        // We don't throw here, allowing the UI to render an empty form.
         return null;
     }
     
@@ -101,4 +100,20 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
 
   revalidatePath('/brand-heart');
   return { message: 'Brand Heart updated successfully!' };
+}
+
+/**
+ * Invokes the Genkit translation flow.
+ * @param {TranslateInput} input The text and target language for translation.
+ * @returns {Promise<TranslateOutput>} The translated text.
+ * @throws {Error} If the translation fails.
+ */
+export async function translateText(input: TranslateInput): Promise<TranslateOutput> {
+    try {
+        const result = await translate(input);
+        return result;
+    } catch (error) {
+        console.error("Translation action failed:", error);
+        throw new Error("Failed to translate the text. Please try again.");
+    }
 }
