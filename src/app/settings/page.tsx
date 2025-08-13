@@ -5,8 +5,9 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { updateUserLanguage, getProfile } from './actions';
+import { updateProfile, getProfile } from './actions';
 import { useEffect, useState, useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -14,14 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { languages } from '@/lib/languages';
-
-type Profile = {
-    primary_language: string;
-    secondary_language: string | null;
-} | null;
+import type { Profile } from './actions';
 
 export default function SettingsPage() {
-    const [profile, setProfile] = useState<Profile>(null);
+    const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -65,7 +62,7 @@ export default function SettingsPage() {
         
         startTransition(async () => {
             try {
-                const result = await updateUserLanguage(formData);
+                const result = await updateProfile(formData);
                 setProfile(result.profile); // Update local state with returned profile
                 // Update keys to force re-render of Select components
                 setPrimaryKey(Date.now());
@@ -95,9 +92,9 @@ export default function SettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Language Settings</CardTitle>
+                        <CardTitle>Profile</CardTitle>
                         <CardDescription>
-                            Set your primary and an optional secondary language for content generation.
+                           This information will be used to personalize your experience.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -110,6 +107,14 @@ export default function SettingsPage() {
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
                                 <div className="space-y-2">
+                                    <Label htmlFor="fullName">Full Name</Label>
+                                    <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="website">Website</Label>
+                                    <Input id="website" name="website" defaultValue={profile?.website || ''} />
+                                </div>
+                                 <div className="space-y-2">
                                     <Label htmlFor="primary-language">Primary Language</Label>
                                     <Select key={primaryKey} name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
                                         <SelectTrigger id="primary-language">

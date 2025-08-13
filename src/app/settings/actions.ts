@@ -4,7 +4,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-export async function updateUserLanguage(formData: FormData) {
+export type Profile = {
+    full_name: string | null;
+    website: string | null;
+    primary_language: string;
+    secondary_language: string | null;
+    avatar_url: string | null;
+};
+
+export async function updateProfile(formData: FormData) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,32 +27,37 @@ export async function updateUserLanguage(formData: FormData) {
         secondary = null;
     }
 
+    const profileData = {
+        primary_language: primary,
+        secondary_language: secondary,
+        full_name: formData.get('fullName') as string,
+        website: formData.get('website') as string,
+        updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
         .from('profiles')
-        .update({ primary_language: primary, secondary_language: secondary, updated_at: new Date().toISOString() })
+        .update(profileData)
         .eq('id', user.id)
-        .select('primary_language, secondary_language')
+        .select('primary_language, secondary_language, full_name, website, avatar_url')
         .single();
 
     if (error) {
-        console.error('Error updating language preferences:', error);
-        throw new Error('Could not update preferences');
+        console.error('Error updating profile:', error);
+        throw new Error('Could not update profile');
     }
 
     revalidatePath('/settings');
     revalidatePath('/brand-heart');
     
     return { 
-        message: 'Preferences updated successfully',
+        message: 'Profile updated successfully',
         profile: data,
     };
 }
 
 
-export async function getProfile(): Promise<{
-    primary_language: string;
-    secondary_language: string | null;
-} | null> {
+export async function getProfile(): Promise<Profile | null> {
   const supabase = createClient();
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -59,7 +72,7 @@ export async function getProfile(): Promise<{
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('primary_language, secondary_language')
+    .select('primary_language, secondary_language, full_name, website, avatar_url')
     .eq('id', user.id)
     .single();
 
