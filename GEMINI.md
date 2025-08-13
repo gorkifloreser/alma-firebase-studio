@@ -76,7 +76,7 @@ When a build or test fails, a precise and methodical "surgical" debugging approa
 ### Hard Rules for Debugging
 *   **NEVER** comment out or delete failing tests as a "fix."
 *   **NEVER** perform large-scale refactoring while debugging. The focus is solely on the surgical fix.
-*   **NEVER** delete data from the .env files, if you need a key, search for it in the .env.local file and copy it into the .env file, if not found, add a new line with the required variable and ask for the user to share the data.
+*   **NEVER** override data from the .env or .env.local files, Please always verify if the files exist first, before you create or override the data inside. If you need a key, search for it in the .env.local file and copy it into the .env file, if not found, add a new line with the required variable and ask for the user to share the data.
 *   **ALWAYS** write a new test that captures the bug before fixing it. This ensures the bug will not be reintroduced.
 *   **ALWAYS** write code to get the best performance on the website, no actions should take more than 2 seconds.
 *   If a fix is not found after three focused attempts, **HALT** and escalate with a summary of the actions taken.

@@ -21,6 +21,9 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
     }
 
     const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
+    if (!BUCKET_NAME) {
+        throw new Error('Supabase storage bucket name is not configured. Please set NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME in your environment variables.');
+    }
 
     const currentProfile = await getProfile();
 
