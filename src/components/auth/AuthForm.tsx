@@ -17,6 +17,7 @@ import { login, signup } from './actions';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '../ui/toaster';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -30,6 +31,7 @@ type AuthFormProps = {
 export function AuthForm({ type }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,10 +51,7 @@ export function AuthForm({ type }: AuthFormProps) {
         if (result?.error) {
             throw new Error(result.error);
         }
-        toast({
-            title: "Check your email",
-            description: "We've sent you a confirmation link to complete your registration.",
-          });
+        router.push('/login?message=Check your email to continue sign in process');
       }
     } catch (error: any) {
       toast({
