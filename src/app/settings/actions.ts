@@ -12,7 +12,7 @@ export type Profile = {
     avatar_url: string | null;
 };
 
-export async function updateProfile(formData: FormData) {
+export async function updateProfile(formData: FormData): Promise<{ message: string, profile: Profile }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,25 +20,59 @@ export async function updateProfile(formData: FormData) {
         throw new Error('User not authenticated');
     }
 
-    const primary = formData.get('primaryLanguage') as string;
+    const currentProfile = await getProfile();
+
+    const primary = formData.get('primaryLanguage') as string | null;
     let secondary = formData.get('secondaryLanguage') as string | null;
+    const fullName = formData.get('fullName') as string | null;
+    const website = formData.get('website') as string | null;
+    const avatarFile = formData.get('avatar') as File | null;
+
+    let avatar_url = currentProfile?.avatar_url;
+
+    if (avatarFile && avatarFile.size > 0) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile);
+        if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+            throw new Error('Could not upload avatar. Please try again.');
+        }
+
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatar_url = publicUrl;
+        
+        // If there was an old avatar, delete it
+        if (currentProfile?.avatar_url) {
+            const oldAvatarPath = currentProfile.avatar_url.split('/').pop();
+            if (oldAvatarPath) {
+                await supabase.storage.from('avatars').remove([oldAvatarPath]);
+            }
+        }
+    }
+
 
     if (secondary === 'none') {
         secondary = null;
     }
 
-    const profileData = {
-        primary_language: primary,
-        secondary_language: secondary,
-        full_name: formData.get('fullName') as string,
-        website: formData.get('website') as string,
+    const profileData: Partial<Profile> & { updated_at: string, id: string } = {
+        id: user.id,
         updated_at: new Date().toISOString()
     };
+    
+    // Only add fields to the update object if they were actually passed in the form data
+    if (primary !== null) profileData.primary_language = primary;
+    if (secondary !== undefined) profileData.secondary_language = secondary;
+    if (fullName !== null) profileData.full_name = fullName;
+    if (website !== null) profileData.website = website;
+    if (avatar_url !== currentProfile?.avatar_url) profileData.avatar_url = avatar_url;
+
 
     const { data, error } = await supabase
         .from('profiles')
-        .update(profileData)
-        .eq('id', user.id)
+        .upsert(profileData)
         .select('primary_language, secondary_language, full_name, website, avatar_url')
         .single();
 

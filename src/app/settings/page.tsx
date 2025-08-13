@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { languages } from '@/lib/languages';
 import type { Profile } from './actions';
+import { Avatar } from '@/components/auth/Avatar';
 
 export default function SettingsPage() {
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -100,12 +101,41 @@ export default function SettingsPage() {
                     <CardContent>
                         {isLoading ? (
                             <div className="space-y-6 max-w-md">
+                                <Skeleton className="h-24 w-24 rounded-full" />
                                 <Skeleton className="h-10 w-full" />
                                 <Skeleton className="h-10 w-full" />
                                 <Skeleton className="h-10 w-24" />
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
+                                <div>
+                                    <Label>Avatar</Label>
+                                    <Avatar
+                                        url={profile?.avatar_url}
+                                        onUpload={(event) => {
+                                            const formData = new FormData();
+                                            if (event.target.files) {
+                                                formData.append('avatar', event.target.files[0]);
+                                            }
+                                            startTransition(async () => {
+                                                try {
+                                                    const result = await updateProfile(formData);
+                                                    setProfile(result.profile);
+                                                    toast({
+                                                        title: 'Success!',
+                                                        description: 'Avatar updated successfully.',
+                                                    });
+                                                } catch (error: any) {
+                                                    toast({
+                                                        variant: 'destructive',
+                                                        title: 'Upload Failed',
+                                                        description: error.message,
+                                                    });
+                                                }
+                                            });
+                                        }}
+                                    />
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="fullName">Full Name</Label>
                                     <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} />
