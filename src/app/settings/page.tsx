@@ -1,3 +1,4 @@
+
 'use client';
 
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -46,8 +47,8 @@ export default function SettingsPage() {
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
-                    title: 'Error',
-                    description: 'Could not fetch your profile.',
+                    title: 'Error Fetching Profile',
+                    description: error.message,
                 });
             } finally {
                 setIsLoading(false);
@@ -83,7 +84,7 @@ export default function SettingsPage() {
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
-                    title: 'Uh oh! Something went wrong.',
+                    title: 'Update Failed',
                     description: error.message,
                 });
             }
