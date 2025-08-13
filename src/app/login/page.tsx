@@ -1,17 +1,8 @@
 import { AuthForm } from '@/components/auth/AuthForm';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-export default async function LoginPage() {
-  const supabase = createClient();
-  const { data } = await supabase.auth.getUser();
-
-  if (data?.user) {
-    redirect('/');
-  }
-
+export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-md p-8 text-center">
