@@ -83,7 +83,7 @@ export default function DashboardLayout({
              <div className="mt-auto p-4 group-data-[collapsible=icon]:hidden">
                 <Card className="rounded-2xl bg-primary/10 text-center p-4 border-none">
                     <p className="font-bold">Join Wallet Life Fourm</p>
-                    <Button size="sm" className="mt-4">Join Now</Button>
+                    <Button size="sm" className="mt-4 btn-primary-gradient">Join Now</Button>
                 </Card>
              </div>
 
