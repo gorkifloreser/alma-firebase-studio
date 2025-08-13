@@ -5,115 +5,130 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export type Profile = {
-    full_name: string | null;
-    website: string | null;
-    primary_language: string;
-    secondary_language: string | null;
-    avatar_url: string | null;
+  full_name: string | null;
+  website: string | null;
+  primary_language: string;
+  secondary_language: string | null;
+  avatar_url: string | null;
 };
 
-export async function updateProfile(formData: FormData): Promise<{ message: string, profile: Profile }> {
-    console.log('updateProfile action started.');
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+export async function updateProfile(formData: FormData): Promise<{ message: string; profile: Profile }> {
+  console.log('updateProfile action started.');
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        throw new Error('User not authenticated');
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  try {
+    const currentProfile = await getProfile();
+    const avatarFile = formData.get('avatar') as File | null;
+    let newAvatarUrl: string | null = currentProfile?.avatar_url || null;
+
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
+    if (!bucketName) {
+      console.error('Supabase storage bucket name is not configured.');
+      throw new Error('Storage service is not configured. Please set NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME in your environment variables.');
+    }
+     console.log(`Using storage bucket: ${bucketName}`);
+
+    if (avatarFile && avatarFile.size > 0) {
+      console.log(`Avatar file found: ${avatarFile.name}, type: ${avatarFile.type}, size: ${avatarFile.size}`);
+      console.log('avatarFile instanceof File:', avatarFile instanceof File);
+      console.log('avatarFile constructor name:', avatarFile?.constructor?.name);
+
+      const fileExt = avatarFile.name.split('.').pop();
+      const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
+      
+      let binaryData: Uint8Array;
+
+      if (typeof avatarFile.arrayBuffer === 'function') {
+        const arrayBuffer = await avatarFile.arrayBuffer();
+        binaryData = new Uint8Array(arrayBuffer);
+      } else {
+        throw new Error('avatarFile is not a valid File/Blob type and cannot be converted to ArrayBuffer.');
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, binaryData, {
+          contentType: avatarFile.type || 'application/octet-stream',
+          cacheControl: '3600',
+          upsert: false // Use false to avoid overwriting existing files unexpectedly
+        });
+
+      if (uploadError) {
+        console.error('Error uploading avatar:', uploadError);
+        throw new Error(`Avatar Upload Failed: ${uploadError.message}`);
+      }
+
+      console.log('Avatar uploaded successfully to path:', filePath);
+
+      // Get the public URL of the uploaded file.
+      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      newAvatarUrl = publicUrl;
+      console.log('New avatar public URL:', newAvatarUrl);
+
+      // Delete old avatar if it exists and is different
+      if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl) {
+        const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
+        if (oldAvatarPath) {
+          console.log(`Deleting old avatar: ${oldAvatarPath}`);
+          const { error: removeError } = await supabase.storage.from(bucketName).remove([oldAvatarPath]);
+          if (removeError) {
+            console.error('Failed to remove old avatar:', removeError.message);
+          }
+        }
+      }
     }
 
-    try {
-        const currentProfile = await getProfile();
-        const avatarFile = formData.get('avatar') as File | null;
-        let newAvatarUrl: string | null = currentProfile?.avatar_url || null;
-
-        const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
-        if (!bucketName) {
-            console.error('Supabase storage bucket name is not configured.');
-            throw new Error('Storage service is not configured. Please set NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME in your environment variables.');
-        }
-
-        if (avatarFile && avatarFile.size > 0) {
-            console.log(`Avatar file found: ${avatarFile.name}, starting upload to bucket: ${bucketName}...`);
-            const fileExt = avatarFile.name.split('.').pop();
-            const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
-            
-            // Use the correct Supabase upload method which handles metadata automatically.
-            const { error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(filePath, avatarFile);
-
-            if (uploadError) {
-                console.error('Error uploading avatar:', uploadError.message);
-                throw new Error(`Avatar Upload Failed: ${uploadError.message}`);
-            }
-            console.log('Avatar uploaded successfully to path:', filePath);
-
-            // Get the public URL of the uploaded file.
-            const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-            newAvatarUrl = publicUrl;
-            console.log('New avatar public URL:', newAvatarUrl);
-
-
-            // Delete old avatar if it exists and is different
-            if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl) {
-                const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
-                if (oldAvatarPath) {
-                    console.log(`Deleting old avatar: ${oldAvatarPath}`);
-                    const { error: removeError } = await supabase.storage.from(bucketName).remove([oldAvatarPath]);
-                    if (removeError) {
-                        // Log the error but don't block the profile update
-                        console.error('Failed to remove old avatar:', removeError.message);
-                    }
-                }
-            }
-        }
-
-        // Extract other form data
-        const primary = formData.get('primaryLanguage') as string;
-        let secondary = formData.get('secondaryLanguage') as string | null;
-        if (secondary === 'none') {
-            secondary = null;
-        }
-        const fullName = formData.get('fullName') as string | null;
-        const website = formData.get('website') as string | null;
-        
-        const profileData = {
-            id: user.id,
-            updated_at: new Date().toISOString(),
-            primary_language: primary,
-            secondary_language: secondary,
-            full_name: fullName,
-            website: website,
-            avatar_url: newAvatarUrl,
-        };
-
-        console.log('Updating profile in database with data:', profileData);
-        const { data, error: dbError } = await supabase
-            .from('profiles')
-            .upsert(profileData)
-            .select('primary_language, secondary_language, full_name, website, avatar_url')
-            .single();
-
-        if (dbError) {
-            console.error('Error updating profile in database:', dbError.message);
-            throw new Error(`Database Update Failed: ${dbError.message}`);
-        }
-        
-        console.log('Profile updated successfully in database.');
-
-        revalidatePath('/settings');
-        revalidatePath('/brand-heart');
-        
-        return { 
-            message: 'Profile updated successfully',
-            profile: data,
-        };
-    } catch (error: any) {
-        console.error('Caught an exception in updateProfile:', error.message);
-        throw error; // Re-throw the caught error to be displayed on the client
+    // Extract other form data
+    const primary = formData.get('primaryLanguage') as string;
+    let secondary = formData.get('secondaryLanguage') as string | null;
+    if (secondary === 'none') {
+      secondary = null;
     }
+    const fullName = formData.get('fullName') as string | null;
+    const website = formData.get('website') as string | null;
+
+    const profileData = {
+      id: user.id,
+      updated_at: new Date().toISOString(),
+      primary_language: primary,
+      secondary_language: secondary,
+      full_name: fullName,
+      website: website,
+      avatar_url: newAvatarUrl,
+    };
+
+    console.log('Updating profile in database with data:', profileData);
+
+    const { data, error: dbError } = await supabase
+      .from('profiles')
+      .upsert(profileData)
+      .select('primary_language, secondary_language, full_name, website, avatar_url')
+      .single();
+
+    if (dbError) {
+      console.error('Error updating profile in database:', dbError.message);
+      throw new Error(`Database Update Failed: ${dbError.message}`);
+    }
+
+    console.log('Profile updated successfully in database.');
+
+    revalidatePath('/settings');
+    revalidatePath('/brand-heart');
+
+    return {
+      message: 'Profile updated successfully',
+      profile: data,
+    };
+  } catch (error: any) {
+    console.error('Caught an exception in updateProfile:', error.message);
+    throw error;
+  }
 }
-
 
 export async function getProfile(): Promise<Profile | null> {
   const supabase = createClient();
