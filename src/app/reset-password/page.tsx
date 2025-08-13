@@ -1,4 +1,3 @@
-ok, b// src/app/reset-password/page.tsx
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
@@ -18,7 +17,7 @@ import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import AuthLayout from '@/components/auth/AuthLayout'; // Assuming you have a layout like this
+import AuthLayout from '@/components/layout/AuthLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -75,7 +74,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md mx-auto">
         <Card className="bg-white/10 backdrop-blur-lg border-white/20 rounded-2xl">
           <CardContent className="p-8 md:p-12">
-            <div className="text-center text-white">
+            <div className="text-center text-foreground">
               <h1 className="mb-6 text-center text-3xl font-bold">Set New Password</h1>
               <Form {...form}>
                 <form
@@ -116,7 +115,7 @@ export default function ResetPasswordPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full btn-auth" disabled={isLoading}>
                     {isLoading ? 'Updating...' : 'Update Password'}
                   </Button>
                 </form>
