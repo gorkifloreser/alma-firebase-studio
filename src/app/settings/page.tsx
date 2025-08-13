@@ -68,12 +68,12 @@ export default async function SettingsPage() {
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
-                                <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || ''}>
+                                <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
                                     <SelectTrigger id="secondary-language">
                                         <SelectValue placeholder="Select secondary language" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        <SelectItem value="none">None</SelectItem>
                                         {languages.map((lang) => (
                                             <SelectItem key={lang.value} value={lang.value}>
                                                 {lang.label}

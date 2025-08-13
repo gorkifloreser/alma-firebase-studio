@@ -14,7 +14,11 @@ export async function updateUserLanguage(formData: FormData) {
     }
 
     const primary = formData.get('primaryLanguage') as string;
-    const secondary = formData.get('secondaryLanguage') as string;
+    let secondary = formData.get('secondaryLanguage') as string | null;
+
+    if (secondary === 'none') {
+        secondary = null;
+    }
 
     const { error } = await supabase
         .from('profiles')
