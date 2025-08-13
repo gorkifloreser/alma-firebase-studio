@@ -24,11 +24,11 @@ type Profile = {
 
 type BrandHeart = {
     brand_name: string;
-    brand_brief: { primary: string; secondary: string | null };
-    mission: { primary: string; secondary: string | null };
-    vision: { primary: string; secondary: string | null };
-    values: { primary: string; secondary: string | null };
-    tone_of_voice: { primary: string; secondary: string | null };
+    brand_brief: { primary: string | null; secondary: string | null };
+    mission: { primary: string | null; secondary: string | null };
+    vision: { primary: string | null; secondary: string | null };
+    values: { primary: string | null; secondary: string | null };
+    tone_of_voice: { primary: string | null; secondary: string | null };
 } | null;
 
 
@@ -54,7 +54,7 @@ export default function BrandHeartPage() {
                 
                 setProfile(profileData);
                 if (brandHeartData) {
-                    setBrandHeart(brandHeartData as BrandHeart);
+ setBrandHeart(brandHeartData);
                 }
             } catch (error: any) {
                 toast({

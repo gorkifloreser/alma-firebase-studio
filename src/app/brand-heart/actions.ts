@@ -6,16 +6,11 @@ import { revalidatePath } from 'next/cache';
 
 type BrandHeartData = {
   brand_name: string;
-  brand_brief_primary: string;
-  brand_brief_secondary: string;
-  mission_primary: string;
-  mission_secondary: string;
-  vision_primary: string;
-  vision_secondary: string;
-  values_primary: string;
-  values_secondary: string;
-  tone_of_voice_primary: string;
-  tone_of_voice_secondary: string;
+  brand_brief: { primary: string | null; secondary: string | null };
+  mission: { primary: string | null; secondary: string | null };
+  vision: { primary: string | null; secondary: string | null };
+  values: { primary: string | null; secondary: string | null };
+  tone_of_voice: { primary: string | null; secondary: string | null };
 };
 
 export async function getBrandHeart() {
@@ -51,41 +46,36 @@ export async function updateBrandHeart(formData: FormData) {
 
   const data: BrandHeartData = {
     brand_name: formData.get('brand_name') as string,
-    brand_brief_primary: formData.get('brand_brief_primary') as string,
-    brand_brief_secondary: formData.get('brand_brief_secondary') as string,
-    mission_primary: formData.get('mission_primary') as string,
-    mission_secondary: formData.get('mission_secondary') as string,
-    vision_primary: formData.get('vision_primary') as string,
-    vision_secondary: formData.get('vision_secondary') as string,
-    values_primary: formData.get('values_primary') as string,
-    values_secondary: formData.get('values_secondary') as string,
-    tone_of_voice_primary: formData.get('tone_of_voice_primary') as string,
-    tone_of_voice_secondary: formData.get('tone_of_voice_secondary') as string,
+    brand_brief: {
+ primary: formData.get('brand_brief_primary') as string | null,
+ secondary: formData.get('brand_brief_secondary') as string | null,
+    },
+    mission: {
+ primary: formData.get('mission_primary') as string | null,
+ secondary: formData.get('mission_secondary') as string | null,
+    },
+    vision: {
+ primary: formData.get('vision_primary') as string | null,
+ secondary: formData.get('vision_secondary') as string | null,
+    },
+    values: {
+ primary: formData.get('values_primary') as string | null,
+ secondary: formData.get('values_secondary') as string | null,
+    },
+    tone_of_voice: {
+ primary: formData.get('tone_of_voice_primary') as string | null,
+ secondary: formData.get('tone_of_voice_secondary') as string | null,
+    },
   };
 
   const payload = {
     user_id: user.id,
     brand_name: data.brand_name,
-    brand_brief: {
-      primary: data.brand_brief_primary,
-      secondary: data.brand_brief_secondary,
-    },
-    mission: {
-        primary: data.mission_primary,
-        secondary: data.mission_secondary,
-    },
-    vision: {
-        primary: data.vision_primary,
-        secondary: data.vision_secondary,
-    },
-    values: {
-        primary: data.values_primary,
-        secondary: data.values_secondary,
-    },
-    tone_of_voice: {
-        primary: data.tone_of_voice_primary,
-        secondary: data.tone_of_voice_secondary,
-    }
+    brand_brief: data.brand_brief,
+    mission: data.mission,
+    vision: data.vision,
+    values: data.values,
+    tone_of_voice: data.tone_of_voice,
   };
 
   const { error } = await supabase
