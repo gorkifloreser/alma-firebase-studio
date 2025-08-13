@@ -1,9 +1,13 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 type BrandHeartData = {
+  brand_name: string;
+  brand_brief_primary: string;
+  brand_brief_secondary: string;
   mission_primary: string;
   mission_secondary: string;
   vision_primary: string;
@@ -45,6 +49,9 @@ export async function updateBrandHeart(formData: FormData) {
   }
 
   const data: BrandHeartData = {
+    brand_name: formData.get('brand_name') as string,
+    brand_brief_primary: formData.get('brand_brief_primary') as string,
+    brand_brief_secondary: formData.get('brand_brief_secondary') as string,
     mission_primary: formData.get('mission_primary') as string,
     mission_secondary: formData.get('mission_secondary') as string,
     vision_primary: formData.get('vision_primary') as string,
@@ -57,6 +64,11 @@ export async function updateBrandHeart(formData: FormData) {
 
   const payload = {
     user_id: user.id,
+    brand_name: data.brand_name,
+    brand_brief: {
+      primary: data.brand_brief_primary,
+      secondary: data.brand_brief_secondary,
+    },
     mission: {
         primary: data.mission_primary,
         secondary: data.mission_secondary,

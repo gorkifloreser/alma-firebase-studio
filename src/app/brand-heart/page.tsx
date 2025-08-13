@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -7,6 +8,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +23,8 @@ type Profile = {
 } | null;
 
 type BrandHeart = {
+    brand_name: string;
+    brand_brief: { primary: string, secondary: string };
     mission: { primary: string, secondary: string };
     vision: { primary: string, secondary: string };
     values: { primary: string, secondary: string };
@@ -50,7 +54,7 @@ export default function BrandHeartPage() {
                     getBrandHeart()
                 ]);
                 setProfile(profileData);
-                setBrandHeart(brandHeartData);
+                setBrandHeart(brandHeartData as BrandHeart);
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -86,7 +90,7 @@ export default function BrandHeartPage() {
         });
     };
 
-    const FormField = ({ id, label, primaryValue, secondaryValue }: { id: string, label: string, primaryValue: string, secondaryValue: string | null }) => (
+    const BilingualFormField = ({ id, label, primaryValue, secondaryValue }: { id: string, label: string, primaryValue: string, secondaryValue: string | null }) => (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <Label htmlFor={`${id}_primary`} className="text-lg font-semibold">{label}</Label>
@@ -129,6 +133,8 @@ export default function BrandHeartPage() {
                     <CardContent>
                         {isLoading ? (
                             <div className="space-y-8">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-24 w-full" />
                                 <Skeleton className="h-24 w-full" />
                                 <Skeleton className="h-24 w-full" />
                                 <Skeleton className="h-24 w-full" />
@@ -137,10 +143,15 @@ export default function BrandHeartPage() {
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-8">
-                                <FormField id="mission" label="Mission" primaryValue={brandHeart?.mission?.primary || ''} secondaryValue={brandHeart?.mission?.secondary || ''} />
-                                <FormField id="vision" label="Vision" primaryValue={brandHeart?.vision?.primary || ''} secondaryValue={brandHeart?.vision?.secondary || ''} />
-                                <FormField id="values" label="Values" primaryValue={brandHeart?.values?.primary || ''} secondaryValue={brandHeart?.values?.secondary || ''} />
-                                <FormField id="tone_of_voice" label="Tone of Voice" primaryValue={brandHeart?.tone_of_voice?.primary || ''} secondaryValue={brandHeart?.tone_of_voice?.secondary || ''} />
+                                <div className="space-y-2">
+                                    <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
+                                    <Input id="brand_name" name="brand_name" defaultValue={brandHeart?.brand_name || ''} />
+                                </div>
+                                <BilingualFormField id="brand_brief" label="Brand Brief" primaryValue={brandHeart?.brand_brief?.primary || ''} secondaryValue={brandHeart?.brand_brief?.secondary || ''} />
+                                <BilingualFormField id="mission" label="Mission" primaryValue={brandHeart?.mission?.primary || ''} secondaryValue={brandHeart?.mission?.secondary || ''} />
+                                <BilingualFormField id="vision" label="Vision" primaryValue={brandHeart?.vision?.primary || ''} secondaryValue={brandHeart?.vision?.secondary || ''} />
+                                <BilingualFormField id="values" label="Values" primaryValue={brandHeart?.values?.primary || ''} secondaryValue={brandHeart?.values?.secondary || ''} />
+                                <BilingualFormField id="tone_of_voice" label="Tone of Voice" primaryValue={brandHeart?.tone_of_voice?.primary || ''} secondaryValue={brandHeart?.tone_of_voice?.secondary || ''} />
                                 
                                 <Button type="submit" disabled={isPending}>
                                     {isPending ? 'Saving...' : 'Save Brand Heart'}
