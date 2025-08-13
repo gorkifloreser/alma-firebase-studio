@@ -52,7 +52,7 @@ export default function DashboardLayout({
                 <div className="bg-primary rounded-lg p-1.5">
                    <Wallet className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <span className="font-bold text-lg">Wallet</span>
+                <span className="font-bold text-lg">alma AI</span>
               </div>
                <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
                 <div className="bg-primary rounded-lg p-1.5">
