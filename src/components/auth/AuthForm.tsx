@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, User, Lock, Key } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { Label } from '@/components/ui/label';
 
 const signupFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
