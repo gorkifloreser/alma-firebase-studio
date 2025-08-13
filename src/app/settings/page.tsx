@@ -22,8 +22,7 @@ import { User } from '@supabase/supabase-js';
 export default function SettingsPage() {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
-    // This state will now hold the final URL of the uploaded avatar
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -45,7 +44,6 @@ export default function SettingsPage() {
             try {
                 const data = await getProfile();
                 setProfile(data);
-                setAvatarUrl(data?.avatar_url || null); // Initialize avatarUrl from profile
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
@@ -63,16 +61,15 @@ export default function SettingsPage() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        // Append the potentially new avatar URL to the form data
-        if (avatarUrl) {
-            formData.append('avatar_url', avatarUrl);
+        if (avatarFile) {
+            formData.append('avatar', avatarFile);
         }
         
         startTransition(async () => {
             try {
                 const result = await updateProfile(formData);
                 setProfile(result.profile); // Update local state with returned profile
-                setAvatarUrl(result.profile.avatar_url); // Sync avatarUrl state
+                setAvatarFile(null); // Clear the file input after successful upload
                 // Update keys to force re-render of Select components
                 setPrimaryKey(Date.now());
                 setSecondaryKey(Date.now() + 1);
@@ -119,9 +116,9 @@ export default function SettingsPage() {
                                 <div>
                                     <Label>Avatar</Label>
                                     <Avatar
-                                        userId={user?.id}
+                                        isUploading={isPending}
                                         url={profile?.avatar_url}
-                                        onUpload={setAvatarUrl}
+                                        onFileSelect={setAvatarFile}
                                     />
                                 </div>
                                 <div className="space-y-2">

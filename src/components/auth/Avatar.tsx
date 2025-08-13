@@ -4,93 +4,44 @@
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Camera } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
 export function Avatar({
-  userId,
   url,
-  onUpload,
+  isUploading,
+  onFileSelect,
 }: {
-  userId: string | null | undefined
   url: string | null | undefined
-  onUpload: (url: string) => void
+  isUploading: boolean
+  onFileSelect: (file: File | null) => void
 }) {
   const { toast } = useToast()
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
-    setAvatarUrl(url || null)
+    setAvatarPreview(url || null)
   }, [url])
 
-  const handleUpload = async (file: File) => {
-    if (!userId) {
-      toast({
-        title: 'Error',
-        description: 'You must be logged in to upload an avatar.',
-        variant: 'destructive',
-      })
-      return
-    }
-    
-    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
-    if (!bucketName) {
-        toast({
-            title: 'Configuration Error',
-            description: 'Storage bucket name is not configured.',
-            variant: 'destructive',
-        });
-        return;
-    }
-
-    try {
-      setIsUploading(true)
-      const supabase = createClient()
-      const fileExt = file.name.split('.').pop()
-      const filePath = `${userId}/${userId}-${Date.now()}.${fileExt}`
-
-      const { data, error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
-      
-      if (uploadError) {
-        throw uploadError
-      }
-      
-      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(data.path)
-
-      setAvatarUrl(publicUrl) // Update local preview with the final URL
-      onUpload(publicUrl) // Pass the final URL to the parent component
-
-      toast({
-        title: 'Success!',
-        description: 'Avatar uploaded. Remember to save your changes.',
-      })
-    } catch (error: any) {
-      toast({
-        title: 'Upload Failed',
-        description: error.message,
-        variant: 'destructive',
-      })
-    } finally {
-      setIsUploading(false)
-      setUploadProgress(0)
-    }
-  }
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onFileSelect(null);
+    setAvatarPreview(null);
+    
     if (!event.target.files || event.target.files.length === 0) {
       return
     }
     const file = event.target.files[0]
-    setAvatarUrl(URL.createObjectURL(file)) // Show local preview immediately
-    handleUpload(file) // Start the upload
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+            title: 'File too large',
+            description: 'Please select an image smaller than 2MB.',
+            variant: 'destructive',
+        });
+        event.target.value = ''; // Clear the input
+        return;
+    }
+    setAvatarPreview(URL.createObjectURL(file))
+    onFileSelect(file)
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -106,11 +57,22 @@ export function Avatar({
   const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault()
     setIsDragOver(false)
+    onFileSelect(null);
+    setAvatarPreview(null);
+    
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       const file = files[0];
-      setAvatarUrl(URL.createObjectURL(file)); // Show local preview
-      handleUpload(file); // Start the upload
+       if (file.size > 2 * 1024 * 1024) { // 2MB limit
+            toast({
+                title: 'File too large',
+                description: 'Please select an image smaller than 2MB.',
+                variant: 'destructive',
+            });
+            return;
+        }
+      setAvatarPreview(URL.createObjectURL(file));
+      onFileSelect(file);
     }
   }
 
@@ -126,10 +88,10 @@ export function Avatar({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          {avatarUrl ? (
+          {avatarPreview ? (
             <Image
-              src={avatarUrl}
-              alt="Avatar"
+              src={avatarPreview}
+              alt="Avatar Preview"
               className="h-full w-full rounded-full object-cover"
               width={96}
               height={96}
@@ -148,7 +110,6 @@ export function Avatar({
            {isUploading && (
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/70">
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-                <span className="absolute text-xs font-bold text-white">{uploadProgress}%</span>
             </div>
           )}
         </label>
