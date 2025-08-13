@@ -27,6 +27,7 @@ import {
 import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import Image from 'next/image';
+import { Card } from '@/components/ui/card';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
