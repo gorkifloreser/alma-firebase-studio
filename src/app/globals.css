@@ -30,7 +30,7 @@ body {
     --radius: 0.8rem;
 
     /* Light mode sidebar with mesh background */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: transparent;
     --sidebar-foreground: 0 50% 30%; /* Dark text */
     --sidebar-primary: 355 77% 66%;
     --sidebar-primary-foreground: 355.7 100% 97.3%;
@@ -62,7 +62,7 @@ body {
     --ring: 355 77% 70%;
 
     /* Dark mode sidebar with mesh background */
-    --sidebar-background: 240 6% 10%;
+    --sidebar-background: transparent;
     --sidebar-foreground: 0 0% 98%; /* Light text */
     --sidebar-primary: 355 77% 70%;
     --sidebar-primary-foreground: 0 0% 9%;
