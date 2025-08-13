@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
        <div className="w-full max-w-md mx-auto">
         <Card className="bg-white/10 backdrop-blur-lg border-white/20 rounded-2xl">
           <CardContent className="p-8 md:p-12">
-            <div className="text-center text-white">
+            <div className="text-center text-foreground">
                <h1 className="mb-6 text-center text-3xl font-bold">Forgot Password</h1>
               {isSubmitted ? (
                 <div className="text-center">
@@ -68,13 +68,13 @@ export default function ForgotPasswordPage() {
                     If an account with that email exists, a password reset link has
                     been sent. Please check your inbox.
                   </p>
-                  <Button variant="link" asChild className="px-1 text-white hover:text-white/80">
+                  <Button variant="link" asChild className="px-1 text-foreground hover:text-foreground/80">
                     <Link href="/login">Back to Log In</Link>
                   </Button>
                 </div>
               ) : (
                 <>
-                  <p className="mb-4 text-center text-sm text-white/80">
+                  <p className="mb-4 text-center text-sm text-foreground/80">
                     Enter your email address and we will send you a link to reset
                     your password.
                   </p>
@@ -102,9 +102,9 @@ export default function ForgotPasswordPage() {
                       </Button>
                     </form>
                   </Form>
-                  <p className="mt-4 text-center text-sm text-white/80">
+                  <p className="mt-4 text-center text-sm text-foreground/80">
                     Remember your password?{' '}
-                     <Button variant="link" asChild className="px-1 text-white hover:text-white/80">
+                     <Button variant="link" asChild className="px-1 text-foreground hover:text-foreground/80">
                       <Link href="/login">Log In</Link>
                     </Button>
                   </p>

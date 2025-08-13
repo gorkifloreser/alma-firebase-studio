@@ -38,7 +38,7 @@ export default async function LoginPage({
                 </Button>
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-center text-white">Log In</h2>
+                <h2 className="text-3xl font-bold text-center text-foreground">Log In</h2>
                  {searchParams.message && (
                   <p className="mt-4 rounded-md bg-green-500/20 p-4 text-center text-sm text-green-300">
                     {searchParams.message}
@@ -47,14 +47,14 @@ export default async function LoginPage({
                 <div className="mt-6">
                   <AuthForm type="login" />
                 </div>
-                <div className="mt-4 text-center text-sm text-white/80">
+                <div className="mt-4 text-center text-sm text-foreground/80">
                   <p>
                     Don&apos;t have an account?{' '}
-                    <Button variant="link" asChild className="px-1 text-white hover:text-white/80">
+                    <Button variant="link" asChild className="px-1 text-foreground hover:text-foreground/80">
                       <Link href="/signup">Sign Up</Link>
                     </Button>
                   </p>
-                   <Button variant="link" asChild className="px-1 text-xs text-white/80 hover:text-white/60">
+                   <Button variant="link" asChild className="px-1 text-xs text-foreground/80 hover:text-foreground/60">
                     <Link href="/forgot-password">Forgot your password?</Link>
                   </Button>
                 </div>

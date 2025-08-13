@@ -32,14 +32,14 @@ export default async function SignupPage() {
                 </Button>
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-center text-white">Sign Up</h2>
+                <h2 className="text-3xl font-bold text-center text-foreground">Sign Up</h2>
                 <div className="mt-6">
                   <AuthForm type="signup" />
                 </div>
-                <div className="mt-4 text-center text-sm text-white/80">
+                <div className="mt-4 text-center text-sm text-foreground/80">
                    <p>
                     Already have an account?{' '}
-                    <Button variant="link" asChild className="px-1 text-white hover:text-white/80">
+                    <Button variant="link" asChild className="px-1 text-foreground hover:text-foreground/80">
                       <Link href="/login">Log In</Link>
                     </Button>
                   </p>
