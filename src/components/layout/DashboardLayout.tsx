@@ -19,6 +19,7 @@ import {
   CreditCard,
   Import,
   BarChart2,
+  Heart,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -27,6 +28,7 @@ import { UserNav } from '@/components/auth/UserNav';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/records', label: 'Records', icon: FileText },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/imports', label: 'Imports', icon: Import },
@@ -78,7 +80,7 @@ export default function DashboardLayout({
 
              <div className="mt-auto p-4 group-data-[collapsible=icon]:hidden">
                 <Card className="rounded-2xl bg-primary/10 text-center p-4 border-none">
-                    <p className="font-bold">Join Wallet Life Fourm</p>
+                    <p className="font-bold text-foreground">Join Wallet Life Fourm</p>
                     <Button size="sm" className="mt-4 btn-primary-gradient">Join Now</Button>
                 </Card>
              </div>
