@@ -43,10 +43,7 @@ export async function signup(formData: z.infer<typeof signupSchema>) {
 
   if (error) {
     console.error('Signup error:', error.message);
-    if (error.message.includes('User already registered')) {
-        return { error: 'A user with this email already exists.' };
-    }
-    return { error: 'Could not sign up user. Please try again later.' };
+    return { error: error.message };
   }
 
   // On successful sign-up, Supabase sends a confirmation email.
