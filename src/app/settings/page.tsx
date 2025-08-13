@@ -118,19 +118,20 @@ export default function SettingsPage() {
                                     <Avatar
                                         url={profile?.avatar_url}
                                         onFileSelect={setAvatarFile}
+                                        isUploading={isPending}
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="fullName">Full Name</Label>
-                                    <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} />
+                                    <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} disabled={isPending} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="website">Website</Label>
-                                    <Input id="website" name="website" defaultValue={profile?.website || ''} />
+                                    <Input id="website" name="website" defaultValue={profile?.website || ''} disabled={isPending} />
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="primary-language">Primary Language</Label>
-                                    <Select key={primaryKey} name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
+                                    <Select key={primaryKey} name="primaryLanguage" defaultValue={profile?.primary_language || 'en'} disabled={isPending}>
                                         <SelectTrigger id="primary-language">
                                             <SelectValue placeholder="Select primary language" />
                                         </SelectTrigger>
@@ -145,7 +146,7 @@ export default function SettingsPage() {
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
-                                    <Select key={secondaryKey} name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
+                                    <Select key={secondaryKey} name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'} disabled={isPending}>
                                         <SelectTrigger id="secondary-language">
                                             <SelectValue placeholder="Select secondary language" />
                                         </SelectTrigger>
