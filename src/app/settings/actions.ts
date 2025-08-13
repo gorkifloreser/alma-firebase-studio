@@ -33,10 +33,11 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         }
 
         if (avatarFile && avatarFile.size > 0) {
-            console.log('Avatar file found, starting upload...');
+            console.log(`Avatar file found: ${avatarFile.name}, starting upload to bucket: ${bucketName}...`);
             const fileExt = avatarFile.name.split('.').pop();
             const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
             
+            // Use the correct Supabase upload method which handles metadata automatically.
             const { error: uploadError } = await supabase.storage
                 .from(bucketName)
                 .upload(filePath, avatarFile);
@@ -45,10 +46,13 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
                 console.error('Error uploading avatar:', uploadError.message);
                 throw new Error(`Avatar Upload Failed: ${uploadError.message}`);
             }
-            console.log('Avatar uploaded successfully.');
+            console.log('Avatar uploaded successfully to path:', filePath);
 
+            // Get the public URL of the uploaded file.
             const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
             newAvatarUrl = publicUrl;
+            console.log('New avatar public URL:', newAvatarUrl);
+
 
             // Delete old avatar if it exists and is different
             if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl) {
@@ -106,7 +110,7 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         };
     } catch (error: any) {
         console.error('Caught an exception in updateProfile:', error.message);
-        throw error; // Re-throw the caught error
+        throw error; // Re-throw the caught error to be displayed on the client
     }
 }
 

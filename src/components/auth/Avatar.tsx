@@ -1,3 +1,4 @@
+
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -12,18 +13,28 @@ export function Avatar({
 }: {
   url: string | null | undefined
   isUploading: boolean
-  onFileSelect: (file: File) => void
+  onFileSelect: (file: File | null) => void
 }) {
   const { toast } = useToast()
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  
+  // This ref is to allow clearing the file input
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Only update preview from props if not currently showing a local preview
+    // When the `url` prop changes (e.g., after a successful upload),
+    // and if we are not showing a local blob preview, update the preview.
+    // If the new URL is null/undefined, it means we should clear the preview.
     if (!avatarPreview?.startsWith('blob:')) {
-      setAvatarPreview(url || null)
+      setAvatarPreview(url || null);
     }
-  }, [url, avatarPreview])
+    // If the upload is finished (isUploading becomes false) and we have a new URL from the server,
+    // clear the file input to prevent re-uploading the same file on the next save.
+    if (!isUploading && url && fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }, [url, isUploading, avatarPreview])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -34,6 +45,9 @@ export function Avatar({
           description: 'Please select an image smaller than 2MB.',
           variant: 'destructive',
         })
+        onFileSelect(null);
+        // Clear the file input
+        if(fileInputRef.current) fileInputRef.current.value = "";
         return
       }
       setAvatarPreview(URL.createObjectURL(file))
@@ -62,10 +76,17 @@ export function Avatar({
                 description: 'Please select an image smaller than 2MB.',
                 variant: 'destructive',
             })
+            onFileSelect(null);
             return
         }
         setAvatarPreview(URL.createObjectURL(file))
         onFileSelect(file)
+        if(fileInputRef.current) {
+            // Assign the dropped file to the file input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInputRef.current.files = dataTransfer.files;
+        }
     }
   }
 
@@ -111,6 +132,7 @@ export function Avatar({
           )}
         </label>
         <input
+          ref={fileInputRef}
           id="avatar-upload"
           name="avatar-input"
           type="file"

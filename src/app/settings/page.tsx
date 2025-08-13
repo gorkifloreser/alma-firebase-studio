@@ -58,7 +58,7 @@ export default function SettingsPage() {
         checkUserAndFetchData();
     }, [toast]);
 
-    const handleFileSelect = (file: File) => {
+    const handleFileSelect = (file: File | null) => {
         setAvatarFile(file);
     };
 
@@ -73,8 +73,8 @@ export default function SettingsPage() {
             try {
                 const result = await updateProfile(formData);
                 setProfile(result.profile);
-                setAvatarFile(null); 
-                // Update keys to force re-render of Select components
+                setAvatarFile(null); // Clear the file input after successful upload
+                // Update keys to force re-render of Select components with new values
                 setPrimaryKey(Date.now());
                 setSecondaryKey(Date.now() + 1);
                 toast({
