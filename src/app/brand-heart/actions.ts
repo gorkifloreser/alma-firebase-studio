@@ -9,10 +9,10 @@ import { revalidatePath } from 'next/cache';
  * for bilingual fields, which aligns with the 'jsonb' columns in the database.
  */
 type BrandHeartData = {
-  id?: string; // Optional since it's not needed for creation
-  user_id?: string; // Optional since it's not needed for creation
-  created_at?: string; // Optional
-  updated_at?: string; // optional
+  id?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
   brand_name: string;
   brand_brief: { primary: string | null; secondary: string | null };
   mission: { primary: string | null; secondary: string | null };
@@ -62,38 +62,34 @@ export async function getBrandHeart(): Promise<BrandHeartData | null> {
 export async function updateBrandHeart(formData: FormData): Promise<{ message: string }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
-  // Construct the payload with the correct nested structure for JSONB columns.
   const payload = {
     user_id: user.id,
-    brand_name: formData.get('brand_name') as string,
+    brand_name: (formData.get('brand_name') as string) || '',
     brand_brief: {
-      primary: formData.get('brand_brief_primary') as string,
-      secondary: formData.get('brand_brief_secondary') as string | null,
+      primary: (formData.get('brand_brief_primary') as string) || null,
+      secondary: (formData.get('brand_brief_secondary') as string) || null,
     },
     mission: {
-      primary: formData.get('mission_primary') as string,
-      secondary: formData.get('mission_secondary') as string | null,
+      primary: (formData.get('mission_primary') as string) || null,
+      secondary: (formData.get('mission_secondary') as string) || null,
     },
     vision: {
-      primary: formData.get('vision_primary') as string,
-      secondary: formData.get('vision_secondary') as string | null,
+      primary: (formData.get('vision_primary') as string) || null,
+      secondary: (formData.get('vision_secondary') as string) || null,
     },
     values: {
-      primary: formData.get('values_primary') as string,
-      secondary: formData.get('values_secondary') as string | null,
+      primary: (formData.get('values_primary') as string) || null,
+      secondary: (formData.get('values_secondary') as string) || null,
     },
     tone_of_voice: {
-      primary: formData.get('tone_of_voice_primary') as string,
-      secondary: formData.get('tone_of_voice_secondary') as string | null,
+      primary: (formData.get('tone_of_voice_primary') as string) || null,
+      secondary: (formData.get('tone_of_voice_secondary') as string) || null,
     },
+    updated_at: new Date().toISOString(),
   };
-  
-  // Use 'upsert' to either insert a new row or update the existing one based on the 'user_id'.
+
   const { error } = await supabase
     .from('brand_hearts')
     .upsert(payload, { onConflict: 'user_id' });
@@ -103,8 +99,6 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
     throw new Error('Could not update brand heart. Please try again.');
   }
 
-  // Revalidate the cache for the brand-heart page so the changes are reflected immediately.
   revalidatePath('/brand-heart');
-  
   return { message: 'Brand Heart updated successfully!' };
 }

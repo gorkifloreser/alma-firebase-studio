@@ -1,45 +1,50 @@
 
+-- Create the brand_hearts table
 CREATE TABLE brand_hearts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ,
     brand_name TEXT,
     brand_brief JSONB,
     mission JSONB,
     vision JSONB,
     values JSONB,
     tone_of_voice JSONB,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+
+    -- Foreign key to the users table in the auth schema
+    CONSTRAINT fk_user
+        FOREIGN KEY(user_id) 
+        REFERENCES auth.users(id)
+        ON DELETE CASCADE,
+    
+    -- Ensure each user can only have one brand heart
+    CONSTRAINT brand_hearts_user_id_key UNIQUE (user_id)
 );
 
--- RLS Policies
+-- Enable Row Level Security (RLS)
 ALTER TABLE brand_hearts ENABLE ROW LEVEL SECURITY;
 
+-- Policy: Users can see their own brand heart
 CREATE POLICY "Users can view their own brand heart"
 ON brand_hearts
 FOR SELECT
 USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own brand heart"
+-- Policy: Users can insert their own brand heart
+CREATE POLICY "Users can create their own brand heart"
 ON brand_hearts
 FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
+-- Policy: Users can update their own brand heart
 CREATE POLICY "Users can update their own brand heart"
 ON brand_hearts
 FOR UPDATE
 USING (auth.uid() = user_id);
 
--- Trigger to update 'updated_at' timestamp
-CREATE OR REPLACE FUNCTION handle_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER on_brand_heart_updated
-BEFORE UPDATE ON brand_hearts
-FOR EACH ROW
-EXECUTE FUNCTION handle_updated_at();
+-- Policy: Users can delete their own brand heart
+CREATE POLICY "Users can delete their own brand heart"
+ON brand_hearts
+FOR DELETE
+USING (auth.uid() = user_id);
