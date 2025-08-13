@@ -35,7 +35,6 @@ export default async function SettingsPage() {
     // TODO: Remove this hardcoded data and re-enable user checks before production.
     const profile = { primary_language: 'en', secondary_language: 'es' };
 
-
     return (
         <DashboardLayout>
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
