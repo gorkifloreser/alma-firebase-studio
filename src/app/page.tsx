@@ -1,3 +1,4 @@
+
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -24,13 +25,18 @@ import Image from 'next/image';
 import { UserNav } from '@/components/auth/UserNav';
 
 export default async function Home() {
-  const supabase = createClient();
-  const { data } = await supabase.auth.getUser();
-  const { user } = data;
+  // const supabase = createClient();
+  // const { data } = await supabase.auth.getUser();
+  // const { user } = data;
 
-  if (!user) {
-    return redirect('/login');
-  }
+  // if (!user) {
+  //   return redirect('/login');
+  // }
+
+  const user = {
+    email: 'developer@studio.com'
+  };
+
 
   const spending = [
     { icon: Computer, name: 'Pc & Coumunication', sub: 'New IPS Monitor', amount: 530, date: 'Today' },
