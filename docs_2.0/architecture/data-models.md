@@ -7,7 +7,12 @@
 
 ## BrandHeart
 *   **Purpose:** Stores the core essence of the user's brand.
-*   **Key Attributes:** `id`, `user_id`, `mission`, `vision`, `values`, `tone_of_voice` (with fields for both languages).
+*   **Key Attributes:** `id`, `user_id`, `mission`, `vision`, `values`, `tone_of_voice`, `created_at`, `updated_at`.
+*   **Relationships:** Belongs to a User.
+
+## BrandDocument
+*   **Purpose:** Stores the content and vector embeddings of user-uploaded documents for RAG.
+*   **Key Attributes:** `id`, `user_id`, `file_name`, `content`, `embedding`, `created_at`.
 *   **Relationships:** Belongs to a User.
 
 ## Offering

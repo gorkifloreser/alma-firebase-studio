@@ -13,6 +13,7 @@
   - [Data Models](./data-models.md)
     - [User](./data-models.md#user)
     - [BrandHeart](./data-models.md#brandheart)
+    - [BrandDocument](./data-models.md#branddocument)
     - [Offering](./data-models.md#offering)
     - [Content](./data-models.md#content)
     - [Testimonial](./data-models.md#testimonial)
