@@ -6,16 +6,11 @@ import { revalidatePath } from 'next/cache';
 
 export async function updateUserLanguage(formData: FormData) {
     const supabase = createClient();
-    // const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // if (!user) {
-    //     throw new Error('User not authenticated');
-    // }
-    
-    // This is a hardcoded user ID for development purposes.
-    // TODO: Remove this hardcoded ID and re-enable user checks before production.
-    const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
-
+    if (!user) {
+        throw new Error('User not authenticated');
+    }
 
     const primary = formData.get('primaryLanguage') as string;
     let secondary = formData.get('secondaryLanguage') as string | null;
@@ -27,7 +22,7 @@ export async function updateUserLanguage(formData: FormData) {
     const { error } = await supabase
         .from('profiles')
         .update({ primary_language: primary, secondary_language: secondary })
-        .eq('id', devUserId);
+        .eq('id', user.id);
 
     if (error) {
         console.error('Error updating language preferences:', error);
@@ -41,12 +36,16 @@ export async function updateUserLanguage(formData: FormData) {
 
 export async function getProfile() {
     const supabase = createClient();
-    const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error('User not authenticated. Could not fetch profile.');
+    }
 
     const { data, error } = await supabase
         .from('profiles')
         .select('primary_language, secondary_language')
-        .eq('id', devUserId)
+        .eq('id', user.id)
         .single();
 
     if (error) {

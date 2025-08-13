@@ -11,6 +11,8 @@ import { useEffect, useState, useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createClient } from '@/lib/supabase/client';
+import { redirect } from 'next/navigation';
 
 const languages = [
     { value: 'en', label: 'English' },
@@ -33,7 +35,16 @@ export default function SettingsPage() {
     const { toast } = useToast();
 
     useEffect(() => {
+        const checkUser = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                redirect('/login');
+            }
+        };
+
         const fetchProfile = async () => {
+            setIsLoading(true);
             try {
                 const data = await getProfile();
                 setProfile(data);
@@ -48,6 +59,7 @@ export default function SettingsPage() {
             }
         };
 
+        checkUser();
         fetchProfile();
     }, [toast]);
 
@@ -58,12 +70,10 @@ export default function SettingsPage() {
         startTransition(async () => {
             try {
                 const result = await updateUserLanguage(formData);
-                if (result.message) {
-                    toast({
-                        title: 'Success!',
-                        description: result.message,
-                    });
-                }
+                toast({
+                    title: 'Success!',
+                    description: result.message,
+                });
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
