@@ -119,7 +119,7 @@ export default function SettingsPage() {
                                     <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
                                         <SelectTrigger id="secondary-language">
                                             <SelectValue placeholder="Select secondary language" />
-                                        </Trigger>
+                                        </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="none">None</SelectItem>
                                             {languages.map((lang) => (
