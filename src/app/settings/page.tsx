@@ -18,6 +18,10 @@ const languages = [
 ];
 
 export default async function SettingsPage() {
+    // This is a hardcoded user ID and profile for development purposes.
+    // TODO: Remove this hardcoded data and re-enable user checks before production.
+    const profile = { primary_language: 'en', secondary_language: 'es' };
+    
     // const supabase = createClient();
     // const { data: { user } } = await supabase.auth.getUser();
 
@@ -30,10 +34,6 @@ export default async function SettingsPage() {
     //     .select('primary_language, secondary_language')
     //     .eq('id', user.id)
     //     .single();
-    
-    // This is a hardcoded user ID and profile for development purposes.
-    // TODO: Remove this hardcoded data and re-enable user checks before production.
-    const profile = { primary_language: 'en', secondary_language: 'es' };
 
     return (
         <DashboardLayout>
