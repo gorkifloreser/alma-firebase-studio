@@ -84,4 +84,7 @@ body {
   .btn-primary-gradient {
     @apply bg-gradient-to-br from-rose-400 to-orange-300 text-white;
   }
+  .btn-auth {
+      @apply bg-green-500 hover:bg-green-600 text-white rounded-full;
+  }
 }

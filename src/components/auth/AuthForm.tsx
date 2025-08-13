@@ -9,7 +9,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -18,7 +17,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '../ui/toaster';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, User, Lock } from 'lucide-react';
 
 const signupFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -90,9 +89,11 @@ export function AuthForm({ type }: AuthFormProps) {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="you@example.com" {...field} />
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input placeholder="Username" {...field} className="bg-white rounded-full pl-10 text-black placeholder:text-gray-500"/>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -103,13 +104,14 @@ export function AuthForm({ type }: AuthFormProps) {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
                 <FormControl>
                   <div className="relative">
+                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
+                      placeholder="Password"
                       {...field}
+                      className="bg-white rounded-full pl-10 text-black placeholder:text-gray-500"
                     />
                     <Button
                       type="button"
@@ -136,13 +138,14 @@ export function AuthForm({ type }: AuthFormProps) {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <div className="relative">
+                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <Input
                         type={showConfirmPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
+                        placeholder="Confirm Password"
                         {...field}
+                         className="bg-white rounded-full pl-10 text-black placeholder:text-gray-500"
                       />
                       <Button
                         type="button"
@@ -164,7 +167,7 @@ export function AuthForm({ type }: AuthFormProps) {
               )}
             />
           )}
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full btn-auth" disabled={isLoading}>
             {isLoading ? 'Processing...' : (type === 'login' ? 'Log In' : 'Sign Up')}
           </Button>
         </form>
