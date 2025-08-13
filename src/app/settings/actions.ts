@@ -30,28 +30,44 @@ export async function updateUserLanguage(formData: FormData) {
     }
 
     revalidatePath('/settings');
+    revalidatePath('/brand-heart');
     return { message: 'Preferences updated successfully' };
 }
 
 
-export async function getProfile() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+export async function getProfile(): Promise<{
+    primary_language: string;
+    secondary_language: string | null;
+} | null> {
+  const supabase = createClient();
 
-    if (!user) {
-        throw new Error('User not authenticated. Could not fetch profile.');
+  // Get logged-in user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError) {
+    console.error('Error getting auth user:', userError);
+    return null;
+  }
+  if (!user) {
+    console.log('No authenticated user.');
+    return null;
+  }
+
+  // Fetch profile row
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('primary_language, secondary_language')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No row found — return null instead of throwing
+      console.warn('No profile row found for user:', user.id);
+      return null;
     }
+    console.error('Unexpected error fetching profile:', error);
+    return null;
+  }
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('primary_language, secondary_language')
-        .eq('id', user.id)
-        .single();
-
-    if (error) {
-        console.error('Error fetching profile:', error);
-        throw new Error('Could not fetch profile data.');
-    }
-
-    return data;
+  return data;
 }
