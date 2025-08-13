@@ -20,14 +20,14 @@ export default async function SignupPage() {
         <Card className="bg-white/10 backdrop-blur-lg border-white/20 rounded-2xl">
           <CardContent className="p-8 md:p-12">
             <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-              <div className="text-white text-center md:text-left">
+              <div className="text-foreground text-center md:text-left">
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
                   Join Us
                 </h1>
-                <p className="mt-4 text-white/80">
+                <p className="mt-4 text-foreground/80">
                   Create an account to start your journey. It's quick and easy!
                 </p>
-                 <Button variant="outline" className="mt-6 bg-transparent text-white border-white/50 hover:bg-white/20 hover:text-white">
+                 <Button variant="outline" className="mt-6 bg-transparent text-foreground border-foreground/50 hover:bg-foreground/10 hover:text-foreground">
                   Learn More
                 </Button>
               </div>
