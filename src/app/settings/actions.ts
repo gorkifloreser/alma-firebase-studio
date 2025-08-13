@@ -1,4 +1,3 @@
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -22,49 +21,66 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
     }
 
     const currentProfile = await getProfile();
+    const avatarFile = formData.get('avatar') as File | null;
+    let newAvatarUrl: string | null = currentProfile?.avatar_url || null;
 
-    // Extract all data from the form
-    const primary = formData.get('primaryLanguage') as string | null;
-    let secondary = formData.get('secondaryLanguage') as string | null;
-    const fullName = formData.get('fullName') as string | null;
-    const website = formData.get('website') as string | null;
-    const newAvatarUrl = formData.get('avatar_url') as string | null;
-    
-    // Start with the existing avatar_url and update it only if a new one is provided
-    let avatar_url = currentProfile?.avatar_url;
-    if (newAvatarUrl) {
-        avatar_url = newAvatarUrl;
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
+    if (!bucketName) {
+        console.error('Supabase storage bucket name is not configured.');
+        throw new Error('Storage service is not configured.');
+    }
+
+    if (avatarFile && avatarFile.size > 0) {
+        console.log('Avatar file found, starting upload...');
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
         
-        // If there was an old avatar and it's different from the new one, delete it from storage
-        const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
-        if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl && bucketName) {
-            const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
-            if (oldAvatarPath) {
-                console.log(`Deleting old avatar: ${oldAvatarPath}`);
-                // We don't want to block the profile update if the old avatar deletion fails
-                supabase.storage.from(bucketName).remove([oldAvatarPath]).then(({ error }) => {
-                    if (error) {
-                        console.error('Failed to delete old avatar:', error.message);
-                    }
-                });
+        try {
+            const { error: uploadError } = await supabase.storage
+                .from(bucketName)
+                .upload(filePath, avatarFile);
+
+            if (uploadError) {
+                console.error('Error uploading avatar:', uploadError.message);
+                throw new Error('Could not upload avatar. Please try again.');
             }
+            console.log('Avatar uploaded successfully.');
+
+            const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+            newAvatarUrl = publicUrl;
+
+            // Delete old avatar if it exists and is different
+            if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl) {
+                const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
+                if (oldAvatarPath) {
+                    console.log(`Deleting old avatar: ${oldAvatarPath}`);
+                    await supabase.storage.from(bucketName).remove([oldAvatarPath]);
+                }
+            }
+        } catch (error) {
+            console.error('Caught an exception during file upload:', error);
+            throw new Error('An unexpected error occurred during file upload.');
         }
     }
-    
+
+    // Extract other form data
+    const primary = formData.get('primaryLanguage') as string;
+    let secondary = formData.get('secondaryLanguage') as string | null;
     if (secondary === 'none') {
         secondary = null;
     }
-
-    const profileData: Partial<Profile> & { updated_at: string, id: string } = {
-        id: user.id,
-        updated_at: new Date().toISOString()
-    };
+    const fullName = formData.get('fullName') as string | null;
+    const website = formData.get('website') as string | null;
     
-    if (primary !== null) profileData.primary_language = primary;
-    if (secondary !== undefined) profileData.secondary_language = secondary;
-    if (fullName !== null) profileData.full_name = fullName;
-    if (website !== null) profileData.website = website;
-    if (avatar_url !== undefined) profileData.avatar_url = avatar_url; // Use the final avatar_url
+    const profileData = {
+        id: user.id,
+        updated_at: new Date().toISOString(),
+        primary_language: primary,
+        secondary_language: secondary,
+        full_name: fullName,
+        website: website,
+        avatar_url: newAvatarUrl,
+    };
 
     console.log('Updating profile in database with data:', profileData);
     const { data, error } = await supabase

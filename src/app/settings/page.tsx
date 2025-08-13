@@ -1,4 +1,3 @@
-
 'use client';
 
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -22,7 +21,7 @@ import { User } from '@supabase/supabase-js';
 export default function SettingsPage() {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [newAvatarUrl, setNewAvatarUrl] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -58,22 +57,22 @@ export default function SettingsPage() {
         checkUserAndFetchData();
     }, [toast]);
 
-    const handleUploadComplete = (url: string) => {
-        setNewAvatarUrl(url);
+    const handleFileSelect = (file: File) => {
+        setAvatarFile(file);
     };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        if (newAvatarUrl) {
-            formData.append('avatar_url', newAvatarUrl);
+        if (avatarFile) {
+            formData.append('avatar', avatarFile);
         }
         
         startTransition(async () => {
             try {
                 const result = await updateProfile(formData);
-                setProfile(result.profile); // Update local state with returned profile
-                setNewAvatarUrl(null); // Clear the new avatar url after saving
+                setProfile(result.profile);
+                setAvatarFile(null); 
                 // Update keys to force re-render of Select components
                 setPrimaryKey(Date.now());
                 setSecondaryKey(Date.now() + 1);
@@ -121,7 +120,8 @@ export default function SettingsPage() {
                                     <Label>Avatar</Label>
                                     <Avatar
                                         url={profile?.avatar_url}
-                                        onUploadComplete={handleUploadComplete}
+                                        isUploading={isPending}
+                                        onFileSelect={handleFileSelect}
                                     />
                                 </div>
                                 <div className="space-y-2">
