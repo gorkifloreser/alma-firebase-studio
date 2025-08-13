@@ -58,7 +58,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (!user && pathname !== '/login' && pathname !== '/signup' && !pathname.startsWith('/auth/callback')) {
+  const protectedPaths = ['/', '/brand-heart', '/offerings', '/media-plan', '/calendar', '/harvest-circle', '/settings'];
+
+  if (!user && protectedPaths.includes(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
