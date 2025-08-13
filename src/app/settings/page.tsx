@@ -1,12 +1,17 @@
 
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+'use client';
+
+import { createClient } from '@/lib/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { updateUserLanguage } from './actions';
+import { useEffect, useState, useTransition } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const languages = [
     { value: 'en', label: 'English' },
@@ -17,26 +22,78 @@ const languages = [
     { value: 'pt', label: 'Portuguese' },
 ];
 
-export default async function SettingsPage() {
-    // This is a hardcoded user ID and profile for development purposes.
-    // TODO: Remove this hardcoded data and re-enable user checks before production.
-    const profile = { primary_language: 'en', secondary_language: 'es' };
-    
-    // const supabase = createClient();
-    // const { data: { user } } = await supabase.auth.getUser();
+type Profile = {
+    primary_language: string;
+    secondary_language: string | null;
+} | null;
 
-    // if (!user) {
-    //     redirect('/login');
-    // }
+export default function SettingsPage() {
+    const [profile, setProfile] = useState<Profile>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
 
-    // const { data: profile } = await supabase
-    //     .from('profiles')
-    //     .select('primary_language, secondary_language')
-    //     .eq('id', user.id)
-    //     .single();
+    useEffect(() => {
+        const fetchProfile = async () => {
+            // This is a hardcoded user ID for development purposes.
+            // TODO: Remove this hardcoded data and re-enable user checks before production.
+            const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
+            const supabase = createClient();
+            
+            // const { data: { user } } = await supabase.auth.getUser();
+            // if (!user) {
+            //     setIsLoading(false);
+            //     return;
+            // }
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('primary_language, secondary_language')
+                .eq('id', devUserId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching profile:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Could not fetch your profile.',
+                });
+            } else {
+                setProfile(data);
+            }
+            setIsLoading(false);
+        };
+
+        fetchProfile();
+    }, [toast]);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        
+        startTransition(async () => {
+            try {
+                const result = await updateUserLanguage(formData);
+                if (result.message) {
+                    toast({
+                        title: 'Success!',
+                        description: result.message,
+                    });
+                }
+            } catch (error: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Uh oh! Something went wrong.',
+                    description: error.message,
+                });
+            }
+        });
+    };
 
     return (
         <DashboardLayout>
+            <Toaster />
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header>
                     <h1 className="text-3xl font-bold">Settings</h1>
@@ -51,40 +108,50 @@ export default async function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form action={updateUserLanguage} className="space-y-6 max-w-md">
-                            <div className="space-y-2">
-                                <Label htmlFor="primary-language">Primary Language</Label>
-                                <Select name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
-                                    <SelectTrigger id="primary-language">
-                                        <SelectValue placeholder="Select primary language" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {languages.map((lang) => (
-                                            <SelectItem key={lang.value} value={lang.value}>
-                                                {lang.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        {isLoading ? (
+                            <div className="space-y-6 max-w-md">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-24" />
                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
-                                <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
-                                    <SelectTrigger id="secondary-language">
-                                        <SelectValue placeholder="Select secondary language" />
-                                    </Trigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {languages.map((lang) => (
-                                            <SelectItem key={lang.value} value={lang.value}>
-                                                {lang.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button type="submit">Save Changes</Button>
-                        </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
+                                <div className="space-y-2">
+                                    <Label htmlFor="primary-language">Primary Language</Label>
+                                    <Select name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
+                                        <SelectTrigger id="primary-language">
+                                            <SelectValue placeholder="Select primary language" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {languages.map((lang) => (
+                                                <SelectItem key={lang.value} value={lang.value}>
+                                                    {lang.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
+                                    <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
+                                        <SelectTrigger id="secondary-language">
+                                            <SelectValue placeholder="Select secondary language" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            {languages.map((lang) => (
+                                                <SelectItem key={lang.value} value={lang.value}>
+                                                    {lang.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button type="submit" disabled={isPending}>
+                                    {isPending ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </form>
+                        )}
                     </CardContent>
                 </Card>
             </div>

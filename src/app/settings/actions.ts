@@ -3,14 +3,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 export async function updateUserLanguage(formData: FormData) {
     const supabase = createClient();
     // const { data: { user } } = await supabase.auth.getUser();
 
     // if (!user) {
-    //     return redirect('/login');
+    //     throw new Error('User not authenticated');
     // }
     
     // This is a hardcoded user ID for development purposes.
@@ -32,10 +31,9 @@ export async function updateUserLanguage(formData: FormData) {
 
     if (error) {
         console.error('Error updating language preferences:', error);
-        // Optionally, redirect with an error message
-        return redirect('/settings?error=Could not update preferences');
+        throw new Error('Could not update preferences');
     }
 
     revalidatePath('/settings');
-    redirect('/settings?message=Preferences updated successfully');
+    return { message: 'Preferences updated successfully' };
 }
