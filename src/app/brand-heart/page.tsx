@@ -205,43 +205,45 @@ export default function BrandHeartPage() {
                     <p className="text-muted-foreground">Define your brand's soul. This is the foundation for all AI content generation.</p>
                 </header>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Core Essence</CardTitle>
-                        <CardDescription>
-                            Fill in these details to give the AI a deep understanding of your brand.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="space-y-8">
-                                <Skeleton className="h-10 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-10 w-32" />
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="space-y-8">
-                                <div className="space-y-2">
-                                    <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                                    <Input id="brand_name" name="brand_name" value={brandHeart.brand_name} onChange={handleFormChange} />
+                <div className="max-w-4xl">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Core Essence</CardTitle>
+                            <CardDescription>
+                                Fill in these details to give the AI a deep understanding of your brand.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <div className="space-y-8">
+                                    <Skeleton className="h-10 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-10 w-32" />
                                 </div>
-                                <BilingualFormField id="brand_brief" label="Brand Brief" />
-                                <BilingualFormField id="mission" label="Mission" />
-                                <BilingualFormField id="vision" label="Vision" />
-                                <BilingualFormField id="values" label="Values" />
-                                <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
-                                
-                                <Button type="submit" disabled={isSaving}>
-                                    {isSaving ? 'Saving...' : 'Save Brand Heart'}
-                                </Button>
-                            </form>
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <form onSubmit={handleSubmit} className="space-y-8">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
+                                        <Input id="brand_name" name="brand_name" value={brandHeart.brand_name} onChange={handleFormChange} />
+                                    </div>
+                                    <BilingualFormField id="brand_brief" label="Brand Brief" />
+                                    <BilingualFormField id="mission" label="Mission" />
+                                    <BilingualFormField id="vision" label="Vision" />
+                                    <BilingualFormField id="values" label="Values" />
+                                    <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
+                                    
+                                    <Button type="submit" disabled={isSaving}>
+                                        {isSaving ? 'Saving...' : 'Save Brand Heart'}
+                                    </Button>
+                                </form>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </DashboardLayout>
     );

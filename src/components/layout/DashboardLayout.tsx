@@ -25,6 +25,7 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { UserNav } from '@/components/auth/UserNav';
+import { cn } from '@/lib/utils';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -45,7 +46,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-background">
-        <Sidebar collapsible="icon" className="group-data-[variant=inset]:hidden">
+        <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-mesh-gradient")}>
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                 <div className="bg-primary rounded-lg p-1.5">
@@ -79,8 +80,8 @@ export default function DashboardLayout({
             </SidebarMenu>
 
              <div className="mt-auto p-4 group-data-[collapsible=icon]:hidden">
-                <Card className="rounded-2xl bg-primary/10 text-center p-4 border-none">
-                    <p className="font-bold text-foreground">Join Wallet Life Fourm</p>
+                <Card className="rounded-2xl bg-black/10 text-center p-4 border-none text-sidebar-foreground backdrop-blur-sm">
+                    <p className="font-bold">Join Wallet Life Fourm</p>
                     <Button size="sm" className="mt-4 btn-primary-gradient">Join Now</Button>
                 </Card>
              </div>

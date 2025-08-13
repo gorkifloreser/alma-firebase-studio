@@ -29,14 +29,15 @@ body {
     --ring: 355 77% 66%;
     --radius: 0.8rem;
 
-    --sidebar-background: 240 6% 10%;
-    --sidebar-foreground: 0 0% 98%;
+    /* Light mode sidebar with mesh background */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 50% 30%; /* Dark text */
     --sidebar-primary: 355 77% 66%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 355 77% 70%;
+    --sidebar-primary-foreground: 355.7 100% 97.3%;
+    --sidebar-accent: 240 5.9% 10%; /* Darker accent for hover */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light text on hover */
+    --sidebar-border: 240 5.9% 90%;
+    --sidebar-ring: 355 77% 66%;
   }
 
   .dark {
@@ -60,14 +61,15 @@ body {
     --input: 240 3.7% 15.9%;
     --ring: 355 77% 70%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 25 25% 20%;
-    --sidebar-primary: 355 77% 66%;
-    --sidebar-primary-foreground: 355.7 100% 97.3%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 240 5.9% 90%;
-    --sidebar-ring: 355 77% 66%;
+    /* Dark mode sidebar with mesh background */
+    --sidebar-background: 240 6% 10%;
+    --sidebar-foreground: 0 0% 98%; /* Light text */
+    --sidebar-primary: 355 77% 70%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 355 77% 70%;
   }
 }
 
