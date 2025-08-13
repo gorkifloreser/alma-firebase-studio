@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from 'react-hook-form';
@@ -17,7 +18,10 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '../ui/toaster';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Key } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
+import { Label } from '@/components/ui/label';
 
 const signupFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -31,6 +35,7 @@ const signupFormSchema = z.object({
 const loginFormSchema = z.object({
     email: z.string().email({ message: 'Invalid email address.' }),
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+    remember: z.boolean().default(false),
 });
 
 type AuthFormProps = {
@@ -51,6 +56,7 @@ export function AuthForm({ type }: AuthFormProps) {
     defaultValues: {
       email: '',
       password: '',
+      ...(type === 'login' && { remember: false }),
       ...(type === 'signup' && { confirmPassword: '' }),
     },
   });
@@ -59,7 +65,7 @@ export function AuthForm({ type }: AuthFormProps) {
     setIsLoading(true);
     try {
       if (type === 'login') {
-        await login(values);
+        await login(values as z.infer<typeof loginFormSchema>);
         router.push('/');
       } else {
         const result = await signup(values as z.infer<typeof signupFormSchema>);
@@ -140,7 +146,7 @@ export function AuthForm({ type }: AuthFormProps) {
                 <FormItem>
                   <FormControl>
                     <div className="relative">
-                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                       <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <Input
                         type={showConfirmPassword ? 'text' : 'password'}
                         placeholder="Confirm Password"
@@ -167,6 +173,37 @@ export function AuthForm({ type }: AuthFormProps) {
               )}
             />
           )}
+
+          {type === 'login' && (
+             <div className="flex items-center justify-between">
+                <FormField
+                control={form.control}
+                name="remember"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                    <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <Label
+                        htmlFor="remember"
+                        className="text-sm font-medium text-foreground/80"
+                        >
+                        Keep me signed in
+                        </Label>
+                    </div>
+                    </FormItem>
+                )}
+                />
+                <Button variant="link" asChild className="px-1 text-xs text-foreground/80 hover:text-foreground/60">
+                    <Link href="/forgot-password">Forgot password?</Link>
+                </Button>
+            </div>
+          )}
+
           <Button type="submit" className="w-full btn-auth" disabled={isLoading}>
             {isLoading ? 'Processing...' : (type === 'login' ? 'Log In' : 'Sign Up')}
           </Button>
