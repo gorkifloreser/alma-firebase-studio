@@ -52,9 +52,9 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <Card className="bg-mesh-gradient text-primary-foreground rounded-2xl shadow-lg relative overflow-hidden">
+            <Card className="bg-mesh-gradient text-card-foreground rounded-2xl shadow-lg relative overflow-hidden">
               <CardContent className="p-6">
-                <p className="text-sm text-primary-foreground/80">Balance Details</p>
+                <p className="text-sm text-foreground/80">Balance Details</p>
                 <p className="text-4xl font-bold mt-2">$900,065</p>
               </CardContent>
               <div className="absolute -right-10 -top-10">
