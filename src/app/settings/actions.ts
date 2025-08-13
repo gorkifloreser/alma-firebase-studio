@@ -20,6 +20,8 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         throw new Error('User not authenticated');
     }
 
+    const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
+
     const currentProfile = await getProfile();
 
     const primary = formData.get('primaryLanguage') as string | null;
@@ -34,20 +36,20 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage.from('alma').upload(filePath, avatarFile);
+        const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(filePath, avatarFile);
         if (uploadError) {
             console.error('Error uploading avatar:', uploadError);
             throw new Error('Could not upload avatar. Please try again.');
         }
 
-        const { data: { publicUrl } } = supabase.storage.from('alma').getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
         avatar_url = publicUrl;
         
         // If there was an old avatar, delete it
         if (currentProfile?.avatar_url) {
-            const oldAvatarPath = currentProfile.avatar_url.split('/alma/').pop();
+            const oldAvatarPath = currentProfile.avatar_url.split(`/${BUCKET_NAME}/`).pop();
             if (oldAvatarPath) {
-                await supabase.storage.from('alma').remove([oldAvatarPath]);
+                await supabase.storage.from(BUCKET_NAME).remove([oldAvatarPath]);
             }
         }
     }
