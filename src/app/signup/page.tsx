@@ -21,7 +21,7 @@ export default async function SignupPage() {
           <CardContent className="p-8 md:p-12">
             <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
               <div className="text-foreground text-center md:text-left">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
                   Join Us
                 </h1>
                 <p className="mt-4 text-foreground/80">
@@ -48,7 +48,7 @@ export default async function SignupPage() {
             </div>
           </CardContent>
         </Card>
-        <p className="text-center text-white/60 mt-8">Welcome to our site</p>
+        <p className="text-center text-foreground/60 mt-8">Welcome to our site</p>
       </div>
     </AuthLayout>
   );
