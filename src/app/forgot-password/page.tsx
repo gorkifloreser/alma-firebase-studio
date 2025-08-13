@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
               If an account with that email exists, a password reset link has
               been sent. Please check your inbox.
             </p>
-            <Button variant="link" asChild>
+            <Button variant="link" asChild className="px-1">
               <Link href="/login">Back to Log In</Link>
             </Button>
           </div>
