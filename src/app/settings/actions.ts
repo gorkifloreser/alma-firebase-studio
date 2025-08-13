@@ -13,6 +13,7 @@ export type Profile = {
 };
 
 export async function updateProfile(formData: FormData): Promise<{ message: string, profile: Profile }> {
+    console.log('updateProfile action started.');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,10 +21,12 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         throw new Error('User not authenticated');
     }
 
-    const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
+    const BUCKET_NAME = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
     if (!BUCKET_NAME) {
+        console.error('Supabase storage bucket name is not configured.');
         throw new Error('Supabase storage bucket name is not configured. Please set NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME in your environment variables.');
     }
+    console.log(`Using storage bucket: ${BUCKET_NAME}`);
 
     const currentProfile = await getProfile();
 
@@ -36,25 +39,32 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
     let avatar_url = currentProfile?.avatar_url;
 
     if (avatarFile && avatarFile.size > 0) {
+        console.log('Avatar file found, processing upload...');
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
+        console.log(`Uploading to path: ${filePath}`);
 
         const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(filePath, avatarFile);
         if (uploadError) {
             console.error('Error uploading avatar:', uploadError);
             throw new Error('Could not upload avatar. Please try again.');
         }
+        console.log('Avatar uploaded successfully.');
 
         const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
         avatar_url = publicUrl;
+        console.log(`New avatar public URL: ${avatar_url}`);
         
         // If there was an old avatar, delete it
         if (currentProfile?.avatar_url) {
             const oldAvatarPath = currentProfile.avatar_url.split(`/${BUCKET_NAME}/`).pop();
             if (oldAvatarPath) {
+                console.log(`Deleting old avatar: ${oldAvatarPath}`);
                 await supabase.storage.from(BUCKET_NAME).remove([oldAvatarPath]);
             }
         }
+    } else {
+        console.log('No new avatar file to upload.');
     }
 
 
@@ -74,7 +84,7 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
     if (website !== null) profileData.website = website;
     if (avatar_url !== currentProfile?.avatar_url) profileData.avatar_url = avatar_url;
 
-
+    console.log('Updating profile in database...');
     const { data, error } = await supabase
         .from('profiles')
         .upsert(profileData)
@@ -82,9 +92,11 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
         .single();
 
     if (error) {
-        console.error('Error updating profile:', error);
-        throw new Error('Could not update profile');
+        console.error('Error updating profile in database:', error);
+        throw new Error('Could not update profile data in the database.');
     }
+    
+    console.log('Profile updated successfully in database.');
 
     revalidatePath('/settings');
     revalidatePath('/brand-heart');
