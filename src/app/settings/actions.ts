@@ -15,7 +15,7 @@ export async function updateUserLanguage(formData: FormData) {
     
     // This is a hardcoded user ID for development purposes.
     // TODO: Remove this hardcoded ID and re-enable user checks before production.
-    const devUserId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
+    const devUserId = 'ca776dae-278a-4d7e-8191-2c4ee7789f7a';
 
 
     const primary = formData.get('primaryLanguage') as string;

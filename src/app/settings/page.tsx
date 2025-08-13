@@ -33,7 +33,6 @@ export default async function SettingsPage() {
     
     // This is a hardcoded user ID and profile for development purposes.
     // TODO: Remove this hardcoded data and re-enable user checks before production.
-    const devUserId = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
     const profile = { primary_language: 'en', secondary_language: 'es' };
 
 
