@@ -9,11 +9,11 @@ body {
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 25 25% 20%;
+    --foreground: 0 50% 30%;
     --card: 0 0% 100%;
-    --card-foreground: 25 25% 20%;
+    --card-foreground: 0 50% 30%;
     --popover: 0 0% 100%;
-    --popover-foreground: 25 25% 20%;
+    --popover-foreground: 0 50% 30%;
     --primary: 355 77% 66%; /* Pale Red */
     --primary-foreground: 355.7 100% 97.3%;
     --secondary: 240 4.8% 95.9%;
@@ -85,6 +85,6 @@ body {
     @apply bg-gradient-to-br from-rose-400 to-orange-300 text-white;
   }
   .btn-auth {
-      @apply bg-green-500 hover:bg-green-600 text-white rounded-full;
+      @apply bg-primary hover:bg-primary/90 text-primary-foreground rounded-full;
   }
 }
