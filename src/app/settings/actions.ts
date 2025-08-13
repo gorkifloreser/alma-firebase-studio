@@ -40,23 +40,10 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
 
       const fileExt = avatarFile.name.split('.').pop();
       const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
-      
-      let binaryData: Uint8Array;
-
-      if (typeof avatarFile.arrayBuffer === 'function') {
-        const arrayBuffer = await avatarFile.arrayBuffer();
-        binaryData = new Uint8Array(arrayBuffer);
-      } else {
-        throw new Error('avatarFile is not a valid File/Blob type and cannot be converted to ArrayBuffer.');
-      }
 
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, binaryData, {
-          contentType: avatarFile.type || 'application/octet-stream',
-          cacheControl: '3600',
-          upsert: false // Use false to avoid overwriting existing files unexpectedly
-        });
+        .upload(filePath, avatarFile);
 
       if (uploadError) {
         console.error('Error uploading avatar:', uploadError);
