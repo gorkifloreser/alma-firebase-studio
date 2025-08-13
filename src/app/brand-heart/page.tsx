@@ -23,25 +23,33 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-type BrandHeart = {
+type BrandHeartData = {
     brand_name: string;
     brand_brief: { primary: string | null; secondary: string | null };
     mission: { primary: string | null; secondary: string | null };
     vision: { primary: string | null; secondary: string | null };
     values: { primary: string | null; secondary: string | null };
     tone_of_voice: { primary: string | null; secondary: string | null };
-} | null;
+};
+
+const initialBrandHeartState: BrandHeartData = {
+    brand_name: '',
+    brand_brief: { primary: '', secondary: '' },
+    mission: { primary: '', secondary: '' },
+    vision: { primary: '', secondary: '' },
+    values: { primary: '', secondary: '' },
+    tone_of_voice: { primary: '', secondary: '' },
+};
 
 
 export default function BrandHeartPage() {
     const [profile, setProfile] = useState<Profile>(null);
-    const [brandHeart, setBrandHeart] = useState<BrandHeart | null>(null);
+    const [brandHeart, setBrandHeart] = useState<BrandHeartData>(initialBrandHeartState);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
 
-    // Memoize language names for quick lookup
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     useEffect(() => {
@@ -74,10 +82,33 @@ export default function BrandHeartPage() {
         checkUserAndFetchData();
     }, [toast]);
 
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        
+        if (name.includes('_')) {
+            const [field, lang] = name.split('_') as [keyof Omit<BrandHeartData, 'brand_name'>, 'primary' | 'secondary'];
+            setBrandHeart(prev => ({
+                ...prev,
+                [field]: { ...prev[field], [lang]: value }
+            }));
+        } else {
+            setBrandHeart(prev => ({ ...prev, [name]: value }));
+        }
+    };
+    
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        
+        // We use a FormData object to easily pass the data to the server action.
+        const formData = new FormData();
+        formData.append('brand_name', brandHeart.brand_name);
+        Object.keys(brandHeart).forEach(key => {
+            if (key !== 'brand_name') {
+                const typedKey = key as keyof Omit<BrandHeartData, 'brand_name'>;
+                formData.append(`${typedKey}_primary`, brandHeart[typedKey].primary || '');
+                formData.append(`${typedKey}_secondary`, brandHeart[typedKey].secondary || '');
+            }
+        });
+
         startSaving(async () => {
             try {
                 const result = await updateBrandHeart(formData);
@@ -95,13 +126,10 @@ export default function BrandHeartPage() {
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof Omit<BrandHeart, 'brand_name'>) => {
+    const handleAutoTranslate = async (fieldId: keyof Omit<BrandHeartData, 'brand_name'>) => {
         if (!profile?.secondary_language) return;
 
-        const form = document.querySelector('form');
-        if (!form) return;
-
-        const primaryText = (form.elements.namedItem(`${fieldId}_primary`) as HTMLTextAreaElement)?.value;
+        const primaryText = brandHeart[fieldId].primary;
         const targetLanguage = languageNames.get(profile.secondary_language) || profile.secondary_language;
 
         if (!primaryText) {
@@ -116,10 +144,10 @@ export default function BrandHeartPage() {
         setIsTranslating(fieldId);
         try {
             const result = await translateText({ text: primaryText, targetLanguage });
-            const secondaryTextarea = form.elements.namedItem(`${fieldId}_secondary`) as HTMLTextAreaElement;
-            if (secondaryTextarea) {
-                secondaryTextarea.value = result.translatedText;
-            }
+            setBrandHeart(prev => ({
+                ...prev,
+                [fieldId]: { ...prev[fieldId], secondary: result.translatedText }
+            }));
             toast({
                 title: 'Translated!',
                 description: `Text has been translated to ${targetLanguage}.`,
@@ -135,7 +163,7 @@ export default function BrandHeartPage() {
         }
     };
 
-    const BilingualFormField = ({ id, label, primaryValue, secondaryValue }: { id: keyof Omit<BrandHeart, 'brand_name'>, label: string, primaryValue?: string | null, secondaryValue?: string | null }) => (
+    const BilingualFormField = ({ id, label }: { id: keyof Omit<BrandHeartData, 'brand_name'>, label: string }) => (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <Label htmlFor={`${id}_primary`} className="text-lg font-semibold">{label}</Label>
@@ -156,12 +184,12 @@ export default function BrandHeartPage() {
             <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
                      <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
-                    <Textarea id={`${id}_primary`} name={`${id}_primary`} defaultValue={primaryValue || ''} className="mt-1" rows={5} />
+                    <Textarea id={`${id}_primary`} name={`${id}_primary`} value={brandHeart[id].primary || ''} onChange={handleFormChange} className="mt-1" rows={5} />
                 </div>
                 {profile?.secondary_language && (
                      <div>
                         <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
-                        <Textarea id={`${id}_secondary`} name={`${id}_secondary`} defaultValue={secondaryValue || ''} className="mt-1" rows={5} />
+                        <Textarea id={`${id}_secondary`} name={`${id}_secondary`} value={brandHeart[id].secondary || ''} onChange={handleFormChange} className="mt-1" rows={5} />
                     </div>
                 )}
             </div>
@@ -199,13 +227,13 @@ export default function BrandHeartPage() {
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 <div className="space-y-2">
                                     <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                                    <Input id="brand_name" name="brand_name" defaultValue={brandHeart?.brand_name || ''} />
+                                    <Input id="brand_name" name="brand_name" value={brandHeart.brand_name} onChange={handleFormChange} />
                                 </div>
-                                <BilingualFormField id="brand_brief" label="Brand Brief" primaryValue={brandHeart?.brand_brief?.primary} secondaryValue={brandHeart?.brand_brief?.secondary} />
-                                <BilingualFormField id="mission" label="Mission" primaryValue={brandHeart?.mission?.primary} secondaryValue={brandHeart?.mission?.secondary} />
-                                <BilingualFormField id="vision" label="Vision" primaryValue={brandHeart?.vision?.primary} secondaryValue={brandHeart?.vision?.secondary} />
-                                <BilingualFormField id="values" label="Values" primaryValue={brandHeart?.values?.primary} secondaryValue={brandHeart?.values?.secondary} />
-                                <BilingualFormField id="tone_of_voice" label="Tone of Voice" primaryValue={brandHeart?.tone_of_voice?.primary} secondaryValue={brandHeart?.tone_of_voice?.secondary} />
+                                <BilingualFormField id="brand_brief" label="Brand Brief" />
+                                <BilingualFormField id="mission" label="Mission" />
+                                <BilingualFormField id="vision" label="Vision" />
+                                <BilingualFormField id="values" label="Values" />
+                                <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
                                 
                                 <Button type="submit" disabled={isSaving}>
                                     {isSaving ? 'Saving...' : 'Save Brand Heart'}
