@@ -28,6 +28,7 @@ import { usePathname } from 'next/navigation';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
+import { UserNav } from '@/components/auth/UserNav';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -97,8 +98,9 @@ export default function DashboardLayout({
           </SidebarFooter>
         </Sidebar>
         <main className="flex-1">
-          <header className="h-16 flex items-center justify-end px-4 border-b lg:hidden">
+          <header className="h-16 flex items-center justify-between px-4 border-b">
               <SidebarTrigger />
+              <UserNav />
           </header>
           {children}
         </main>
