@@ -4,35 +4,93 @@
 import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Camera } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useToast } from '@/hooks/use-toast'
 
 export function Avatar({
+  userId,
   url,
-  onFileSelect,
-  isUploading,
+  onUpload,
 }: {
+  userId: string | null | undefined
   url: string | null | undefined
-  onFileSelect: (file: File) => void
-  isUploading: boolean
+  onUpload: (url: string) => void
 }) {
+  const { toast } = useToast()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
-    // If the url prop changes (e.g., after a successful form submission),
-    // update the preview. If there's a local preview, don't override it.
-    if (!avatarUrl?.startsWith('blob:')) {
-      setAvatarUrl(url || null)
+    setAvatarUrl(url || null)
+  }, [url])
+
+  const handleUpload = async (file: File) => {
+    if (!userId) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to upload an avatar.',
+        variant: 'destructive',
+      })
+      return
     }
-  }, [url, avatarUrl])
+    
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
+    if (!bucketName) {
+        toast({
+            title: 'Configuration Error',
+            description: 'Storage bucket name is not configured.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    try {
+      setIsUploading(true)
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${userId}/${userId}-${Date.now()}.${fileExt}`
+
+      const { data, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+      
+      if (uploadError) {
+        throw uploadError
+      }
+      
+      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(data.path)
+
+      setAvatarUrl(publicUrl) // Update local preview with the final URL
+      onUpload(publicUrl) // Pass the final URL to the parent component
+
+      toast({
+        title: 'Success!',
+        description: 'Avatar uploaded. Remember to save your changes.',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Upload Failed',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) {
       return
     }
     const file = event.target.files[0]
-    const previewUrl = URL.createObjectURL(file)
-    setAvatarUrl(previewUrl) // Show local preview
-    onFileSelect(file) // Pass the file to the parent component's state
+    setAvatarUrl(URL.createObjectURL(file)) // Show local preview immediately
+    handleUpload(file) // Start the upload
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -51,9 +109,8 @@ export function Avatar({
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       const file = files[0];
-      const previewUrl = URL.createObjectURL(file);
-      setAvatarUrl(previewUrl);
-      onFileSelect(file);
+      setAvatarUrl(URL.createObjectURL(file)); // Show local preview
+      handleUpload(file); // Start the upload
     }
   }
 
@@ -88,15 +145,16 @@ export function Avatar({
                <Camera className="h-8 w-8 text-white" />
             </div>
           )}
-          {isUploading && (
-             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/70">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-             </div>
+           {isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/70">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+                <span className="absolute text-xs font-bold text-white">{uploadProgress}%</span>
+            </div>
           )}
         </label>
         <input
           id="avatar-upload"
-          name="avatar" // Ensure the name matches what the server action expects in FormData
+          name="avatar"
           type="file"
           accept="image/*"
           className="hidden"
