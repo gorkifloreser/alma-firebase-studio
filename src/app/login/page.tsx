@@ -47,7 +47,7 @@ export default async function LoginPage({
                 <div className="mt-6">
                   <AuthForm type="login" />
                 </div>
-                <div className="mt-6 text-center text-sm text-foreground/80">
+                <div className="mt-4 text-center text-sm text-foreground/80">
                   <p>
                     Don&apos;t have an account?{' '}
                     <Button variant="link" asChild className="px-1 text-foreground hover:text-foreground/80">

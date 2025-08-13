@@ -15,7 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import AuthLayout from '@/components/layout/AuthLayout';
 import { Toaster } from '@/components/ui/toaster';
@@ -35,6 +35,27 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setHasSession(true);
+      }
+    });
+    
+    // Check for initial session in case the event was missed
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+            setHasSession(true);
+        }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth]);
 
   const form = useForm<z.infer<typeof NewPasswordSchema>>({
     resolver: zodResolver(NewPasswordSchema),
@@ -46,7 +67,16 @@ export default function ResetPasswordPage() {
 
   const handlePasswordReset = async (values: z.infer<typeof NewPasswordSchema>) => {
     setIsLoading(true);
-    const supabase = createClient();
+
+    if (!hasSession) {
+      toast({
+        title: 'Error updating password',
+        description: 'No active session. Please use the link from your email.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
 
     const { error } = await supabase.auth.updateUser({
       password: values.password,
@@ -92,6 +122,7 @@ export default function ResetPasswordPage() {
                             type="password"
                             placeholder="••••••••"
                             {...field}
+                             className="bg-white rounded-full text-black placeholder:text-gray-500"
                           />
                         </FormControl>
                         <FormMessage />
@@ -109,15 +140,17 @@ export default function ResetPasswordPage() {
                             type="password"
                             placeholder="••••••••"
                             {...field}
+                             className="bg-white rounded-full text-black placeholder:text-gray-500"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full btn-auth" disabled={isLoading}>
+                  <Button type="submit" className="w-full btn-auth" disabled={isLoading || !hasSession}>
                     {isLoading ? 'Updating...' : 'Update Password'}
                   </Button>
+                   {!hasSession && <p className="text-xs text-destructive mt-2">Waiting for session... Please click the link in your email.</p>}
                 </form>
               </Form>
             </div>

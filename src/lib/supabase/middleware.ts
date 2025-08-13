@@ -58,13 +58,20 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (!user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/auth/callback' && pathname !== '/forgot-password' && !pathname.startsWith('/reset-password')) {
+  if (
+    !user &&
+    !pathname.startsWith('/login') &&
+    !pathname.startsWith('/signup') &&
+    !pathname.startsWith('/auth/callback') &&
+    !pathname.startsWith('/forgot-password') &&
+    !pathname.startsWith('/reset-password')
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && (pathname === '/login' || pathname === '/signup')) {
+  if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)

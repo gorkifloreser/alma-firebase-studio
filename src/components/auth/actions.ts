@@ -71,9 +71,10 @@ export async function logout() {
 export async function requestPasswordReset(formData: z.infer<typeof requestPasswordResetSchema>) {
     const origin = headers().get('origin');
     const supabase = createClient();
+    const redirectUrl = new URL(`${origin}/reset-password`);
 
     const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${origin}/reset-password`,
+        redirectTo: redirectUrl.toString(),
     });
 
     if (error) {

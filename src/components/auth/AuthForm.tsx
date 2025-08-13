@@ -11,6 +11,7 @@ import {
   FormField,
   FormItem,
   FormMessage,
+  FormLabel,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { login, signup } from './actions';
@@ -21,7 +22,6 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, User, Lock, Key } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { Label } from '@/components/ui/label';
 
 const signupFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -98,7 +98,7 @@ export function AuthForm({ type }: AuthFormProps) {
                 <FormControl>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input placeholder="Username" {...field} className="bg-white rounded-full pl-10 text-black placeholder:text-gray-500"/>
+                    <Input placeholder="you@example.com" {...field} className="bg-white rounded-full pl-10 text-black placeholder:text-gray-500"/>
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -180,17 +180,18 @@ export function AuthForm({ type }: AuthFormProps) {
                 control={form.control}
                 name="remember"
                 render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0 pt-2">
                     <FormControl>
                         <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        id="remember"
                         />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                         <Label
                         htmlFor="remember"
-                        className="text-sm font-medium text-foreground/80"
+                        className="text-sm font-medium text-foreground/80 cursor-pointer"
                         >
                         Keep me signed in
                         </Label>
