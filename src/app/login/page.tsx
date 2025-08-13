@@ -26,12 +26,19 @@ export default async function LoginPage({
           </p>
         )}
         <AuthForm type="login" />
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Button variant="link" asChild className="px-1">
-            <Link href="/signup">Sign Up</Link>
-          </Button>
-        </p>
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          <p>
+            Don&apos;t have an account?{' '}
+            <Button variant="link" asChild className="px-1">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </p>
+          <p>
+            <Button variant="link" asChild className="px-1 text-xs">
+              <Link href="/forgot-password">Forgot your password?</Link>
+            </Button>
+          </p>
+        </div>
       </div>
     </div>
   );
