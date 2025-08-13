@@ -37,7 +37,20 @@ export async function getBrandHeart() {
         return null;
     }
     
-    return data;
+    // The data is fetched, but we need to ensure it's in the right shape for the client.
+    // The form expects nested objects for bilingual fields.
+    if (data) {
+        return {
+            brand_name: data.brand_name,
+            brand_brief: data.brand_brief,
+            mission: data.mission,
+            vision: data.vision,
+            values: data.values,
+            tone_of_voice: data.tone_of_voice,
+        };
+    }
+    
+    return null;
 }
 
 export async function updateBrandHeart(formData: FormData) {
