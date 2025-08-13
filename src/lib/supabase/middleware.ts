@@ -58,9 +58,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const protectedPaths = ['/', '/brand-heart', '/offerings', '/media-plan', '/calendar', '/harvest-circle', '/settings'];
-
-  if (!user && protectedPaths.includes(pathname)) {
+  if (!user && pathname !== '/login' && pathname !== '/signup' && pathname !== '/auth/callback' && !pathname.startsWith('/reset-password')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
