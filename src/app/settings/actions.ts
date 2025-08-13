@@ -21,7 +21,7 @@ export async function updateUserLanguage(formData: FormData) {
 
     const { data, error } = await supabase
         .from('profiles')
-        .update({ primary_language: primary, secondary_language: secondary })
+        .update({ primary_language: primary, secondary_language: secondary, updated_at: new Date().toISOString() })
         .eq('id', user.id)
         .select('primary_language, secondary_language')
         .single();
@@ -47,7 +47,6 @@ export async function getProfile(): Promise<{
 } | null> {
   const supabase = createClient();
 
-  // Get logged-in user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError) {
     console.error('Error getting auth user:', userError);
@@ -58,7 +57,6 @@ export async function getProfile(): Promise<{
     return null;
   }
 
-  // Fetch profile row
   const { data, error } = await supabase
     .from('profiles')
     .select('primary_language, secondary_language')
@@ -67,7 +65,6 @@ export async function getProfile(): Promise<{
 
   if (error) {
     if (error.code === 'PGRST116') {
-      // No row found — return null instead of throwing
       console.warn('No profile row found for user:', user.id);
       return null;
     }
