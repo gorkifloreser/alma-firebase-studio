@@ -10,8 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
-  SidebarGroup,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,11 +19,8 @@ import {
   CreditCard,
   Import,
   BarChart2,
-  Settings,
-  HelpCircle,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { LogoutButton } from '@/components/auth/LogoutButton';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { UserNav } from '@/components/auth/UserNav';
@@ -37,9 +32,6 @@ const menuItems = [
   { href: '/imports', label: 'Imports', icon: Import },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
 ];
-
-const settingsMenuItem = { href: '/settings', label: 'Settings', icon: Settings };
-
 
 export default function DashboardLayout({
   children,
@@ -92,26 +84,6 @@ export default function DashboardLayout({
              </div>
 
           </SidebarContent>
-          <SidebarFooter className="p-2">
-             <SidebarMenu>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        href={settingsMenuItem.href}
-                        isActive={pathname === settingsMenuItem.href}
-                        asChild
-                        tooltip={settingsMenuItem.label}
-                    >
-                        <a href={settingsMenuItem.href}>
-                            <settingsMenuItem.icon className="h-5 w-5" />
-                            <span>{settingsMenuItem.label}</span>
-                        </a>
-                    </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <LogoutButton />
-                 </SidebarMenuItem>
-             </SidebarMenu>
-          </SidebarFooter>
         </Sidebar>
         <main className="flex-1">
           <header className="h-16 flex items-center justify-between px-4 border-b">
