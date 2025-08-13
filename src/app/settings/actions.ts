@@ -19,10 +19,12 @@ export async function updateUserLanguage(formData: FormData) {
         secondary = null;
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('profiles')
         .update({ primary_language: primary, secondary_language: secondary })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('primary_language, secondary_language')
+        .single();
 
     if (error) {
         console.error('Error updating language preferences:', error);
@@ -31,7 +33,11 @@ export async function updateUserLanguage(formData: FormData) {
 
     revalidatePath('/settings');
     revalidatePath('/brand-heart');
-    return { message: 'Preferences updated successfully' };
+    
+    return { 
+        message: 'Preferences updated successfully',
+        profile: data,
+    };
 }
 
 

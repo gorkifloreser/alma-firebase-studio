@@ -26,6 +26,10 @@ export default function SettingsPage() {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
+    // Use keys to force re-render of Select components on state change
+    const [primaryKey, setPrimaryKey] = useState(Date.now());
+    const [secondaryKey, setSecondaryKey] = useState(Date.now() + 1);
+
     useEffect(() => {
         const checkUser = async () => {
             const supabase = createClient();
@@ -62,6 +66,10 @@ export default function SettingsPage() {
         startTransition(async () => {
             try {
                 const result = await updateUserLanguage(formData);
+                setProfile(result.profile); // Update local state with returned profile
+                // Update keys to force re-render of Select components
+                setPrimaryKey(Date.now());
+                setSecondaryKey(Date.now() + 1);
                 toast({
                     title: 'Success!',
                     description: result.message,
@@ -103,7 +111,7 @@ export default function SettingsPage() {
                             <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
                                 <div className="space-y-2">
                                     <Label htmlFor="primary-language">Primary Language</Label>
-                                    <Select name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
+                                    <Select key={primaryKey} name="primaryLanguage" defaultValue={profile?.primary_language || 'en'}>
                                         <SelectTrigger id="primary-language">
                                             <SelectValue placeholder="Select primary language" />
                                         </SelectTrigger>
@@ -118,7 +126,7 @@ export default function SettingsPage() {
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
-                                    <Select name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
+                                    <Select key={secondaryKey} name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'}>
                                         <SelectTrigger id="secondary-language">
                                             <SelectValue placeholder="Select secondary language" />
                                         </SelectTrigger>
