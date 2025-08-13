@@ -32,22 +32,22 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
 
     if (avatarFile && avatarFile.size > 0) {
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile);
+        const { error: uploadError } = await supabase.storage.from('alma').upload(filePath, avatarFile);
         if (uploadError) {
             console.error('Error uploading avatar:', uploadError);
             throw new Error('Could not upload avatar. Please try again.');
         }
 
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage.from('alma').getPublicUrl(filePath);
         avatar_url = publicUrl;
         
         // If there was an old avatar, delete it
         if (currentProfile?.avatar_url) {
-            const oldAvatarPath = currentProfile.avatar_url.split('/').pop();
+            const oldAvatarPath = currentProfile.avatar_url.split('/alma/').pop();
             if (oldAvatarPath) {
-                await supabase.storage.from('avatars').remove([oldAvatarPath]);
+                await supabase.storage.from('alma').remove([oldAvatarPath]);
             }
         }
     }
