@@ -23,53 +23,33 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
 
     const currentProfile = await getProfile();
 
+    // Extract all data from the form
     const primary = formData.get('primaryLanguage') as string | null;
     let secondary = formData.get('secondaryLanguage') as string | null;
     const fullName = formData.get('fullName') as string | null;
     const website = formData.get('website') as string | null;
-    const avatarFile = formData.get('avatar') as File | null;
+    const newAvatarUrl = formData.get('avatar_url') as string | null;
     
+    // Start with the existing avatar_url and update it only if a new one is provided
     let avatar_url = currentProfile?.avatar_url;
-
-    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
-    if (!bucketName) {
-        console.error("Storage bucket name is not configured.");
-        throw new Error("Storage bucket name is not configured.");
-    }
-
-    if (avatarFile && avatarFile.size > 0) {
-        console.log('Avatar file found, starting upload...');
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
-
-        try {
-            const { error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(filePath, avatarFile);
-
-            if (uploadError) {
-                console.error('Error uploading avatar:', uploadError.message);
-                throw new Error('Could not upload avatar. Please try again.');
+    if (newAvatarUrl) {
+        avatar_url = newAvatarUrl;
+        
+        // If there was an old avatar and it's different from the new one, delete it from storage
+        const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
+        if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl && bucketName) {
+            const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
+            if (oldAvatarPath) {
+                console.log(`Deleting old avatar: ${oldAvatarPath}`);
+                // We don't want to block the profile update if the old avatar deletion fails
+                supabase.storage.from(bucketName).remove([oldAvatarPath]).then(({ error }) => {
+                    if (error) {
+                        console.error('Failed to delete old avatar:', error.message);
+                    }
+                });
             }
-            console.log('Upload successful. Getting public URL...');
-
-            const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-            avatar_url = publicUrl;
-            
-            // Delete old avatar if a new one was successfully uploaded
-            if (currentProfile?.avatar_url && currentProfile.avatar_url !== avatar_url) {
-                const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
-                if (oldAvatarPath) {
-                    console.log(`Deleting old avatar: ${oldAvatarPath}`);
-                    await supabase.storage.from(bucketName).remove([oldAvatarPath]);
-                }
-            }
-        } catch(error: any) {
-            console.error("File upload block failed:", error.message);
-            throw error; // Rethrow the specific error
         }
     }
-
     
     if (secondary === 'none') {
         secondary = null;
@@ -84,9 +64,9 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
     if (secondary !== undefined) profileData.secondary_language = secondary;
     if (fullName !== null) profileData.full_name = fullName;
     if (website !== null) profileData.website = website;
-    if (avatar_url !== null) profileData.avatar_url = avatar_url;
+    if (avatar_url !== undefined) profileData.avatar_url = avatar_url; // Use the final avatar_url
 
-    console.log('Updating profile in database...');
+    console.log('Updating profile in database with data:', profileData);
     const { data, error } = await supabase
         .from('profiles')
         .upsert(profileData)
