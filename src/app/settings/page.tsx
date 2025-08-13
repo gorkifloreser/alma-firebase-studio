@@ -20,6 +20,7 @@ import { Avatar } from '@/components/auth/Avatar';
 
 export default function SettingsPage() {
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
@@ -60,11 +61,15 @@ export default function SettingsPage() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        if (avatarFile) {
+            formData.append('avatar', avatarFile);
+        }
         
         startTransition(async () => {
             try {
                 const result = await updateProfile(formData);
                 setProfile(result.profile); // Update local state with returned profile
+                setAvatarFile(null); // Clear the file input after successful upload
                 // Update keys to force re-render of Select components
                 setPrimaryKey(Date.now());
                 setSecondaryKey(Date.now() + 1);
@@ -112,28 +117,7 @@ export default function SettingsPage() {
                                     <Label>Avatar</Label>
                                     <Avatar
                                         url={profile?.avatar_url}
-                                        onUpload={(event) => {
-                                            const formData = new FormData();
-                                            if (event.target.files) {
-                                                formData.append('avatar', event.target.files[0]);
-                                            }
-                                            startTransition(async () => {
-                                                try {
-                                                    const result = await updateProfile(formData);
-                                                    setProfile(result.profile);
-                                                    toast({
-                                                        title: 'Success!',
-                                                        description: 'Avatar updated successfully.',
-                                                    });
-                                                } catch (error: any) {
-                                                    toast({
-                                                        variant: 'destructive',
-                                                        title: 'Upload Failed',
-                                                        description: error.message,
-                                                    });
-                                                }
-                                            });
-                                        }}
+                                        onFileSelect={setAvatarFile}
                                     />
                                 </div>
                                 <div className="space-y-2">

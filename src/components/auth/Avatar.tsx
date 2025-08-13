@@ -7,18 +7,22 @@ import { Camera } from 'lucide-react'
 
 export function Avatar({
   url,
-  onUpload,
+  onFileSelect,
 }: {
   url: string | null | undefined
-  onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onFileSelect: (file: File) => void
 }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false) // For visual feedback, not actual upload
   const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
-    setAvatarUrl(url || null)
-  }, [url])
+    // If the url prop changes (e.g., after a successful form submission),
+    // update the preview. If there's a local preview, don't override it.
+    if (!avatarUrl?.startsWith('blob:')) {
+      setAvatarUrl(url || null)
+    }
+  }, [url, avatarUrl])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) {
@@ -26,10 +30,8 @@ export function Avatar({
     }
     const file = event.target.files[0]
     const previewUrl = URL.createObjectURL(file)
-    setAvatarUrl(previewUrl)
-    setIsUploading(true)
-    onUpload(event)
-    setIsUploading(false)
+    setAvatarUrl(previewUrl) // Show local preview
+    onFileSelect(file) // Pass the file to the parent component's state
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
@@ -47,12 +49,10 @@ export function Avatar({
     setIsDragOver(false)
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
-      const input = document.getElementById('avatar-upload') as HTMLInputElement
-      if (input) {
-        input.files = files
-        const changeEvent = new Event('change', { bubbles: true })
-        input.dispatchEvent(changeEvent)
-      }
+      const file = files[0];
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarUrl(previewUrl);
+      onFileSelect(file);
     }
   }
 
@@ -93,6 +93,7 @@ export function Avatar({
         </label>
         <input
           id="avatar-upload"
+          name="avatar" // Ensure the name matches what the server action expects in FormData
           type="file"
           accept="image/*"
           className="hidden"
