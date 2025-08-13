@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -22,7 +23,7 @@ export async function login(formData: z.infer<typeof loginSchema>) {
 
   if (error) {
     console.error('Login error:', error.message);
-    throw new Error('Could not authenticate user. Please check your credentials.');
+    throw new Error(error.message);
   }
 
   return redirect('/');
