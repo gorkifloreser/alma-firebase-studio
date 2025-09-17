@@ -4,6 +4,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
+import { generateContentForOffering, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
+
 
 export type OfferingMedia = {
     id: string;
@@ -82,8 +84,10 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  const { updated_at, ...restOfData } = offeringData as any;
+
   const payload = {
-    ...offeringData,
+    ...restOfData,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
@@ -127,8 +131,8 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // Destructure to remove offering_media from the payload sent to the DB
-    const { offering_media, ...restOfOfferingData } = offeringData;
+    // Destructure to remove fields that shouldn't be sent to the DB
+    const { offering_media, updated_at, ...restOfOfferingData } = offeringData as any;
 
     const payload = {
         ...restOfOfferingData,
@@ -136,7 +140,6 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
-        updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -328,3 +331,5 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
         throw new Error("Failed to translate the text. Please try again.");
     }
 }
+
+export { generateContentForOffering };

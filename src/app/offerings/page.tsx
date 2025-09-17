@@ -15,6 +15,7 @@ import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
+import { ContentGenerationDialog } from './_components/ContentGenerationDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,9 +48,11 @@ const OfferingsPageContent = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+    const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
+    const [offeringForContent, setOfferingForContent] = useState<OfferingWithMedia | null>(null);
     
     const { toast } = useToast();
 
@@ -99,6 +102,11 @@ const OfferingsPageContent = () => {
     const handleOpenDetailDialog = (offering: OfferingWithMedia) => {
         setOfferingToView(offering);
         setIsDetailDialogOpen(true);
+    };
+
+    const handleOpenContentDialog = (offering: OfferingWithMedia) => {
+        setOfferingForContent(offering);
+        setIsContentDialogOpen(true);
     };
 
     const handleOfferingSaved = () => {
@@ -163,8 +171,8 @@ const OfferingsPageContent = () => {
                     ) : offerings.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {offerings.map(offering => (
-                                <Card key={offering.id} className="flex flex-col group cursor-pointer">
-                                     <div className="overflow-hidden" onClick={() => handleOpenDetailDialog(offering)}>
+                                <Card key={offering.id} className="flex flex-col group">
+                                     <div className="overflow-hidden cursor-pointer" onClick={() => handleOpenDetailDialog(offering)}>
                                         <CardHeader className="p-0">
                                             <div className="relative aspect-video">
                                                 {offering.offering_media && offering.offering_media.length > 0 ? (
@@ -190,7 +198,7 @@ const OfferingsPageContent = () => {
                                         </CardContent>
                                     </div>
                                     <CardFooter className="mt-auto pt-0 flex justify-between items-center">
-                                        <Button variant="outline" size="sm">Generate Content</Button>
+                                        <Button variant="outline" size="sm" onClick={() => handleOpenContentDialog(offering)}>Generate Content</Button>
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -260,6 +268,14 @@ const OfferingsPageContent = () => {
                     onOpenChange={setIsDetailDialogOpen}
                     offering={offeringToView}
                     profile={profile}
+                />
+            )}
+            {offeringForContent && (
+                <ContentGenerationDialog
+                    isOpen={isContentDialogOpen}
+                    onOpenChange={setIsContentDialogOpen}
+                    offeringId={offeringForContent.id}
+                    offeringTitle={offeringForContent.title.primary}
                 />
             )}
         </>
