@@ -17,7 +17,7 @@ export type Funnel = {
         id: string;
         title: { primary: string | null };
     } | null;
-    funnel_type: string | null;
+    preset_id: number | null;
 }
 
 export type FunnelPreset = {
@@ -79,26 +79,13 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // 1. Fetch the selected preset to get its 'type' string.
-    const { data: preset, error: presetError } = await supabase
-        .from('funnel_presets')
-        .select('type')
-        .eq('id', presetId)
-        .single();
-    
-    if (presetError || !preset) {
-        console.error('Error fetching preset type:', presetError?.message);
-        throw new Error(`Could not find a valid preset for the funnel. Preset ID: ${presetId}`);
-    }
-
-    // 2. Insert into the 'funnels' table using the fetched 'type'.
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
             offering_id: offeringId,
             user_id: user.id,
             name: funnelName,
-            funnel_type: preset.type, // Use the 'type' string from the preset
+            preset_id: presetId,
         })
         .select('id')
         .single();
@@ -363,6 +350,3 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
 }
-
-
-    

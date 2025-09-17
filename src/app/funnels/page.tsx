@@ -290,7 +290,7 @@ export default function FunnelsPage() {
                                         </CardHeader>
                                         <CardContent className="flex-grow">
                                             <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.type === funnel.funnel_type)?.title || funnel.funnel_type || 'General'}</span>
+                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
                                             </p>
                                         </CardContent>
                                         <CardFooter className="mt-auto pt-4 flex justify-end">
@@ -372,7 +372,3 @@ export default function FunnelsPage() {
         </DashboardLayout>
     );
 }
-
-    
-
-    
