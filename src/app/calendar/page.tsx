@@ -14,10 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 
 const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
@@ -136,6 +138,7 @@ export default function CalendarPage() {
     const [view, setView] = useState<'week' | 'month'>('week');
     const { toast } = useToast();
 
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
 
@@ -212,6 +215,13 @@ export default function CalendarPage() {
             setCurrentDate(addMonths(currentDate, 1));
         } else {
             setCurrentDate(addDays(currentDate, 7));
+        }
+    };
+
+     const handleDateSelect = (date: Date | undefined) => {
+        if (date) {
+            setCurrentDate(date);
+            setIsDatePickerOpen(false);
         }
     };
     
@@ -323,7 +333,22 @@ export default function CalendarPage() {
                                 </div>
                                  <div className="flex items-center gap-2">
                                      <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft /></Button>
-                                    <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                                     <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline">
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                <span>Go to date</span>
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0">
+                                            <Calendar
+                                                mode="single"
+                                                selected={currentDate}
+                                                onSelect={handleDateSelect}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                     <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
                                 </div>
                              </div>
