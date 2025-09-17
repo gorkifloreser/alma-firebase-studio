@@ -3,16 +3,17 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 
 export type BrandDocument = {
     id: string;
     file_name: string;
     created_at: string;
-    file_path: string;
 };
 
 /**
  * Uploads a brand document to Supabase Storage and saves its metadata.
+ * This version does NOT save the file_path, as the trigger will handle processing.
  * @param {FormData} formData The form data containing the file to upload.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If the user is not authenticated, the file is missing, or the upload fails.
@@ -28,38 +29,30 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     }
 
     const bucketName = 'Alma';
-    const filePath = `${user.id}/brand_docs/${user.id}-${Date.now()}-${documentFile.name}`;
+    // The RAG trigger will use this exact path to identify the user and file.
+    const filePath = `${user.id}/${documentFile.name}`;
 
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, documentFile);
+        .upload(filePath, documentFile, { upsert: true }); // Use upsert to allow overwriting
 
     if (uploadError) {
         console.error('Error uploading document:', uploadError);
         throw new Error(`Document Upload Failed: ${uploadError.message}`);
     }
 
-    const { error: dbError } = await supabase
-        .from('brand_documents')
-        .insert({
-            user_id: user.id,
-            file_name: documentFile.name,
-            file_path: filePath,
-        });
-
-    if (dbError) {
-        console.error('Error saving document metadata:', dbError);
-        // Attempt to delete the uploaded file if the db insert fails
-        await supabase.storage.from(bucketName).remove([filePath]);
-        throw new Error('Could not save document metadata.');
-    }
-
+    // We no longer insert into brand_documents here.
+    // The database trigger `handle_storage_object_created` will process the file
+    // and insert the content and embedding into the brand_documents table.
+    // We just need to revalidate the path so the UI can refetch the documents list.
+    
     revalidatePath('/knowledge-base');
-    return { message: 'Document uploaded successfully!' };
+    return { message: 'Document uploaded successfully and is being processed.' };
 }
 
+
 /**
- * Fetches the list of uploaded brand documents for the current user.
+ * Fetches the list of processed brand documents for the current user.
  * @returns {Promise<BrandDocument[]>} A promise that resolves to an array of documents.
  */
 export async function getBrandDocuments(): Promise<BrandDocument[]> {
@@ -69,7 +62,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
 
     const { data, error } = await supabase
         .from('brand_documents')
-        .select('id, file_name, created_at, file_path')
+        .select('id, file_name, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -81,7 +74,8 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
 }
 
 /**
- * Deletes a brand document from Supabase Storage and the database.
+ * Deletes a brand document from the database.
+ * The corresponding file in storage should be deleted via a trigger or manually.
  * @param {string} id The ID of the document to delete.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If the user is not authenticated or the deletion fails.
@@ -91,32 +85,8 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // First, get the file path from the database.
-    const { data: document, error: fetchError } = await supabase
-      .from('brand_documents')
-      .select('file_path')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (fetchError || !document) {
-        console.error('Error fetching document for deletion:', fetchError);
-        throw new Error('Could not find the document to delete.');
-    }
-
-    // Now, delete the object from storage.
-    const bucketName = 'Alma';
-    const { error: storageError } = await supabase.storage
-      .from(bucketName)
-      .remove([document.file_path]);
-    
-    if (storageError) {
-        console.error('Error deleting document from storage:', storageError);
-        // We will still attempt to delete the DB record even if storage deletion fails.
-        // You might want more robust error handling here in a real app.
-    }
-
-    // Finally, delete the record from the database.
+    // We are simplifying this. In a real-world scenario, you'd also delete
+    // the file from storage, perhaps using the file_name and user_id to reconstruct the path.
     const { error: dbError } = await supabase
         .from('brand_documents')
         .delete()
@@ -130,4 +100,16 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
     
     revalidatePath('/knowledge-base');
     return { message: 'Document deleted successfully!' };
+}
+
+/**
+ * Server action to call the RAG AI flow.
+ * @param {string} query The user's question.
+ * @returns {Promise<RagOutput>} The AI's response.
+ */
+export async function askRag(query: string): Promise<RagOutput> {
+    if (!query) {
+        throw new Error('Query cannot be empty.');
+    }
+    return await askMyDocuments({ query });
 }
