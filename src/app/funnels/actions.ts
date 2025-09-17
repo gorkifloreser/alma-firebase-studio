@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -11,11 +12,13 @@ export type Funnel = {
     offering_id: string;
     name: string;
     created_at: string;
+    updated_at: string;
+    preset_id: number;
+    strategy_brief: GenerateFunnelOutput | null;
     offerings: {
         id: string;
         title: { primary: string | null };
     } | null;
-    preset_id: number | null;
 }
 
 export type FunnelPreset = {
@@ -69,15 +72,26 @@ type CreateFunnelParams = {
     presetId: number;
     offeringId: string;
     funnelName: string;
-    funnelContent: GenerateFunnelOutput;
+    strategyBrief: GenerateFunnelOutput;
 }
 
-export async function createFunnel({ presetId, offeringId, funnelName, funnelContent }: CreateFunnelParams): Promise<string> {
+export async function createFunnel({ presetId, offeringId, funnelName, strategyBrief }: CreateFunnelParams): Promise<string> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Insert the main funnel record first
+    // Get the preset type string to satisfy the check constraint.
+    const { data: preset, error: presetError } = await supabase
+        .from('funnel_presets')
+        .select('type')
+        .eq('id', presetId)
+        .single();
+    
+    if (presetError || !preset) {
+        console.error('Error fetching funnel preset type:', presetError?.message);
+        throw new Error(`Could not find the specified funnel template.`);
+    }
+
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
@@ -85,6 +99,8 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
             user_id: user.id,
             name: funnelName,
             preset_id: presetId,
+            funnel_type: preset.type,
+            strategy_brief: strategyBrief,
         })
         .select('id')
         .single();
@@ -93,86 +109,10 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
         console.error('Error creating funnel record:', funnelError?.message);
         throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
-    
-    const funnelId = funnel.id;
-    
-    const initialData: Data = {
-      root: {
-        props: {
-            title: funnelContent.primary.landingPage.title,
-        },
-      },
-      content: [
-        {
-          type: 'Hero',
-          props: {
-            title: funnelContent.primary.landingPage.title,
-            description: funnelContent.primary.landingPage.content,
-            id: `Hero-${Date.now()}`,
-          },
-        },
-        {
-          type: 'Button',
-          props: {
-            label: 'Get Started',
-            id: `Button-${Date.now()}`,
-          }
-        }
-      ],
-    };
-    
-    // Create the landing page step
-    const { error: lpStepError } = await supabase.from('funnel_steps').insert({
-        funnel_id: funnelId,
-        user_id: user.id,
-        step_order: 0,
-        step_type: 'landing_page',
-        path: `lp-${funnelId.substring(0, 8)}`,
-        title: {
-            primary: funnelContent.primary.landingPage.title,
-            secondary: funnelContent.secondary?.landingPage.title
-        },
-        content: {
-            primary: funnelContent.primary.landingPage.content,
-            secondary: funnelContent.secondary?.landingPage.content
-        },
-        data: initialData,
-    });
-
-    if (lpStepError) {
-        console.error('Error creating landing page step:', lpStepError);
-        await supabase.from('funnels').delete().eq('id', funnelId);
-        throw new Error(`Could not create the landing page for the funnel. DB error: ${lpStepError.message}`);
-    }
-    
-    // Create the follow-up steps
-    const followUpStepsToInsert = funnelContent.primary.followUpSequence.map((step, index) => ({
-        funnel_id: funnelId,
-        user_id: user.id,
-        step_order: index + 1,
-        step_type: 'follow_up',
-        title: { 
-            primary: step.title,
-            secondary: funnelContent.secondary?.followUpSequence[index]?.title
-        },
-        content: { 
-            primary: step.content,
-            secondary: funnelContent.secondary?.followUpSequence[index]?.content
-        },
-    }));
-
-    if (followUpStepsToInsert.length > 0) {
-        const { error: followUpError } = await supabase.from('funnel_steps').insert(followUpStepsToInsert);
-        if (followUpError) {
-            console.error('Error creating follow-up steps:', followUpError);
-            await supabase.from('funnels').delete().eq('id', funnelId);
-            throw new Error(`Could not create the follow-up steps for the funnel. DB error: ${followUpError.message}`);
-        }
-    }
 
     revalidatePath('/funnels');
     revalidatePath(`/offerings`);
-    return funnelId;
+    return funnel.id;
 }
 
 export async function deleteFunnel(funnelId: string): Promise<{ message: string }> {
