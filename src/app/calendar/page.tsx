@@ -60,7 +60,7 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
     );
 };
 
-const CalendarDay = ({ day, content, isCurrentMonth, onEventClick }: { day: Date, content: ContentItem[], isCurrentMonth: boolean, onEventClick: (item: ContentItem) => void }) => {
+const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }: { day: Date, content: ContentItem[], isCurrentMonth: boolean, onEventClick: (item: ContentItem) => void, heightClass: string }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: format(day, 'yyyy-MM-dd'),
         data: { type: 'calendarDay', date: day }
@@ -70,7 +70,8 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick }: { day: Date
         <div 
             ref={setNodeRef}
             className={cn(
-                "relative flex flex-col h-48 p-2 border-t border-l",
+                "relative flex flex-col p-2 border-t border-l",
+                heightClass,
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
                 isOver ? "bg-accent" : "",
             )}
@@ -300,6 +301,8 @@ export default function CalendarPage() {
         data: { type: 'unscheduledArea' }
     });
 
+    const dayHeightClass = view === 'week' ? 'h-[48rem]' : 'h-48';
+
     return (
         <DashboardLayout>
             <DndContext onDragEnd={handleDragEnd}>
@@ -353,13 +356,13 @@ export default function CalendarPage() {
                                 </div>
                              </div>
                         </header>
-                         <div className="flex-1 flex flex-col border-b">
-                            <div className="grid grid-cols-7">
+                         <div className="flex-1 flex flex-col">
+                            <div className="grid grid-cols-7 border-b">
                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                                     <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
                                 ))}
                             </div>
-                             <div className="grid grid-cols-7 flex-1">
+                             <div className="grid grid-cols-7 flex-1 border-b">
                                 {calendarDays.map(day => {
                                     const dayContent = scheduled.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
                                     return (
@@ -369,6 +372,7 @@ export default function CalendarPage() {
                                             content={dayContent}
                                             isCurrentMonth={isSameMonth(day, currentDate)}
                                             onEventClick={handleEventClick}
+                                            heightClass={dayHeightClass}
                                         />
                                     );
                                 })}
