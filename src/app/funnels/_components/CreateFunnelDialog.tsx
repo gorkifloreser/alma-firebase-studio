@@ -17,14 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset } from '../actions';
 import { Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram, CheckCircle2 } from 'lucide-react';
+import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
+import type { GenerateFunnelOutput, ChannelStrategy, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getUserChannels } from '@/app/accounts/actions';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 
 
 interface CreateFunnelDialogProps {
@@ -36,7 +37,23 @@ interface CreateFunnelDialogProps {
     defaultOfferingId?: string | null;
 }
 
-type DialogStep = 'selection' | 'preview';
+type DialogStep = 'selection' | 'edit_blueprint' | 'assign_channels';
+
+// Make all properties of the generated output editable
+type EditableStrategy = {
+    campaignSuccessMetrics: string[];
+    strategy: Array<{
+        stageName: string;
+        objective: string;
+        keyMessage: string;
+        conceptualSteps: Array<{
+            step: number;
+            concept: string;
+            objective: string;
+        }>;
+        successMetrics: string[];
+    }>
+};
 
 export function CreateFunnelDialog({
     isOpen,
@@ -53,7 +70,7 @@ export function CreateFunnelDialog({
     const [goal, setGoal] = useState('');
     const [availableChannels, setAvailableChannels] = useState<string[]>([]);
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-    const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
+    const [generatedContent, setGeneratedContent] = useState<EditableStrategy | null>(null);
     
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
@@ -77,14 +94,14 @@ export function CreateFunnelDialog({
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
+    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '';
 
     const handleGenerate = async () => {
         if (!canGenerate) {
             toast({
                 variant: 'destructive',
                 title: 'Missing Information',
-                description: 'Please select a template, an offering, define a goal, and select at least one channel.',
+                description: 'Please select a template, an offering, and define a goal.',
             });
             return;
         };
@@ -100,15 +117,14 @@ export function CreateFunnelDialog({
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
                     goal,
-                    channels: selectedChannels,
                 });
                 
                 setGeneratedContent(result);
                 setFunnelName(`${offering.title.primary}: ${preset.title}`);
-                setStep('preview');
+                setStep('edit_blueprint');
                 toast({
                     title: 'Strategy Blueprint Generated!',
-                    description: 'Review the high-level strategy for each channel.',
+                    description: 'Review and edit the high-level strategy for your campaign.',
                 });
             } catch (error: any) {
                 toast({
@@ -136,7 +152,10 @@ export function CreateFunnelDialog({
                     presetId: selectedPresetId,
                     offeringId: selectedOfferingId,
                     funnelName: funnelName,
-                    strategyBrief: generatedContent,
+                    strategyBrief: {
+                        ...generatedContent,
+                        channels: selectedChannels, // Add assigned channels on save
+                    } as GenerateFunnelOutput,
                 });
                 onFunnelCreated();
             } catch (error: any) {
@@ -156,17 +175,41 @@ export function CreateFunnelDialog({
                 : [...prev, channel]
         );
     }
+    
+    const handleBlueprintChange = (stageIndex: number, field: keyof EditableStrategy['strategy'][0], value: string) => {
+        if (!generatedContent) return;
+        const newStrategy = [...generatedContent.strategy];
+        (newStrategy[stageIndex] as any)[field] = value;
+        setGeneratedContent({ ...generatedContent, strategy: newStrategy });
+    }
+    
+    const handleConceptualStepChange = (stageIndex: number, stepIndex: number, field: keyof ConceptualStep, value: string) => {
+        if (!generatedContent) return;
+        const newStrategy = [...generatedContent.strategy];
+        (newStrategy[stageIndex].conceptualSteps[stepIndex] as any)[field] = value;
+        setGeneratedContent({ ...generatedContent, strategy: newStrategy });
+    }
+
 
     const globalPresets = funnelPresets.filter(p => p.user_id === null);
     const customPresets = funnelPresets.filter(p => p.user_id !== null);
 
     const renderSelectionStep = () => (
         <>
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                     <Sparkles className="text-primary"/>
+                    Create a New Strategy (Step 1 of 3)
+                </DialogTitle>
+                <DialogDescription>
+                   Follow the steps to select a template, define your goal, and generate a tailored strategy blueprint.
+                </DialogDescription>
+            </DialogHeader>
             <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 <Accordion type="single" collapsible defaultValue="item-1">
                     <AccordionItem value="item-1">
                         <AccordionTrigger>
-                            <Label className="text-lg font-semibold cursor-pointer">Step 1: Choose a Strategy Template</Label>
+                            <Label className="text-lg font-semibold cursor-pointer">Choose a Strategy Template</Label>
                         </AccordionTrigger>
                         <AccordionContent className="pt-4">
                             {customPresets.length > 0 && (
@@ -224,7 +267,7 @@ export function CreateFunnelDialog({
                     </AccordionItem>
                 </Accordion>
                 <div className="space-y-4">
-                <Label htmlFor="offering-select" className="text-lg font-semibold">Step 2: Choose an Offering</Label>
+                <Label htmlFor="offering-select" className="text-lg font-semibold">Choose an Offering</Label>
                     <Select onValueChange={setSelectedOfferingId} defaultValue={defaultOfferingId || undefined}>
                     <SelectTrigger id="offering-select" className="text-base py-6">
                         <SelectValue placeholder="Select an offering to promote..." />
@@ -237,7 +280,7 @@ export function CreateFunnelDialog({
                 </Select>
                 </div>
                  <div className="space-y-4">
-                    <Label htmlFor="goal" className="text-lg font-semibold">Step 3: Define Your Goal</Label>
+                    <Label htmlFor="goal" className="text-lg font-semibold">Define Your Goal</Label>
                     <Input
                         id="goal"
                         value={goal}
@@ -245,23 +288,6 @@ export function CreateFunnelDialog({
                         placeholder="e.g., Get 50 signups for my webinar"
                         className="text-base py-6"
                     />
-                </div>
-                <div className="space-y-4">
-                    <Label className="text-lg font-semibold">Step 4: Select Target Channels</Label>
-                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
-                        {availableChannels.map(channel => (
-                             <div key={channel} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`channel-${channel}`}
-                                    checked={selectedChannels.includes(channel)}
-                                    onCheckedChange={() => handleChannelToggle(channel)}
-                                />
-                                <Label htmlFor={`channel-${channel}`} className="capitalize cursor-pointer">
-                                    {channel.replace(/_/g, ' ')}
-                                </Label>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
             <DialogFooter>
@@ -272,16 +298,18 @@ export function CreateFunnelDialog({
             </DialogFooter>
         </>
     );
-    
-    const ChannelIcon = ({ channel }: { channel: string }) => {
-        if (channel.toLowerCase().includes('social')) return <Instagram className="h-5 w-5 text-muted-foreground" />;
-        if (channel.toLowerCase().includes('email')) return <Mail className="h-5 w-5 text-muted-foreground" />;
-        if (channel.toLowerCase().includes('whatsapp')) return <MessageSquare className="h-5 w-5 text-muted-foreground" />;
-        return <Sparkles className="h-5 w-5 text-muted-foreground" />;
-    }
 
-    const renderPreviewStep = () => (
+    const renderBlueprintStep = () => (
          <>
+            <DialogHeader>
+                 <DialogTitle className="flex items-center gap-2">
+                     <Sparkles className="text-primary"/>
+                    Edit Blueprint (Step 2 of 3)
+                </DialogTitle>
+                <DialogDescription>
+                    Review and refine the AI-generated strategic blueprint for your campaign.
+                </DialogDescription>
+            </DialogHeader>
             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 {!generatedContent ? (
                     <div className="space-y-4">
@@ -300,59 +328,43 @@ export function CreateFunnelDialog({
                                 className="text-lg"
                             />
                         </div>
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>Overall Campaign Success Metrics</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                {generatedContent.campaignSuccessMetrics.map((metric, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                        <p className="text-muted-foreground">{metric}</p>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
                         <div className="space-y-6">
-                            {generatedContent.strategy.map((channelStrategy, index) => (
-                                <Card key={index}>
+                            {generatedContent.strategy.map((stage, stageIndex) => (
+                                <Card key={stageIndex}>
                                     <CardHeader>
-                                        <CardTitle className="flex items-center gap-3">
-                                            <ChannelIcon channel={channelStrategy.channel} />
-                                            {channelStrategy.channel} Strategy
-                                        </CardTitle>
+                                        <Input 
+                                            value={stage.stageName}
+                                            onChange={(e) => handleBlueprintChange(stageIndex, 'stageName', e.target.value)}
+                                            className="text-xl font-bold border-0 shadow-none focus-visible:ring-1 p-0 h-auto"
+                                        />
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div>
-                                            <h4 className="font-semibold">Objective:</h4>
-                                            <p className="text-muted-foreground">{channelStrategy.objective}</p>
+                                        <div className="space-y-1">
+                                            <Label>Objective</Label>
+                                            <Textarea value={stage.objective} onChange={(e) => handleBlueprintChange(stageIndex, 'objective', e.target.value)} />
                                         </div>
-                                         <div>
-                                            <h4 className="font-semibold">Key Message:</h4>
-                                            <p className="text-muted-foreground">{channelStrategy.keyMessage}</p>
+                                         <div className="space-y-1">
+                                            <Label>Key Message</Label>
+                                            <Textarea value={stage.keyMessage} onChange={(e) => handleBlueprintChange(stageIndex, 'keyMessage', e.target.value)} />
                                         </div>
                                         <div>
-                                            <h4 className="font-semibold">Conceptual Steps:</h4>
-                                             <Accordion type="single" collapsible className="w-full mt-2">
-                                                {channelStrategy.conceptualSteps.map(step => (
-                                                    <AccordionItem value={`step-${step.step}`} key={step.step}>
-                                                        <AccordionTrigger>Step {step.step}: {step.objective}</AccordionTrigger>
-                                                        <AccordionContent>
-                                                            {step.concept}
-                                                        </AccordionContent>
-                                                    </AccordionItem>
+                                            <Label>Conceptual Steps</Label>
+                                             <div className="space-y-2 mt-1">
+                                                {stage.conceptualSteps.map((step, stepIndex) => (
+                                                     <div key={step.step} className="p-2 border rounded-md space-y-1">
+                                                        <Input
+                                                          value={step.objective}
+                                                          onChange={(e) => handleConceptualStepChange(stageIndex, stepIndex, 'objective', e.target.value)}
+                                                          className="font-semibold text-sm"
+                                                        />
+                                                        <Textarea
+                                                            value={step.concept}
+                                                            onChange={(e) => handleConceptualStepChange(stageIndex, stepIndex, 'concept', e.target.value)}
+                                                            rows={2}
+                                                            className="text-sm"
+                                                        />
+                                                     </div>
                                                 ))}
-                                            </Accordion>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold">Success Metrics:</h4>
-                                            <div className="space-y-1 mt-2">
-                                            {channelStrategy.successMetrics.map((metric, i) => (
-                                                <div key={i} className="flex items-center gap-2">
-                                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                                    <p className="text-sm text-muted-foreground">{metric}</p>
-                                                </div>
-                                            ))}
                                             </div>
                                         </div>
                                     </CardContent>
@@ -363,8 +375,58 @@ export function CreateFunnelDialog({
                 )}
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>Back</Button>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>
+                     <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                </Button>
+                <Button onClick={() => setStep('assign_channels')} disabled={isSaving || !generatedContent}>
+                    Next: Assign Channels <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </DialogFooter>
+        </>
+    );
+
+    const renderChannelStep = () => (
+         <>
+            <DialogHeader>
+                 <DialogTitle className="flex items-center gap-2">
+                     <Sparkles className="text-primary"/>
+                    Assign Channels (Step 3 of 3)
+                </DialogTitle>
+                <DialogDescription>
+                    Select which of your enabled channels you want to use for this strategy.
+                </DialogDescription>
+            </DialogHeader>
+             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Enabled Channels</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                            {availableChannels.map(channel => (
+                                <div key={channel} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`channel-${channel}`}
+                                        checked={selectedChannels.includes(channel)}
+                                        onCheckedChange={() => handleChannelToggle(channel)}
+                                    />
+                                    <Label htmlFor={`channel-${channel}`} className="capitalize cursor-pointer">
+                                        {channel.replace(/_/g, ' ')}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                         {availableChannels.length === 0 && (
+                            <p className="text-muted-foreground text-center">You have no channels enabled. Go to the Accounts page to enable some.</p>
+                         )}
+                    </CardContent>
+                </Card>
+             </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setStep('edit_blueprint')} disabled={isSaving}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Editor
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving || selectedChannels.length === 0}>
                     {isSaving ? 'Saving...' : 'Save Strategy'}
                 </Button>
             </DialogFooter>
@@ -374,7 +436,8 @@ export function CreateFunnelDialog({
     const renderContent = () => {
         switch (step) {
             case 'selection': return renderSelectionStep();
-            case 'preview': return renderPreviewStep();
+            case 'edit_blueprint': return renderBlueprintStep();
+            case 'assign_channels': return renderChannelStep();
             default: return renderSelectionStep();
         }
     }
@@ -382,18 +445,7 @@ export function CreateFunnelDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                         <Sparkles className="text-primary"/>
-                        Create a New Strategy
-                    </DialogTitle>
-                    <DialogDescription>
-                       Follow the steps to select a template, define your goal, and generate a tailored strategy blueprint.
-                    </DialogDescription>
-                </DialogHeader>
-                
                 {renderContent()}
-
             </DialogContent>
         </Dialog>
     );

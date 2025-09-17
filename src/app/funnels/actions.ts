@@ -58,7 +58,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     return data as Funnel[];
 }
 
-export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+export async function generateFunnelPreview(input: Omit<GenerateFunnelInput, 'channels'>): Promise<GenerateFunnelOutput> {
     try {
         const result = await genFunnelFlow(input);
         return result;
@@ -80,18 +80,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Get the preset type string to satisfy the check constraint.
-    const { data: preset, error: presetError } = await supabase
-        .from('funnel_presets')
-        .select('type')
-        .eq('id', presetId)
-        .single();
-    
-    if (presetError || !preset) {
-        console.error('Error fetching funnel preset type:', presetError?.message);
-        throw new Error(`Could not find the specified funnel template.`);
-    }
-
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
@@ -99,7 +87,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
             user_id: user.id,
             name: funnelName,
             preset_id: presetId,
-            funnel_type: preset.type,
             strategy_brief: strategyBrief,
         })
         .select('id')
@@ -109,6 +96,48 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
         console.error('Error creating funnel record:', funnelError?.message);
         throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
+    
+    const pageContent = funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.conceptualSteps.map(step => step.concept).join('\n\n');
+    
+    if (pageContent) {
+        const initialData: Data = {
+            content: [
+                {
+                    type: 'Hero',
+                    props: {
+                        title: funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.keyMessage || funnelName,
+                        description: funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.objective || ''
+                    },
+                },
+                {
+                    type: 'Text',
+                    props: {
+                        text: pageContent
+                    }
+                }
+            ],
+            root: {
+                props: {
+                    title: funnelName
+                }
+            }
+        };
+
+        const { error: stepError } = await supabase.from('funnel_steps').insert({
+            funnel_id: funnel.id,
+            user_id: user.id,
+            step_type: 'landing_page',
+            step_order: 1,
+            data: initialData,
+        });
+
+        if (stepError) {
+             console.error('Error creating initial landing page step:', stepError?.message);
+            // Not throwing an error here, as the main funnel is already created.
+            // We can handle this more gracefully if needed.
+        }
+    }
+
 
     revalidatePath('/funnels');
     revalidatePath(`/offerings`);
