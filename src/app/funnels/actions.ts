@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Data } from '@measured/puck';
-import { generateFunnel as genFunnelFlow, GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
+import { generateFunnel as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 
 export type Funnel = {
     id: string;
@@ -72,6 +72,17 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
         throw new Error(`Could not find a valid preset for funnel type: ${funnelType}.`);
     }
 
+    const { data: offering, error: offeringError } = await supabase
+        .from('offerings')
+        .select('title')
+        .eq('id', offeringId)
+        .single();
+    
+    if (offeringError || !offering) {
+        console.error('Error fetching offering title:', offeringError);
+        throw new Error('Could not fetch the selected offering.');
+    }
+
     const funnelContent = await genFunnelFlow({ 
         offeringId, 
         funnelType: preset.title,
@@ -83,7 +94,7 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `${preset.title}: ${funnelContent.primary.landingPage.title}`,
+            name: `${offering.title.primary}: ${preset.title}`,
             funnel_type: funnelType,
         })
         .select('id')
@@ -91,21 +102,15 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
     
     if (funnelError || !funnel) {
         console.error('Error creating funnel record:', funnelError);
-        throw new Error('Could not create funnel record.');
+        throw new Error('Could not create funnel record in the database.');
     }
     
     const funnelId = funnel.id;
     
-    const initialData = {
+    const initialData: Data = {
       root: {
         props: {
             title: funnelContent.primary.landingPage.title,
-            style: {
-                padding: '64px',
-                backgroundColor: 'var(--background)',
-                color: 'var(--foreground)',
-                fontFamily: 'var(--font-body)',
-          },
         },
       },
       content: [
@@ -114,20 +119,20 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
           props: {
             title: funnelContent.primary.landingPage.title,
             description: funnelContent.primary.landingPage.content,
-            id: 'Hero',
+            id: `Hero-${Date.now()}`,
           },
         },
         {
           type: 'Button',
           props: {
             label: 'Get Started',
-            id: 'Button',
+            id: `Button-${Date.now()}`,
           }
         }
       ],
     };
     
-    await supabase.from('funnel_steps').insert({
+    const { error: lpStepError } = await supabase.from('funnel_steps').insert({
         funnel_id: funnelId,
         user_id: user.id,
         step_order: 0,
@@ -143,6 +148,13 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
         },
         data: initialData,
     });
+
+    if (lpStepError) {
+        console.error('Error creating landing page step:', lpStepError);
+        // Rollback funnel creation
+        await supabase.from('funnels').delete().eq('id', funnelId);
+        throw new Error('Could not create the landing page for the funnel.');
+    }
     
     const followUpStepsToInsert = funnelContent.primary.followUpSequence.map((step, index) => ({
         funnel_id: funnelId,
@@ -160,7 +172,13 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
     }));
 
     if (followUpStepsToInsert.length > 0) {
-        await supabase.from('funnel_steps').insert(followUpStepsToInsert);
+        const { error: followUpError } = await supabase.from('funnel_steps').insert(followUpStepsToInsert);
+        if (followUpError) {
+            console.error('Error creating follow-up steps:', followUpError);
+            // Rollback
+            await supabase.from('funnels').delete().eq('id', funnelId);
+            throw new Error('Could not create the follow-up steps for the funnel.');
+        }
     }
 
     revalidatePath('/funnels');
@@ -237,7 +255,7 @@ export async function getPublicLandingPage(funnelId: string) {
     const { data: funnelStep, error } = await supabase
         .from('funnel_steps')
         .select('data')
-        .eq('funnel_id', funnelId)
+        .eq('path', `lp-${funnelId.substring(0, 8)}`)
         .eq('step_type', 'landing_page')
         .single();
     

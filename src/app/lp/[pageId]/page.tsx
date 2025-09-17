@@ -2,13 +2,12 @@
 'use client';
 
 import '@measured/puck/puck.css';
-import { Render } from '@measured/puck';
+import { Render, type Data } from '@measured/puck';
 import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import { getPublicLandingPage } from '@/app/funnels/actions';
 import { config } from '@/app/funnels/[funnelId]/edit/components';
 import { Loader2 } from 'lucide-react';
-import type { Data } from '@measured/puck';
 
 
 export default function PublicLandingPage({ params }: { params: { pageId: string } }) {

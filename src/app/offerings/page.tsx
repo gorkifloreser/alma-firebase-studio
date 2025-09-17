@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
 import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
+import { getFunnels, Funnel } from '@/app/funnels/actions';
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, Wand2, Eye, GitBranch } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
@@ -47,6 +48,7 @@ type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 const OfferingsPageContent = () => {
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<OfferingWithMedia[]>([]);
+    const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -62,11 +64,15 @@ const OfferingsPageContent = () => {
     const fetchAllData = async () => {
         setIsLoading(true);
         try {
-            const profileData = await getProfile();
+            const [profileData, offeringsData, funnelsData] = await Promise.all([
+                getProfile(),
+                getOfferings(),
+                getFunnels(),
+            ]);
+
             setProfile(profileData);
-            
-            const offeringsData = await getOfferings();
             setOfferings(offeringsData as OfferingWithMedia[]);
+            setFunnels(funnelsData);
 
         } catch (error: any) {
             toast({
@@ -288,7 +294,7 @@ const OfferingsPageContent = () => {
                     onOpenChange={setIsContentDialogOpen}
                     offeringId={offeringForContent.id}
                     offeringTitle={offeringForContent.title.primary}
-                    funnels={[]}
+                    funnels={funnels.filter(f => f.offering_id === offeringForContent.id)}
                 />
             )}
         </>
