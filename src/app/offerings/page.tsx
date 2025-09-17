@@ -11,7 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
-import { getOfferings, deleteOffering, Offering } from './actions';
+import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
 import { PlusCircle, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import {
@@ -31,19 +31,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Image from 'next/image';
 
 type Profile = {
     primary_language: string;
     secondary_language: string | null;
 } | null;
 
+type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
+
 const OfferingsPageContent = () => {
     const [profile, setProfile] = useState<Profile>(null);
-    const [offerings, setOfferings] = useState<Offering[]>([]);
+    const [offerings, setOfferings] = useState<OfferingWithMedia[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
-    const [offeringToEdit, setOfferingToEdit] = useState<Offering | null>(null);
+    const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     
     const { toast } = useToast();
 
@@ -54,7 +57,7 @@ const OfferingsPageContent = () => {
             setProfile(profileData);
             
             const offeringsData = await getOfferings();
-            setOfferings(offeringsData);
+            setOfferings(offeringsData as OfferingWithMedia[]);
 
         } catch (error: any) {
             toast({
@@ -85,7 +88,7 @@ const OfferingsPageContent = () => {
         setIsDialogOpen(true);
     };
 
-    const handleOpenEditDialog = (offering: Offering) => {
+    const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
         setIsDialogOpen(true);
     };
@@ -138,7 +141,8 @@ const OfferingsPageContent = () => {
                             {[...Array(3)].map((_, i) => (
                                 <Card key={i}>
                                     <CardHeader>
-                                        <Skeleton className="h-6 w-3/4" />
+                                        <Skeleton className="h-40 w-full" />
+                                        <Skeleton className="h-6 w-3/4 mt-4" />
                                         <Skeleton className="h-4 w-1/4" />
                                     </CardHeader>
                                     <CardContent>
@@ -152,8 +156,22 @@ const OfferingsPageContent = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {offerings.map(offering => (
                                 <Card key={offering.id} className="flex flex-col">
-                                    <CardHeader>
-                                        <div className="flex justify-between items-start">
+                                    <CardHeader className="p-0">
+                                        <div className="relative aspect-video">
+                                            {offering.offering_media && offering.offering_media.length > 0 ? (
+                                                <Image 
+                                                    src={offering.offering_media[0].media_url}
+                                                    alt={offering.title.primary || 'Offering image'}
+                                                    fill
+                                                    className="object-cover rounded-t-lg"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center">
+                                                    <ShoppingBag className="w-12 h-12 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </div>
+                                         <div className="flex justify-between items-start p-6 pb-2">
                                             <div>
                                                 <CardTitle>{offering.title.primary}</CardTitle>
                                                 <CardDescription>{offering.type}</CardDescription>
@@ -181,7 +199,7 @@ const OfferingsPageContent = () => {
                                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                                 <AlertDialogDescription>
                                                                     This action cannot be undone. This will permanently delete your
-                                                                    offering.
+                                                                    offering and all associated media.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>

@@ -5,6 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 
+export type OfferingMedia = {
+    id: string;
+    offering_id: string;
+    media_url: string;
+    media_type: string | null;
+    created_at: string;
+}
+
 export type Offering = {
     id: string;
     user_id: string;
@@ -17,10 +25,11 @@ export type Offering = {
     currency: string | null;
     event_date: string | null; // ISO 8601 string
     duration: string | null;
+    offering_media: OfferingMedia[];
 };
 
 /**
- * Fetches all offerings for the currently authenticated user.
+ * Fetches all offerings for the currently authenticated user, including their media.
  * @returns {Promise<Offering[]>} A promise that resolves to an array of offerings.
  */
 export async function getOfferings(): Promise<Offering[]> {
@@ -34,7 +43,16 @@ export async function getOfferings(): Promise<Offering[]> {
 
     const { data, error } = await supabase
         .from('offerings')
-        .select('*')
+        .select(`
+            *,
+            offering_media (
+                id,
+                offering_id,
+                media_url,
+                media_type,
+                created_at
+            )
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -52,7 +70,7 @@ export async function getOfferings(): Promise<Offering[]> {
  * @returns {Promise<Offering>} A promise that resolves to the newly created offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at'>): Promise<Offering> {
+export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>): Promise<Offering> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
@@ -69,7 +87,16 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data, error } = await supabase
     .from('offerings')
     .insert(payload)
-    .select()
+    .select(`
+        *,
+        offering_media (
+            id,
+            offering_id,
+            media_url,
+            media_type,
+            created_at
+        )
+    `)
     .single();
 
   if (error) {
@@ -88,7 +115,7 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
  * @returns {Promise<Offering>} A promise that resolves to the updated offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<Offering> {
+export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>>): Promise<Offering> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -107,7 +134,16 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
         .update(payload)
         .eq('id', offeringId)
         .eq('user_id', user.id)
-        .select()
+        .select(`
+            *,
+            offering_media (
+                id,
+                offering_id,
+                media_url,
+                media_type,
+                created_at
+            )
+        `)
         .single();
 
     if (error) {
@@ -145,6 +181,112 @@ export async function deleteOffering(offeringId: string): Promise<{ message: str
     return { message: 'Offering deleted successfully.' };
 }
 
+
+/**
+ * Uploads media files for a specific offering.
+ * @param {string} offeringId - The ID of the offering to associate the media with.
+ * @param {FormData} formData - The form data containing the files to upload.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function uploadOfferingMedia(offeringId: string, formData: FormData): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const files = formData.getAll('files') as File[];
+    if (files.length === 0) {
+        throw new Error('No files provided.');
+    }
+
+    const bucketName = 'Alma';
+    
+    const uploadPromises = files.map(async (file) => {
+        const filePath = `${user.id}/offerings/${offeringId}/${file.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from(bucketName)
+            .upload(filePath, file, { upsert: true });
+
+        if (uploadError) {
+            console.error('Error uploading file:', file.name, uploadError);
+            throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        }
+        
+        const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+
+        return {
+            offering_id: offeringId,
+            user_id: user.id,
+            media_url: publicUrl,
+            media_type: file.type,
+        };
+    });
+
+    const mediaRecords = await Promise.all(uploadPromises);
+
+    const { error: dbError } = await supabase.from('offering_media').insert(mediaRecords);
+
+    if (dbError) {
+        console.error('Error saving media records:', dbError);
+        throw new Error('Could not save media information to the database.');
+    }
+
+    revalidatePath('/offerings');
+    return { message: 'Media uploaded successfully.' };
+}
+
+/**
+ * Deletes a specific media item for an offering.
+ * @param {string} mediaId - The ID of the media to delete.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function deleteOfferingMedia(mediaId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // First get the media record to find the file path
+    const { data: media, error: fetchError } = await supabase
+        .from('offering_media')
+        .select('media_url')
+        .eq('id', mediaId)
+        .eq('user_id', user.id)
+        .single();
+    
+    if (fetchError || !media) {
+        console.error('Error fetching media for deletion:', fetchError);
+        throw new Error('Could not find the media to delete.');
+    }
+
+    // Delete the database record
+    const { error: dbError } = await supabase
+        .from('offering_media')
+        .delete()
+        .eq('id', mediaId);
+
+    if (dbError) {
+        console.error('Error deleting media record:', dbError);
+        throw new Error('Could not delete media record.');
+    }
+
+    // Delete the file from storage
+    const bucketName = 'Alma';
+    const filePath = media.media_url.split(`/${bucketName}/`).pop();
+
+    if (filePath) {
+        const { error: storageError } = await supabase.storage
+            .from(bucketName)
+            .remove([filePath]);
+
+        if (storageError) {
+            console.error('Error deleting file from storage:', storageError);
+            // Don't throw, as the DB record is already deleted, but log it.
+        }
+    }
+
+    revalidatePath('/offerings');
+    return { message: 'Media deleted successfully.' };
+}
 
 /**
  * Invokes the Genkit translation flow.

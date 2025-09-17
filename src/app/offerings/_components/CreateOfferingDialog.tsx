@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, Offering } from '../actions';
+import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, Offering, OfferingMedia } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
@@ -26,15 +26,17 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ImageUpload } from './ImageUpload';
 
-
 type Profile = {
     primary_language: string;
     secondary_language: string | null;
 } | null;
 
-type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'event_date'> & {
+type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
+
+type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'event_date' | 'offering_media'> & {
     event_date: Date | null;
     event_time?: string;
+    offering_media: OfferingMedia[];
 };
 
 const initialOfferingState: OfferingFormData = {
@@ -47,6 +49,7 @@ const initialOfferingState: OfferingFormData = {
     event_date: null,
     duration: null,
     event_time: '',
+    offering_media: [],
 };
 
 type BilingualFieldProps = {
@@ -107,13 +110,12 @@ const BilingualFormField = ({
     )
 };
 
-
 interface CreateOfferingDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     profile: Profile;
     onOfferingSaved: () => void;
-    offeringToEdit: Offering | null;
+    offeringToEdit: OfferingWithMedia | null;
 }
 
 export function CreateOfferingDialog({
@@ -126,6 +128,7 @@ export function CreateOfferingDialog({
     const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
+    const [newMediaFiles, setNewMediaFiles] = useState<File[]>([]);
     const { toast } = useToast();
 
     const isEditMode = offeringToEdit !== null;
@@ -139,8 +142,10 @@ export function CreateOfferingDialog({
                 event_date: date,
                 event_time: date ? format(date, 'HH:mm') : '',
             });
+            setNewMediaFiles([]);
         } else {
             setOffering(initialOfferingState);
+            setNewMediaFiles([]);
         }
     }, [offeringToEdit, isEditMode, isOpen]);
 
@@ -185,6 +190,33 @@ export function CreateOfferingDialog({
         }
     };
     
+    const handleRemoveExistingMedia = async (mediaId: string) => {
+        // Optimistically update UI
+        setOffering(prev => ({
+            ...prev,
+            offering_media: prev.offering_media.filter(m => m.id !== mediaId)
+        }));
+        try {
+            await deleteOfferingMedia(mediaId);
+            toast({
+                title: 'Media removed',
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to remove media',
+                description: error.message,
+            });
+            // Revert UI if deletion fails
+            if (offeringToEdit) {
+                setOffering(prev => ({
+                    ...prev,
+                    offering_media: offeringToEdit.offering_media
+                }));
+            }
+        }
+    }
+    
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
@@ -199,6 +231,7 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
+                let savedOffering: Offering;
                 const payload = {
                     ...offering,
                     event_date: offering.event_date?.toISOString() ?? null,
@@ -206,10 +239,19 @@ export function CreateOfferingDialog({
                 delete (payload as Partial<typeof payload>).event_time;
 
                 if (isEditMode && offeringToEdit) {
-                    await updateOffering(offeringToEdit.id, payload);
+                    savedOffering = await updateOffering(offeringToEdit.id, payload);
                 } else {
-                    await createOffering(payload);
+                    savedOffering = await createOffering(payload);
                 }
+
+                if (newMediaFiles.length > 0) {
+                    const formData = new FormData();
+                    newMediaFiles.forEach(file => {
+                        formData.append('files', file);
+                    });
+                    await uploadOfferingMedia(savedOffering.id, formData);
+                }
+
                 onOfferingSaved();
             } catch (error: any) {
                  toast({
@@ -375,7 +417,12 @@ export function CreateOfferingDialog({
                     
                     <div className="space-y-2">
                          <Label className="text-md font-semibold">Offering Media</Label>
-                         <ImageUpload />
+                         <ImageUpload
+                            onFilesChange={setNewMediaFiles}
+                            existingMedia={offering.offering_media}
+                            onRemoveExistingMedia={handleRemoveExistingMedia}
+                            isSaving={isSaving}
+                         />
                          <p className="text-sm text-muted-foreground">
                             Upload images for your offering.
                         </p>

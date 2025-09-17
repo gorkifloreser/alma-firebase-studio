@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { UploadCloud, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -11,10 +11,34 @@ import Image from 'next/image';
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-export function ImageUpload() {
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+interface FileWithPreview extends File {
+  preview: string;
+}
+
+interface ExistingMedia {
+    id: string;
+    url: string;
+}
+
+interface ImageUploadProps {
+    onFilesChange: (files: File[]) => void;
+    existingMedia?: ExistingMedia[];
+    onRemoveExistingMedia?: (mediaId: string) => void;
+    isSaving: boolean;
+}
+
+export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
+  const [newFiles, setNewFiles] = useState<FileWithPreview[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Inform the parent component about file changes
+    onFilesChange(newFiles);
+    // Cleanup preview URLs
+    return () => {
+        newFiles.forEach(file => URL.revokeObjectURL(file.preview));
+    };
+  }, [newFiles, onFilesChange]);
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
     if (fileRejections.length > 0) {
@@ -38,25 +62,28 @@ export function ImageUpload() {
       return;
     }
 
-    const newFiles = [...files, ...acceptedFiles];
-    setFiles(newFiles);
-    
-    const newPreviews = acceptedFiles.map(file => URL.createObjectURL(file));
-    setPreviews(prev => [...prev, ...newPreviews]);
+    const filesWithPreview = acceptedFiles.map(file => Object.assign(file, {
+        preview: URL.createObjectURL(file)
+    }));
 
-  }, [files, toast]);
+    setNewFiles(prev => [...prev, ...filesWithPreview]);
 
-  const removeFile = (index: number) => {
-    const newFiles = [...files];
-    const newPreviews = [...previews];
-    
-    newFiles.splice(index, 1);
-    const removedPreview = newPreviews.splice(index, 1)[0];
-    
-    setFiles(newFiles);
-    setPreviews(newPreviews);
-    URL.revokeObjectURL(removedPreview);
+  }, [toast]);
+
+  const removeNewFile = (index: number) => {
+    setNewFiles(prev => {
+        const newFiles = [...prev];
+        const removedFile = newFiles.splice(index, 1)[0];
+        URL.revokeObjectURL(removedFile.preview);
+        return newFiles;
+    });
   };
+
+  const handleRemoveExisting = (mediaId: string) => {
+    if (onRemoveExistingMedia) {
+        onRemoveExistingMedia(mediaId);
+    }
+  }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -67,6 +94,7 @@ export function ImageUpload() {
       'image/webp': [],
     },
     maxSize: MAX_FILE_SIZE_BYTES,
+    disabled: isSaving,
   });
 
   return (
@@ -74,7 +102,8 @@ export function ImageUpload() {
       <div
         {...getRootProps()}
         className={`flex justify-center items-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors
-        ${isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50'}`}
+        ${isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50'}
+        ${isSaving ? 'cursor-not-allowed bg-muted/50' : ''}`}
       >
         <input {...getInputProps()} />
         <div className="text-center">
@@ -88,16 +117,15 @@ export function ImageUpload() {
         </div>
       </div>
 
-      {previews.length > 0 && (
+      {(existingMedia.length > 0 || newFiles.length > 0) && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {previews.map((preview, index) => (
-            <div key={index} className="relative group aspect-square">
+           {existingMedia.map((media) => (
+            <div key={media.id} className="relative group aspect-square">
               <Image
-                src={preview}
-                alt={`Preview ${index}`}
+                src={media.url}
+                alt="Existing media"
                 fill
                 className="object-cover rounded-md"
-                onLoad={() => URL.revokeObjectURL(preview)}
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                  <Button
@@ -105,11 +133,40 @@ export function ImageUpload() {
                     variant="destructive"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => removeFile(index)}
+                    onClick={() => handleRemoveExisting(media.id)}
+                    disabled={isSaving}
                   >
                     <X className="h-4 w-4" />
                   </Button>
               </div>
+            </div>
+          ))}
+          {newFiles.map((file, index) => (
+            <div key={file.name + index} className="relative group aspect-square">
+              <Image
+                src={file.preview}
+                alt={`Preview ${index}`}
+                fill
+                className="object-cover rounded-md"
+                onLoad={() => URL.revokeObjectURL(file.preview)}
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                 <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => removeNewFile(index)}
+                    disabled={isSaving}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+              </div>
+              {isSaving && (
+                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md">
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                 </div>
+              )}
             </div>
           ))}
         </div>
