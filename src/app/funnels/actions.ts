@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -22,11 +21,14 @@ export type Funnel = {
     preset_id: number;
     goal: string | null;
     strategy_brief: GenerateFunnelOutput | null;
-    media_plan: PlanItem[] | null;
     offerings: {
         id: string;
         title: { primary: string | null };
     } | null;
+    media_plans: {
+      id: string;
+      plan_items: PlanItem[] | null;
+    }[] | null;
 }
 
 export type FunnelPreset = {
@@ -48,7 +50,8 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .from('funnels')
         .select(`
             *,
-            offerings (id, title)
+            offerings (id, title),
+            media_plans (id, plan_items)
         `)
         .eq('user_id', user.id);
 
@@ -118,7 +121,6 @@ type UpdateFunnelParams = Partial<{
     funnelName: string;
     goal: string;
     strategyBrief: GenerateFunnelOutput;
-    mediaPlan: PlanItem[] | null;
 }>;
 
 
@@ -127,7 +129,7 @@ export async function updateFunnel(funnelId: string, updates: UpdateFunnelParams
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { funnelName, goal, strategyBrief, mediaPlan } = updates;
+    const { funnelName, goal, strategyBrief } = updates;
     
     const payload: { [key: string]: any } = {
         updated_at: new Date().toISOString()
@@ -135,7 +137,6 @@ export async function updateFunnel(funnelId: string, updates: UpdateFunnelParams
     if (funnelName) payload.name = funnelName;
     if (goal) payload.goal = goal;
     if (strategyBrief) payload.strategy_brief = strategyBrief;
-    if (mediaPlan !== undefined) payload.media_plan = mediaPlan;
     
     const { data, error } = await supabase
         .from('funnels')
@@ -159,6 +160,8 @@ export async function deleteFunnel(funnelId: string): Promise<{ message: string 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Because of foreign key constraint with cascade delete,
+    // deleting the funnel will also delete the media plan.
     const { error } = await supabase
         .from('funnels')
         .delete()
@@ -331,4 +334,28 @@ export async function getLandingPage(funnelId: string): Promise<Data | null> {
     }
 
     return data.landing_page_content as Data;
+}
+
+export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = {
+        funnel_id: funnelId,
+        user_id: user.id,
+        plan_items: planItems,
+    };
+
+    const { error } = await supabase
+        .from('media_plans')
+        .upsert(payload, { onConflict: 'funnel_id' });
+    
+    if (error) {
+        console.error("Error saving media plan:", error);
+        throw new Error("Could not save the media plan.");
+    }
+    
+    revalidatePath('/funnels');
+    return { message: "Media plan saved successfully." };
 }

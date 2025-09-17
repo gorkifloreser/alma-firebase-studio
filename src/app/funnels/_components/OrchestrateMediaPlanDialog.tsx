@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { updateFunnel, Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem } from '../actions';
+import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan } from '../actions';
 import { saveContent, Offering } from '@/app/offerings/actions';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -68,8 +68,9 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         if (isOpen) {
-            if (funnel.media_plan) {
-                validateAndSetPlanItems(funnel.media_plan);
+            const existingPlan = funnel.media_plans?.[0]?.plan_items;
+            if (existingPlan) {
+                validateAndSetPlanItems(existingPlan);
             } else {
                 setPlanItems([]);
             }
@@ -111,13 +112,8 @@ export function OrchestrateMediaPlanDialog({
     const handleSave = () => {
         startSaving(async () => {
             try {
-                await updateFunnel(funnel.id, {
-                    ...funnel,
-                    funnelName: funnel.name,
-                    presetId: funnel.preset_id,
-                    offeringId: funnel.offering_id,
-                    mediaPlan: planItems.map(({id, ...rest}) => rest),
-                } as any);
+                const planToSave = planItems.map(({id, ...rest}) => rest);
+                await saveMediaPlan(funnel.id, planToSave);
                 onPlanSaved();
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
