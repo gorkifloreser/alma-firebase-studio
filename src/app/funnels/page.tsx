@@ -11,7 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset } from './actions';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
 import { getOfferings, Offering } from '../offerings/actions';
 import {
@@ -32,6 +32,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Separator } from '@/components/ui/separator';
+import { CustomizePresetDialog } from './_components/CustomizePresetDialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function FunnelsPage() {
     const [funnels, setFunnels] = useState<Funnel[]>([]);
@@ -39,13 +41,12 @@ export default function FunnelsPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
+    const [presetToClone, setPresetToClone] = useState<FunnelPreset | null>(null);
     const [isDeleting, startDeleting] = useTransition();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
-
-    // State for the clone functionality
-    const [clonedFunnelType, setClonedFunnelType] = useState<string | null>(null);
 
     const offeringIdFilter = useMemo(() => searchParams.get('offeringId'), [searchParams]);
 
@@ -83,6 +84,13 @@ export default function FunnelsPage() {
         checkUserAndFetchData();
     }, [offeringIdFilter]);
 
+    const { globalPresets, customPresets } = useMemo(() => {
+        const global = funnelPresets.filter(p => p.user_id === null);
+        const custom = funnelPresets.filter(p => p.user_id !== null);
+        return { globalPresets: global, customPresets: custom };
+    }, [funnelPresets]);
+
+
     const handleFunnelCreated = () => {
         setIsCreateDialogOpen(false);
         fetchFunnelsAndOfferings();
@@ -108,19 +116,38 @@ export default function FunnelsPage() {
         });
     }
 
-    const handleClonePreset = (funnelType: string) => {
-        setClonedFunnelType(funnelType);
-        setIsCreateDialogOpen(true);
+    const handleOpenCustomizeDialog = (preset: FunnelPreset) => {
+        setPresetToClone(preset);
+        setIsCustomizeDialogOpen(true);
     };
 
-    const handleOpenCreateDialog = () => {
-        setClonedFunnelType(null); // Ensure no preset is selected when creating from scratch
-        setIsCreateDialogOpen(true);
-    }
+    const handlePresetSaved = () => {
+        setIsCustomizeDialogOpen(false);
+        fetchFunnelsAndOfferings();
+    };
 
-    const filteredOfferingTitle = offeringIdFilter 
-        ? offerings.find(o => o.id === offeringIdFilter)?.title.primary 
-        : null;
+    const PresetCard = ({ preset }: { preset: FunnelPreset }) => (
+        <Card className="flex flex-col bg-muted/20">
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <CardTitle>{preset.title}</CardTitle>
+                    {preset.user_id && <Badge variant="secondary" className="gap-1"><User className="h-3 w-3"/> Custom</Badge>}
+                </div>
+                <CardDescription>{preset.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <p className="text-sm">
+                    <span className="font-semibold">Best for:</span> {preset.best_for}
+                </p>
+            </CardContent>
+            <CardFooter>
+                <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset)}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Clone & Customize
+                </Button>
+            </CardFooter>
+        </Card>
+    );
 
     return (
         <DashboardLayout>
@@ -133,54 +160,47 @@ export default function FunnelsPage() {
                             Create, manage, and clone strategic marketing funnels.
                         </p>
                     </div>
-                    <Button onClick={handleOpenCreateDialog} className="gap-2">
+                    <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         Create Funnel
                     </Button>
                 </header>
                 
                 <div className="space-y-8">
-                    {/* Funnel Presets Section */}
                     <div>
                         <h2 className="text-2xl font-semibold mb-1">Funnel Templates</h2>
                         <p className="text-muted-foreground mb-4">
-                            Clone a science-based template to create a new, customizable funnel for one of your offerings.
+                            Clone a science-based template to create your own custom strategies.
                         </p>
-                        {isLoading ? (
+                         {isLoading ? (
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Skeleton className="h-48 w-full" />
                                 <Skeleton className="h-48 w-full" />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {funnelPresets.map(preset => (
-                                    <Card key={preset.id} className="flex flex-col bg-muted/20">
-                                        <CardHeader>
-                                            <CardTitle>{preset.title}</CardTitle>
-                                            <CardDescription>{preset.description}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-sm">
-                                                <span className="font-semibold">Best for:</span> {preset.best_for}
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button variant="outline" size="sm" onClick={() => handleClonePreset(preset.type)}>
-                                                <Copy className="mr-2 h-4 w-4" />
-                                                Clone & Customize
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                            </div>
+                            <>
+                                {customPresets.length > 0 && (
+                                    <div className="mb-8">
+                                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Templates</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {customPresets.map(preset => <PresetCard key={preset.id} preset={preset} />)}
+                                        </div>
+                                    </div>
+                                )}
+                                 <div>
+                                    <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Templates</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {globalPresets.map(preset => <PresetCard key={preset.id} preset={preset} />)}
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </div>
                     
                     <Separator />
                     
-                    {/* User's Funnels Section */}
                     <div>
-                        <h2 className="text-2xl font-semibold mb-4">Your Funnels</h2>
+                        <h2 className="text-2xl font-semibold mb-4">Your Generated Funnels</h2>
                         {isLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[...Array(3)].map((_, i) => (
@@ -212,7 +232,7 @@ export default function FunnelsPage() {
                                         </CardHeader>
                                         <CardContent className="flex-grow">
                                             <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnel.funnel_type || 'General'}</span>
+                                                Type: <span className="font-medium text-foreground">{funnels.find(f=> f.id === funnel.id)?.funnel_type || 'General'}</span>
                                             </p>
                                         </CardContent>
                                         <CardFooter className="mt-auto pt-4 flex justify-end">
@@ -265,9 +285,9 @@ export default function FunnelsPage() {
                                 <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <h3 className="mt-4 text-xl font-semibold">No Funnels Yet</h3>
                                 <p className="text-muted-foreground mt-2">
-                                    {offeringIdFilter ? "No funnels have been created for this offering yet." : "Clone a template or click 'Create Funnel' to generate your first one."}
+                                    Click 'Create Funnel' to generate your first one from a template.
                                 </p>
-                                <Button onClick={handleOpenCreateDialog} className="mt-4 gap-2">
+                                <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4 gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     Create Funnel
                                 </Button>
@@ -280,12 +300,16 @@ export default function FunnelsPage() {
                 isOpen={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
                 offerings={offerings}
+                funnelPresets={funnelPresets}
                 onFunnelCreated={handleFunnelCreated}
                 defaultOfferingId={offeringIdFilter}
-                defaultFunnelType={clonedFunnelType}
+            />
+            <CustomizePresetDialog
+                isOpen={isCustomizeDialogOpen}
+                onOpenChange={setIsCustomizeDialogOpen}
+                presetToClone={presetToClone}
+                onPresetSaved={handlePresetSaved}
             />
         </DashboardLayout>
     );
 }
-
-    

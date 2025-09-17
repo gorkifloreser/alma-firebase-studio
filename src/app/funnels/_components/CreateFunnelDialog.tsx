@@ -14,9 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createFunnel, getFunnelPresets, FunnelPreset } from '../actions';
+import { createFunnel, FunnelPreset } from '../actions';
 import { Offering } from '@/app/offerings/actions';
-import { Bot, Gift, Zap, Users, Repeat } from 'lucide-react';
+import { Bot, User, Stars } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,53 +25,30 @@ interface CreateFunnelDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     offerings: Offering[];
+    funnelPresets: FunnelPreset[];
     onFunnelCreated: () => void;
     defaultOfferingId?: string | null;
-    defaultFunnelType?: string | null;
 }
-
-const iconMap: { [key: string]: React.ElementType } = {
-    'Lead Magnet': Gift,
-    'Direct Offer': Zap,
-    'Nurture & Convert': Users,
-    'Onboarding & Habit': Repeat,
-    'Sustainable Funnel': Bot,
-    'Regenerative Funnel': Bot,
-};
 
 export function CreateFunnelDialog({
     isOpen,
     onOpenChange,
     offerings,
+    funnelPresets,
     onFunnelCreated,
     defaultOfferingId,
-    defaultFunnelType,
 }: CreateFunnelDialogProps) {
-    const [funnelPresets, setFunnelPresets] = useState<FunnelPreset[]>([]);
-    const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-    const [selectedType, setSelectedType] = useState<string | null>(defaultFunnelType || null);
+    const [selectedType, setSelectedType] = useState<string | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
     const [isCreating, startCreating] = useTransition();
     const { toast } = useToast();
     
     useEffect(() => {
         if (isOpen) {
-            setIsLoadingPresets(true);
-            getFunnelPresets()
-                .then(setFunnelPresets)
-                .catch((err) => {
-                     toast({
-                        variant: 'destructive',
-                        title: 'Failed to load presets',
-                        description: err.message,
-                    });
-                })
-                .finally(() => setIsLoadingPresets(false));
-            
             setSelectedOfferingId(defaultOfferingId || null);
-            setSelectedType(defaultFunnelType || null);
+            setSelectedType(null);
         }
-    }, [isOpen, defaultOfferingId, defaultFunnelType, toast]);
+    }, [isOpen, defaultOfferingId]);
 
     const canSubmit = selectedType && selectedOfferingId;
 
@@ -106,6 +83,9 @@ export function CreateFunnelDialog({
             ))}
         </div>
     );
+    
+    const globalPresets = funnelPresets.filter(p => p.user_id === null);
+    const customPresets = funnelPresets.filter(p => p.user_id !== null);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -113,41 +93,64 @@ export function CreateFunnelDialog({
                 <DialogHeader>
                     <DialogTitle>Create a New Magic Funnel</DialogTitle>
                     <DialogDescription>
-                       Select a science-based funnel model, then choose the offering you want to promote.
+                       Select a strategic template, then choose the offering you want to promote. The AI will generate a tailored funnel for you.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
                     <div>
-                        <Label className="text-lg font-semibold">Step 1: Choose a Funnel Model</Label>
-                        {isLoadingPresets ? <PresetsSkeleton /> : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                {funnelPresets.map((preset) => {
-                                    const Icon = iconMap[preset.title] || Bot;
-                                    return (
-                                    <Card 
-                                        key={preset.type} 
-                                        className={cn(
-                                            "cursor-pointer transition-all",
-                                            selectedType === preset.type 
-                                                ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                                                : "hover:bg-muted/50"
-                                        )}
-                                        onClick={() => setSelectedType(preset.type)}
-                                    >
-                                        <CardContent className="p-4 flex flex-col items-center text-center">
-                                            <div className="bg-primary/10 p-3 rounded-full mb-3">
-                                                <Icon className="h-6 w-6 text-primary" />
-                                            </div>
-                                            <h3 className="font-bold">{preset.title}</h3>
-                                            <p className="text-sm text-muted-foreground mt-1">{preset.description}</p>
-                                            <p className="text-xs text-primary font-semibold mt-3">
-                                                Best for: {preset.best_for}
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                )})}
+                        <Label className="text-lg font-semibold">Step 1: Choose a Funnel Template</Label>
+                        
+                        {customPresets.length > 0 && (
+                            <div className="mt-4">
+                                <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4"/> Your Custom Templates</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {customPresets.map((preset) => (
+                                <Card 
+                                    key={preset.type} 
+                                    className={cn(
+                                        "cursor-pointer transition-all",
+                                        selectedType === preset.type 
+                                            ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                                            : "hover:bg-muted/50"
+                                    )}
+                                    onClick={() => setSelectedType(preset.type)}
+                                >
+                                    <CardContent className="p-4">
+                                        <h3 className="font-bold">{preset.title}</h3>
+                                        <p className="text-xs text-primary font-semibold mt-1">
+                                            Best for: {preset.best_for}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                                ))}
+                                </div>
                             </div>
                         )}
+
+                        <div className="mt-6">
+                            <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><Stars className="h-4 w-4"/> Global Templates</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {globalPresets.map((preset) => (
+                                <Card 
+                                    key={preset.type} 
+                                    className={cn(
+                                        "cursor-pointer transition-all",
+                                        selectedType === preset.type 
+                                            ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                                            : "hover:bg-muted/50"
+                                    )}
+                                    onClick={() => setSelectedType(preset.type)}
+                                >
+                                    <CardContent className="p-4">
+                                        <h3 className="font-bold">{preset.title}</h3>
+                                        <p className="text-xs text-primary font-semibold mt-1">
+                                            Best for: {preset.best_for}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                            </div>
+                        </div>
                     </div>
                      <div className="space-y-4">
                         <Label htmlFor="offering-select" className="text-lg font-semibold">Step 2: Choose an Offering</Label>
@@ -173,5 +176,3 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
-
-    
