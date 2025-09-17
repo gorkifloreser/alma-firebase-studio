@@ -38,20 +38,15 @@ const prompt = ai.definePrompt({
       })
   },
   output: { schema: GenerateMediaPlanOutputSchema },
-  prompt: `You are a holistic marketing strategist and media planner for conscious creators. Your task is to generate a 1-week content plan based on the user's brand identity and a specific strategic blueprint.
-
-**Brand Heart (Brand Identity):**
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
-- Mission: {{brandHeart.mission.primary}}
-- Values: {{brandHeart.values.primary}}
+  prompt: `You are a world-class media planner who translates high-level strategy into an actionable content plan for conscious creators.
 
 **The Strategy Blueprint to Execute:**
 ---
 **Strategy for Offering: "{{strategy.offerings.title.primary}}" (Offering ID: {{strategy.offering_id}})**
 - Goal: {{strategy.goal}}
-- Channels: {{#each strategy.strategy_brief.channels}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+- Selected Channels: {{#each strategy.strategy_brief.channels}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
-**Blueprint:**
+**Blueprint Stages:**
 {{#each strategy.strategy_brief.strategy}}
 - **Stage: {{this.stageName}}**
   - Objective: {{this.objective}}
@@ -62,17 +57,23 @@ const prompt = ai.definePrompt({
     {{/each}}
 {{/each}}
 ---
+**Brand Identity:**
+- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- Mission: {{brandHeart.mission.primary}}
+---
 
 **Your Task:**
 
-Based on the provided strategy, break down the conceptual steps into a concrete and actionable 1-week media plan in the **{{primaryLanguage}}** language. Create 5-7 content ideas in total, distributing them across the specified channels.
+Your job is to create a comprehensive, 1-week media plan. For **EACH stage** of the blueprint, you must generate at least one concrete content idea for **EACH of the selected channels**.
 
 For each content idea in the plan, you must:
-1.  **Derive from a Conceptual Step:** Your idea must be a direct, tangible execution of one of the "Conceptual Steps" from the provided blueprint.
-2.  **Specify Offering:** Use the offeringId from the strategy: '{{strategy.offering_id}}'.
-3.  **Specify Channel:** Assign the content to one of the channels selected in the strategy (Social Media, Email, WhatsApp, Website).
-4.  **Define Format:** Propose a specific format (e.g., '3-part Instagram carousel', 'Weekly newsletter', 'Short WhatsApp broadcast', 'Blog Post section').
-5.  **Describe the Idea:** Write a brief 'description' of the content piece. For example: "A carousel that uses a relatable story to introduce the core problem the audience faces, ending with a question."
+1.  **Specify Offering:** Use the offeringId from the strategy: '{{strategy.offering_id}}'.
+2.  **Specify Channel:** Assign the content to one of the channels selected in the strategy (Social Media, Email, WhatsApp, Website).
+3.  **Define Format:** Propose a specific, tangible format (e.g., '3-part Instagram carousel about the origin story', 'Weekly newsletter announcing early-bird discount', 'Short WhatsApp broadcast sharing a customer quote', 'A new "How it Works" section on the website').
+4.  **Describe the Idea:** Write a brief, compelling 'description' for the content piece that clearly executes one of the conceptual steps from the blueprint for that stage.
+5.  **Ensure Full Coverage:** Double-check that every stage in the blueprint has a corresponding content idea for every channel listed in the strategy.
+
+Generate this entire plan in the **{{primaryLanguage}}** language.
 
 Return the result as a flat array of plan items in the specified JSON format. Ensure you provide the correct 'offeringId' for each plan item.`,
 });

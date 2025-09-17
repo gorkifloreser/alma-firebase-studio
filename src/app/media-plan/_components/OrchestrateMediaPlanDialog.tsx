@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import { generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
 import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
 import { Funnel } from '@/app/funnels/actions';
-import { Bot, Sparkles, Wand2 } from 'lucide-react';
+import { Bot, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type PlanItem = GenerateMediaPlanOutput['plan'][0] & { id: string };
 
@@ -40,18 +41,16 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategy, pla
     useEffect(() => {
         if (isOpen && strategy) {
             if (planToEdit) {
-                 // If editing, load existing plan items
                 const itemsWithIds = planToEdit.plan_items.map(item => ({
                     ...item,
                     id: crypto.randomUUID()
                 }));
                 setPlanItems(itemsWithIds);
             } else {
-                 // If creating, generate a new plan
                 handleGeneratePlan();
             }
         } else {
-            setPlanItems([]); // Reset when closing
+            setPlanItems([]);
         }
     }, [isOpen, strategy, planToEdit]);
 
@@ -85,10 +84,11 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategy, pla
     const handleSavePlan = async () => {
         startSaving(async () => {
             try {
+                const itemsToSave = planItems.map(({ id, ...rest }) => rest);
                 if (planToEdit) {
-                    await updateMediaPlan(planToEdit.id, planItems);
+                    await updateMediaPlan(planToEdit.id, itemsToSave);
                 } else {
-                    await saveMediaPlan(strategy.id, planItems);
+                    await saveMediaPlan(strategy.id, itemsToSave);
                 }
                 toast({
                     title: 'Success!',
@@ -106,9 +106,21 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategy, pla
         });
     }
 
+    const groupedByChannel = useMemo(() => {
+        return planItems.reduce((acc, item) => {
+            if (!acc[item.channel]) {
+                acc[item.channel] = [];
+            }
+            acc[item.channel].push(item);
+            return acc;
+        }, {} as Record<string, PlanItem[]>);
+    }, [planItems]);
+
+    const channels = Object.keys(groupedByChannel);
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl">
+            <DialogContent className="sm:max-w-4xl">
                  <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="text-primary" />
@@ -118,42 +130,57 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategy, pla
                         For strategy: <span className="font-semibold">{strategy?.name}</span>. Review, edit, and save the AI-generated content plan.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[70vh] overflow-y-auto pr-6 py-4">
+                <div className="max-h-[70vh] flex flex-col">
                     {isGenerating ? (
-                        <div className="space-y-4">
+                        <div className="space-y-4 p-4">
                             <Skeleton className="h-24 w-full" />
                             <Skeleton className="h-24 w-full" />
                             <Skeleton className="h-24 w-full" />
                         </div>
                     ) : planItems.length > 0 ? (
-                        <div className="space-y-4">
-                            {planItems.map((item, index) => (
-                                <div key={item.id} className="p-4 border rounded-lg space-y-2">
-                                    <Label htmlFor={`format-${index}`}>{item.channel}</Label>
-                                    <Input
-                                        id={`format-${index}`}
-                                        value={item.format}
-                                        onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
-                                        className="font-semibold"
-                                    />
-                                    <Textarea
-                                        id={`description-${index}`}
-                                        value={item.description}
-                                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                        className="text-sm text-muted-foreground"
-                                        rows={2}
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        <Tabs defaultValue={channels[0]} className="w-full flex-1 flex flex-col">
+                            <div className="flex justify-center">
+                                <TabsList>
+                                    {channels.map(channel => (
+                                        <TabsTrigger key={channel} value={channel}>{channel}</TabsTrigger>
+                                    ))}
+                                </TabsList>
+                            </div>
+                            <div className="flex-1 overflow-y-auto mt-4 pr-6">
+                                {channels.map(channel => (
+                                    <TabsContent key={channel} value={channel}>
+                                        <div className="space-y-4">
+                                            {groupedByChannel[channel].map((item, index) => (
+                                                <div key={item.id} className="p-4 border rounded-lg space-y-2">
+                                                    <Label htmlFor={`format-${index}`}>{channel}</Label>
+                                                    <Input
+                                                        id={`format-${index}`}
+                                                        value={item.format}
+                                                        onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
+                                                        className="font-semibold"
+                                                    />
+                                                    <Textarea
+                                                        id={`description-${index}`}
+                                                        value={item.description}
+                                                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                                                        className="text-sm text-muted-foreground"
+                                                        rows={2}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </TabsContent>
+                                ))}
+                            </div>
+                        </Tabs>
                     ) : (
-                         <div className="text-center text-muted-foreground py-10">
+                         <div className="text-center text-muted-foreground py-10 flex-1 flex items-center justify-center">
                             No content ideas generated. You can try generating again.
                         </div>
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="mt-4">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                      {!planToEdit && (
                         <Button variant="ghost" onClick={handleGeneratePlan} disabled={isGenerating}>
