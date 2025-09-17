@@ -29,7 +29,8 @@ export type GenerateFunnelOutput = z.infer<typeof GenerateFunnelOutputSchema>;
 
 const GenerateFunnelInputSchema = z.object({
   offeringId: z.string(),
-  funnelType: z.string().describe("The type of funnel to generate, based on a preset model. E.g., 'Lead Magnet', 'Direct Offer', 'Nurture & Convert', 'Onboarding & Habit'."),
+  funnelType: z.string().describe("The name of the funnel model being used, e.g., 'Lead Magnet'."),
+  funnelPrinciples: z.string().describe("The core principles or strategy of the funnel model."),
 });
 export type GenerateFunnelInput = z.infer<typeof GenerateFunnelInputSchema>;
 
@@ -43,7 +44,7 @@ const prompt = ai.definePrompt({
           brandHeart: z.any(),
           offering: z.any(),
           funnelType: z.string(),
-          funnelModelExplanation: z.string(),
+          funnelPrinciples: z.string(),
       })
   },
   output: { schema: GenerateFunnelOutputSchema },
@@ -52,7 +53,7 @@ const prompt = ai.definePrompt({
 Your task is to create a complete marketing funnel for a specific offering, based on the provided Brand Heart and a specific funnel model.
 
 **Funnel Model to Use: {{funnelType}}**
-This model's strategy is: {{funnelModelExplanation}}
+This model's core principles are: {{funnelPrinciples}}
 
 **Brand Heart (Brand Identity):**
 - Brand Name: {{brandHeart.brand_name}}
@@ -94,23 +95,13 @@ Return the entire result in the specified JSON format.`,
 });
 
 
-const funnelModelExplanations = {
-    'Lead Magnet': "Focus on Reciprocity and Commitment. Offer a valuable free resource (e.g., guide, workshop) to capture leads. The funnel should emphasize the value of the freebie and make signing up extremely easy.",
-    'Direct Offer': "Focus on Scarcity and Social Proof. Drive immediate sales for a product or event. Use testimonials, customer counts, and time-limited offers to increase motivation.",
-    'Nurture & Convert': "Focus on Liking and Authority. Build trust over a series of value-driven messages. Best for high-ticket services. The tone should be helpful and expert, not salesy.",
-    'Onboarding & Habit': "Focus on the Hook Model (Trigger, Action, Variable Reward, Investment). Guide new users to their 'aha!' moment and encourage retention. The content should be educational and show the product in action.",
-    'Sustainable Funnel': "Focus on Fair Value Exchange. The relationship is balanced and does no harm. Use clear & honest marketing, a solid product, and functional support. Best for standard e-commerce and reliable services.",
-    'Regenerative Funnel': "Focus on Net-Positive Value Creation. The relationship gives more than it takes. Use education, community building, and mission-driven impact. Best for mission-driven brands and communities.",
-};
-
-
 const generateFunnelFlow = ai.defineFlow(
   {
     name: 'generateFunnelFlow',
     inputSchema: GenerateFunnelInputSchema,
     outputSchema: GenerateFunnelOutputSchema,
   },
-  async ({ offeringId, funnelType }) => {
+  async ({ offeringId, funnelType, funnelPrinciples }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -131,9 +122,6 @@ const generateFunnelFlow = ai.defineFlow(
 
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
-    
-    const funnelExplanation = funnelModelExplanations[funnelType as keyof typeof funnelModelExplanations] || "A standard marketing funnel.";
-
 
     const { output } = await prompt({
         primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,
@@ -141,7 +129,7 @@ const generateFunnelFlow = ai.defineFlow(
         brandHeart,
         offering,
         funnelType,
-        funnelModelExplanation: funnelExplanation,
+        funnelPrinciples,
     });
     
     if (!output) {

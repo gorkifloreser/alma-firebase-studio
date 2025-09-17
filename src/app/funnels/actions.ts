@@ -11,7 +11,7 @@ export type Funnel = {
     user_id: string;
     offering_id: string;
     name: string;
-    funnel_type: 'Lead Magnet' | 'Direct Offer' | 'Nurture & Convert' | 'Onboarding & Habit' | null;
+    funnel_type: 'Lead Magnet' | 'Direct Offer' | 'Nurture & Convert' | 'Onboarding & Habit' | 'Sustainable Funnel' | 'Regenerative Funnel' | null;
     created_at: string;
     offerings: {
         id: string;
@@ -60,16 +60,32 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // 1. Generate funnel content via AI
-    const funnelContent = await genFunnelFlow({ offeringId, funnelType: funnelType || '' });
+    // 1. Fetch funnel preset details from the database
+    const { data: preset, error: presetError } = await supabase
+        .from('funnel_presets')
+        .select('title, principles')
+        .eq('type', funnelType)
+        .single();
+
+    if (presetError || !preset) {
+        console.error(`Error fetching principles for funnel type "${funnelType}":`, presetError);
+        throw new Error(`Could not find a valid preset for funnel type: ${funnelType}.`);
+    }
+
+    // 2. Generate funnel content via AI, passing the principles from the DB
+    const funnelContent = await genFunnelFlow({ 
+        offeringId, 
+        funnelType: preset.title,
+        funnelPrinciples: preset.principles 
+    });
     
-    // 2. Create the main funnel record
+    // 3. Create the main funnel record
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `${funnelType}: ${funnelContent.primary.landingPage.title}`,
+            name: `${preset.title}: ${funnelContent.primary.landingPage.title}`,
             funnel_type: funnelType,
         })
         .select('id')
@@ -82,7 +98,7 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
     
     const funnelId = funnel.id;
     
-    // 3. Create Puck data for the landing page
+    // 4. Create Puck data for the landing page
     const initialData = {
       root: {
         props: {
@@ -114,7 +130,7 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
       ],
     };
     
-    // 4. Create the landing page step
+    // 5. Create the landing page step
     await supabase.from('funnel_steps').insert({
         funnel_id: funnelId,
         user_id: user.id,
@@ -132,7 +148,7 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
         data: initialData,
     });
     
-    // 5. Prepare and insert follow-up steps
+    // 6. Prepare and insert follow-up steps
     const followUpStepsToInsert = funnelContent.primary.followUpSequence.map((step, index) => ({
         funnel_id: funnelId,
         user_id: user.id,
