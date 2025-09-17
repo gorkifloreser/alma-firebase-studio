@@ -20,9 +20,11 @@ const ChannelStrategySchema = z.object({
     objective: z.string().describe('The overall objective for this channel within the campaign.'),
     keyMessage: z.string().describe('The single most important message to convey on this channel.'),
     conceptualSteps: z.array(ConceptualStepSchema).describe('A sequence of conceptual content ideas for this channel.'),
+    successMetrics: z.array(z.string()).describe('Key metrics to track the success of this channel strategy (e.g., "Email open rate > 25%", "Click-through rate > 3%").'),
 });
 
 const GenerateFunnelOutputSchema = z.object({
+    campaignSuccessMetrics: z.array(z.string()).describe('An array of overall success metrics for the entire campaign, directly tied to the main goal.'),
     strategy: z.array(ChannelStrategySchema).describe('An array of strategies, one for each selected marketing channel.'),
 });
 export type GenerateFunnelOutput = z.infer<typeof GenerateFunnelOutputSchema>;
@@ -77,7 +79,9 @@ This model's core principles are: {{funnelPrinciples}}
 
 **Your Task:**
 
-For EACH of the target channels provided below, create a dedicated strategy. Each channel's strategy should be designed to work in concert with the others to achieve the overall campaign goal.
+First, define the overall success metrics for the campaign that are directly tied to the main goal.
+
+Then, for EACH of the target channels provided below, create a dedicated strategy. Each channel's strategy should be designed to work in concert with the others to achieve the overall campaign goal.
 
 **Target Channels:** {{#each channels}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
 
@@ -89,10 +93,11 @@ For each channel, you must define:
     *   **step**: The step number (1, 2, 3...).
     *   **concept**: The core idea for the post, email, or message. (e.g., "Introduce the core problem the audience faces, using a relatable story.", "Share a powerful customer testimonial that highlights the transformation.", "Announce a limited-time bonus for the offering.").
     *   **objective**: The specific purpose of this individual piece of content. (e.g., "Establish empathy and connection.", "Build social proof.", "Create a sense of urgency.").
+5.  **successMetrics**: What are the 2-3 key metrics to track for this specific channel's performance? (e.g., For Email: "Open Rate > 25%", "CTR > 3%". For Social Media: "Engagement Rate > 5%", "100 Link Clicks".)
 
 Generate this entire plan in the **{{primaryLanguage}}** language.
 
-Return the result in the specified JSON format, as an array of channel strategies.`,
+Return the result in the specified JSON format.`,
 });
 
 

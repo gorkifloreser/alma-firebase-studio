@@ -15,9 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createFunnel, generateFunnelPreview, FunnelPreset } from '../actions';
+import { createFunnel, generateFunnel as generateFunnelPreview, FunnelPreset } from '../actions';
 import { Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram } from 'lucide-react';
+import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -300,6 +300,19 @@ export function CreateFunnelDialog({
                                 className="text-lg"
                             />
                         </div>
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Overall Campaign Success Metrics</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {generatedContent.campaignSuccessMetrics.map((metric, i) => (
+                                    <div key={i} className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        <p className="text-muted-foreground">{metric}</p>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                         <div className="space-y-6">
                             {generatedContent.strategy.map((channelStrategy, index) => (
                                 <Card key={index}>
@@ -330,6 +343,17 @@ export function CreateFunnelDialog({
                                                     </AccordionItem>
                                                 ))}
                                             </Accordion>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold">Success Metrics:</h4>
+                                            <div className="space-y-1 mt-2">
+                                            {channelStrategy.successMetrics.map((metric, i) => (
+                                                <div key={i} className="flex items-center gap-2">
+                                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                    <p className="text-sm text-muted-foreground">{metric}</p>
+                                                </div>
+                                            ))}
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
