@@ -12,6 +12,7 @@ export type BrandDocument = {
     id: string;
     file_name: string;
     created_at: string;
+    document_group_id: string;
 };
 
 // Helper function to split text into chunks
@@ -146,7 +147,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
     // Deduplicate documents based on document_group_id
     const uniqueDocuments = Array.from(new Map(data.map(doc => [doc.document_group_id, doc])).values());
     
-    return uniqueDocuments;
+    return uniqueDocuments as BrandDocument[];
 }
 
 /**
