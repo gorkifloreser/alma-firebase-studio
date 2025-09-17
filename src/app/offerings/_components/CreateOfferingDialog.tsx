@@ -39,6 +39,64 @@ const initialOfferingState: Omit<Offering, 'id' | 'user_id' | 'created_at'> = {
     contextual_notes: '',
 };
 
+type BilingualFieldProps = {
+    id: keyof Omit<Offering, 'type' | 'contextual_notes' | 'title' | 'description'> | 'title' | 'description';
+    label: string;
+    isTextarea?: boolean;
+    offering: typeof initialOfferingState;
+    profile: Profile;
+    isTranslating: string | null;
+    languageNames: Map<string, string>;
+    handleFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, name?: string) => void;
+    handleAutoTranslate: (fieldId: 'title' | 'description') => void;
+};
+
+const BilingualFormField = ({ 
+    id, 
+    label, 
+    isTextarea = false,
+    offering,
+    profile,
+    isTranslating,
+    languageNames,
+    handleFormChange,
+    handleAutoTranslate
+}: BilingualFieldProps) => {
+    const InputComponent = isTextarea ? Textarea : Input;
+    return (
+         <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <Label htmlFor={`${id}_primary`} className="text-md font-semibold">{label}</Label>
+                 {profile?.secondary_language && (
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2" 
+                        onClick={() => handleAutoTranslate(id as 'title' | 'description')}
+                        disabled={isTranslating === id}
+                    >
+                        <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
+                        {isTranslating === id ? 'Translating...' : 'Auto-translate'}
+                    </Button>
+                )}
+            </div>
+            <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div>
+                     <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
+                    <InputComponent id={`${id}_primary`} name={`${id}_primary`} value={offering[id].primary || ''} onChange={handleFormChange} className="mt-1" />
+                </div>
+                {profile?.secondary_language && (
+                     <div>
+                        <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
+                        <InputComponent id={`${id}_secondary`} name={`${id}_secondary`} value={offering[id].secondary || ''} onChange={handleFormChange} className="mt-1" />
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+};
+
 export function CreateOfferingDialog({
     isOpen,
     onOpenChange,
@@ -54,11 +112,11 @@ export function CreateOfferingDialog({
 
     const handleFormChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string,
-        name: string
+        name?: string
     ) => {
         if (typeof e === 'string') {
             // Handle Select change
-            setOffering(prev => ({ ...prev, [name]: e as Offering['type'] }));
+            setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] }));
         } else {
             const { name: inputName, value } = e.target;
             if (inputName.includes('_')) {
@@ -137,43 +195,6 @@ export function CreateOfferingDialog({
         }
     };
 
-    const BilingualFormField = ({ id, label, isTextarea = false }: { id: keyof Omit<Offering, 'type' | 'contextual_notes'>, label: string, isTextarea?: boolean }) => {
-        const InputComponent = isTextarea ? Textarea : Input;
-        return (
-             <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <Label htmlFor={`${id}_primary`} className="text-md font-semibold">{label}</Label>
-                     {profile?.secondary_language && (
-                        <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2" 
-                            onClick={() => handleAutoTranslate(id)}
-                            disabled={isTranslating === id}
-                        >
-                            <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
-                            {isTranslating === id ? 'Translating...' : 'Auto-translate'}
-                        </Button>
-                    )}
-                </div>
-                <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                    <div>
-                         <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
-                        <InputComponent id={`${id}_primary`} name={`${id}_primary`} value={offering[id].primary || ''} onChange={handleFormChange} className="mt-1" />
-                    </div>
-                    {profile?.secondary_language && (
-                         <div>
-                            <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
-                            <InputComponent id={`${id}_secondary`} name={`${id}_secondary`} value={offering[id].secondary || ''} onChange={handleFormChange} className="mt-1" />
-                        </div>
-                    )}
-                </div>
-            </div>
-        )
-    };
-
-
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px]">
@@ -198,8 +219,27 @@ export function CreateOfferingDialog({
                         </Select>
                     </div>
 
-                    <BilingualFormField id="title" label="Title" />
-                    <BilingualFormField id="description" label="Description" isTextarea />
+                    <BilingualFormField 
+                        id="title" 
+                        label="Title" 
+                        offering={offering} 
+                        profile={profile} 
+                        isTranslating={isTranslating} 
+                        languageNames={languageNames} 
+                        handleFormChange={handleFormChange} 
+                        handleAutoTranslate={handleAutoTranslate} 
+                    />
+                    <BilingualFormField 
+                        id="description" 
+                        label="Description" 
+                        isTextarea 
+                        offering={offering} 
+                        profile={profile} 
+                        isTranslating={isTranslating} 
+                        languageNames={languageNames} 
+                        handleFormChange={handleFormChange} 
+                        handleAutoTranslate={handleAutoTranslate}
+                    />
                     
                     <div className="space-y-2">
                          <Label htmlFor="contextual_notes" className="text-md font-semibold">Contextual Notes (Optional)</Label>
