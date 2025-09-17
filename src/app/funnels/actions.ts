@@ -56,19 +56,28 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     return data as Funnel[];
 }
 
-export async function createFunnel(funnelType: string, offeringId: string): Promise<string> {
+export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+    try {
+        const result = await genFunnelFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error('Funnel preview generation failed in action:', error);
+        throw new Error(`Failed to generate funnel preview: ${error.message}`);
+    }
+}
+
+export async function createFunnel(funnelType: string, offeringId: string, funnelContent: GenerateFunnelOutput): Promise<string> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
     const { data: preset, error: presetError } = await supabase
         .from('funnel_presets')
-        .select('title, principles')
+        .select('title')
         .eq('type', funnelType)
         .single();
 
     if (presetError || !preset) {
-        console.error(`Error fetching principles for funnel type "${funnelType}":`, presetError);
         throw new Error(`Could not find a valid preset for funnel type: ${funnelType}.`);
     }
 
@@ -79,15 +88,8 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
         .single();
     
     if (offeringError || !offering) {
-        console.error('Error fetching offering title:', offeringError);
         throw new Error('Could not fetch the selected offering.');
     }
-
-    const funnelContent = await genFunnelFlow({ 
-        offeringId, 
-        funnelType: preset.title,
-        funnelPrinciples: preset.principles 
-    });
     
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
@@ -102,7 +104,7 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
     
     if (funnelError || !funnel) {
         console.error('Error creating funnel record:', funnelError);
-        throw new Error('Could not create funnel record in the database.');
+        throw new Error(`Could not create funnel record in the database. DB error: ${funnelError.message}`);
     }
     
     const funnelId = funnel.id;
@@ -153,7 +155,7 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
         console.error('Error creating landing page step:', lpStepError);
         // Rollback funnel creation
         await supabase.from('funnels').delete().eq('id', funnelId);
-        throw new Error('Could not create the landing page for the funnel.');
+        throw new Error(`Could not create the landing page for the funnel. DB error: ${lpStepError.message}`);
     }
     
     const followUpStepsToInsert = funnelContent.primary.followUpSequence.map((step, index) => ({
@@ -177,7 +179,7 @@ export async function createFunnel(funnelType: string, offeringId: string): Prom
             console.error('Error creating follow-up steps:', followUpError);
             // Rollback
             await supabase.from('funnels').delete().eq('id', funnelId);
-            throw new Error('Could not create the follow-up steps for the funnel.');
+            throw new Error(`Could not create the follow-up steps for the funnel. DB error: ${followUpError.message}`);
         }
     }
 
@@ -359,5 +361,7 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
 }
+
+    
 
     
