@@ -46,7 +46,8 @@ export default function StrategiesPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [funnelToOrchestrate, setFunnelToOrchestrate] = useState<Funnel | null>(null);
+    const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
+    const [initialDialogStep, setInitialDialogStep] = useState<'selection' | 'orchestrate'>('selection');
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
@@ -100,6 +101,7 @@ export default function StrategiesPage() {
 
     const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
+        setFunnelToEdit(null);
         fetchFunnelsAndOfferings();
         toast({
             title: 'Success!',
@@ -123,10 +125,10 @@ export default function StrategiesPage() {
         });
     }
     
-    const handleOpenCreateDialog = (funnel: Funnel | null = null, initialStep: 'selection' | 'orchestrate' = 'selection') => {
-        setFunnelToOrchestrate(funnel);
+    const handleOpenCreateDialog = (funnel: Funnel | null, step: 'selection' | 'orchestrate' = 'selection') => {
+        setFunnelToEdit(funnel);
+        setInitialDialogStep(step);
         setIsCreateDialogOpen(true);
-        // We'll pass the initial step to the dialog itself now
     };
 
     const handleOpenCustomizeDialog = (preset: FunnelPreset, mode: 'clone' | 'edit') => {
@@ -383,14 +385,18 @@ export default function StrategiesPage() {
                     </TabsContent>
                 </Tabs>
             </div>
-            {(isCreateDialogOpen || funnelToOrchestrate) && (
+            {isCreateDialogOpen && (
                 <CreateFunnelDialog
                     isOpen={isCreateDialogOpen}
-                    onOpenChange={setIsCreateDialogOpen}
+                    onOpenChange={(open) => {
+                        if (!open) setFunnelToEdit(null);
+                        setIsCreateDialogOpen(open);
+                    }}
                     offerings={offerings}
                     funnelPresets={funnelPresets}
                     onFunnelSaved={handleFunnelSaved}
-                    funnelToEdit={funnelToOrchestrate}
+                    funnelToEdit={funnelToEdit}
+                    initialStep={initialDialogStep}
                 />
             )}
             <CustomizePresetDialog

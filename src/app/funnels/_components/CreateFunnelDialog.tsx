@@ -31,6 +31,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectGroup, SelectLabel } from '@/components/ui/select';
 import { ContentGenerationDialog } from '@/app/offerings/_components/ContentGenerationDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 interface CreateFunnelDialogProps {
     isOpen: boolean;
@@ -39,6 +41,7 @@ interface CreateFunnelDialogProps {
     funnelPresets: FunnelPreset[];
     onFunnelSaved: () => void;
     funnelToEdit?: Funnel | null;
+    initialStep?: DialogStep;
 }
 
 type DialogStep = 'selection' | 'edit_blueprint' | 'orchestrate';
@@ -76,8 +79,9 @@ export function CreateFunnelDialog({
     funnelPresets,
     onFunnelSaved,
     funnelToEdit,
+    initialStep = 'selection',
 }: CreateFunnelDialogProps) {
-    const [step, setStep] = useState<DialogStep>('selection');
+    const [step, setStep] = useState<DialogStep>(initialStep);
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     const [funnelName, setFunnelName] = useState('');
@@ -102,8 +106,8 @@ export function CreateFunnelDialog({
     
     useEffect(() => {
         if (isOpen) {
+            setStep(initialStep);
             if (funnelToEdit) {
-                setStep('selection'); // Start at selection, but pre-fill
                 setSelectedOfferingId(funnelToEdit.offering_id);
                 setSelectedPresetId(funnelToEdit.preset_id);
                 setFunnelName(funnelToEdit.name);
@@ -114,10 +118,17 @@ export function CreateFunnelDialog({
                 }
                 if (funnelToEdit.media_plan) {
                     validateAndSetPlanItems(funnelToEdit.media_plan);
+                } else {
+                    setPlanItems([]);
                 }
+                
+                // If orchestrate is the initial step and no plan exists, generate it.
+                if (initialStep === 'orchestrate' && !funnelToEdit.media_plan) {
+                    handleGenerateMediaPlan();
+                }
+
             } else {
                 // Reset state for new funnel
-                setStep('selection');
                 setSelectedOfferingId(null);
                 setSelectedPresetId(null);
                 setGeneratedContent(null);
@@ -134,7 +145,7 @@ export function CreateFunnelDialog({
                 }
             });
         }
-    }, [isOpen, funnelToEdit]);
+    }, [isOpen, funnelToEdit, initialStep]);
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
@@ -182,38 +193,29 @@ export function CreateFunnelDialog({
     };
 
     const handleGenerateMediaPlan = () => {
-        if (!funnelToEdit && !generatedContent) {
-            toast({ variant: 'destructive', title: 'No Strategy', description: 'Please generate a strategy blueprint first.' });
-            return;
+        const currentFunnelId = funnelToEdit?.id;
+        if (currentFunnelId) {
+            startGeneratingMediaPlan(async () => {
+                try {
+                    const result = await generateMediaPlanAction({ funnelId: currentFunnelId });
+                    validateAndSetPlanItems(result.plan);
+                    setStep('orchestrate');
+                    toast({
+                        title: 'Media Plan Generated!',
+                        description: 'Review and edit the suggested content ideas below.'
+                    });
+                } catch (error: any) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Media Plan Generation Failed',
+                        description: error.message,
+                    });
+                }
+            });
+        } else {
+            // This is a new funnel, save it first then generate.
+            handleSave(true);
         }
-        
-        const funnelId = funnelToEdit?.id;
-        if (!funnelId) {
-            // This case handles a new funnel that hasn't been saved yet.
-            // We can't generate a plan without a funnelId in the current flow.
-            // Let's proceed to save the funnel first, then move to the media plan step.
-            handleSave(true); // pass true to indicate we want to move to the next step.
-            return;
-        }
-
-        startGeneratingMediaPlan(async () => {
-            try {
-                const result = await generateMediaPlanAction({ funnelId });
-                validateAndSetPlanItems(result.plan);
-                toast({
-                    title: 'Media Plan Generated!',
-                    description: 'Review and edit the suggested content ideas below.'
-                });
-                setStep('orchestrate');
-                
-            } catch (error: any) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Media Plan Generation Failed',
-                    description: error.message,
-                });
-            }
-        });
     };
 
 
@@ -231,7 +233,7 @@ export function CreateFunnelDialog({
                     funnelName: funnelName,
                     goal: goal,
                     strategyBrief: { ...generatedContent, channels: selectedChannels } as GenerateFunnelOutput,
-                    mediaPlan: planItems.map(({id, ...rest}) => rest),
+                    mediaPlan: planItems.length > 0 ? planItems.map(({id, ...rest}) => rest) : null,
                 };
 
                 let savedFunnel: Funnel;
@@ -242,11 +244,27 @@ export function CreateFunnelDialog({
                 }
 
                 if (proceedToNextStep) {
-                    // Update the state to reflect the saved funnel and move to orchestrate step
-                    setFunnelToEdit(savedFunnel);
-                    setStep('orchestrate');
+                    // This is a special case for new funnels. We save, then immediately generate the plan.
+                    // We need a way to pass the new funnel ID to handleGenerateMediaPlan.
+                    // A simple way is to re-call it after setting the new funnel data.
                     toast({ title: 'Strategy Saved!', description: 'Now, let\'s orchestrate the media plan.' });
-                    handleGenerateMediaPlan(); // Now call generate with the ID
+                    
+                    const newFunnelForEdit = { ...funnelToEdit, ...savedFunnel };
+
+                    startGeneratingMediaPlan(async () => {
+                        try {
+                            const result = await generateMediaPlanAction({ funnelId: newFunnelForEdit.id });
+                            validateAndSetPlanItems(result.plan);
+                            setStep('orchestrate');
+                            toast({
+                                title: 'Media Plan Generated!',
+                                description: 'Review and edit the suggested content ideas below.'
+                            });
+                        } catch (error: any) {
+                             toast({ variant: 'destructive', title: 'Media Plan Generation Failed', description: error.message, });
+                        }
+                    });
+
                 } else {
                     onFunnelSaved();
                 }
