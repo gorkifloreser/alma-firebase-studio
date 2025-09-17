@@ -171,6 +171,21 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     }
+
+    const handleConceptualStepObjectiveChange = (itemId: string, value: string) => {
+        setPlanItems(prev => prev.map(item => {
+            if (item.id === itemId && item.conceptualStep) {
+                return {
+                    ...item,
+                    conceptualStep: {
+                        ...item.conceptualStep,
+                        objective: value
+                    }
+                };
+            }
+            return item;
+        }));
+    };
     
     const handleRemoveItem = (itemId: string) => {
         setPlanItems(prev => prev.filter(item => item.id !== itemId));
@@ -187,6 +202,9 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
             copy: '',
             hashtags: '',
             creativePrompt: '',
+            conceptualStep: {
+                objective: 'Your new objective here'
+            },
         };
         setPlanItems(prev => [...prev, newItem]);
     };
@@ -291,50 +309,61 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                     <TabsContent key={channel} value={channel} className="mt-0">
                                         <div className="space-y-4">
                                             {groupedByChannel[channel].map((item) => (
-                                                <div key={item.id} className="p-4 border rounded-lg space-y-4">
-                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="space-y-1">
-                                                            <Label htmlFor={`format-${item.id}`}>Format</Label>
-                                                            <div className="flex items-center gap-2">
-                                                                <Select
-                                                                    value={item.format}
-                                                                    onValueChange={(value) => handleItemChange(item.id, 'format', value)}
-                                                                >
-                                                                    <SelectTrigger id={`format-${item.id}`} className="font-semibold">
-                                                                        <SelectValue placeholder="Select a format" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {mediaFormatConfig.map(group => {
-                                                                            const channelFormats = group.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
-                                                                            if (channelFormats.length === 0) return null;
-                                                                            return (
-                                                                                <SelectGroup key={group.label}>
-                                                                                    <SelectLabel>{group.label}</SelectLabel>
-                                                                                    {channelFormats.map(format => (
-                                                                                        <SelectItem key={format.value} value={format.value}>{format.value}</SelectItem>
-                                                                                    ))}
-                                                                                </SelectGroup>
-                                                                            )
-                                                                        })}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <Button variant="outline" size="icon" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
-                                                                    <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
-                                                                </Button>
-                                                                <Button variant="destructive" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <Label htmlFor={`hashtags-${item.id}`}>Hashtags</Label>
-                                                            <Input
-                                                                id={`hashtags-${item.id}`}
-                                                                value={item.hashtags}
-                                                                onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}
-                                                            />
-                                                        </div>
+                                                <div key={item.id} className="p-4 border rounded-lg space-y-4 relative">
+                                                    <div className="absolute top-2 right-2 flex items-center gap-2">
+                                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
+                                                            <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
+                                                        </Button>
+                                                        <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
+
+                                                    <div className="space-y-1 pr-24">
+                                                        <Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label>
+                                                        <Input 
+                                                            id={`objective-${item.id}`}
+                                                            value={item.conceptualStep?.objective || ''}
+                                                            onChange={(e) => handleConceptualStepObjectiveChange(item.id, e.target.value)}
+                                                            placeholder="e.g., Build social proof by showcasing success"
+                                                        />
+                                                    </div>
+                                                    
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`format-${item.id}`}>Format</Label>
+                                                        <Select
+                                                            value={item.format}
+                                                            onValueChange={(value) => handleItemChange(item.id, 'format', value)}
+                                                        >
+                                                            <SelectTrigger id={`format-${item.id}`} className="font-semibold">
+                                                                <SelectValue placeholder="Select a format" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {mediaFormatConfig.map(group => {
+                                                                    const channelFormats = group.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
+                                                                    if (channelFormats.length === 0) return null;
+                                                                    return (
+                                                                        <SelectGroup key={group.label}>
+                                                                            <SelectLabel>{group.label}</SelectLabel>
+                                                                            {channelFormats.map(format => (
+                                                                                <SelectItem key={format.value} value={format.value}>{format.value}</SelectItem>
+                                                                            ))}
+                                                                        </SelectGroup>
+                                                                    )
+                                                                })}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label>
+                                                        <Input
+                                                            id={`hashtags-${item.id}`}
+                                                            value={item.hashtags}
+                                                            onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}
+                                                        />
+                                                    </div>
+
                                                     <div className="space-y-1">
                                                         <Label htmlFor={`copy-${item.id}`}>Copy</Label>
                                                         <Textarea
@@ -345,6 +374,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                             rows={4}
                                                         />
                                                     </div>
+
                                                     <div className="space-y-1">
                                                         <Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label>
                                                         <Textarea
