@@ -66,7 +66,7 @@ export function CreateFunnelDialog({
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canGenerate = selectedPresetId && selectedOfferingId;
+    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null;
 
     const handleGenerate = async () => {
         if (!canGenerate) return;
@@ -78,7 +78,7 @@ export function CreateFunnelDialog({
                 if (!preset || !offering) throw new Error("Selected preset or offering not found.");
 
                 const result = await generateFunnelPreview({
-                    offeringId: selectedOfferingId,
+                    offeringId: selectedOfferingId!,
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
                 });
@@ -400,5 +400,3 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
-
-    

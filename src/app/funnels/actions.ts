@@ -349,5 +349,3 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
 }
-
-    
