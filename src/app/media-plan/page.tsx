@@ -11,11 +11,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getMediaPlans, deleteMediaPlan, MediaPlan } from './actions';
-import { Bot, Sparkles, Wand2, GitBranch, MessageSquare, Mail, Instagram, Trash, MoreVertical, Edit } from 'lucide-react';
+import { Bot, Sparkles, Wand2, GitBranch, MessageSquare, Mail, Instagram, Trash, MoreVertical, Edit, PlusCircle } from 'lucide-react';
 import { getOfferings, Offering, OfferingMedia } from '@/app/offerings/actions';
 import { ContentGenerationDialog } from '@/app/offerings/_components/ContentGenerationDialog';
 import { Funnel, getFunnels } from '@/app/funnels/actions';
-import { Badge } from '@/components/ui/badge';
 import { OrchestrateMediaPlanDialog } from './_components/OrchestrateMediaPlanDialog';
 import {
   AlertDialog,
@@ -50,7 +49,6 @@ export default function MediaPlanPage() {
     const [offeringForContent, setOfferingForContent] = useState<(Offering & { offering_media: OfferingMedia[] }) | null>(null);
     const [sourcePlanItem, setSourcePlanItem] = useState<PlanItem | null>(null);
     const [isOrchestrateDialogOpen, setIsOrchestrateDialogOpen] = useState(false);
-    const [strategyToOrchestrate, setStrategyToOrchestrate] = useState<Funnel | null>(null);
     const [planToEdit, setPlanToEdit] = useState<MediaPlan | null>(null);
     const [isDeleting, startDeleting] = useTransition();
 
@@ -88,26 +86,18 @@ export default function MediaPlanPage() {
         checkUserAndFetchData();
     }, []);
 
-    const handleOpenOrchestrateDialog = (strategy: Funnel) => {
-        setStrategyToOrchestrate(strategy);
-        setPlanToEdit(null); // Ensure we're in "create" mode
+    const handleOpenCreateDialog = () => {
+        setPlanToEdit(null);
         setIsOrchestrateDialogOpen(true);
     };
 
     const handleOpenEditDialog = (plan: MediaPlan) => {
-        const strategy = funnels.find(f => f.id === plan.funnel_id);
-        if (strategy) {
-            setStrategyToOrchestrate(strategy);
-            setPlanToEdit(plan);
-            setIsOrchestrateDialogOpen(true);
-        } else {
-             toast({ variant: 'destructive', title: 'Error', description: 'Could not find the original strategy for this plan.' });
-        }
+        setPlanToEdit(plan);
+        setIsOrchestrateDialogOpen(true);
     };
 
     const handlePlanSaved = () => {
         setIsOrchestrateDialogOpen(false);
-        setStrategyToOrchestrate(null);
         setPlanToEdit(null);
         fetchAllData();
     }
@@ -138,9 +128,6 @@ export default function MediaPlanPage() {
             }
         });
     }
-    
-    const strategiesWithPlans = new Set(mediaPlans.map(p => p.funnel_id));
-    const strategiesWithoutPlans = funnels.filter(f => !strategiesWithPlans.has(f.id));
 
     if (isLoading) {
         return (
@@ -161,9 +148,15 @@ export default function MediaPlanPage() {
         <DashboardLayout>
             <Toaster />
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-                <header>
-                    <h1 className="text-3xl font-bold">Media Orchestrator</h1>
-                    <p className="text-muted-foreground">Generate and manage tactical, multi-channel content plans from your strategies.</p>
+                <header className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold">Media Orchestrator</h1>
+                        <p className="text-muted-foreground">Generate and manage tactical, multi-channel content plans from your strategies.</p>
+                    </div>
+                     <Button onClick={handleOpenCreateDialog} className="gap-2">
+                        <PlusCircle className="h-5 w-5" />
+                        Orchestrate New Plan
+                    </Button>
                 </header>
 
                 <div className="space-y-8">
@@ -244,61 +237,25 @@ export default function MediaPlanPage() {
                             })}
                             </div>
                         ) : (
-                             <p className="text-muted-foreground text-center py-8">No media plans saved yet. Create one from a strategy below.</p>
-                        )}
-                    </section>
-                     <section>
-                        <h2 className="text-2xl font-semibold border-b pb-2 mb-4">Orchestrate a New Plan</h2>
-                         {strategiesWithoutPlans.length > 0 ? (
-                            <div className="space-y-6">
-                                {strategiesWithoutPlans.map(funnel => (
-                                <Card key={funnel.id} className="bg-muted/30">
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <CardTitle className="text-xl flex items-center gap-2">
-                                                    <GitBranch className="h-5 w-5" />
-                                                    {funnel.name}
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    For Offering: <span className="font-medium text-foreground">{funnel.offerings?.title.primary || 'N/A'}</span>
-                                                </CardDescription>
-                                            </div>
-                                            <Button 
-                                                onClick={() => handleOpenOrchestrateDialog(funnel)}
-                                            >
-                                                <Bot className="mr-2 h-4 w-4" />
-                                                Orchestrate Media Plan
-                                            </Button>
-                                        </div>
-                                         <div className="flex items-center gap-2 pt-2">
-                                            <p className="text-sm text-muted-foreground">Channels:</p>
-                                            <div className="flex gap-2">
-                                                {funnel.strategy_brief?.channels?.map(channel => (
-                                                    <Badge key={channel} variant="secondary" className="capitalize">{channel.replace(/_/g, ' ')}</Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                </Card>
-                            ))}
+                             <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                                <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-4 text-xl font-semibold">No Media Plans Yet</h3>
+                                <p className="text-muted-foreground mt-2">
+                                    Click 'Orchestrate New Plan' to generate one from a strategy.
+                                </p>
                             </div>
-                         ) : (
-                            <p className="text-muted-foreground text-center py-8">All your existing strategies already have a media plan.</p>
-                         )}
+                        )}
                     </section>
                 </div>
             </div>
 
-            {strategyToOrchestrate && (
-                <OrchestrateMediaPlanDialog
-                    isOpen={isOrchestrateDialogOpen}
-                    onOpenChange={setIsOrchestrateDialogOpen}
-                    strategy={strategyToOrchestrate}
-                    planToEdit={planToEdit}
-                    onPlanSaved={handlePlanSaved}
-                />
-            )}
+            <OrchestrateMediaPlanDialog
+                isOpen={isOrchestrateDialogOpen}
+                onOpenChange={setIsOrchestrateDialogOpen}
+                strategies={funnels}
+                planToEdit={planToEdit}
+                onPlanSaved={handlePlanSaved}
+            />
 
             {offeringForContent && (
                 <ContentGenerationDialog
