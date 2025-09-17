@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
-import { getBrandHeart, updateBrandHeart, translateText } from './actions';
-import { Sparkles } from 'lucide-react';
+import { getBrandHeart, updateBrandHeart, translateText, uploadBrandDocument, getBrandDocuments, deleteBrandDocument, BrandDocument } from './actions';
+import { Sparkles, Upload, FileText, Trash2, Loader2 } from 'lucide-react';
 import { languages } from '@/lib/languages';
+import { formatDistanceToNow } from 'date-fns';
 
 type Profile = {
     primary_language: string;
@@ -45,12 +46,41 @@ const initialBrandHeartState: BrandHeartData = {
 export default function BrandHeartPage() {
     const [profile, setProfile] = useState<Profile>(null);
     const [brandHeart, setBrandHeart] = useState<BrandHeartData>(initialBrandHeartState);
+    const [documents, setDocuments] = useState<BrandDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
+    const [isUploading, startUploading] = useTransition();
+    const [isDeleting, startDeleting] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { toast } = useToast();
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+
+    const fetchAllData = async () => {
+        try {
+            const [profileData, brandHeartData, documentsData] = await Promise.all([
+                getProfile(),
+                getBrandHeart(),
+                getBrandDocuments()
+            ]);
+            setProfile(profileData);
+            if (brandHeartData) {
+                setBrandHeart(brandHeartData);
+            }
+            setDocuments(documentsData);
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message || 'Could not fetch your data.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         const checkUserAndFetchData = async () => {
@@ -59,24 +89,8 @@ export default function BrandHeartPage() {
             if (!user) {
                 redirect('/login');
             }
-
             setIsLoading(true);
-            try {
-                const profileData = await getProfile();
-                const brandHeartData = await getBrandHeart();
-                setProfile(profileData);
-                if (brandHeartData) {
-                    setBrandHeart(brandHeartData);
-                }
-            } catch (error: any) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: error.message || 'Could not fetch your data.',
-                });
-            } finally {
-                setIsLoading(false);
-            }
+            await fetchAllData();
         };
 
         checkUserAndFetchData();
@@ -98,7 +112,6 @@ export default function BrandHeartPage() {
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        // We use a FormData object to easily pass the data to the server action.
         const formData = new FormData();
         formData.append('brand_name', brandHeart.brand_name);
         Object.keys(brandHeart).forEach(key => {
@@ -163,6 +176,46 @@ export default function BrandHeartPage() {
         }
     };
 
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        setSelectedFile(file);
+    };
+
+    const handleDocumentUpload = async () => {
+        if (!selectedFile) {
+            toast({ variant: 'destructive', title: 'No file selected' });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('document', selectedFile);
+
+        startUploading(async () => {
+            try {
+                const result = await uploadBrandDocument(formData);
+                toast({ title: 'Success!', description: result.message });
+                setSelectedFile(null);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+                await fetchAllData(); // Refresh documents list
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
+            }
+        });
+    };
+
+     const handleDocumentDelete = (id: string) => {
+        startDeleting(async () => {
+            try {
+                const result = await deleteBrandDocument(id);
+                toast({ title: 'Success!', description: result.message });
+                await fetchAllData(); // Refresh documents list
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Deletion failed', description: error.message });
+            }
+        });
+    };
+
+
     const BilingualFormField = ({ id, label }: { id: keyof Omit<BrandHeartData, 'brand_name'>, label: string }) => (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -205,44 +258,117 @@ export default function BrandHeartPage() {
                     <p className="text-muted-foreground">Define your brand's soul. This is the foundation for all AI content generation.</p>
                 </header>
 
-                <div className="max-w-4xl">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Core Essence</CardTitle>
-                            <CardDescription>
-                                Fill in these details to give the AI a deep understanding of your brand.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="space-y-8">
-                                    <Skeleton className="h-10 w-full" />
-                                    <Skeleton className="h-24 w-full" />
-                                    <Skeleton className="h-24 w-full" />
-                                    <Skeleton className="h-24 w-full" />
-                                    <Skeleton className="h-24 w-full" />
-                                    <Skeleton className="h-24 w-full" />
-                                    <Skeleton className="h-10 w-32" />
-                                </div>
-                            ) : (
-                                <form onSubmit={handleSubmit} className="space-y-8">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                                        <Input id="brand_name" name="brand_name" value={brandHeart.brand_name} onChange={handleFormChange} />
+                <div className="grid lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Core Essence</CardTitle>
+                                <CardDescription>
+                                    Fill in these details to give the AI a deep understanding of your brand.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {isLoading ? (
+                                    <div className="space-y-8">
+                                        <Skeleton className="h-10 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-24 w-full" />
+                                        <Skeleton className="h-10 w-32" />
                                     </div>
-                                    <BilingualFormField id="brand_brief" label="Brand Brief" />
-                                    <BilingualFormField id="mission" label="Mission" />
-                                    <BilingualFormField id="vision" label="Vision" />
-                                    <BilingualFormField id="values" label="Values" />
-                                    <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
-                                    
-                                    <Button type="submit" disabled={isSaving}>
-                                        {isSaving ? 'Saving...' : 'Save Brand Heart'}
-                                    </Button>
-                                </form>
-                            )}
-                        </CardContent>
-                    </Card>
+                                ) : (
+                                    <form onSubmit={handleSubmit} className="space-y-8">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
+                                            <Input id="brand_name" name="brand_name" value={brandHeart.brand_name} onChange={handleFormChange} />
+                                        </div>
+                                        <BilingualFormField id="brand_brief" label="Brand Brief" />
+                                        <BilingualFormField id="mission" label="Mission" />
+                                        <BilingualFormField id="vision" label="Vision" />
+                                        <BilingualFormField id="values" label="Values" />
+                                        <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
+                                        
+                                        <Button type="submit" disabled={isSaving}>
+                                            {isSaving ? 'Saving...' : 'Save Brand Heart'}
+                                        </Button>
+                                    </form>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                     <div className="lg:col-span-1 space-y-8">
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Brand Documents</CardTitle>
+                                <CardDescription>
+                                    Upload documents for the AI to learn from (e.g., brand guide, mission statement).
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                     <div>
+                                        <Label htmlFor="document-upload">Upload a new document</Label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                             <Input
+                                                id="document-upload"
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleFileChange}
+                                                className="flex-1"
+                                                accept=".pdf,.docx,.txt"
+                                                disabled={isUploading}
+                                            />
+                                             <Button 
+                                                size="icon" 
+                                                onClick={handleDocumentUpload} 
+                                                disabled={!selectedFile || isUploading}
+                                            >
+                                                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                         <p className="text-xs text-muted-foreground mt-1">Max 5MB. Supported formats: PDF, DOCX, TXT.</p>
+                                    </div>
+                                     <div className="space-y-3">
+                                        <h4 className="font-medium">Uploaded Documents</h4>
+                                        {isLoading ? (
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-10 w-full" />
+                                                <Skeleton className="h-10 w-full" />
+                                            </div>
+                                        ) : documents.length > 0 ? (
+                                            <ul className="divide-y divide-border rounded-md border">
+                                                {documents.map(doc => (
+                                                    <li key={doc.id} className="flex items-center justify-between p-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <FileText className="h-5 w-5 text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-sm font-medium truncate w-48">{doc.file_name}</p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Uploaded {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDocumentDelete(doc.id)}
+                                                            disabled={isDeleting}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </DashboardLayout>
