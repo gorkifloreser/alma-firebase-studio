@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
+import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
 
 
 export type OfferingMedia = {
@@ -80,10 +81,10 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   if (!user) throw new Error('User not authenticated');
 
   // Explicitly destructure to remove fields not in the 'offerings' table
-  const { offering_media, ...restOfOfferingData } = offeringData as any;
+  const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
 
   const payload = {
-    ...restOfOfferingData,
+    ...restOfData,
     event_date: offeringData.type === 'Event' && offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
@@ -128,7 +129,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     if (!user) throw new Error('User not authenticated');
     
     // Explicitly destructure to remove fields that shouldn't be sent in the update payload
-    const { offering_media, updated_at, ...restOfData } = offeringData as any;
+    const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
 
     const payload = {
         ...restOfData,
@@ -136,6 +137,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
+        updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -341,6 +343,23 @@ export async function generateContentForOffering(input: GenerateContentInput): P
     } catch (error) {
         console.error("Content generation action failed:", error);
         throw new Error("Failed to generate content. Please try again.");
+    }
+}
+
+
+/**
+ * Invokes the Genkit creative generation flow.
+ * @param {GenerateCreativeInput} input The offering ID and creative type.
+ * @returns {Promise<GenerateCreativeOutput>} The generated creative.
+ * @throws {Error} If the generation fails.
+ */
+export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
+    try {
+        const result = await genCreativeFlow(input);
+        return result;
+    } catch (error) {
+        console.error("Creative generation action failed:", error);
+        throw new Error("Failed to generate creative. Please try again.");
     }
 }
 
