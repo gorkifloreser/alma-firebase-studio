@@ -101,7 +101,7 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
         throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
     
-    const websiteStrategy = funnel.strategy_brief?.strategy.find(s => s.stageName.toLowerCase().includes('website') || funnel.strategy_brief?.channels?.includes('website'));
+    const websiteStrategy = funnel.strategy_brief?.strategy.find(s => funnel.strategy_brief?.channels?.includes('website'));
 
     if (websiteStrategy) {
         const pageContent = websiteStrategy.conceptualSteps.map(step => `## ${step.objective}\n\n${step.concept}`).join('\n\n');
@@ -147,6 +147,39 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
     revalidatePath('/funnels');
     revalidatePath(`/offerings`);
     return funnel.id;
+}
+
+
+export async function updateFunnel(funnelId: string, updates: { name: string; goal: string; strategyBrief: GenerateFunnelOutput }): Promise<Funnel> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { name, goal, strategyBrief } = updates;
+    
+    const { data, error } = await supabase
+        .from('funnels')
+        .update({
+            name,
+            goal,
+            strategy_brief: strategyBrief,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', funnelId)
+        .eq('user_id', user.id)
+        .select(`
+            *,
+            offerings (id, title)
+        `)
+        .single();
+    
+    if (error) {
+        console.error("Error updating funnel:", error);
+        throw new Error("Could not update the strategy.");
+    }
+    
+    revalidatePath('/funnels');
+    return data as Funnel;
 }
 
 export async function deleteFunnel(funnelId: string): Promise<{ message: string }> {

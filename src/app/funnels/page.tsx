@@ -15,6 +15,7 @@ import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, delet
 import { getOfferings, Offering } from '../offerings/actions';
 import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
+import { EditStrategyDialog } from './_components/EditStrategyDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,8 @@ export default function StrategiesPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
@@ -101,7 +104,16 @@ export default function StrategiesPage() {
         fetchFunnelsAndOfferings();
         toast({
             title: 'Success!',
-            description: 'Your new funnel has been created and generated.',
+            description: 'Your new strategy has been created.',
+        });
+    };
+    
+    const handleFunnelUpdated = () => {
+        setIsEditDialogOpen(false);
+        fetchFunnelsAndOfferings();
+        toast({
+            title: 'Success!',
+            description: 'Your strategy has been updated.',
         });
     };
     
@@ -120,6 +132,11 @@ export default function StrategiesPage() {
             }
         });
     }
+    
+    const handleOpenEditDialog = (funnel: Funnel) => {
+        setFunnelToEdit(funnel);
+        setIsEditDialogOpen(true);
+    };
 
     const handleOpenCustomizeDialog = (preset: FunnelPreset, mode: 'clone' | 'edit') => {
         setPresetToCustomize(preset);
@@ -301,7 +318,7 @@ export default function StrategiesPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => router.push(`/funnels/${funnel.id}/edit`)}>
+                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         <span>Edit Strategy</span>
                                                     </DropdownMenuItem>
@@ -362,6 +379,14 @@ export default function StrategiesPage() {
                 onFunnelCreated={handleFunnelCreated}
                 defaultOfferingId={offeringIdFilter}
             />
+            {funnelToEdit && (
+                <EditStrategyDialog
+                    isOpen={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                    funnel={funnelToEdit}
+                    onFunnelUpdated={handleFunnelUpdated}
+                />
+            )}
             <CustomizePresetDialog
                 isOpen={isCustomizeDialogOpen}
                 onOpenChange={setIsCustomizeDialogOpen}
