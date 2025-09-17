@@ -7,7 +7,6 @@ import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import mammoth from 'mammoth';
 import { ai } from '@/ai/genkit';
 
-
 export type BrandDocument = {
     id: string;
     file_name: string;
