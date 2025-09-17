@@ -83,7 +83,8 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { updated_at, offering_media, event_date, ...restOfData } = offeringData as any;
+  // Destructure to remove fields that should not be in the payload
+  const { offering_media, updated_at, ...restOfData } = offeringData as any;
 
   const payload = {
     ...restOfData,
@@ -130,7 +131,8 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { offering_media, updated_at, event_date, ...restOfOfferingData } = offeringData as any;
+    // Destructure to remove fields that should not be in the payload for update
+    const { offering_media, updated_at, ...restOfOfferingData } = offeringData as any;
 
     const payload = {
         ...restOfOfferingData,
@@ -331,3 +333,5 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
 }
 
 export { generateContentForOffering };
+
+    
