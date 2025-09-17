@@ -33,6 +33,27 @@ interface OrchestrateMediaPlanDialogProps {
     onPlanSaved: () => void;
 }
 
+const mediaFormats = [
+    // Social
+    '1:1 Square Image (Social)',
+    '4:5 Portrait Image (Social)',
+    '9:16 Story/Reel Video (Social)',
+    'Carousel (3-5 slides, Social)',
+    '16:9 Landscape Video (Social)',
+    'Text Post (Social)',
+    // Email
+    'Newsletter (Email)',
+    'Promotional Email (Email)',
+    // Website
+    'Blog Post (Website)',
+    'Landing Page Section (Website)',
+    // WhatsApp
+    'Text Message (WhatsApp)',
+    'Text with Image (WhatsApp)',
+    'Short Video (WhatsApp)',
+];
+
+
 export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, planToEdit, onPlanSaved }: OrchestrateMediaPlanDialogProps) {
     const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
     const [planItems, setPlanItems] = useState<PlanItem[]>([]);
@@ -140,22 +161,24 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">
-                     <Label htmlFor="strategy-select">Strategy</Label>
-                    <div className="flex gap-4">
-                        <Select 
-                            onValueChange={setSelectedStrategyId} 
-                            defaultValue={planToEdit?.funnel_id ?? undefined}
-                            disabled={!!planToEdit || isGenerating}
-                        >
-                            <SelectTrigger id="strategy-select" className="flex-1">
-                                <SelectValue placeholder="Choose a strategy to orchestrate..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {strategies.map(strategy => (
-                                    <SelectItem key={strategy.id} value={strategy.id}>{strategy.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex gap-4 items-end">
+                        <div className="flex-1 space-y-2">
+                            <Label htmlFor="strategy-select">Strategy</Label>
+                            <Select 
+                                onValueChange={setSelectedStrategyId} 
+                                defaultValue={planToEdit?.funnel_id ?? undefined}
+                                disabled={!!planToEdit || isGenerating}
+                            >
+                                <SelectTrigger id="strategy-select">
+                                    <SelectValue placeholder="Choose a strategy to orchestrate..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {strategies.map(strategy => (
+                                        <SelectItem key={strategy.id} value={strategy.id}>{strategy.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         {!planToEdit && (
                              <Button onClick={handleGeneratePlan} disabled={isGenerating || !selectedStrategyId}>
                                 <Bot className="mr-2 h-4 w-4" /> 
@@ -190,12 +213,19 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-1">
                                                             <Label htmlFor={`format-${item.id}`}>Format</Label>
-                                                            <Input
-                                                                id={`format-${item.id}`}
+                                                            <Select
                                                                 value={item.format}
-                                                                onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
-                                                                className="font-semibold"
-                                                            />
+                                                                onValueChange={(value) => handleItemChange(item.id, 'format', value)}
+                                                            >
+                                                                <SelectTrigger id={`format-${item.id}`} className="font-semibold">
+                                                                    <SelectValue placeholder="Select a format" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {mediaFormats.map(format => (
+                                                                        <SelectItem key={format} value={format}>{format}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label htmlFor={`hashtags-${item.id}`}>Hashtags</Label>
