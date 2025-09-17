@@ -23,18 +23,29 @@ import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { logout } from './actions';
 import Link from 'next/link';
+import type { Profile } from '@/app/settings/actions';
 
 export function UserNav() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndProfile = async () => {
       const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+        setProfile(profileData as Profile);
+      }
     };
-    fetchUser();
+    fetchUserAndProfile();
 
     const storedTheme = localStorage.getItem('theme');
     if (storedTheme === 'dark') {
@@ -66,7 +77,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://placehold.co/40x40.png" alt="@shadcn" />
+            {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt="User Avatar" />}
             <AvatarFallback>{user?.email?.[0].toUpperCase()}</AvatarFallback>
           </Avatar>
         </Button>
