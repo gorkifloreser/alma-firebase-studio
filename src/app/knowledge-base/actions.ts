@@ -4,7 +4,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { ai } from '@/ai/genkit';
 
@@ -49,6 +48,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     try {
         const buffer = Buffer.from(await documentFile.arrayBuffer());
         if (documentFile.type === 'application/pdf') {
+            const pdf = (await import('pdf-parse')).default;
             const data = await pdf(buffer);
             content = data.text;
         } else if (documentFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
