@@ -38,20 +38,24 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (
-    !user &&
-    !pathname.startsWith('/login') &&
-    !pathname.startsWith('/signup') &&
-    !pathname.startsWith('/auth/callback') &&
-    !pathname.startsWith('/forgot-password') &&
-    !pathname.startsWith('/reset-password')
-  ) {
+  const publicRoutes = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/auth/callback',
+  ];
+
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
+
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
+  if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
