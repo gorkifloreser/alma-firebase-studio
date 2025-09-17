@@ -39,6 +39,7 @@ const GenerateFunnelInputSchema = z.object({
   funnelType: z.string().describe("The name of the funnel model being used, e.g., 'Lead Magnet'."),
   funnelPrinciples: z.string().describe("The core principles or strategy of the funnel model."),
   goal: z.string().describe("The specific goal of this strategy."),
+  channels: z.array(z.string()).describe('The marketing channels to focus on for this strategy.'),
 });
 export type GenerateFunnelInput = z.infer<typeof GenerateFunnelInputSchema>;
 
@@ -53,33 +54,37 @@ const prompt = ai.definePrompt({
           funnelType: z.string(),
           funnelPrinciples: z.string(),
           goal: z.string(),
+          channels: z.array(z.string()),
       })
   },
   output: { schema: GenerateFunnelOutputSchema },
-  prompt: `You are a world-class marketing strategist who specializes in creating authentic, customer-centric marketing strategies based on psychology.
+  prompt: `You are a world-class marketing strategist who specializes in creating authentic, customer-centric marketing strategies based on psychology and the "Who -> How -> What -> Where" model.
 
-Your task is to create a high-level STRATEGY BLUEPRINT for a marketing campaign. This is not about writing the final copy; it's about defining the psychological journey for the customer.
+Your task is to create a high-level STRATEGY BLUEPRINT (the "How") for a marketing campaign. This is not about writing the final copy; it's about defining the psychological journey for the customer.
 
-**Overall Campaign Goal:** {{goal}}
+**The "Who":**
+- Brand Heart (Identity):
+  - Brand Name: {{brandHeart.brand_name}}
+  - Mission: {{brandHeart.mission.primary}}
+  - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- Offering (The "What" we are promoting):
+  - Title: {{offering.title.primary}}
+  - Description: {{offering.description.primary}}
+  - Type: {{offering.type}}
+  {{#if offering.contextual_notes}}
+  - Important Contextual Notes: {{offering.contextual_notes}}
+  {{/if}}
+
+**The "Where" (Target Channels):** {{#each channels}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+
+**The Goal:** {{goal}}
+
 **Funnel Model to Use:** {{funnelType}}
 This model's core principles are: {{funnelPrinciples}}
 
-**Brand Heart (Brand Identity):**
-- Brand Name: {{brandHeart.brand_name}}
-- Mission: {{brandHeart.mission.primary}}
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+**Your Task (The "How"):**
 
-**Offering Details:**
-- Title: {{offering.title.primary}}
-- Description: {{offering.description.primary}}
-- Type: {{offering.type}}
-{{#if offering.contextual_notes}}
-- Important Contextual Notes: {{offering.contextual_notes}}
-{{/if}}
-
-**Your Task:**
-
-First, define the overall success metrics for the campaign that are directly tied to the main goal.
+First, define the overall **campaignSuccessMetrics** for the campaign that are directly tied to the main goal.
 
 Then, map out a 3-4 stage psychological journey for the customer. This journey should guide them from being unaware of the solution to becoming a happy customer.
 
@@ -93,7 +98,9 @@ For each stage of the journey, you must define:
     *   **objective**: The specific purpose of this individual piece of content. (e.g., "Establish empathy and connection.", "Build social proof.", "Create a sense of urgency.").
 5.  **successMetrics**: What are the 2-3 key metrics to track for this specific stage's performance?
 
-Generate this entire plan in the **{{primaryLanguage}}** language. Do not reference specific channels like "Email" or "Facebook" in your plan. The plan should be channel-agnostic.
+The strategy should be channel-aware but focused on the psychological journey. The conceptual steps should be versatile enough to be adapted to the selected channels.
+
+Generate this entire plan in the **{{primaryLanguage}}** language.
 
 Return the result in the specified JSON format.`,
 });
@@ -105,7 +112,7 @@ const generateFunnelFlow = ai.defineFlow(
     inputSchema: GenerateFunnelInputSchema,
     outputSchema: GenerateFunnelOutputSchema,
   },
-  async ({ offeringId, funnelType, funnelPrinciples, goal }) => {
+  async ({ offeringId, funnelType, funnelPrinciples, goal, channels }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -134,6 +141,7 @@ const generateFunnelFlow = ai.defineFlow(
         funnelType,
         funnelPrinciples,
         goal,
+        channels,
     });
     
     if (!output) {
@@ -144,6 +152,6 @@ const generateFunnelFlow = ai.defineFlow(
   }
 );
 
-export async function generateFunnel(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
     return generateFunnelFlow(input);
 }

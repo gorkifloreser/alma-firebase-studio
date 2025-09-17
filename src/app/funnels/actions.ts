@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Data } from '@measured/puck';
-import { generateFunnel as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
+import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 
 export type Funnel = {
     id: string;
@@ -14,6 +14,7 @@ export type Funnel = {
     created_at: string;
     updated_at: string;
     preset_id: number;
+    goal: string | null;
     strategy_brief: GenerateFunnelOutput | null;
     offerings: {
         id: string;
@@ -58,7 +59,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     return data as Funnel[];
 }
 
-export async function generateFunnelPreview(input: Omit<GenerateFunnelInput, 'channels'>): Promise<GenerateFunnelOutput> {
+export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
     try {
         const result = await genFunnelFlow(input);
         return result;
@@ -72,10 +73,11 @@ type CreateFunnelParams = {
     presetId: number;
     offeringId: string;
     funnelName: string;
+    goal: string;
     strategyBrief: GenerateFunnelOutput;
 }
 
-export async function createFunnel({ presetId, offeringId, funnelName, strategyBrief }: CreateFunnelParams): Promise<string> {
+export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief }: CreateFunnelParams): Promise<string> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -87,9 +89,10 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
             user_id: user.id,
             name: funnelName,
             preset_id: presetId,
+            goal: goal,
             strategy_brief: strategyBrief,
         })
-        .select('id')
+        .select('id, name, strategy_brief')
         .single();
     
     if (funnelError || !funnel) {
@@ -97,28 +100,31 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
         throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
     
-    const pageContent = funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.conceptualSteps.map(step => step.concept).join('\n\n');
-    
-    if (pageContent) {
+    const websiteStrategy = funnel.strategy_brief?.strategy.find(s => s.stageName.toLowerCase().includes('website') || funnel.strategy_brief?.channels?.includes('website'));
+
+    if (websiteStrategy) {
+        const pageContent = websiteStrategy.conceptualSteps.map(step => `## ${step.objective}\n\n${step.concept}`).join('\n\n');
+        
         const initialData: Data = {
             content: [
                 {
                     type: 'Hero',
                     props: {
-                        title: funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.keyMessage || funnelName,
-                        description: funnel.strategy_brief?.strategy.find(s => s.channel.toLowerCase() === 'website')?.objective || ''
+                        title: websiteStrategy.keyMessage || funnel.name,
+                        description: websiteStrategy.objective || ''
                     },
                 },
                 {
                     type: 'Text',
                     props: {
-                        text: pageContent
+                        text: pageContent,
+                        align: 'left',
                     }
                 }
             ],
             root: {
                 props: {
-                    title: funnelName
+                    title: funnel.name
                 }
             }
         };
@@ -133,8 +139,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, strategyB
 
         if (stepError) {
              console.error('Error creating initial landing page step:', stepError?.message);
-            // Not throwing an error here, as the main funnel is already created.
-            // We can handle this more gracefully if needed.
         }
     }
 

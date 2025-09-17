@@ -17,11 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset } from '../actions';
 import { Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Bot, User, Stars, Sparkles, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { GenerateFunnelOutput, ChannelStrategy, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
+import type { GenerateFunnelOutput, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getUserChannels } from '@/app/accounts/actions';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,7 +37,7 @@ interface CreateFunnelDialogProps {
     defaultOfferingId?: string | null;
 }
 
-type DialogStep = 'selection' | 'edit_blueprint' | 'assign_channels';
+type DialogStep = 'selection' | 'edit_blueprint';
 
 // Make all properties of the generated output editable
 type EditableStrategy = {
@@ -94,14 +94,14 @@ export function CreateFunnelDialog({
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '';
+    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
     const handleGenerate = async () => {
         if (!canGenerate) {
             toast({
                 variant: 'destructive',
                 title: 'Missing Information',
-                description: 'Please select a template, an offering, and define a goal.',
+                description: 'Please select a template, an offering, define a goal, and select at least one channel.',
             });
             return;
         };
@@ -117,6 +117,7 @@ export function CreateFunnelDialog({
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
                     goal,
+                    channels: selectedChannels,
                 });
                 
                 setGeneratedContent(result);
@@ -152,9 +153,10 @@ export function CreateFunnelDialog({
                     presetId: selectedPresetId,
                     offeringId: selectedOfferingId,
                     funnelName: funnelName,
+                    goal: goal,
                     strategyBrief: {
                         ...generatedContent,
-                        channels: selectedChannels, // Add assigned channels on save
+                        channels: selectedChannels, 
                     } as GenerateFunnelOutput,
                 });
                 onFunnelCreated();
@@ -199,10 +201,10 @@ export function CreateFunnelDialog({
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                      <Sparkles className="text-primary"/>
-                    Create a New Strategy (Step 1 of 3)
+                    Create a New Strategy
                 </DialogTitle>
                 <DialogDescription>
-                   Follow the steps to select a template, define your goal, and generate a tailored strategy blueprint.
+                   Select a template, define your goal, and choose your channels to generate a strategy.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
@@ -289,6 +291,26 @@ export function CreateFunnelDialog({
                         className="text-base py-6"
                     />
                 </div>
+                <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Select Target Channels</Label>
+                     <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
+                        {availableChannels.map(channel => (
+                            <div key={channel} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`channel-${channel}`}
+                                    checked={selectedChannels.includes(channel)}
+                                    onCheckedChange={() => handleChannelToggle(channel)}
+                                />
+                                <Label htmlFor={`channel-${channel}`} className="capitalize cursor-pointer">
+                                    {channel.replace(/_/g, ' ')}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                     {availableChannels.length === 0 && (
+                        <p className="text-muted-foreground text-center text-sm">You have no channels enabled. Go to the Accounts page to enable some.</p>
+                     )}
+                </div>
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -304,7 +326,7 @@ export function CreateFunnelDialog({
             <DialogHeader>
                  <DialogTitle className="flex items-center gap-2">
                      <Sparkles className="text-primary"/>
-                    Edit Blueprint (Step 2 of 3)
+                    Edit Blueprint
                 </DialogTitle>
                 <DialogDescription>
                     Review and refine the AI-generated strategic blueprint for your campaign.
@@ -378,55 +400,7 @@ export function CreateFunnelDialog({
                 <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>
                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
-                <Button onClick={() => setStep('assign_channels')} disabled={isSaving || !generatedContent}>
-                    Next: Assign Channels <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            </DialogFooter>
-        </>
-    );
-
-    const renderChannelStep = () => (
-         <>
-            <DialogHeader>
-                 <DialogTitle className="flex items-center gap-2">
-                     <Sparkles className="text-primary"/>
-                    Assign Channels (Step 3 of 3)
-                </DialogTitle>
-                <DialogDescription>
-                    Select which of your enabled channels you want to use for this strategy.
-                </DialogDescription>
-            </DialogHeader>
-             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Enabled Channels</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                            {availableChannels.map(channel => (
-                                <div key={channel} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={`channel-${channel}`}
-                                        checked={selectedChannels.includes(channel)}
-                                        onCheckedChange={() => handleChannelToggle(channel)}
-                                    />
-                                    <Label htmlFor={`channel-${channel}`} className="capitalize cursor-pointer">
-                                        {channel.replace(/_/g, ' ')}
-                                    </Label>
-                                </div>
-                            ))}
-                        </div>
-                         {availableChannels.length === 0 && (
-                            <p className="text-muted-foreground text-center">You have no channels enabled. Go to the Accounts page to enable some.</p>
-                         )}
-                    </CardContent>
-                </Card>
-             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('edit_blueprint')} disabled={isSaving}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Editor
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving || selectedChannels.length === 0}>
+                <Button onClick={handleSave} disabled={isSaving || !generatedContent}>
                     {isSaving ? 'Saving...' : 'Save Strategy'}
                 </Button>
             </DialogFooter>
@@ -437,7 +411,6 @@ export function CreateFunnelDialog({
         switch (step) {
             case 'selection': return renderSelectionStep();
             case 'edit_blueprint': return renderBlueprintStep();
-            case 'assign_channels': return renderChannelStep();
             default: return renderSelectionStep();
         }
     }
