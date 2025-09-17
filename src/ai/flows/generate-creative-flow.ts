@@ -13,7 +13,7 @@ import { googleAI } from '@genkit-ai/googleai';
 // Define schemas
 const GenerateCreativeInputSchema = z.object({
   offeringId: z.string(),
-  creativeType: z.enum(['image', 'carousel', 'video']),
+  creativeTypes: z.array(z.enum(['image', 'carousel', 'video'])),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -118,7 +118,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeType }) => {
+  async ({ offeringId, creativeTypes }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -132,31 +132,34 @@ export const generateCreativeFlow = ai.defineFlow(
     if (offeringError || !offering) throw new Error('Offering not found.');
 
     const promptPayload = { brandHeart, offering };
+    let output: GenerateCreativeOutput = {};
 
-    if (creativeType === 'image' || creativeType === 'carousel') {
+    if (creativeTypes.includes('image') || creativeTypes.includes('carousel')) {
         const { text } = await imagePrompt(promptPayload);
         const { media } = await ai.generate({
             model: googleAI.model('imagen-4.0-fast-generate-001'),
             prompt: text,
         });
-
-        let carouselSlidesText = '';
-        if (creativeType === 'carousel') {
-             const { output } = await carouselPrompt(promptPayload);
-             if (output) {
-                carouselSlidesText = output.slides.map((slide, i) => `Slide ${i+1}: ${slide.title}\n${slide.body}`).join('\n\n');
-             }
+        if (media?.url) {
+            output.imageUrl = media.url;
         }
-        
-        return { imageUrl: media?.url, carouselSlidesText };
+    }
+    
+    if (creativeTypes.includes('carousel')) {
+        const { output: carouselOutput } = await carouselPrompt(promptPayload);
+        if (carouselOutput) {
+            output.carouselSlidesText = carouselOutput.slides.map((slide, i) => `Slide ${i+1}: ${slide.title}\n${slide.body}`).join('\n\n');
+        }
     }
 
-    if (creativeType === 'video') {
-        const { output } = await videoScriptPrompt(promptPayload);
-        return { videoScript: output?.script };
+    if (creativeTypes.includes('video')) {
+        const { output: videoOutput } = await videoScriptPrompt(promptPayload);
+        if (videoOutput?.script) {
+            output.videoScript = videoOutput.script;
+        }
     }
 
-    return {};
+    return output;
   }
 );
 

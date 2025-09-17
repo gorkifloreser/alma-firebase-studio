@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 
@@ -40,6 +40,13 @@ type Profile = {
 
 type CreativeType = 'text' | 'image' | 'carousel' | 'video';
 
+const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
+    { id: 'text', label: 'Text Post', icon: Type },
+    { id: 'image', label: 'Single Image', icon: ImageIcon },
+    { id: 'carousel', label: 'Carousel', icon: Layers },
+    { id: 'video', label: 'Video', icon: Video },
+];
+
 export function ContentGenerationDialog({
   isOpen,
   onOpenChange,
@@ -49,7 +56,7 @@ export function ContentGenerationDialog({
   const [profile, setProfile] = useState<Profile>(null);
   const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
   const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
-  const [creativeType, setCreativeType] = useState<CreativeType>('text');
+  const [selectedCreativeTypes, setSelectedCreativeTypes] = useState<CreativeType[]>(['text']);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, startSaving] = useTransition();
   const { toast } = useToast();
@@ -66,36 +73,43 @@ export function ContentGenerationDialog({
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && offeringId) {
-      handleGenerate();
-    } else if (!isOpen) {
+    if (!isOpen) {
       // Reset state when dialog closes
       setEditableContent(null);
       setCreative(null);
       setIsLoading(false);
-      setCreativeType('text');
+      setSelectedCreativeTypes(['text']);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, offeringId, creativeType]);
+  }, [isOpen]);
 
   const handleGenerate = async () => {
-    if (!offeringId) return;
+    if (!offeringId || selectedCreativeTypes.length === 0) return;
 
     setIsLoading(true);
     setEditableContent(null);
     setCreative(null);
     
     try {
-      if (creativeType === 'text') {
-        const result = await generateContentForOffering({ offeringId });
-        setEditableContent(result.content);
-      } else {
-        const result = await generateCreativeForOffering({ offeringId, creativeType });
-        setCreative(result);
-        // Also generate text content to accompany the visual
-        const textResult = await generateContentForOffering({ offeringId });
-        setEditableContent(textResult.content);
-      }
+        let finalCreativeOutput: GenerateCreativeOutput = {};
+        let finalContentOutput: GenerateContentOutput['content'] | null = null;
+
+        // Text is a base for others, so we might generate it anyway
+        if (selectedCreativeTypes.includes('text') || selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('carousel')) {
+            const result = await generateContentForOffering({ offeringId });
+            finalContentOutput = result.content;
+        }
+
+        if (selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('carousel') || selectedCreativeTypes.includes('video')) {
+             const result = await generateCreativeForOffering({ 
+                offeringId, 
+                creativeTypes: selectedCreativeTypes.filter(t => t !== 'text')
+            });
+            finalCreativeOutput = result;
+        }
+      
+        setEditableContent(finalContentOutput);
+        setCreative(finalCreativeOutput);
+
       toast({
         title: 'Content Generated!',
         description: 'You can now edit and approve the drafts.',
@@ -106,7 +120,6 @@ export function ContentGenerationDialog({
         title: 'Generation Failed',
         description: error.message,
       });
-      onOpenChange(false);
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +134,7 @@ export function ContentGenerationDialog({
 
   const handleApprove = () => {
     if (!offeringId || !editableContent) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No text content to save.' });
       return;
     }
     
@@ -158,32 +171,33 @@ export function ContentGenerationDialog({
 
     if (!creative) return null;
 
-    if (creativeType === 'image' && creative.imageUrl) {
-       return <Image src={creative.imageUrl} alt="Generated creative" width={512} height={512} className="rounded-lg object-contain mx-auto" />
-    }
-
-    if (creativeType === 'carousel' && creative.imageUrl) {
-        return (
-            <div className="space-y-4">
-                <Image src={creative.imageUrl} alt="Generated carousel image" width={512} height={512} className="rounded-lg object-contain mx-auto" />
+    return (
+        <div className="space-y-4">
+            {selectedCreativeTypes.includes('image') && creative.imageUrl && (
+                 <Image src={creative.imageUrl} alt="Generated creative" width={512} height={512} className="rounded-lg object-contain mx-auto" />
+            )}
+             {selectedCreativeTypes.includes('carousel') && creative.carouselSlidesText && (
                 <Card>
                     <CardHeader><CardTitle className="text-base">Carousel Slide Suggestions</CardTitle></CardHeader>
                     <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{creative.carouselSlidesText}</CardContent>
                 </Card>
-            </div>
-        )
-    }
-    
-    if (creativeType === 'video' && creative.videoScript) {
-        return (
-             <Card>
-                <CardHeader><CardTitle className="text-base">Video Script</CardTitle></CardHeader>
-                <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{creative.videoScript}</CardContent>
-            </Card>
-        )
-    }
+            )}
+            {selectedCreativeTypes.includes('video') && creative.videoScript && (
+                <Card>
+                    <CardHeader><CardTitle className="text-base">Video Script</CardTitle></CardHeader>
+                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{creative.videoScript}</CardContent>
+                </Card>
+            )}
+        </div>
+    );
+  }
 
-    return null;
+  const handleCheckboxChange = (type: CreativeType) => {
+    setSelectedCreativeTypes(prev => 
+        prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
   }
 
   return (
@@ -201,25 +215,25 @@ export function ContentGenerationDialog({
 
         <div className="flex flex-col md:flex-row gap-6 py-4">
             <div className="md:w-1/3">
-                <h3 className="font-semibold mb-4">Creative Type</h3>
-                <RadioGroup value={creativeType} onValueChange={(v) => setCreativeType(v as CreativeType)} className="space-y-2" disabled={isLoading}>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="text" id="text" />
-                        <Label htmlFor="text" className="flex items-center gap-2"><Type/> Text Post</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="image" id="image" />
-                        <Label htmlFor="image" className="flex items-center gap-2"><ImageIcon/> Single Image</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="carousel" id="carousel" />
-                        <Label htmlFor="carousel" className="flex items-center gap-2"><Layers/> Carousel</Label>
-                    </div>
-                     <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="video" id="video" />
-                        <Label htmlFor="video" className="flex items-center gap-2"><Video/> Video</Label>
-                    </div>
-                </RadioGroup>
+                <h3 className="font-semibold mb-4">Creative Types</h3>
+                <div className="space-y-3">
+                    {creativeOptions.map(({ id, label, icon: Icon }) => (
+                         <div key={id} className="flex items-center space-x-2">
+                            <Checkbox 
+                                id={id}
+                                checked={selectedCreativeTypes.includes(id)}
+                                onCheckedChange={() => handleCheckboxChange(id)}
+                                disabled={isLoading}
+                            />
+                            <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
+                                <Icon /> {label}
+                            </Label>
+                        </div>
+                    ))}
+                </div>
+                <Button onClick={handleGenerate} className="w-full mt-6" disabled={isLoading || isSaving || selectedCreativeTypes.length === 0}>
+                    {isLoading ? 'Generating...' : 'Generate Creatives'}
+                </Button>
             </div>
             <div className="md:w-2/3 max-h-[70vh] overflow-y-auto pr-6 space-y-6">
                 <CreativePreview />
@@ -260,9 +274,9 @@ export function ContentGenerationDialog({
                     )}
                     </div>
                 ) : (
-                    !isLoading && creativeType === 'text' && (
+                    !isLoading && (
                         <div className="text-center text-muted-foreground py-10">
-                            Click "Generate" to start the AI.
+                            Select creative types and click "Generate" to start.
                         </div>
                     )
                 )}
@@ -272,9 +286,6 @@ export function ContentGenerationDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
-          <Button onClick={handleGenerate} variant="ghost" disabled={isLoading || isSaving}>
-            {isLoading ? 'Generating...' : 'Regenerate'}
           </Button>
           <Button onClick={handleApprove} disabled={isLoading || isSaving || !editableContent}>
             {isSaving ? 'Approving...' : 'Approve & Save'}
