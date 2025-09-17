@@ -85,12 +85,12 @@ export async function generateFunnelPreview(input: GenerateFunnelInput): Promise
 type CreateFunnelParams = {
     presetId: number;
     offeringId: string;
-    funnelName: string;
+    name: string;
     goal: string;
     strategyBrief: GenerateFunnelOutput;
 }
 
-export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief }: CreateFunnelParams): Promise<Funnel> {
+export async function createFunnel({ presetId, offeringId, name, goal, strategyBrief }: CreateFunnelParams): Promise<Funnel> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -100,7 +100,7 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: funnelName,
+            name: name,
             preset_id: presetId,
             goal: goal,
             strategy_brief: strategyBrief,

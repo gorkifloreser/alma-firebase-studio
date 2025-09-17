@@ -58,7 +58,7 @@ export function CreateFunnelDialog({
     const [step, setStep] = useState<'selection' | 'edit_blueprint'>('selection');
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
-    const [funnelName, setFunnelName] = useState('');
+    const [name, setName] = useState('');
     const [goal, setGoal] = useState('');
     const [availableChannels, setAvailableChannels] = useState<string[]>([]);
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
@@ -77,7 +77,7 @@ export function CreateFunnelDialog({
                 setStep('edit_blueprint');
                 setSelectedOfferingId(funnelToEdit.offering_id);
                 setSelectedPresetId(funnelToEdit.preset_id);
-                setFunnelName(funnelToEdit.name);
+                setName(funnelToEdit.name);
                 setGoal(funnelToEdit.goal || '');
                 if (funnelToEdit.strategy_brief) {
                     setGeneratedContent(funnelToEdit.strategy_brief);
@@ -88,7 +88,7 @@ export function CreateFunnelDialog({
                 setSelectedOfferingId(null);
                 setSelectedPresetId(null);
                 setGeneratedContent(null);
-                setFunnelName('');
+                setName('');
                 setGoal('');
             }
             
@@ -130,7 +130,7 @@ export function CreateFunnelDialog({
                 
                 setGeneratedContent(result);
                 if (!funnelToEdit) {
-                    setFunnelName(`${offering.title.primary}: ${preset.title}`);
+                    setName(`${offering.title.primary}: ${preset.title}`);
                 }
                 setStep('edit_blueprint');
                 toast({
@@ -148,19 +148,19 @@ export function CreateFunnelDialog({
     };
 
     const handleSave = async () => {
-        if (!selectedPresetId || !selectedOfferingId || !generatedContent || !funnelName.trim()) {
+        if (!selectedPresetId || !selectedOfferingId || !generatedContent || !name.trim()) {
              toast({ variant: 'destructive', title: 'Missing Information', description: 'Please ensure the strategy has a title and content before saving.'});
             return;
         }
 
         startSaving(async () => {
              try {
-                const payload: any = { // Using any to avoid TS errors with partial data
+                const payload = {
                     presetId: selectedPresetId,
                     offeringId: selectedOfferingId,
-                    name: funnelName,
-                    goal: goal,
-                    strategy_brief: { ...generatedContent, channels: selectedChannels },
+                    name,
+                    goal,
+                    strategyBrief: { ...generatedContent, channels: selectedChannels },
                 };
 
                 if (funnelToEdit) {
@@ -225,7 +225,7 @@ export function CreateFunnelDialog({
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Edit Blueprint</DialogTitle><DialogDescription>Review and refine the AI-generated strategic blueprint for your campaign.</DialogDescription></DialogHeader>
             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 {!generatedContent ? (<div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>) : (
-                    <><div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={funnelName} onChange={(e) => setFunnelName(e.target.value)} className="text-lg"/></div>
+                    <><div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={name} onChange={(e) => setName(e.target.value)} className="text-lg"/></div>
                     <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (<Card key={sIdx}><CardHeader><Input value={stage.stageName} onChange={(e) => handleBlueprintChange(sIdx, 'stageName', e.target.value)} className="text-xl font-bold border-0 shadow-none focus-visible:ring-1 p-0 h-auto"/></CardHeader><CardContent className="space-y-4"><div className="space-y-1"><Label>Objective</Label><Textarea value={stage.objective} onChange={(e) => handleBlueprintChange(sIdx, 'objective', e.target.value)} /></div><div className="space-y-1"><Label>Key Message</Label><Textarea value={stage.keyMessage} onChange={(e) => handleBlueprintChange(sIdx, 'keyMessage', e.target.value)} /></div><div><Label>Conceptual Steps</Label><div className="space-y-2 mt-1">{stage.conceptualSteps.map((step, stepIdx) => (<div key={step.step} className="p-2 border rounded-md space-y-1"><Input value={step.objective} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'objective', e.target.value)} className="font-semibold text-sm"/><Textarea value={step.concept} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'concept', e.target.value)} rows={2} className="text-sm"/></div>))}</div></div></CardContent></Card>))}</div></>
                 )}
             </div>
