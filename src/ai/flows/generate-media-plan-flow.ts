@@ -19,7 +19,7 @@ const PlanItemSchema = z.object({
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
   creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
-  conceptualStep: z.any().optional().describe("The original conceptual step from the strategy blueprint that this item is based on."),
+  conceptualStep: z.any().optional().describe("The original conceptual step from the blueprint that this item is based on."),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
@@ -93,7 +93,7 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 4.  **copy**: Write compelling, direct-response ad copy for the post. It must align with the brand's tone of voice and the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
-7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. This is for context.
+7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' inside this object**.
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -191,11 +191,28 @@ const generateMediaPlanFlow = ai.defineFlow(
     if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
     if (!strategy.offerings) throw new Error('The selected strategy is not linked to a valid offering.');
     
-    const channels = (strategy.strategy_brief as unknown as GenerateFunnelOutput)?.channels || [];
+    const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
+    const channels = strategyBrief?.channels || [];
 
     if (channels.length === 0) {
       throw new Error('The selected strategy has no channels defined.');
     }
+
+    // Add stageName to each conceptualStep for easier grouping later
+    const strategyWithStageNames = {
+        ...strategy,
+        strategy_brief: {
+            ...strategyBrief,
+            strategy: strategyBrief.strategy.map(stage => ({
+                ...stage,
+                conceptualSteps: stage.conceptualSteps.map(step => ({
+                    ...step,
+                    stageName: stage.stageName
+                }))
+            }))
+        }
+    };
+
 
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
@@ -207,7 +224,7 @@ const generateMediaPlanFlow = ai.defineFlow(
         return generateChannelPlanPrompt({
             primaryLanguage,
             brandHeart,
-            strategy,
+            strategy: strategyWithStageNames,
             channel,
             validFormats,
         }).then(result => result.output?.plan || []) // Return the plan array or an empty array on failure
