@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition } from 'react';
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { EditContentDialog } from './_components/EditContentDialog';
@@ -94,12 +95,23 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
     } : undefined;
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="relative mb-1" onClick={onClick}>
+        <div ref={setNodeRef} style={style} {...attributes} className="relative mb-1 group">
             <Badge variant="secondary" className="w-full justify-start text-left whitespace-normal h-auto cursor-grab">
-                 <div className="flex items-center gap-1">
+                 <div {...listeners} className="flex items-center gap-1 flex-1">
                     <ChannelIcon channel={item.source_plan?.channel} />
                     <span className="truncate">{item.content_body?.primary || 'Untitled'}</span>
                 </div>
+                 <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent drag from starting
+                        onClick();
+                    }}
+                 >
+                    <Pencil className="h-3 w-3"/>
+                 </Button>
             </Badge>
         </div>
     )
