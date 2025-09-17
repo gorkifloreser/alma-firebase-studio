@@ -16,6 +16,9 @@ import { uploadBrandDocument, getBrandDocuments, deleteBrandDocument, BrandDocum
 import { Upload, FileText, Trash2, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export default function KnowledgeBasePage() {
     const [documents, setDocuments] = useState<BrandDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +59,18 @@ export default function KnowledgeBasePage() {
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] || null;
+        if (file && file.size > MAX_FILE_SIZE_BYTES) {
+            toast({
+                variant: 'destructive',
+                title: 'File too large',
+                description: `The maximum file size is ${MAX_FILE_SIZE_MB}MB.`,
+            });
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+            setSelectedFile(null);
+            return;
+        }
         setSelectedFile(file);
     };
 
@@ -131,7 +146,7 @@ export default function KnowledgeBasePage() {
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                     </Button>
                                 </div>
-                                 <p className="text-xs text-muted-foreground mt-1">Max 5MB. Supported formats: PDF, DOCX, TXT.</p>
+                                 <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported formats: PDF, DOCX, TXT.</p>
                             </div>
                              <div className="space-y-3">
                                 <h4 className="font-medium">Uploaded Documents</h4>
