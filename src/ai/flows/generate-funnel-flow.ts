@@ -99,6 +99,8 @@ const funnelModelExplanations = {
     'Direct Offer': "Focus on Scarcity and Social Proof. Drive immediate sales for a product or event. Use testimonials, customer counts, and time-limited offers to increase motivation.",
     'Nurture & Convert': "Focus on Liking and Authority. Build trust over a series of value-driven messages. Best for high-ticket services. The tone should be helpful and expert, not salesy.",
     'Onboarding & Habit': "Focus on the Hook Model (Trigger, Action, Variable Reward, Investment). Guide new users to their 'aha!' moment and encourage retention. The content should be educational and show the product in action.",
+    'Sustainable Funnel': "Focus on Fair Value Exchange. The relationship is balanced and does no harm. Use clear & honest marketing, a solid product, and functional support. Best for standard e-commerce and reliable services.",
+    'Regenerative Funnel': "Focus on Net-Positive Value Creation. The relationship gives more than it takes. Use education, community building, and mission-driven impact. Best for mission-driven brands and communities.",
 };
 
 
