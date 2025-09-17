@@ -86,7 +86,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 
 Your job is to generate a list of concrete content packages for the **'{{channel}}' channel ONLY**.
 
-For **EACH conceptual step** in the blueprint, you must generate one complete content package. Each package must contain:
+For **EACH conceptual step** in the blueprint, you must generate exactly ONE complete content package. Each package must contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
