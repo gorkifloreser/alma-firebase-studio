@@ -30,10 +30,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Separator } from '@/components/ui/separator';
 import { CustomizePresetDialog } from './_components/CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 export default function FunnelsPage() {
     const [funnels, setFunnels] = useState<Funnel[]>([]);
@@ -158,7 +161,7 @@ export default function FunnelsPage() {
                     <span className="font-semibold">Best for:</span> {preset.best_for}
                 </p>
             </CardContent>
-            <CardFooter className="flex justify-between items-center">
+            <CardFooter className="flex justify-end items-center gap-2">
                  {isCustom ? (
                     <>
                         <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset, 'edit')}>
@@ -219,42 +222,43 @@ export default function FunnelsPage() {
                     </Button>
                 </header>
                 
-                <div className="space-y-8">
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-1">Funnel Templates</h2>
-                        <p className="text-muted-foreground mb-4">
-                            Clone a science-based template to create your own custom strategies.
-                        </p>
-                         {isLoading ? (
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Skeleton className="h-48 w-full" />
-                                <Skeleton className="h-48 w-full" />
-                            </div>
-                        ) : (
-                            <>
-                                {customPresets.length > 0 && (
-                                    <div className="mb-8">
-                                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Templates</h3>
+                <Tabs defaultValue="templates" className="w-full">
+                    <div className="flex justify-center">
+                        <TabsList>
+                            <TabsTrigger value="templates">Funnel Templates</TabsTrigger>
+                            <TabsTrigger value="my-funnels">My Funnels</TabsTrigger>
+                        </TabsList>
+                    </div>
+                    <TabsContent value="templates" className="mt-6">
+                        <div className="space-y-8">
+                            {isLoading ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <Skeleton className="h-48 w-full" />
+                                    <Skeleton className="h-48 w-full" />
+                                    <Skeleton className="h-48 w-full" />
+                                </div>
+                            ) : (
+                                <>
+                                    {customPresets.length > 0 && (
+                                        <div className="mb-8">
+                                            <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Templates</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {customPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={true} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Templates</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {customPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={true} />)}
+                                            {globalPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={false} />)}
                                         </div>
                                     </div>
-                                )}
-                                 <div>
-                                    <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Templates</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {globalPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={false} />)}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-4">Your Generated Funnels</h2>
-                        {isLoading ? (
+                                </>
+                            )}
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="my-funnels" className="mt-6">
+                         {isLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[...Array(3)].map((_, i) => (
                                     <Card key={i}>
@@ -285,7 +289,7 @@ export default function FunnelsPage() {
                                         </CardHeader>
                                         <CardContent className="flex-grow">
                                             <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnels.find(f=> f.id === funnel.id)?.funnel_type || 'General'}</span>
+                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.type === funnel.funnel_type)?.title || funnel.funnel_type || 'General'}</span>
                                             </p>
                                         </CardContent>
                                         <CardFooter className="mt-auto pt-4 flex justify-end">
@@ -346,8 +350,8 @@ export default function FunnelsPage() {
                                 </Button>
                             </div>
                         )}
-                    </div>
-                </div>
+                    </TabsContent>
+                </Tabs>
             </div>
             <CreateFunnelDialog
                 isOpen={isCreateDialogOpen}
@@ -367,3 +371,5 @@ export default function FunnelsPage() {
         </DashboardLayout>
     );
 }
+
+    
