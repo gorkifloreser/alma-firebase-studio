@@ -93,7 +93,7 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 4.  **copy**: Write compelling, direct-response ad copy for the post. It must align with the brand's tone of voice and the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
-7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' inside this object**.
+7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -300,3 +300,5 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
+
+    
