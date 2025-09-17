@@ -48,6 +48,7 @@ export function CreateFunnelDialog({
     const [step, setStep] = useState<DialogStep>('selection');
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
+    const [funnelName, setFunnelName] = useState('');
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
     
     const [isGenerating, startGenerating] = useTransition();
@@ -61,6 +62,7 @@ export function CreateFunnelDialog({
             setSelectedOfferingId(defaultOfferingId || null);
             setSelectedPresetId(null);
             setGeneratedContent(null);
+            setFunnelName('');
         }
     }, [isOpen, defaultOfferingId]);
 
@@ -72,7 +74,8 @@ export function CreateFunnelDialog({
         startGenerating(async () => {
             try {
                 const preset = funnelPresets.find(p => p.id === selectedPresetId);
-                if (!preset) throw new Error("Selected preset not found.");
+                const offering = offerings.find(o => o.id === selectedOfferingId);
+                if (!preset || !offering) throw new Error("Selected preset or offering not found.");
 
                 const result = await generateFunnelPreview({
                     offeringId: selectedOfferingId,
@@ -81,6 +84,7 @@ export function CreateFunnelDialog({
                 });
                 
                 setGeneratedContent(result);
+                setFunnelName(`${offering.title.primary}: ${preset.title}`);
                 setStep('preview');
                 toast({
                     title: 'Preview Generated!',
@@ -97,11 +101,24 @@ export function CreateFunnelDialog({
     };
 
     const handleSave = async () => {
-        if (!selectedPresetId || !selectedOfferingId || !generatedContent) return;
+        if (!selectedPresetId || !selectedOfferingId || !generatedContent || !funnelName.trim()) {
+             toast({
+                variant: 'destructive',
+                title: 'Missing Information',
+                description: 'Please ensure the funnel has a title and content before saving.',
+            });
+            return;
+        }
+
 
         startSaving(async () => {
              try {
-                await createFunnel(selectedPresetId, selectedOfferingId, generatedContent);
+                await createFunnel({
+                    presetId: selectedPresetId,
+                    offeringId: selectedOfferingId,
+                    funnelName: funnelName,
+                    funnelContent: generatedContent,
+                });
                 onFunnelCreated();
             } catch (error: any) {
                 toast({
@@ -225,119 +242,131 @@ export function CreateFunnelDialog({
             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 {!generatedContent ? (
                     <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-32 w-full" />
                         <Skeleton className="h-12 w-full" />
                     </div>
                 ) : (
-                    <Accordion type="multiple" defaultValue={['lp-primary', 'fu-primary']} className="w-full space-y-4">
-                        {/* Primary Language Section */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Primary Language Content</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <AccordionItem value="lp-primary">
-                                    <AccordionTrigger>Landing Page</AccordionTrigger>
-                                    <AccordionContent className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label>Title</Label>
-                                            <Input
-                                                value={generatedContent.primary.landingPage.title}
-                                                onChange={(e) => handleContentChange('landingPage', 'primary', null, 'title', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Content</Label>
-                                            <Textarea
-                                                value={generatedContent.primary.landingPage.content}
-                                                onChange={(e) => handleContentChange('landingPage', 'primary', null, 'content', e.target.value)}
-                                                rows={6}
-                                            />
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                                <AccordionItem value="fu-primary">
-                                     <AccordionTrigger>Follow-Up Sequence</AccordionTrigger>
-                                     <AccordionContent className="space-y-6">
-                                        {generatedContent.primary.followUpSequence.map((step, index) => (
-                                            <div key={index} className="space-y-4 p-4 border rounded-md">
-                                                <div className="space-y-2">
-                                                    <Label>Step {index + 1} Title</Label>
-                                                    <Input 
-                                                        value={step.title}
-                                                        onChange={(e) => handleContentChange('followUpSequence', 'primary', index, 'title', e.target.value)}
-                                                    />
-                                                </div>
-                                                 <div className="space-y-2">
-                                                    <Label>Step {index + 1} Content</Label>
-                                                    <Textarea 
-                                                        value={step.content}
-                                                        onChange={(e) => handleContentChange('followUpSequence', 'primary', index, 'content', e.target.value)}
-                                                        rows={5}
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
-                                     </AccordionContent>
-                                </AccordionItem>
-                            </CardContent>
-                        </Card>
-
-                        {/* Secondary Language Section */}
-                        {generatedContent.secondary && (
-                             <Card>
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="funnelName" className="text-lg font-semibold">Funnel Title</Label>
+                            <Input
+                                id="funnelName"
+                                value={funnelName}
+                                onChange={(e) => setFunnelName(e.target.value)}
+                                className="text-lg"
+                            />
+                        </div>
+                        <Accordion type="multiple" defaultValue={['lp-primary', 'fu-primary']} className="w-full space-y-4">
+                            {/* Primary Language Section */}
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle>Secondary Language Content</CardTitle>
+                                    <CardTitle>Primary Language Content</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <AccordionItem value="lp-secondary">
+                                    <AccordionItem value="lp-primary">
                                         <AccordionTrigger>Landing Page</AccordionTrigger>
                                         <AccordionContent className="space-y-4">
                                             <div className="space-y-2">
                                                 <Label>Title</Label>
                                                 <Input
-                                                    value={generatedContent.secondary.landingPage.title}
-                                                    onChange={(e) => handleContentChange('landingPage', 'secondary', null, 'title', e.target.value)}
+                                                    value={generatedContent.primary.landingPage.title}
+                                                    onChange={(e) => handleContentChange('landingPage', 'primary', null, 'title', e.target.value)}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Content</Label>
                                                 <Textarea
-                                                    value={generatedContent.secondary.landingPage.content}
-                                                    onChange={(e) => handleContentChange('landingPage', 'secondary', null, 'content', e.target.value)}
+                                                    value={generatedContent.primary.landingPage.content}
+                                                    onChange={(e) => handleContentChange('landingPage', 'primary', null, 'content', e.target.value)}
                                                     rows={6}
                                                 />
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
-                                    <AccordionItem value="fu-secondary">
+                                    <AccordionItem value="fu-primary">
                                         <AccordionTrigger>Follow-Up Sequence</AccordionTrigger>
                                         <AccordionContent className="space-y-6">
-                                            {generatedContent.secondary.followUpSequence.map((step, index) => (
-                                            <div key={index} className="space-y-4 p-4 border rounded-md">
-                                                 <div className="space-y-2">
-                                                    <Label>Step {index + 1} Title</Label>
-                                                    <Input
-                                                        value={step.title}
-                                                        onChange={(e) => handleContentChange('followUpSequence', 'secondary', index, 'title', e.target.value)}
-                                                    />
+                                            {generatedContent.primary.followUpSequence.map((step, index) => (
+                                                <div key={index} className="space-y-4 p-4 border rounded-md">
+                                                    <div className="space-y-2">
+                                                        <Label>Step {index + 1} Title</Label>
+                                                        <Input 
+                                                            value={step.title}
+                                                            onChange={(e) => handleContentChange('followUpSequence', 'primary', index, 'title', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Step {index + 1} Content</Label>
+                                                        <Textarea 
+                                                            value={step.content}
+                                                            onChange={(e) => handleContentChange('followUpSequence', 'primary', index, 'content', e.target.value)}
+                                                            rows={5}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                 <div className="space-y-2">
-                                                    <Label>Step {index + 1} Content</Label>
-                                                    <Textarea
-                                                        value={step.content}
-                                                        onChange={(e) => handleContentChange('followUpSequence', 'secondary', index, 'content', e.target.value)}
-                                                        rows={5}
-                                                    />
-                                                </div>
-                                            </div>
                                             ))}
                                         </AccordionContent>
                                     </AccordionItem>
                                 </CardContent>
                             </Card>
-                        )}
-                    </Accordion>
+
+                            {/* Secondary Language Section */}
+                            {generatedContent.secondary && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Secondary Language Content</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <AccordionItem value="lp-secondary">
+                                            <AccordionTrigger>Landing Page</AccordionTrigger>
+                                            <AccordionContent className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label>Title</Label>
+                                                    <Input
+                                                        value={generatedContent.secondary.landingPage.title}
+                                                        onChange={(e) => handleContentChange('landingPage', 'secondary', null, 'title', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Content</Label>
+                                                    <Textarea
+                                                        value={generatedContent.secondary.landingPage.content}
+                                                        onChange={(e) => handleContentChange('landingPage', 'secondary', null, 'content', e.target.value)}
+                                                        rows={6}
+                                                    />
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="fu-secondary">
+                                            <AccordionTrigger>Follow-Up Sequence</AccordionTrigger>
+                                            <AccordionContent className="space-y-6">
+                                                {generatedContent.secondary.followUpSequence.map((step, index) => (
+                                                <div key={index} className="space-y-4 p-4 border rounded-md">
+                                                    <div className="space-y-2">
+                                                        <Label>Step {index + 1} Title</Label>
+                                                        <Input
+                                                            value={step.title}
+                                                            onChange={(e) => handleContentChange('followUpSequence', 'secondary', index, 'title', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Step {index + 1} Content</Label>
+                                                        <Textarea
+                                                            value={step.content}
+                                                            onChange={(e) => handleContentChange('followUpSequence', 'secondary', index, 'content', e.target.value)}
+                                                            rows={5}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                ))}
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </Accordion>
+                    </>
                 )}
             </div>
             <DialogFooter>
@@ -371,9 +400,5 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
-
-    
-
-    
 
     

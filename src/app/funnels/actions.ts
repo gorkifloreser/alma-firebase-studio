@@ -67,45 +67,32 @@ export async function generateFunnelPreview(input: GenerateFunnelInput): Promise
     }
 }
 
-export async function createFunnel(presetId: number, offeringId: string, funnelContent: GenerateFunnelOutput): Promise<string> {
+type CreateFunnelParams = {
+    presetId: number;
+    offeringId: string;
+    funnelName: string;
+    funnelContent: GenerateFunnelOutput;
+}
+
+export async function createFunnel({ presetId, offeringId, funnelName, funnelContent }: CreateFunnelParams): Promise<string> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    
-    const { data: preset, error: presetError } = await supabase
-        .from('funnel_presets')
-        .select('title')
-        .eq('id', presetId)
-        .single();
-
-    if (presetError || !preset) {
-        throw new Error(`Could not find a valid preset for the funnel.`);
-    }
-
-    const { data: offering, error: offeringError } = await supabase
-        .from('offerings')
-        .select('title')
-        .eq('id', offeringId)
-        .single();
-    
-    if (offeringError || !offering) {
-        throw new Error('Could not fetch the selected offering.');
-    }
     
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `${offering.title?.primary || 'Untitled'}: ${preset.title}`,
+            name: funnelName,
             funnel_type: presetId,
         })
         .select('id')
         .single();
     
     if (funnelError || !funnel) {
-        console.error('Error creating funnel record:', funnelError);
-        throw new Error(`Could not create funnel record in the database. DB error: ${funnelError.message}`);
+        console.error('Error creating funnel record:', funnelError?.message);
+        throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
     
     const funnelId = funnel.id;
@@ -362,9 +349,5 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
 }
-
-    
-
-    
 
     
