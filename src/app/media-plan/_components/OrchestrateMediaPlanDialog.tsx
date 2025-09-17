@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateMediaPlan as generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
+import { generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
 import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
 import { Funnel } from '@/app/funnels/actions';
 import { Bot, Sparkles } from 'lucide-react';
@@ -116,10 +116,11 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
 
     const groupedByChannel = useMemo(() => {
         return planItems.reduce((acc, item) => {
-            if (!acc[item.channel]) {
-                acc[item.channel] = [];
+            const channelKey = item.channel || 'General';
+            if (!acc[channelKey]) {
+                acc[channelKey] = [];
             }
-            acc[item.channel].push(item);
+            acc[channelKey].push(item);
             return acc;
         }, {} as Record<string, PlanItem[]>);
     }, [planItems]);
@@ -165,7 +166,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                     </div>
                 </div>
 
-                <div className="max-h-[60vh] flex flex-col">
+                <div className="max-h-[60vh] flex flex-col overflow-hidden">
                     {isGenerating ? (
                         <div className="space-y-4 p-4">
                             <Skeleton className="h-24 w-full" />
@@ -173,7 +174,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                             <Skeleton className="h-24 w-full" />
                         </div>
                     ) : planItems.length > 0 ? (
-                        <Tabs defaultValue={channels[0]} className="w-full flex-1 flex flex-col">
+                        <Tabs defaultValue={channels[0]} className="w-full flex-1 flex flex-col min-h-0">
                             <div className="flex justify-center">
                                 <TabsList>
                                     {channels.map(channel => (
@@ -181,21 +182,21 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                     ))}
                                 </TabsList>
                             </div>
-                            <div className="flex-1 overflow-y-auto mt-4 pr-6">
+                            <div className="flex-1 overflow-y-auto mt-4 pr-4">
                                 {channels.map(channel => (
-                                    <TabsContent key={channel} value={channel}>
+                                    <TabsContent key={channel} value={channel} className="mt-0">
                                         <div className="space-y-4">
                                             {groupedByChannel[channel].map((item, index) => (
                                                 <div key={item.id} className="p-4 border rounded-lg space-y-2">
-                                                    <Label htmlFor={`format-${index}`} className="capitalize">{channel.replace(/_/g, ' ')} Idea</Label>
+                                                    <Label htmlFor={`format-${item.id}`} className="capitalize">{channel.replace(/_/g, ' ')} Idea</Label>
                                                     <Input
-                                                        id={`format-${index}`}
+                                                        id={`format-${item.id}`}
                                                         value={item.format}
                                                         onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
                                                         className="font-semibold"
                                                     />
                                                     <Textarea
-                                                        id={`description-${index}`}
+                                                        id={`description-${item.id}`}
                                                         value={item.description}
                                                         onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
                                                         className="text-sm text-muted-foreground"
@@ -215,7 +216,8 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                     )}
                 </div>
 
-                <DialogFooter className="mt-4">
+
+                <DialogFooter className="mt-4 pt-4 border-t">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleSavePlan} disabled={isSaving || isGenerating || planItems.length === 0}>
                         {isSaving ? 'Saving...' : 'Save Plan'}
