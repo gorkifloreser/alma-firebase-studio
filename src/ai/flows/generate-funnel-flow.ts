@@ -48,9 +48,9 @@ const prompt = ai.definePrompt({
       })
   },
   output: { schema: GenerateFunnelOutputSchema },
-  prompt: `You are a world-class marketing strategist who specializes in creating authentic, science-based marketing funnels. You do not use pressure tactics. Instead, you build connection and offer value.
+  prompt: `You are a world-class marketing strategist who specializes in creating authentic, science-based marketing funnels. You do not use pressure tactics. Instead, you build connection and offer value based on a deep understanding of customer psychology.
 
-Your task is to create a complete marketing funnel for a specific offering, based on the provided Brand Heart and a specific funnel model.
+Your task is to create a complete marketing funnel for a specific offering, based on the provided Brand Heart and a specific funnel model. The funnel consists of a Landing Page and a 3-step follow-up sequence.
 
 **Funnel Model to Use: {{funnelType}}**
 This model's core principles are: {{funnelPrinciples}}
@@ -76,19 +76,47 @@ This model's core principles are: {{funnelPrinciples}}
 
 **Your Task:**
 
-Generate the funnel content for the **{{primaryLanguage}}** language first. Apply the principles of the **{{funnelType}}** model.
+Generate the funnel content for the **{{primaryLanguage}}** language first.
 
-1.  **Landing Page**: Create the copy for a high-converting, soulful landing page.
-    -   **Title**: An engaging headline that captures the essence of the offering and aligns with the funnel model.
-    -   **Content**: Body copy that explains the transformation or value the user will receive. It should align with the brand's tone of voice and the funnel's psychological principles. For example, if using 'Direct Offer', incorporate social proof and scarcity. If 'Lead Magnet', focus on the value of the free item.
+---
 
-2.  **Follow-Up Sequence**: Create a 3-step follow-up sequence. This could be for email or WhatsApp. Each step should build on the last, nurture the relationship, and gently guide the user towards the offering, according to the chosen funnel model.
-    -   **Step 1**: A welcoming message that delivers initial value (or the lead magnet).
-    -   **Step 2**: A message that addresses a pain point or desire and shows how the offering can help, perhaps using testimonials (social proof) or expert positioning (authority).
-    -   **Step 3**: A final, clear invitation to purchase or engage, highlighting the core benefit. For a 'Direct Offer', this might be a last chance reminder. For a 'Nurture' funnel, it might be a soft invitation to a discovery call.
+### **Part 1: Landing Page (Awareness & Evaluation Stage)**
+
+The landing page must bridge the gap from awareness to evaluation.
+1.  **Headline (Awareness)**: Start with a powerful headline that focuses on the user's **problem** or "Job to be Done". Use a question or a relatable statement that shows empathy for their struggle.
+2.  **Body Content (Evaluation)**:
+    *   Transition from the problem to your **solution**. Explain how the offering solves the problem.
+    *   Incorporate **Social Proof** (e.g., "Join 1,000+ happy customers") and **Authority** (e.g., "Built by industry experts").
+    *   Clearly articulate the benefits and the "after" state. Show, don't just tell.
+    *   The content should be persuasive but authentic, aligning with the brand's tone of voice.
+    *   The goal is to build trust and make your solution the clear, logical, and emotionally resonant choice.
+
+Create the content for the landing page.
+
+---
+
+### **Part 2: 3-Step Follow-Up Sequence (Evaluation & Action Stage)**
+
+This sequence should nurture the lead, build more trust, and lead to a frictionless final action.
+
+1.  **Follow-Up 1 (Welcome & Value)**:
+    *   **Title**: A welcoming subject line.
+    *   **Content**: Immediately provide value. If there's a lead magnet, deliver it. Reassure them they made a good decision. Reinforce the brand's mission.
+
+2.  **Follow-Up 2 (Build Trust & Address Pain Points)**:
+    *   **Title**: A subject line that piques curiosity or addresses a specific pain point.
+    *   **Content**: Go deeper into the problem your offering solves. Use storytelling. Introduce a customer testimonial (social proof) or a surprising statistic (authority) to build credibility. Show you understand their challenges.
+
+3.  **Follow-Up 3 (Clear Call to Action)**:
+    *   **Title**: A clear, direct subject line.
+    *   **Content**: Make a clear, simple, and direct invitation to take the final step (e.g., purchase, sign up for a trial, book a demo). Remove ambiguity. Reiterate the single biggest benefit they will get by taking action now. Keep it short and focused.
+
+---
 
 {{#if secondaryLanguage}}
-Now, translate all the content you just created (Landing Page and Follow-Up Sequence) into **{{secondaryLanguage}}**. Ensure the translation is natural, culturally relevant, and maintains the original tone.
+### **Part 3: Translation**
+
+Now, translate all the content you just created (Landing Page and the 3-step Follow-Up Sequence) into **{{secondaryLanguage}}**. Ensure the translation is natural, culturally relevant, and maintains the original tone and strategic intent.
 {{/if}}
 
 Return the entire result in the specified JSON format.`,
