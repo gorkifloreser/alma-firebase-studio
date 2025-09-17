@@ -328,22 +328,26 @@ export default function CalendarPage() {
                                 </div>
                              </div>
                         </header>
-                         <div className="grid grid-cols-7 flex-1">
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
-                            ))}
-                            {calendarDays.map(day => {
-                                const dayContent = scheduled.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
-                                return (
-                                    <CalendarDay 
-                                        key={day.toString()} 
-                                        day={day}
-                                        content={dayContent}
-                                        isCurrentMonth={isSameMonth(day, currentDate)}
-                                        onEventClick={handleEventClick}
-                                    />
-                                );
-                            })}
+                         <div className="flex-1 flex flex-col border-b">
+                            <div className="grid grid-cols-7">
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                    <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
+                                ))}
+                            </div>
+                             <div className="grid grid-cols-7 flex-1">
+                                {calendarDays.map(day => {
+                                    const dayContent = scheduled.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
+                                    return (
+                                        <CalendarDay 
+                                            key={day.toString()} 
+                                            day={day}
+                                            content={dayContent}
+                                            isCurrentMonth={isSameMonth(day, currentDate)}
+                                            onEventClick={handleEventClick}
+                                        />
+                                    );
+                                })}
+                            </div>
                         </div>
                     </main>
                 </div>
