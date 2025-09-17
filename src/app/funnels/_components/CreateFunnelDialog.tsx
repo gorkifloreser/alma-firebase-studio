@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createFunnel, generateFunnel as generateFunnelPreview, FunnelPreset } from '../actions';
+import { createFunnel, generateFunnelPreview, FunnelPreset } from '../actions';
 import { Offering } from '@/app/offerings/actions';
 import { Bot, User, Stars, Sparkles, MessageSquare, Mail, Instagram, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
