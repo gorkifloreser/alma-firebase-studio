@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
-export default function FunnelsPage() {
+export default function StrategiesPage() {
     const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [funnelPresets, setFunnelPresets] = useState<FunnelPreset[]>([]);
     const [offerings, setOfferings] = useState<Offering[]>([]);
@@ -212,22 +212,22 @@ export default function FunnelsPage() {
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">Magic Funnels</h1>
+                        <h1 className="text-3xl font-bold">Strategies</h1>
                         <p className="text-muted-foreground">
                             Create, manage, and clone strategic marketing funnels.
                         </p>
                     </div>
                     <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
-                        Create Funnel
+                        Create Strategy
                     </Button>
                 </header>
                 
                 <Tabs defaultValue="my-funnels" className="w-full">
                     <div className="flex justify-center">
                         <TabsList>
-                            <TabsTrigger value="templates">Funnel Templates</TabsTrigger>
-                            <TabsTrigger value="my-funnels">My Funnels</TabsTrigger>
+                            <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
+                            <TabsTrigger value="my-funnels">My Strategies</TabsTrigger>
                         </TabsList>
                     </div>
                     <TabsContent value="templates" className="mt-6">
@@ -341,13 +341,13 @@ export default function FunnelsPage() {
                         ) : (
                             <div className="text-center py-16 border-2 border-dashed rounded-lg">
                                 <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <h3 className="mt-4 text-xl font-semibold">No Funnels Yet</h3>
+                                <h3 className="mt-4 text-xl font-semibold">No Strategies Yet</h3>
                                 <p className="text-muted-foreground mt-2">
-                                    Click 'Create Funnel' to generate your first one from a template.
+                                    Click 'Create Strategy' to generate your first one from a template.
                                 </p>
                                 <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4 gap-2">
                                     <PlusCircle className="h-5 w-5" />
-                                    Create Funnel
+                                    Create Strategy
                                 </Button>
                             </div>
                         )}

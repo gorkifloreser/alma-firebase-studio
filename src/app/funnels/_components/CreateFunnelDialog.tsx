@@ -170,7 +170,7 @@ export function CreateFunnelDialog({
         <>
             <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 <div>
-                    <Label className="text-lg font-semibold">Step 1: Choose a Funnel Template</Label>
+                    <Label className="text-lg font-semibold">Step 1: Choose a Strategy Template</Label>
                     
                     {customPresets.length > 0 && (
                         <div className="mt-4">
@@ -382,7 +382,7 @@ export function CreateFunnelDialog({
             <DialogFooter>
                 <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>Back</Button>
                 <Button onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? 'Saving...' : 'Save Funnel'}
+                    {isSaving ? 'Saving...' : 'Save Strategy'}
                 </Button>
             </DialogFooter>
         </>
@@ -394,11 +394,11 @@ export function CreateFunnelDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                          <Sparkles className="text-primary"/>
-                        {step === 'selection' ? 'Create a New Magic Funnel' : 'Preview & Customize Funnel'}
+                        {step === 'selection' ? 'Create a New Strategy' : 'Preview & Customize Strategy'}
                     </DialogTitle>
                     <DialogDescription>
                        {step === 'selection' 
-                           ? "Select a strategic template, then choose the offering you want to promote. The AI will generate a tailored funnel for you."
+                           ? "Select a strategic template, then choose the offering you want to promote. The AI will generate a tailored strategy for you."
                            : "Review the AI-generated content and make any edits before saving."
                        }
                     </DialogDescription>
