@@ -368,6 +368,7 @@ type SaveContentInput = {
         format: string;
         description: string;
     } | null;
+    mediaPlanItemId?: string; // Add this line
 };
 
 /**
@@ -380,9 +381,9 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status, sourcePlan } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status, sourcePlan, mediaPlanItemId } = input;
 
-    const payload = {
+    const payload: any = {
         user_id: user.id,
         offering_id: offeringId,
         content_body: contentBody,
@@ -392,6 +393,10 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         status: status,
         source_plan: sourcePlan,
     };
+
+    if (mediaPlanItemId) {
+        payload.media_plan_item_id = mediaPlanItemId;
+    }
 
     const { error } = await supabase.from('content').insert(payload);
 

@@ -32,6 +32,7 @@ type PlanItem = {
     channel: string;
     format: string;
     description: string;
+    id?: string; // Make ID optional as it might not exist for ad-hoc generation
 };
 
 interface ContentGenerationDialogProps {
@@ -116,20 +117,23 @@ export function ContentGenerationDialog({
             promises.push(generateContentForOffering({ offeringId, funnelId: selectedFunnelId }));
         }
         if (visualBasedSelected) {
-            promises.push(generateCreativeForOffering({ 
-                offeringId, 
-                creativeTypes: selectedCreativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[]
-            }));
+            const creativeTypesForFlow = selectedCreativeTypes.filter(t => t !== 'text' && (t === 'image' || t === 'carousel' || t === 'video')) as ('image' | 'carousel' | 'video')[];
+            if (creativeTypesForFlow.length > 0) {
+                 promises.push(generateCreativeForOffering({ 
+                    offeringId, 
+                    creativeTypes: creativeTypesForFlow
+                }));
+            }
         }
       
         const results = await Promise.all(promises);
 
         if (textBasedSelected) {
-            const contentResult = results.find(r => 'content' in r) as GenerateContentOutput | undefined;
+            const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
             if (contentResult) finalContentOutput = contentResult.content;
         }
         if (visualBasedSelected) {
-            const creativeResult = results.find(r => 'imageUrl' in r || 'videoScript' in r || 'carouselSlidesText' in r) as GenerateCreativeOutput | undefined;
+            const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlidesText' in r)) as GenerateCreativeOutput | undefined;
             if (creativeResult) finalCreativeOutput = creativeResult;
         }
 
@@ -182,6 +186,7 @@ export function ContentGenerationDialog({
             format: sourcePlanItem.format,
             description: sourcePlanItem.description,
           } : null,
+          mediaPlanItemId: sourcePlanItem?.id,
         });
         toast({
           title: 'Approved!',
