@@ -43,7 +43,7 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-type DialogStep = 'selection' | 'refinement' | 'preview';
+type DialogStep = 'selection' | 'preview';
 
 export function CreateFunnelDialog({
     isOpen,
@@ -86,19 +86,14 @@ export function CreateFunnelDialog({
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canProceedToRefinement = selectedPresetId !== null && selectedOfferingId !== null;
-
-    const handleProceed = () => {
-        if (!canProceedToRefinement) return;
-        setStep('refinement');
-    }
+    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
     const handleGenerate = async () => {
-        if (!canProceedToRefinement || !goal.trim() || selectedChannels.length === 0) {
+        if (!canGenerate) {
             toast({
                 variant: 'destructive',
                 title: 'Missing Information',
-                description: 'Please define a goal and select at least one channel.',
+                description: 'Please select a template, an offering, define a goal, and select at least one channel.',
             });
             return;
         };
@@ -143,7 +138,6 @@ export function CreateFunnelDialog({
             });
             return;
         }
-
 
         startSaving(async () => {
              try {
@@ -201,88 +195,80 @@ export function CreateFunnelDialog({
     const renderSelectionStep = () => (
         <>
             <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
-                <div>
-                    <Label className="text-lg font-semibold">Step 1: Choose a Strategy Template</Label>
-                    
-                    {customPresets.length > 0 && (
-                        <div className="mt-4">
-                            <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4"/> Your Custom Templates</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {customPresets.map((preset) => (
-                            <Card 
-                                key={preset.id} 
-                                className={cn(
-                                    "cursor-pointer transition-all",
-                                    selectedPresetId === preset.id 
-                                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                                        : "hover:bg-muted/50"
-                                )}
-                                onClick={() => setSelectedPresetId(preset.id)}
-                            >
-                                <CardContent className="p-4">
-                                    <h3 className="font-bold">{preset.title}</h3>
-                                    <p className="text-xs text-primary font-semibold mt-1">
-                                        Best for: {preset.best_for}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                            ))}
+                <Accordion type="single" collapsible defaultValue="item-1">
+                    <AccordionItem value="item-1">
+                        <AccordionTrigger>
+                            <Label className="text-lg font-semibold cursor-pointer">Step 1: Choose a Strategy Template</Label>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-4">
+                            {customPresets.length > 0 && (
+                                <div className="mt-4">
+                                    <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4"/> Your Custom Templates</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {customPresets.map((preset) => (
+                                    <Card 
+                                        key={preset.id} 
+                                        className={cn(
+                                            "cursor-pointer transition-all",
+                                            selectedPresetId === preset.id 
+                                                ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                                                : "hover:bg-muted/50"
+                                        )}
+                                        onClick={() => setSelectedPresetId(preset.id)}
+                                    >
+                                        <CardContent className="p-4">
+                                            <h3 className="font-bold">{preset.title}</h3>
+                                            <p className="text-xs text-primary font-semibold mt-1">
+                                                Best for: {preset.best_for}
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                    ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-6">
+                                <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><Stars className="h-4 w-4"/> Global Templates</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {globalPresets.map((preset) => (
+                                    <Card 
+                                        key={preset.id} 
+                                        className={cn(
+                                            "cursor-pointer transition-all",
+                                            selectedPresetId === preset.id 
+                                                ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                                                : "hover:bg-muted/50"
+                                        )}
+                                        onClick={() => setSelectedPresetId(preset.id)}
+                                    >
+                                        <CardContent className="p-4">
+                                            <h3 className="font-bold">{preset.title}</h3>
+                                            <p className="text-xs text-primary font-semibold mt-1">
+                                                Best for: {preset.best_for}
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
-
-                    <div className="mt-6">
-                        <h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><Stars className="h-4 w-4"/> Global Templates</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {globalPresets.map((preset) => (
-                            <Card 
-                                key={preset.id} 
-                                className={cn(
-                                    "cursor-pointer transition-all",
-                                    selectedPresetId === preset.id 
-                                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
-                                        : "hover:bg-muted/50"
-                                )}
-                                onClick={() => setSelectedPresetId(preset.id)}
-                            >
-                                <CardContent className="p-4">
-                                    <h3 className="font-bold">{preset.title}</h3>
-                                    <p className="text-xs text-primary font-semibold mt-1">
-                                        Best for: {preset.best_for}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        ))}
-                        </div>
-                    </div>
-                </div>
-                    <div className="space-y-4">
-                    <Label htmlFor="offering-select" className="text-lg font-semibold">Step 2: Choose an Offering</Label>
-                        <Select onValueChange={setSelectedOfferingId} defaultValue={defaultOfferingId || undefined}>
-                        <SelectTrigger id="offering-select" className="text-base py-6">
-                            <SelectValue placeholder="Select an offering to promote..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {offerings.map(offering => (
-                                <SelectItem key={offering.id} value={offering.id}>{offering.title.primary}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button onClick={handleProceed} disabled={!canProceedToRefinement}>
-                     Next
-                </Button>
-            </DialogFooter>
-        </>
-    );
-
-    const renderRefinementStep = () => (
-        <>
-            <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
                 <div className="space-y-4">
+                <Label htmlFor="offering-select" className="text-lg font-semibold">Step 2: Choose an Offering</Label>
+                    <Select onValueChange={setSelectedOfferingId} defaultValue={defaultOfferingId || undefined}>
+                    <SelectTrigger id="offering-select" className="text-base py-6">
+                        <SelectValue placeholder="Select an offering to promote..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {offerings.map(offering => (
+                            <SelectItem key={offering.id} value={offering.id}>{offering.title.primary}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                </div>
+                 <div className="space-y-4">
                     <Label htmlFor="goal" className="text-lg font-semibold">Step 3: Define Your Goal</Label>
                     <Input
                         id="goal"
@@ -310,9 +296,9 @@ export function CreateFunnelDialog({
                     </div>
                 </div>
             </div>
-             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('selection')} disabled={isGenerating}>Back</Button>
-                <Button onClick={handleGenerate} disabled={isGenerating || !goal.trim() || selectedChannels.length === 0}>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button onClick={handleGenerate} disabled={!canGenerate || isGenerating}>
                     {isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Preview</>}
                 </Button>
             </DialogFooter>
@@ -452,7 +438,7 @@ export function CreateFunnelDialog({
                 )}
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('refinement')} disabled={isSaving}>Back</Button>
+                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>Back</Button>
                 <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Save Strategy'}
                 </Button>
@@ -463,7 +449,6 @@ export function CreateFunnelDialog({
     const renderContent = () => {
         switch (step) {
             case 'selection': return renderSelectionStep();
-            case 'refinement': return renderRefinementStep();
             case 'preview': return renderPreviewStep();
             default: return renderSelectionStep();
         }
