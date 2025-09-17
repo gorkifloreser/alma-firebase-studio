@@ -31,6 +31,8 @@ const GenerateFunnelInputSchema = z.object({
   offeringId: z.string(),
   funnelType: z.string().describe("The name of the funnel model being used, e.g., 'Lead Magnet'."),
   funnelPrinciples: z.string().describe("The core principles or strategy of the funnel model."),
+  goal: z.string().describe("The specific goal of this strategy."),
+  channels: z.array(z.string()).describe("The marketing channels to focus on for this strategy."),
 });
 export type GenerateFunnelInput = z.infer<typeof GenerateFunnelInputSchema>;
 
@@ -45,14 +47,18 @@ const prompt = ai.definePrompt({
           offering: z.any(),
           funnelType: z.string(),
           funnelPrinciples: z.string(),
+          goal: z.string(),
+          channels: z.array(z.string()),
       })
   },
   output: { schema: GenerateFunnelOutputSchema },
   prompt: `You are a world-class marketing strategist who specializes in creating authentic, science-based marketing funnels. You do not use pressure tactics. Instead, you build connection and offer value based on a deep understanding of customer psychology.
 
-Your task is to create a complete marketing funnel for a specific offering, based on the provided Brand Heart and a specific funnel model. The funnel consists of a Landing Page and a 3-step follow-up sequence.
+Your task is to create a complete marketing funnel for a specific offering, based on the provided Brand Heart, a specific funnel model, and a clear goal. The funnel consists of a Landing Page and a 3-step follow-up sequence.
 
-**Funnel Model to Use: {{funnelType}}**
+**Strategy Goal:** {{goal}}
+**Target Channels:** {{#each channels}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+**Funnel Model to Use:** {{funnelType}}
 This model's core principles are: {{funnelPrinciples}}
 
 **Brand Heart (Brand Identity):**
@@ -76,7 +82,7 @@ This model's core principles are: {{funnelPrinciples}}
 
 **Your Task:**
 
-Generate the funnel content for the **{{primaryLanguage}}** language first.
+Generate the funnel content for the **{{primaryLanguage}}** language first. The content must be tailored to achieve the stated goal and optimized for the selected target channels.
 
 ---
 
@@ -97,7 +103,7 @@ Create the content for the landing page.
 
 ### **Part 2: 3-Step Follow-Up Sequence (Evaluation & Action Stage)**
 
-This sequence should nurture the lead, build more trust, and lead to a frictionless final action.
+This sequence should nurture the lead, build more trust, and lead to a frictionless final action. It should be written assuming it's for an email or WhatsApp channel, as appropriate.
 
 1.  **Follow-Up 1 (Welcome & Value)**:
     *   **Title**: A welcoming subject line.
@@ -129,7 +135,7 @@ const generateFunnelFlow = ai.defineFlow(
     inputSchema: GenerateFunnelInputSchema,
     outputSchema: GenerateFunnelOutputSchema,
   },
-  async ({ offeringId, funnelType, funnelPrinciples }) => {
+  async ({ offeringId, funnelType, funnelPrinciples, goal, channels }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -158,6 +164,8 @@ const generateFunnelFlow = ai.defineFlow(
         offering,
         funnelType,
         funnelPrinciples,
+        goal,
+        channels,
     });
     
     if (!output) {

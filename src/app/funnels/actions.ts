@@ -79,6 +79,17 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    const { data: presetData, error: presetError } = await supabase
+        .from('funnel_presets')
+        .select('type')
+        .eq('id', presetId)
+        .single();
+    
+    if (presetError || !presetData) {
+        console.error('Error fetching funnel preset type:', presetError?.message);
+        throw new Error(`Could not find the specified funnel preset. DB error: ${presetError?.message}`);
+    }
+
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
@@ -86,6 +97,7 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
             user_id: user.id,
             name: funnelName,
             preset_id: presetId,
+            funnel_type: presetData.type,
         })
         .select('id')
         .single();

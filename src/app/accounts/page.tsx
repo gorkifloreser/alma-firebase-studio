@@ -5,7 +5,7 @@ import React, { useState, useEffect, useTransition } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Plug, CheckCircle, Clock, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { Clock, Globe } from 'lucide-react';
 import Image from 'next/image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -65,6 +65,14 @@ const initialAccounts: Account[] = [
         name: 'Webmail',
         description: 'Enable email to send newsletters and sequences.',
         icon: '/mail.svg',
+        category: 'email',
+        status: 'available'
+    },
+    {
+        id: 'website',
+        name: 'Website/Blog',
+        description: 'Enable for landing pages and SEO content.',
+        icon: '/globe.svg',
         category: 'email',
         status: 'available'
     },
@@ -247,7 +255,7 @@ export default function AccountsPage() {
                     <Separator />
 
                     <section>
-                        <h2 className="text-2xl font-semibold mb-4">Email</h2>
+                        <h2 className="text-2xl font-semibold mb-4">Owned Media</h2>
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {emailAccounts.map(renderCard)}
                         </div>

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -26,6 +25,9 @@ import type { GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { getProfile } from '@/app/settings/actions';
+import { getUserChannels } from '@/app/accounts/actions';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 interface CreateFunnelDialogProps {
     isOpen: boolean;
@@ -41,7 +43,7 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-type DialogStep = 'selection' | 'preview';
+type DialogStep = 'selection' | 'refinement' | 'preview';
 
 export function CreateFunnelDialog({
     isOpen,
@@ -55,6 +57,9 @@ export function CreateFunnelDialog({
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
     const [funnelName, setFunnelName] = useState('');
+    const [goal, setGoal] = useState('');
+    const [availableChannels, setAvailableChannels] = useState<string[]>([]);
+    const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
     const [profile, setProfile] = useState<Profile>(null);
     
@@ -70,16 +75,33 @@ export function CreateFunnelDialog({
             setSelectedPresetId(null);
             setGeneratedContent(null);
             setFunnelName('');
+            setGoal('');
             
-            // Fetch profile to know about language settings
+            // Fetch profile and channels
             getProfile().then(setProfile);
+            getUserChannels().then(channels => {
+                setAvailableChannels(channels);
+                setSelectedChannels(channels); // Default to all selected
+            });
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null;
+    const canProceedToRefinement = selectedPresetId !== null && selectedOfferingId !== null;
+
+    const handleProceed = () => {
+        if (!canProceedToRefinement) return;
+        setStep('refinement');
+    }
 
     const handleGenerate = async () => {
-        if (!canGenerate) return;
+        if (!canProceedToRefinement || !goal.trim() || selectedChannels.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Missing Information',
+                description: 'Please define a goal and select at least one channel.',
+            });
+            return;
+        };
 
         startGenerating(async () => {
             try {
@@ -91,6 +113,8 @@ export function CreateFunnelDialog({
                     offeringId: selectedOfferingId!,
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
+                    goal,
+                    channels: selectedChannels,
                 });
                 
                 setGeneratedContent(result);
@@ -163,6 +187,14 @@ export function CreateFunnelDialog({
         });
     }
 
+    const handleChannelToggle = (channel: string) => {
+        setSelectedChannels(prev => 
+            prev.includes(channel)
+                ? prev.filter(c => c !== channel)
+                : [...prev, channel]
+        );
+    }
+
     const globalPresets = funnelPresets.filter(p => p.user_id === null);
     const customPresets = funnelPresets.filter(p => p.user_id !== null);
 
@@ -226,7 +258,7 @@ export function CreateFunnelDialog({
                 </div>
                     <div className="space-y-4">
                     <Label htmlFor="offering-select" className="text-lg font-semibold">Step 2: Choose an Offering</Label>
-                        <Select onValueChange={setSelectedOfferingId} defaultValue={defaultOfferingId || undefined} disabled={isGenerating}>
+                        <Select onValueChange={setSelectedOfferingId} defaultValue={defaultOfferingId || undefined}>
                         <SelectTrigger id="offering-select" className="text-base py-6">
                             <SelectValue placeholder="Select an offering to promote..." />
                         </SelectTrigger>
@@ -239,8 +271,48 @@ export function CreateFunnelDialog({
                 </div>
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>Cancel</Button>
-                <Button onClick={handleGenerate} disabled={!canGenerate || isGenerating}>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button onClick={handleProceed} disabled={!canProceedToRefinement}>
+                     Next
+                </Button>
+            </DialogFooter>
+        </>
+    );
+
+    const renderRefinementStep = () => (
+        <>
+            <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
+                <div className="space-y-4">
+                    <Label htmlFor="goal" className="text-lg font-semibold">Step 3: Define Your Goal</Label>
+                    <Input
+                        id="goal"
+                        value={goal}
+                        onChange={(e) => setGoal(e.target.value)}
+                        placeholder="e.g., Get 50 signups for my webinar"
+                        className="text-base py-6"
+                    />
+                </div>
+                <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Step 4: Select Target Channels</Label>
+                    <div className="grid grid-cols-2 gap-4 p-4 border rounded-md">
+                        {availableChannels.map(channel => (
+                             <div key={channel} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`channel-${channel}`}
+                                    checked={selectedChannels.includes(channel)}
+                                    onCheckedChange={() => handleChannelToggle(channel)}
+                                />
+                                <Label htmlFor={`channel-${channel}`} className="capitalize cursor-pointer">
+                                    {channel.replace(/_/g, ' ')}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+             <DialogFooter>
+                <Button variant="outline" onClick={() => setStep('selection')} disabled={isGenerating}>Back</Button>
+                <Button onClick={handleGenerate} disabled={isGenerating || !goal.trim() || selectedChannels.length === 0}>
                     {isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Preview</>}
                 </Button>
             </DialogFooter>
@@ -259,7 +331,7 @@ export function CreateFunnelDialog({
                 ) : (
                     <>
                         <div className="space-y-2">
-                            <Label htmlFor="funnelName" className="text-lg font-semibold">Funnel Title</Label>
+                            <Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label>
                             <Input
                                 id="funnelName"
                                 value={funnelName}
@@ -380,7 +452,7 @@ export function CreateFunnelDialog({
                 )}
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>Back</Button>
+                <Button variant="outline" onClick={() => setStep('refinement')} disabled={isSaving}>Back</Button>
                 <Button onClick={handleSave} disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Save Strategy'}
                 </Button>
@@ -388,23 +460,29 @@ export function CreateFunnelDialog({
         </>
     );
 
+    const renderContent = () => {
+        switch (step) {
+            case 'selection': return renderSelectionStep();
+            case 'refinement': return renderRefinementStep();
+            case 'preview': return renderPreviewStep();
+            default: return renderSelectionStep();
+        }
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                          <Sparkles className="text-primary"/>
-                        {step === 'selection' ? 'Create a New Strategy' : 'Preview & Customize Strategy'}
+                        Create a New Strategy
                     </DialogTitle>
                     <DialogDescription>
-                       {step === 'selection' 
-                           ? "Select a strategic template, then choose the offering you want to promote. The AI will generate a tailored strategy for you."
-                           : "Review the AI-generated content and make any edits before saving."
-                       }
+                       Follow the steps to select a template, define your goal, and generate a tailored strategy.
                     </DialogDescription>
                 </DialogHeader>
                 
-                {step === 'selection' ? renderSelectionStep() : renderPreviewStep()}
+                {renderContent()}
 
             </DialogContent>
         </Dialog>
