@@ -255,7 +255,8 @@ export function CreateOfferingDialog({
                 }
 
                 onOfferingSaved();
-            } catch (error: any)                 toast({
+            } catch (error: any) {
+                toast({
                     variant: 'destructive',
                     title: 'Uh oh! Something went wrong.',
                     description: error.message,
