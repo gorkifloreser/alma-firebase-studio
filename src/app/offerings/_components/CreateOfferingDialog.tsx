@@ -38,7 +38,11 @@ interface CreateOfferingDialogProps {
     onOfferingCreated: () => void;
 }
 
-const initialOfferingState: Omit<Offering, 'id' | 'user_id' | 'created_at'> = {
+type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at'> & {
+    event_time?: string;
+};
+
+const initialOfferingState: OfferingFormData = {
     title: { primary: '', secondary: '' },
     description: { primary: '', secondary: '' },
     type: 'Service',
@@ -46,13 +50,14 @@ const initialOfferingState: Omit<Offering, 'id' | 'user_id' | 'created_at'> = {
     price: null,
     event_date: null,
     duration: null,
+    event_time: '',
 };
 
 type BilingualFieldProps = {
-    id: keyof Omit<Offering, 'type' | 'contextual_notes' | 'title' | 'description' | 'price' | 'event_date' | 'duration'> | 'title' | 'description';
+    id: 'title' | 'description';
     label: string;
     isTextarea?: boolean;
-    offering: typeof initialOfferingState;
+    offering: OfferingFormData;
     profile: Profile;
     isTranslating: string | null;
     languageNames: Map<string, string>;
@@ -82,7 +87,7 @@ const BilingualFormField = ({
                         variant="outline" 
                         size="sm" 
                         className="gap-2" 
-                        onClick={() => handleAutoTranslate(id as 'title' | 'description')}
+                        onClick={() => handleAutoTranslate(id)}
                         disabled={isTranslating === id}
                     >
                         <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
@@ -112,49 +117,44 @@ export function CreateOfferingDialog({
     profile,
     onOfferingCreated,
 }: CreateOfferingDialogProps) {
-    const [offering, setOffering] = useState(initialOfferingState);
+    const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
     const [eventDate, setEventDate] = useState<Date | undefined>();
-    const [eventTime, setEventTime] = useState('');
 
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     useEffect(() => {
-        if (eventDate && eventTime) {
-            const [hours, minutes] = eventTime.split(':').map(Number);
+        if (eventDate && offering.event_time) {
+            const [hours, minutes] = offering.event_time.split(':').map(Number);
             const combinedDate = new Date(eventDate);
             combinedDate.setHours(hours, minutes);
             setOffering(prev => ({...prev, event_date: combinedDate.toISOString()}));
+        } else if (eventDate) {
+            setOffering(prev => ({...prev, event_date: eventDate.toISOString()}))
         }
-    }, [eventDate, eventTime])
+    }, [eventDate, offering.event_time]);
 
     const handleFormChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string,
         name?: string
     ) => {
         if (typeof e === 'string') {
-            // Handle Select change
             setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] }));
         } else {
-            const { name: inputName, value, type } = e.target;
+            const { name: inputName, value } = e.target;
             if (inputName.includes('_')) {
-                const [field, lang] = inputName.split('_') as [keyof Omit<Offering, 'type' | 'contextual_notes'>, 'primary' | 'secondary'];
+                const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
                  setOffering(prev => ({
                     ...prev,
                     [field]: { ...prev[field], [lang]: value }
                 }));
+            } else if (inputName === 'price') {
+                setOffering(prev => ({ ...prev, [inputName]: value === '' ? null : Number(value) }));
             } else {
-                 if (inputName === 'price') {
-                    setOffering(prev => ({ ...prev, [inputName]: value === '' ? null : Number(value) }));
-                 } else if (inputName === 'event_time') {
-                    setEventTime(value);
-                 }
-                 else {
-                    setOffering(prev => ({ ...prev, [inputName]: value }));
-                }
+                setOffering(prev => ({ ...prev, [inputName]: value }));
             }
         }
     };
@@ -173,11 +173,15 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                await createOffering(offering);
+                // Create a copy of the offering state to avoid mutating it directly
+                const payload: Partial<OfferingFormData> = { ...offering };
+                // Remove the temporary event_time field before sending to the server
+                delete payload.event_time;
+
+                await createOffering(payload as Omit<Offering, 'id' | 'user_id' | 'created_at'>);
                 onOfferingCreated();
                 setOffering(initialOfferingState); // Reset form
                 setEventDate(undefined);
-                setEventTime('');
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
@@ -309,7 +313,7 @@ export function CreateOfferingDialog({
                                      <Label htmlFor="event_time">Event Time</Label>
                                     <div className="relative">
                                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="event_time" name="event_time" type="time" value={eventTime} onChange={handleFormChange} className="pl-10" />
+                                        <Input id="event_time" name="event_time" type="time" value={offering.event_time} onChange={handleFormChange} className="pl-10" />
                                     </div>
                                 </div>
                             </div>
@@ -347,3 +351,4 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
+
