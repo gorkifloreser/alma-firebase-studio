@@ -1,5 +1,3 @@
-
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -79,17 +77,7 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data: presetData, error: presetError } = await supabase
-        .from('funnel_presets')
-        .select('type')
-        .eq('id', presetId)
-        .single();
-    
-    if (presetError || !presetData) {
-        console.error('Error fetching funnel preset type:', presetError?.message);
-        throw new Error(`Could not find the specified funnel preset. DB error: ${presetError?.message}`);
-    }
-
+    // Insert the main funnel record first
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
         .insert({
@@ -97,7 +85,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
             user_id: user.id,
             name: funnelName,
             preset_id: presetId,
-            funnel_type: presetData.type,
         })
         .select('id')
         .single();
@@ -134,6 +121,7 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
       ],
     };
     
+    // Create the landing page step
     const { error: lpStepError } = await supabase.from('funnel_steps').insert({
         funnel_id: funnelId,
         user_id: user.id,
@@ -153,11 +141,11 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
 
     if (lpStepError) {
         console.error('Error creating landing page step:', lpStepError);
-        // Rollback funnel creation
         await supabase.from('funnels').delete().eq('id', funnelId);
         throw new Error(`Could not create the landing page for the funnel. DB error: ${lpStepError.message}`);
     }
     
+    // Create the follow-up steps
     const followUpStepsToInsert = funnelContent.primary.followUpSequence.map((step, index) => ({
         funnel_id: funnelId,
         user_id: user.id,
@@ -177,7 +165,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, funnelCon
         const { error: followUpError } = await supabase.from('funnel_steps').insert(followUpStepsToInsert);
         if (followUpError) {
             console.error('Error creating follow-up steps:', followUpError);
-            // Rollback
             await supabase.from('funnels').delete().eq('id', funnelId);
             throw new Error(`Could not create the follow-up steps for the funnel. DB error: ${followUpError.message}`);
         }
