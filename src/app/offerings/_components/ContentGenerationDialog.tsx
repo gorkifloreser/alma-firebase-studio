@@ -93,20 +93,32 @@ export function ContentGenerationDialog({
         let finalCreativeOutput: GenerateCreativeOutput = {};
         let finalContentOutput: GenerateContentOutput['content'] | null = null;
 
-        // Text is a base for others, so we might generate it anyway
-        if (selectedCreativeTypes.includes('text') || selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('carousel')) {
-            const result = await generateContentForOffering({ offeringId });
-            finalContentOutput = result.content;
-        }
+        const textBasedSelected = selectedCreativeTypes.includes('text') || selectedCreativeTypes.includes('carousel');
+        const visualBasedSelected = selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('video');
 
-        if (selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('carousel') || selectedCreativeTypes.includes('video')) {
-             const result = await generateCreativeForOffering({ 
+        const promises = [];
+
+        if (textBasedSelected) {
+            promises.push(generateContentForOffering({ offeringId }));
+        }
+        if (visualBasedSelected) {
+            promises.push(generateCreativeForOffering({ 
                 offeringId, 
-                creativeTypes: selectedCreativeTypes.filter(t => t !== 'text')
-            });
-            finalCreativeOutput = result;
+                creativeTypes: selectedCreativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[]
+            }));
         }
       
+        const results = await Promise.all(promises);
+
+        if (textBasedSelected) {
+            const contentResult = results.find(r => 'content' in r) as GenerateContentOutput | undefined;
+            if (contentResult) finalContentOutput = contentResult.content;
+        }
+        if (visualBasedSelected) {
+            const creativeResult = results.find(r => 'imageUrl' in r || 'videoScript' in r || 'carouselSlidesText' in r) as GenerateCreativeOutput | undefined;
+            if (creativeResult) finalCreativeOutput = creativeResult;
+        }
+
         setEditableContent(finalContentOutput);
         setCreative(finalCreativeOutput);
 
@@ -133,8 +145,12 @@ export function ContentGenerationDialog({
   };
 
   const handleApprove = () => {
-    if (!offeringId || !editableContent) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No text content to save.' });
+    if (!offeringId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
+        return;
+    }
+    if (!editableContent && !creative) {
+      toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
       return;
     }
     
@@ -143,6 +159,9 @@ export function ContentGenerationDialog({
         await saveContent({
           offeringId,
           contentBody: editableContent,
+          imageUrl: creative?.imageUrl || null,
+          carouselSlidesText: creative?.carouselSlidesText || null,
+          videoScript: creative?.videoScript || null,
           status: 'approved',
         });
         toast({
@@ -287,7 +306,7 @@ export function ContentGenerationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleApprove} disabled={isLoading || isSaving || !editableContent}>
+          <Button onClick={handleApprove} disabled={isLoading || isSaving || (!editableContent && !creative)}>
             {isSaving ? 'Approving...' : 'Approve & Save'}
           </Button>
         </DialogFooter>

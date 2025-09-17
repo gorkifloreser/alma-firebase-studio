@@ -80,7 +80,6 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Explicitly destructure to remove fields not in the 'offerings' table
   const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
 
   const payload = {
@@ -128,7 +127,6 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // Explicitly destructure to remove fields that shouldn't be sent in the update payload
     const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
 
     const payload = {
@@ -365,7 +363,10 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
 
 type SaveContentInput = {
     offeringId: string;
-    contentBody: { primary: string | null; secondary: string | null; };
+    contentBody: { primary: string | null; secondary: string | null; } | null;
+    imageUrl: string | null;
+    carouselSlidesText: string | null;
+    videoScript: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
 };
 
@@ -379,12 +380,15 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, status } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status } = input;
 
     const payload = {
         user_id: user.id,
         offering_id: offeringId,
         content_body: contentBody,
+        image_url: imageUrl,
+        carousel_slides_text: carouselSlidesText,
+        video_script: videoScript,
         status: status,
     };
 
@@ -395,8 +399,5 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         throw new Error('Could not save the content. Please try again.');
     }
     
-    // We don't need to revalidate the offerings path for this
-    // revalidatePath('/content-library'); // Or wherever content is viewed
-
     return { message: 'Content approved and saved successfully.' };
 }
