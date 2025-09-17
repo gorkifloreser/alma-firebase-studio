@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { EditContentDialog } from './_components/EditContentDialog';
 
 
 const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
@@ -56,7 +57,7 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
     );
 };
 
-const CalendarDay = ({ day, content, isCurrentMonth }: { day: Date, content: ContentItem[], isCurrentMonth: boolean }) => {
+const CalendarDay = ({ day, content, isCurrentMonth, onEventClick }: { day: Date, content: ContentItem[], isCurrentMonth: boolean, onEventClick: (item: ContentItem) => void }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: format(day, 'yyyy-MM-dd'),
         data: { type: 'calendarDay', date: day }
@@ -75,13 +76,13 @@ const CalendarDay = ({ day, content, isCurrentMonth }: { day: Date, content: Con
                 {format(day, 'd')}
             </time>
              <div className="mt-1 flex-1 overflow-y-auto">
-                {content.map(item => <CalendarEvent key={item.id} item={item} />)}
+                {content.map(item => <CalendarEvent key={item.id} item={item} onClick={() => onEventClick(item)} />)}
             </div>
         </div>
     );
 };
 
-const CalendarEvent = ({ item }: { item: ContentItem }) => {
+const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => void }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: item.id,
         data: { type: 'calendarEvent' }
@@ -93,7 +94,7 @@ const CalendarEvent = ({ item }: { item: ContentItem }) => {
     } : undefined;
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="relative mb-1">
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="relative mb-1" onClick={onClick}>
             <Badge variant="secondary" className="w-full justify-start text-left whitespace-normal h-auto cursor-grab">
                  <div className="flex items-center gap-1">
                     <ChannelIcon channel={item.source_plan?.channel} />
@@ -111,21 +112,39 @@ export default function CalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const { toast } = useToast();
 
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
+
+    const handleEventClick = (item: ContentItem) => {
+        setEditingContent(item);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleContentUpdated = (updatedContent: ContentItem) => {
+        setContentItems(prev => prev.map(item => item.id === updatedContent.id ? updatedContent : item));
+        setIsEditDialogOpen(false);
+        toast({ title: "Content Updated!", description: "Your changes have been saved." });
+    };
+
+    const fetchContent = async () => {
+        setIsLoading(true);
+        try {
+            const data = await getContent();
+            setContentItems(data);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
         const checkUserAndFetchData = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) redirect('/login');
             
-            setIsLoading(true);
-            try {
-                const data = await getContent();
-                setContentItems(data);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Error', description: error.message });
-            } finally {
-                setIsLoading(false);
-            }
+            fetchContent();
         };
 
         checkUserAndFetchData();
@@ -194,7 +213,7 @@ export default function CalendarPage() {
              
              // Check if it's actually a new date
              const originalItem = contentItems.find(item => item.id === contentId);
-             if (originalItem && isSameDay(new Date(originalItem.scheduled_at!), targetDate)) {
+             if (originalItem && originalItem.scheduled_at && isSameDay(new Date(originalItem.scheduled_at), targetDate)) {
                  return; // Dropped on the same day, do nothing.
              }
 
@@ -259,13 +278,14 @@ export default function CalendarPage() {
                                 <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
                             ))}
                             {calendarDays.map(day => {
-                                const dayContent = scheduled.filter(item => isSameDay(new Date(item.scheduled_at!), day));
+                                const dayContent = scheduled.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
                                 return (
                                     <CalendarDay 
                                         key={day.toString()} 
                                         day={day}
                                         content={dayContent}
                                         isCurrentMonth={isSameMonth(day, currentDate)}
+                                        onEventClick={handleEventClick}
                                     />
                                 );
                             })}
@@ -273,6 +293,14 @@ export default function CalendarPage() {
                     </main>
                 </div>
             </DndContext>
+             {editingContent && (
+                <EditContentDialog
+                    isOpen={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                    contentItem={editingContent}
+                    onContentUpdated={handleContentUpdated}
+                />
+            )}
         </DashboardLayout>
     );
 }

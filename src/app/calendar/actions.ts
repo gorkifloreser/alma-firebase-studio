@@ -95,3 +95,34 @@ export async function unscheduleContent(contentId: string): Promise<{ message: s
     revalidatePath('/calendar');
     return { message: "Content unscheduled and returned to drafts." };
 }
+
+
+export async function updateContent(contentId: string, newContentBody: { primary: string | null; secondary: string | null; }): Promise<ContentItem> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { data, error } = await supabase
+        .from('content')
+        .update({
+            content_body: newContentBody,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', contentId)
+        .eq('user_id', user.id)
+        .select(`
+            *,
+            offerings (
+                title
+            )
+        `)
+        .single();
+    
+    if (error) {
+        console.error("Error updating content:", error);
+        throw new Error("Could not update content.");
+    }
+
+    revalidatePath('/calendar');
+    return data as ContentItem;
+}
