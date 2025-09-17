@@ -28,14 +28,15 @@ export type Offering = {
     currency: string | null;
     event_date: string | null; // ISO 8601 string
     duration: string | null;
-    offering_media: OfferingMedia[];
 };
+
+type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
 /**
  * Fetches all offerings for the currently authenticated user, including their media.
- * @returns {Promise<Offering[]>} A promise that resolves to an array of offerings.
+ * @returns {Promise<OfferingWithMedia[]>} A promise that resolves to an array of offerings.
  */
-export async function getOfferings(): Promise<Offering[]> {
+export async function getOfferings(): Promise<OfferingWithMedia[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -63,31 +64,27 @@ export async function getOfferings(): Promise<Offering[]> {
         console.error('Error fetching offerings:', error.message);
         throw new Error('Could not fetch offerings.');
     }
-    
-    const offerings = data.map(o => ({
-        ...o,
-        offering_media: o.offering_media.map((m: any) => ({...m, url: m.media_url}))
-    }))
 
-    return offerings as Offering[];
+    return data as OfferingWithMedia[];
 }
 
 /**
  * Creates a new offering for the currently authenticated user.
  * @param {Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>} offeringData The data for the new offering.
- * @returns {Promise<Offering>} A promise that resolves to the newly created offering.
+ * @returns {Promise<OfferingWithMedia>} A promise that resolves to the newly created offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'offering_media'>): Promise<Offering> {
+export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<OfferingWithMedia> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { event_date, ...restOfData } = offeringData;
-  
+  // Explicitly destructure to remove fields not in the 'offerings' table
+  const { offering_media, ...restOfOfferingData } = offeringData as any;
+
   const payload = {
-    ...restOfData,
-    event_date: offeringData.type === 'Event' ? (event_date ? new Date(event_date).toISOString() : null) : null,
+    ...restOfOfferingData,
+    event_date: offeringData.type === 'Event' && offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -115,26 +112,27 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   }
 
   revalidatePath('/offerings');
-  return data as Offering;
+  return data as OfferingWithMedia;
 }
 
 /**
  * Updates an existing offering for the currently authenticated user.
  * @param {string} offeringId The ID of the offering to update.
  * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>} offeringData The data to update.
- * @returns {Promise<Offering>} A promise that resolves to the updated offering.
+ * @returns {Promise<OfferingWithMedia>} A promise that resolves to the updated offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<Offering> {
+export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<OfferingWithMedia> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
+    // Explicitly destructure to remove fields that shouldn't be sent in the update payload
+    const { offering_media, updated_at, ...restOfData } = offeringData as any;
 
     const payload = {
         ...restOfData,
-        event_date: offeringData.type === 'Event' ? (event_date ? new Date(event_date).toISOString() : null) : null,
+        event_date: offeringData.type === 'Event' && offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -163,7 +161,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     }
 
     revalidatePath('/offerings');
-    return data as Offering;
+    return data as OfferingWithMedia;
 }
 
 /**
@@ -345,4 +343,41 @@ export async function generateContentForOffering(input: GenerateContentInput): P
         throw new Error("Failed to generate content. Please try again.");
     }
 }
+
+type SaveContentInput = {
+    offeringId: string;
+    contentBody: { primary: string | null; secondary: string | null; };
+    status: 'draft' | 'approved' | 'scheduled' | 'published';
+};
+
+/**
+ * Saves or updates content for an offering.
+ * @param {SaveContentInput} input - The content data to save.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function saveContent(input: SaveContentInput): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { offeringId, contentBody, status } = input;
+
+    const payload = {
+        user_id: user.id,
+        offering_id: offeringId,
+        content_body: contentBody,
+        status: status,
+    };
+
+    const { error } = await supabase.from('content').insert(payload);
+
+    if (error) {
+        console.error('Error saving content:', error.message);
+        throw new Error('Could not save the content. Please try again.');
+    }
     
+    // We don't need to revalidate the offerings path for this
+    // revalidatePath('/content-library'); // Or wherever content is viewed
+
+    return { message: 'Content approved and saved successfully.' };
+}

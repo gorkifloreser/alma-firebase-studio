@@ -16,7 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, Offering } from '../actions';
+import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia } from '../actions';
+import type { Offering, OfferingMedia } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
@@ -25,7 +26,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ImageUpload } from './ImageUpload';
-import type { OfferingMedia } from '../actions';
+
 
 type Profile = {
     primary_language: string;
@@ -36,6 +37,7 @@ type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
 type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'event_date'> & {
     event_date: Date | null;
+    offering_media: OfferingMedia[];
 };
 
 const initialOfferingState: OfferingFormData = {
@@ -136,7 +138,7 @@ export function CreateOfferingDialog({
         if (isEditMode && offeringToEdit) {
             const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
             setOffering({
-                ...initialOfferingState, // Reset to avoid carrying over old state
+                ...initialOfferingState,
                 ...offeringToEdit,
                 event_date: date,
             });
@@ -177,18 +179,16 @@ export function CreateOfferingDialog({
                 const { name: inputName, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
                  if (inputName.includes('_')) {
                     const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
-                    // This check ensures we only apply this logic to bilingual fields.
                     if (field === 'title' || field === 'description') {
-                        return {
-                            ...prev,
-                            [field]: { ...prev[field], [lang]: value }
-                        };
+                        return { ...prev, [field]: { ...prev[field], [lang]: value } };
                     }
                 }
                 if (inputName === 'price') {
                     return { ...prev, [inputName]: value === '' ? null : Number(value) };
                 }
-                // Default handler for single value fields like 'contextual_notes'
+                if (inputName === 'contextual_notes' || inputName === 'duration') {
+                    return { ...prev, [inputName]: value };
+                }
                 return { ...prev, [inputName]: value };
             }
             return prev;
@@ -233,7 +233,7 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                let savedOffering: Offering;
+                let savedOffering: OfferingWithMedia;
                 
                 const payload = {
                     ...offering,
@@ -255,8 +255,7 @@ export function CreateOfferingDialog({
                 }
 
                 onOfferingSaved();
-            } catch (error: any) {
-                 toast({
+            } catch (error: any)                 toast({
                     variant: 'destructive',
                     title: 'Uh oh! Something went wrong.',
                     description: error.message,
@@ -423,7 +422,7 @@ export function CreateOfferingDialog({
                          <Label className="text-md font-semibold">Offering Media</Label>
                          <ImageUpload
                             onFilesChange={setNewMediaFiles}
-                            existingMedia={offering.offering_media.map(m => ({ id: m.id, url: m.media_url }))}
+                            existingMedia={offering.offering_media?.map(m => ({ id: m.id, url: m.media_url })) || []}
                             onRemoveExistingMedia={handleRemoveExistingMedia}
                             isSaving={isSaving}
                          />
