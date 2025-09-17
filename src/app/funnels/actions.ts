@@ -19,6 +19,15 @@ export type Funnel = {
     } | null;
 }
 
+export type FunnelPreset = {
+    id: number;
+    type: string;
+    title: string;
+    description: string;
+    best_for: string;
+    principles: string;
+};
+
 export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -226,4 +235,14 @@ export async function getPublicLandingPage(funnelId: string) {
     }
     
     return funnelStep.data as Data;
+}
+
+export async function getFunnelPresets(): Promise<FunnelPreset[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase.from('funnel_presets').select('*').order('id');
+    if (error) {
+        console.error("Error fetching funnel presets:", error);
+        throw new Error("Could not fetch funnel presets.");
+    }
+    return data;
 }
