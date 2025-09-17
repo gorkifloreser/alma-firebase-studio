@@ -12,9 +12,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
+import { getOfferings, Offering } from '../offerings/actions';
 import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
-import { getOfferings, Offering } from '../offerings/actions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -303,7 +303,7 @@ export default function StrategiesPage() {
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onSelect={() => router.push(`/funnels/${funnel.id}/edit`)}>
                                                         <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Landing Page</span>
+                                                        <span>Edit Strategy</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <AlertDialog>
