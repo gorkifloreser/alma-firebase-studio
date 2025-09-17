@@ -13,6 +13,9 @@ export type Offering = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
     contextual_notes: string | null;
+    price: number | null;
+    event_date: string | null; // ISO 8601 string
+    duration: string | null;
 };
 
 /**
@@ -55,6 +58,9 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
 
   const payload = {
     ...offeringData,
+    price: offeringData.price || null,
+    event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
+    duration: offeringData.type === 'Event' ? offeringData.duration : null,
     user_id: user.id,
   };
 

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { createOffering, translateText, Offering } from '../actions';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { languages } from '@/lib/languages';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ImageUpload } from './ImageUpload';
+
 
 type Profile = {
     primary_language: string;
@@ -37,10 +43,13 @@ const initialOfferingState: Omit<Offering, 'id' | 'user_id' | 'created_at'> = {
     description: { primary: '', secondary: '' },
     type: 'Service',
     contextual_notes: '',
+    price: null,
+    event_date: null,
+    duration: null,
 };
 
 type BilingualFieldProps = {
-    id: keyof Omit<Offering, 'type' | 'contextual_notes' | 'title' | 'description'> | 'title' | 'description';
+    id: keyof Omit<Offering, 'type' | 'contextual_notes' | 'title' | 'description' | 'price' | 'event_date' | 'duration'> | 'title' | 'description';
     label: string;
     isTextarea?: boolean;
     offering: typeof initialOfferingState;
@@ -84,12 +93,12 @@ const BilingualFormField = ({
             <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
                      <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
-                    <InputComponent id={`${id}_primary`} name={`${id}_primary`} value={offering[id].primary || ''} onChange={handleFormChange} className="mt-1" />
+                    <InputComponent id={`${id}_primary`} name={`${id}_primary`} value={offering[id]?.primary || ''} onChange={handleFormChange} className="mt-1" />
                 </div>
                 {profile?.secondary_language && (
                      <div>
                         <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
-                        <InputComponent id={`${id}_secondary`} name={`${id}_secondary`} value={offering[id].secondary || ''} onChange={handleFormChange} className="mt-1" />
+                        <InputComponent id={`${id}_secondary`} name={`${id}_secondary`} value={offering[id]?.secondary || ''} onChange={handleFormChange} className="mt-1" />
                     </div>
                 )}
             </div>
@@ -107,8 +116,20 @@ export function CreateOfferingDialog({
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
+    const [eventDate, setEventDate] = useState<Date | undefined>();
+    const [eventTime, setEventTime] = useState('');
+
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
+
+    useEffect(() => {
+        if (eventDate && eventTime) {
+            const [hours, minutes] = eventTime.split(':').map(Number);
+            const combinedDate = new Date(eventDate);
+            combinedDate.setHours(hours, minutes);
+            setOffering(prev => ({...prev, event_date: combinedDate.toISOString()}));
+        }
+    }, [eventDate, eventTime])
 
     const handleFormChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string,
@@ -118,7 +139,7 @@ export function CreateOfferingDialog({
             // Handle Select change
             setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] }));
         } else {
-            const { name: inputName, value } = e.target;
+            const { name: inputName, value, type } = e.target;
             if (inputName.includes('_')) {
                 const [field, lang] = inputName.split('_') as [keyof Omit<Offering, 'type' | 'contextual_notes'>, 'primary' | 'secondary'];
                  setOffering(prev => ({
@@ -126,7 +147,14 @@ export function CreateOfferingDialog({
                     [field]: { ...prev[field], [lang]: value }
                 }));
             } else {
-                setOffering(prev => ({ ...prev, [inputName]: value }));
+                 if (inputName === 'price') {
+                    setOffering(prev => ({ ...prev, [inputName]: value === '' ? null : Number(value) }));
+                 } else if (inputName === 'event_time') {
+                    setEventTime(value);
+                 }
+                 else {
+                    setOffering(prev => ({ ...prev, [inputName]: value }));
+                }
             }
         }
     };
@@ -148,6 +176,8 @@ export function CreateOfferingDialog({
                 await createOffering(offering);
                 onOfferingCreated();
                 setOffering(initialOfferingState); // Reset form
+                setEventDate(undefined);
+                setEventTime('');
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
@@ -158,7 +188,7 @@ export function CreateOfferingDialog({
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof Omit<Offering, 'type' | 'contextual_notes'>) => {
+    const handleAutoTranslate = async (fieldId: 'title' | 'description') => {
         if (!profile?.secondary_language) return;
 
         const primaryText = offering[fieldId].primary;
@@ -204,7 +234,7 @@ export function CreateOfferingDialog({
                         Add a new product, service, or event to your catalog. This will be used by the AI to generate content.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-8 py-4">
+                <form onSubmit={handleSubmit} className="space-y-8 py-4 max-h-[80vh] overflow-y-auto pr-6">
                     <div className="space-y-2">
                         <Label htmlFor="type" className="text-md font-semibold">Type of Offering</Label>
                          <Select name="type" value={offering.type} onValueChange={(value) => handleFormChange(value, 'type')}>
@@ -242,6 +272,63 @@ export function CreateOfferingDialog({
                     />
                     
                     <div className="space-y-2">
+                         <Label htmlFor="price" className="text-md font-semibold">Price</Label>
+                        <Input id="price" name="price" type="number" value={offering.price || ''} onChange={handleFormChange} placeholder="e.g., 99.99" />
+                    </div>
+
+                    {offering.type === 'Event' && (
+                        <div className="space-y-6 p-4 border rounded-md">
+                            <h3 className="font-semibold text-lg">Event Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                <Label htmlFor="event_date">Event Date</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !eventDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {eventDate ? format(eventDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                        mode="single"
+                                        selected={eventDate}
+                                        onSelect={setEventDate}
+                                        initialFocus
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                                </div>
+                                <div className="space-y-2">
+                                     <Label htmlFor="event_time">Event Time</Label>
+                                    <div className="relative">
+                                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input id="event_time" name="event_time" type="time" value={eventTime} onChange={handleFormChange} className="pl-10" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                 <Label htmlFor="duration">Duration</Label>
+                                <Input id="duration" name="duration" value={offering.duration || ''} onChange={handleFormChange} placeholder="e.g., 2 hours, 3 days" />
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="space-y-2">
+                         <Label className="text-md font-semibold">Offering Media</Label>
+                         <ImageUpload />
+                         <p className="text-sm text-muted-foreground">
+                            Upload images for your offering.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
                          <Label htmlFor="contextual_notes" className="text-md font-semibold">Contextual Notes (Optional)</Label>
                         <Textarea id="contextual_notes" name="contextual_notes" value={offering.contextual_notes || ''} onChange={handleFormChange} placeholder="e.g., 'This is a pre-sale for my upcoming book', 'For beginners only', 'Limited to 10 spots'." />
                          <p className="text-sm text-muted-foreground">
@@ -249,7 +336,7 @@ export function CreateOfferingDialog({
                         </p>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="sticky bottom-0 bg-background py-4">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
                             {isSaving ? 'Creating...' : 'Create Offering'}
