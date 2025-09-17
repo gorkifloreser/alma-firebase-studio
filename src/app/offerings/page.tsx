@@ -149,13 +149,7 @@ const OfferingsPageContent = () => {
     }
 
     const handleViewFunnel = (offeringId: string) => {
-        // Temporarily disabled to prevent errors
-        toast({
-            title: 'Feature Temporarily Disabled',
-            description: 'The visual editor is currently unavailable. We are working on a fix.',
-            variant: 'destructive',
-        });
-        // router.push(`/funnels/${offeringId}/edit`);
+        router.push(`/funnels/${offeringId}/edit`);
     }
 
     return (
