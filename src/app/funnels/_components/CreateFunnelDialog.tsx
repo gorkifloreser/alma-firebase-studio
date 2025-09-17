@@ -27,6 +27,7 @@ interface CreateFunnelDialogProps {
     offerings: Offering[];
     onFunnelCreated: () => void;
     defaultOfferingId?: string | null;
+    defaultFunnelType?: string | null;
 }
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -34,6 +35,8 @@ const iconMap: { [key: string]: React.ElementType } = {
     'Direct Offer': Zap,
     'Nurture & Convert': Users,
     'Onboarding & Habit': Repeat,
+    'Sustainable Funnel': Bot,
+    'Regenerative Funnel': Bot,
 };
 
 export function CreateFunnelDialog({
@@ -42,10 +45,11 @@ export function CreateFunnelDialog({
     offerings,
     onFunnelCreated,
     defaultOfferingId,
+    defaultFunnelType,
 }: CreateFunnelDialogProps) {
     const [funnelPresets, setFunnelPresets] = useState<FunnelPreset[]>([]);
     const [isLoadingPresets, setIsLoadingPresets] = useState(true);
-    const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [selectedType, setSelectedType] = useState<string | null>(defaultFunnelType || null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
     const [isCreating, startCreating] = useTransition();
     const { toast } = useToast();
@@ -65,9 +69,9 @@ export function CreateFunnelDialog({
                 .finally(() => setIsLoadingPresets(false));
             
             setSelectedOfferingId(defaultOfferingId || null);
-            setSelectedType(null);
+            setSelectedType(defaultFunnelType || null);
         }
-    }, [isOpen, defaultOfferingId, toast]);
+    }, [isOpen, defaultOfferingId, defaultFunnelType, toast]);
 
     const canSubmit = selectedType && selectedOfferingId;
 
@@ -118,7 +122,7 @@ export function CreateFunnelDialog({
                         {isLoadingPresets ? <PresetsSkeleton /> : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                 {funnelPresets.map((preset) => {
-                                    const Icon = iconMap[preset.type] || Bot;
+                                    const Icon = iconMap[preset.title] || Bot;
                                     return (
                                     <Card 
                                         key={preset.type} 
@@ -169,3 +173,5 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
+
+    
