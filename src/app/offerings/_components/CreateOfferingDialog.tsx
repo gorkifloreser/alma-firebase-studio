@@ -34,9 +34,8 @@ type Profile = {
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
-type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'event_date' | 'offering_media'> & {
+type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'event_date'> & {
     event_date: Date | null;
-    offering_media: OfferingMedia[];
 };
 
 const initialOfferingState: OfferingFormData = {
@@ -137,6 +136,7 @@ export function CreateOfferingDialog({
         if (isEditMode && offeringToEdit) {
             const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
             setOffering({
+                ...initialOfferingState, // Reset to avoid carrying over old state
                 ...offeringToEdit,
                 event_date: date,
             });
@@ -161,14 +161,15 @@ export function CreateOfferingDialog({
                 }
                 return { ...prev, event_date: newDate };
             }
+            if (name === 'event_time') {
+                const timeValue = e as string;
+                const [hours, minutes] = timeValue.split(':').map(Number);
+                const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
+                newDate.setHours(hours, minutes);
+                return { ...prev, event_date: newDate };
+            }
 
             if (typeof e === 'string' && name) {
-                 if (name === 'event_time') {
-                    const [hours, minutes] = e.split(':').map(Number);
-                    const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
-                    newDate.setHours(hours, minutes);
-                    return { ...prev, event_date: newDate };
-                }
                 return { ...prev, [name]: e as Offering['type'] | Offering['currency'] };
             }
             
@@ -180,7 +181,8 @@ export function CreateOfferingDialog({
                         ...prev,
                         [field]: { ...prev[field], [lang]: value }
                     };
-                } else if (inputName === 'price') {
+                }
+                if (inputName === 'price') {
                     return { ...prev, [inputName]: value === '' ? null : Number(value) };
                 }
                 return { ...prev, [inputName]: value };
@@ -228,8 +230,9 @@ export function CreateOfferingDialog({
         startSaving(async () => {
             try {
                 let savedOffering: Offering;
+                const { offering_media, ...payloadData } = offering;
                 const payload = {
-                    ...offering,
+                    ...payloadData,
                     event_date: offering.event_date?.toISOString() ?? null,
                 };
 
@@ -294,7 +297,7 @@ export function CreateOfferingDialog({
             setIsTranslating(null);
         }
     };
-
+    
     const eventTime = offering.event_date ? format(offering.event_date, 'HH:mm') : '';
 
     return (
