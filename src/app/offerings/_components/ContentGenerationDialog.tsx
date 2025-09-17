@@ -24,6 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Funnel } from '@/app/funnels/actions';
 
 
 interface ContentGenerationDialogProps {
@@ -31,6 +33,7 @@ interface ContentGenerationDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   offeringId: string | null;
   offeringTitle: string | null;
+  funnels: Funnel[];
 }
 
 type Profile = {
@@ -52,11 +55,13 @@ export function ContentGenerationDialog({
   onOpenChange,
   offeringId,
   offeringTitle,
+  funnels
 }: ContentGenerationDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
   const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
   const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
   const [selectedCreativeTypes, setSelectedCreativeTypes] = useState<CreativeType[]>(['text']);
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, startSaving] = useTransition();
   const { toast } = useToast();
@@ -79,6 +84,7 @@ export function ContentGenerationDialog({
       setCreative(null);
       setIsLoading(false);
       setSelectedCreativeTypes(['text']);
+      setSelectedFunnelId(null);
     }
   }, [isOpen]);
 
@@ -99,7 +105,7 @@ export function ContentGenerationDialog({
         const promises = [];
 
         if (textBasedSelected) {
-            promises.push(generateContentForOffering({ offeringId }));
+            promises.push(generateContentForOffering({ offeringId, funnelId: selectedFunnelId }));
         }
         if (visualBasedSelected) {
             promises.push(generateCreativeForOffering({ 
@@ -158,6 +164,7 @@ export function ContentGenerationDialog({
       try {
         await saveContent({
           offeringId,
+          funnelId: selectedFunnelId,
           contentBody: editableContent,
           imageUrl: creative?.imageUrl || null,
           carouselSlidesText: creative?.carouselSlidesText || null,
@@ -234,6 +241,21 @@ export function ContentGenerationDialog({
 
         <div className="flex flex-col md:flex-row gap-6 py-4">
             <div className="md:w-1/3">
+                 <div className="space-y-2 mb-6">
+                    <Label htmlFor="funnel-select">Funnel (Optional)</Label>
+                    <Select onValueChange={setSelectedFunnelId} disabled={isLoading}>
+                        <SelectTrigger id="funnel-select">
+                            <SelectValue placeholder="Select a funnel..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                             <SelectItem value="none">No Funnel</SelectItem>
+                            {funnels.map(funnel => (
+                                <SelectItem key={funnel.id} value={funnel.id}>{funnel.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                     <p className="text-xs text-muted-foreground">Select a funnel to provide more context to the AI.</p>
+                </div>
                 <h3 className="font-semibold mb-4">Creative Types</h3>
                 <div className="space-y-3">
                     {creativeOptions.map(({ id, label, icon: Icon }) => (

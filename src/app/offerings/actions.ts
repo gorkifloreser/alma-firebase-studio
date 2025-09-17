@@ -352,7 +352,7 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
     try {
         const result = await genCreativeFlow(input);
         return result;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Creative generation action failed:", error);
         throw new Error("Failed to generate creative. Please try again.");
     }
@@ -360,6 +360,7 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
 
 type SaveContentInput = {
     offeringId: string;
+    funnelId?: string | null;
     contentBody: { primary: string | null; secondary: string | null; } | null;
     imageUrl: string | null;
     carouselSlidesText: string | null;
@@ -377,11 +378,12 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status } = input;
+    const { offeringId, funnelId, contentBody, imageUrl, carouselSlidesText, videoScript, status } = input;
 
     const payload = {
         user_id: user.id,
         offering_id: offeringId,
+        funnel_id: funnelId,
         content_body: contentBody,
         image_url: imageUrl,
         carousel_slides_text: carouselSlidesText,

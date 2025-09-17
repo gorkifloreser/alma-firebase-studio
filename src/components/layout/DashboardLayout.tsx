@@ -23,6 +23,7 @@ import {
   ShoppingBag,
   BrainCircuit,
   Calendar,
+  GitBranch,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -34,6 +35,7 @@ const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
+  { href: '/funnels', label: 'Funnels', icon: GitBranch },
   { href: '/media-plan', label: 'Media Plan', icon: BarChart2 },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },
