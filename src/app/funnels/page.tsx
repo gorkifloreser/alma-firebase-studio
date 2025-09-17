@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
 import { getOfferings, Offering } from '../offerings/actions';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, ArrowRight, Wand2 } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2 } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -33,11 +33,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Separator } from '@/components/ui/separator';
 import { CustomizePresetDialog } from './_components/CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Link from 'next/link';
+import { OrchestrateMediaPlanDialog } from './_components/OrchestrateMediaPlanDialog';
 
 
 export default function StrategiesPage() {
@@ -46,8 +45,9 @@ export default function StrategiesPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isOrchestrateDialogOpen, setIsOrchestrateDialogOpen] = useState(false);
     const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
-    const [initialDialogStep, setInitialDialogStep] = useState<'selection' | 'orchestrate'>('selection');
+    const [funnelToOrchestrate, setFunnelToOrchestrate] = useState<Funnel | null>(null);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
@@ -97,7 +97,7 @@ export default function StrategiesPage() {
             fetchFunnelsAndOfferings();
         };
         checkUserAndFetchData();
-    }, [offeringIdFilter]);
+    }, [offeringIdFilter, toast]);
 
     const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
@@ -125,10 +125,14 @@ export default function StrategiesPage() {
         });
     }
     
-    const handleOpenCreateDialog = (funnel: Funnel | null, step: 'selection' | 'orchestrate' = 'selection') => {
+    const handleOpenEditDialog = (funnel: Funnel | null) => {
         setFunnelToEdit(funnel);
-        setInitialDialogStep(step);
         setIsCreateDialogOpen(true);
+    };
+
+     const handleOpenOrchestrateDialog = (funnel: Funnel) => {
+        setFunnelToOrchestrate(funnel);
+        setIsOrchestrateDialogOpen(true);
     };
 
     const handleOpenCustomizeDialog = (preset: FunnelPreset, mode: 'clone' | 'edit') => {
@@ -227,7 +231,7 @@ export default function StrategiesPage() {
                             Create, manage, and orchestrate strategic marketing funnels.
                         </p>
                     </div>
-                    <Button onClick={() => handleOpenCreateDialog(null)} className="gap-2">
+                    <Button onClick={() => handleOpenEditDialog(null)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         Create Strategy
                     </Button>
@@ -285,21 +289,6 @@ export default function StrategiesPage() {
                             </div>
                         ) : funnels.length > 0 ? (
                             <>
-                                <Card className="mb-8 bg-primary/10 border-primary/20">
-                                    <CardHeader>
-                                        <CardTitle>What's Next?</CardTitle>
-                                        <CardDescription>
-                                            Your strategies now include tactical media plans. Go to the Calendar to see your scheduled content.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardFooter>
-                                        <Button asChild>
-                                            <Link href="/calendar">
-                                                Go to Calendar <ArrowRight className="ml-2 h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {funnels.map(funnel => (
                                         <Card key={funnel.id} className="flex flex-col">
@@ -319,7 +308,11 @@ export default function StrategiesPage() {
                                                     Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
                                                 </p>
                                             </CardContent>
-                                            <CardFooter className="mt-auto pt-4 flex justify-end">
+                                            <CardFooter className="mt-auto pt-4 flex justify-between">
+                                                <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
+                                                    <Wand2 className="mr-2 h-4 w-4" />
+                                                    Orchestrate Media
+                                                </Button>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -327,11 +320,7 @@ export default function StrategiesPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => handleOpenCreateDialog(funnel, 'orchestrate')}>
-                                                            <Wand2 className="mr-2 h-4 w-4" />
-                                                            <span>Orchestrate Media</span>
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => handleOpenCreateDialog(funnel, 'selection')}>
+                                                        <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
                                                             <Edit className="mr-2 h-4 w-4" />
                                                             <span>Edit Strategy</span>
                                                         </DropdownMenuItem>
@@ -376,7 +365,7 @@ export default function StrategiesPage() {
                                 <p className="text-muted-foreground mt-2">
                                     Click 'Create Strategy' to generate your first one from a template.
                                 </p>
-                                <Button onClick={() => handleOpenCreateDialog(null)} className="mt-4 gap-2">
+                                <Button onClick={() => handleOpenEditDialog(null)} className="mt-4 gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     Create Strategy
                                 </Button>
@@ -396,7 +385,15 @@ export default function StrategiesPage() {
                     funnelPresets={funnelPresets}
                     onFunnelSaved={handleFunnelSaved}
                     funnelToEdit={funnelToEdit}
-                    initialStep={initialDialogStep}
+                />
+            )}
+             {isOrchestrateDialogOpen && funnelToOrchestrate && (
+                <OrchestrateMediaPlanDialog
+                    isOpen={isOrchestrateDialogOpen}
+                    onOpenChange={setIsOrchestrateDialogOpen}
+                    funnel={funnelToOrchestrate}
+                    onPlanSaved={handleFunnelSaved}
+                    offerings={offerings}
                 />
             )}
             <CustomizePresetDialog

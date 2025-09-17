@@ -82,10 +82,9 @@ type CreateFunnelParams = {
     funnelName: string;
     goal: string;
     strategyBrief: GenerateFunnelOutput;
-    mediaPlan: PlanItem[] | null;
 }
 
-export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief, mediaPlan }: CreateFunnelParams): Promise<Funnel> {
+export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief }: CreateFunnelParams): Promise<Funnel> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -99,7 +98,6 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
             preset_id: presetId,
             goal: goal,
             strategy_brief: strategyBrief,
-            media_plan: mediaPlan,
         })
         .select(`*, offerings (id, title)`)
         .single();
@@ -114,23 +112,34 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
     return funnel as Funnel;
 }
 
+type UpdateFunnelParams = Partial<{
+    presetId: number;
+    offeringId: string;
+    funnelName: string;
+    goal: string;
+    strategyBrief: GenerateFunnelOutput;
+    mediaPlan: PlanItem[] | null;
+}>;
 
-export async function updateFunnel(funnelId: string, updates: CreateFunnelParams): Promise<Funnel> {
+
+export async function updateFunnel(funnelId: string, updates: UpdateFunnelParams): Promise<Funnel> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const { funnelName, goal, strategyBrief, mediaPlan } = updates;
     
+    const payload: { [key: string]: any } = {
+        updated_at: new Date().toISOString()
+    };
+    if (funnelName) payload.name = funnelName;
+    if (goal) payload.goal = goal;
+    if (strategyBrief) payload.strategy_brief = strategyBrief;
+    if (mediaPlan !== undefined) payload.media_plan = mediaPlan;
+    
     const { data, error } = await supabase
         .from('funnels')
-        .update({
-            name: funnelName,
-            goal,
-            strategy_brief: strategyBrief,
-            media_plan: mediaPlan,
-            updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('id', funnelId)
         .eq('user_id', user.id)
         .select(`*, offerings (id, title)`)
@@ -255,4 +264,71 @@ export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promis
 
 export async function saveContent(input: Parameters<typeof saveContentAction>[0]): Promise<{ message: string }> {
     return saveContentAction(input);
+}
+
+
+export async function getPublicLandingPage(pageId: string): Promise<Data | null> {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from('funnels')
+        .select('landing_page_content')
+        .eq('landing_page_id', pageId)
+        .single();
+    
+    if (error || !data) {
+        return null;
+    }
+
+    return data.landing_page_content as Data;
+}
+
+type SaveLandingPageParams = {
+    funnelId: string;
+    data: Data;
+};
+
+export async function saveLandingPage({ funnelId, data }: SaveLandingPageParams): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('funnels')
+        .update({
+            landing_page_content: data,
+            // If landing_page_id is null, set a new one.
+            landing_page_id: `lp_${crypto.randomUUID()}`
+        })
+        .eq('id', funnelId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error saving landing page:', error);
+        throw new Error('Could not save the landing page.');
+    }
+
+    revalidatePath(`/funnels/${funnelId}/edit`);
+    return { message: 'Landing page saved successfully.' };
+}
+
+
+export async function getLandingPage(funnelId: string): Promise<Data | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+        .from('funnels')
+        .select('landing_page_content')
+        .eq('id', funnelId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (error || !data) {
+        console.error('Error fetching landing page data:', error);
+        return null;
+    }
+
+    return data.landing_page_content as Data;
 }

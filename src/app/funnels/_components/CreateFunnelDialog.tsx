@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -17,22 +16,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel, Funnel } from '../actions';
-import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveContent } from '../actions';
 import { Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, CheckCircle2, ArrowRight, ArrowLeft, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bot, User, Stars, Sparkles, ArrowLeft } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GenerateFunnelOutput, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
-import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { getUserChannels } from '@/app/accounts/actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { SelectGroup, SelectLabel } from '@/components/ui/select';
-import { ContentGenerationDialog } from '@/app/offerings/_components/ContentGenerationDialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 
 interface CreateFunnelDialogProps {
     isOpen: boolean;
@@ -41,12 +34,7 @@ interface CreateFunnelDialogProps {
     funnelPresets: FunnelPreset[];
     onFunnelSaved: () => void;
     funnelToEdit?: Funnel | null;
-    initialStep?: DialogStep;
 }
-
-type DialogStep = 'selection' | 'edit_blueprint' | 'orchestrate';
-type PlanItemWithId = PlanItem & { id: string };
-type RegeneratingState = { [itemId: string]: boolean };
 
 type EditableStrategy = {
     campaignSuccessMetrics: string[];
@@ -59,19 +47,6 @@ type EditableStrategy = {
     }>
 };
 
-const mediaFormatConfig = [
-    { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
-    { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Text Post', channels: ['facebook', 'linkedin'] }, { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
-];
-
-const getFormatsForChannel = (channel: string): string[] => {
-    const channelLower = channel.toLowerCase();
-    return mediaFormatConfig.flatMap(category => 
-        category.formats.filter(format => format.channels.includes(channelLower)).map(format => format.value)
-    );
-};
-
 export function CreateFunnelDialog({
     isOpen,
     onOpenChange,
@@ -79,9 +54,8 @@ export function CreateFunnelDialog({
     funnelPresets,
     onFunnelSaved,
     funnelToEdit,
-    initialStep = 'selection',
 }: CreateFunnelDialogProps) {
-    const [step, setStep] = useState<DialogStep>(initialStep);
+    const [step, setStep] = useState<'selection' | 'edit_blueprint'>('selection');
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     const [funnelName, setFunnelName] = useState('');
@@ -89,25 +63,18 @@ export function CreateFunnelDialog({
     const [availableChannels, setAvailableChannels] = useState<string[]>([]);
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     const [generatedContent, setGeneratedContent] = useState<EditableStrategy | null>(null);
-    
-    // Media Plan State
-    const [planItems, setPlanItems] = useState<PlanItemWithId[]>([]);
-    const [isGeneratingMediaPlan, startGeneratingMediaPlan] = useTransition();
-    const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
 
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
-
-    // State for the nested dialog
-    const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
-    const [offeringForContent, setOfferingForContent] = useState<Offering | null>(null);
-    const [sourcePlanItem, setSourcePlanItem] = useState<PlanItem | null>(null);
     
     useEffect(() => {
         if (isOpen) {
-            setStep(initialStep);
+            setStep('selection');
             if (funnelToEdit) {
+                // This dialog is now only for editing the blueprint, not creating.
+                // So we can directly go to the edit step if a funnel is provided.
+                setStep('edit_blueprint');
                 setSelectedOfferingId(funnelToEdit.offering_id);
                 setSelectedPresetId(funnelToEdit.preset_id);
                 setFunnelName(funnelToEdit.name);
@@ -116,17 +83,6 @@ export function CreateFunnelDialog({
                     setGeneratedContent(funnelToEdit.strategy_brief);
                     setSelectedChannels(funnelToEdit.strategy_brief.channels || []);
                 }
-                if (funnelToEdit.media_plan) {
-                    validateAndSetPlanItems(funnelToEdit.media_plan);
-                } else {
-                    setPlanItems([]);
-                }
-                
-                // If orchestrate is the initial step and no plan exists, generate it.
-                if (initialStep === 'orchestrate' && !funnelToEdit.media_plan) {
-                    handleGenerateMediaPlan();
-                }
-
             } else {
                 // Reset state for new funnel
                 setSelectedOfferingId(null);
@@ -134,7 +90,6 @@ export function CreateFunnelDialog({
                 setGeneratedContent(null);
                 setFunnelName('');
                 setGoal('');
-                setPlanItems([]);
             }
             
             // Fetch channels
@@ -145,7 +100,7 @@ export function CreateFunnelDialog({
                 }
             });
         }
-    }, [isOpen, funnelToEdit, initialStep]);
+    }, [isOpen, funnelToEdit]);
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
@@ -192,34 +147,7 @@ export function CreateFunnelDialog({
         });
     };
 
-    const handleGenerateMediaPlan = () => {
-        const currentFunnelId = funnelToEdit?.id;
-        if (currentFunnelId) {
-            startGeneratingMediaPlan(async () => {
-                try {
-                    const result = await generateMediaPlanAction({ funnelId: currentFunnelId });
-                    validateAndSetPlanItems(result.plan);
-                    setStep('orchestrate');
-                    toast({
-                        title: 'Media Plan Generated!',
-                        description: 'Review and edit the suggested content ideas below.'
-                    });
-                } catch (error: any) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Media Plan Generation Failed',
-                        description: error.message,
-                    });
-                }
-            });
-        } else {
-            // This is a new funnel, save it first then generate.
-            handleSave(true);
-        }
-    };
-
-
-    const handleSave = async (proceedToNextStep = false) => {
+    const handleSave = async () => {
         if (!selectedPresetId || !selectedOfferingId || !generatedContent || !funnelName.trim()) {
              toast({ variant: 'destructive', title: 'Missing Information', description: 'Please ensure the strategy has a title and content before saving.'});
             return;
@@ -227,48 +155,20 @@ export function CreateFunnelDialog({
 
         startSaving(async () => {
              try {
-                const payload = {
+                const payload: any = { // Using any to avoid TS errors with partial data
                     presetId: selectedPresetId,
                     offeringId: selectedOfferingId,
                     funnelName: funnelName,
                     goal: goal,
-                    strategyBrief: { ...generatedContent, channels: selectedChannels } as GenerateFunnelOutput,
-                    mediaPlan: planItems.length > 0 ? planItems.map(({id, ...rest}) => rest) : null,
+                    strategyBrief: { ...generatedContent, channels: selectedChannels },
                 };
 
-                let savedFunnel: Funnel;
                 if (funnelToEdit) {
-                    savedFunnel = await updateFunnel(funnelToEdit.id, payload);
+                    await updateFunnel(funnelToEdit.id, payload);
                 } else {
-                    savedFunnel = await createFunnel(payload);
+                    await createFunnel(payload);
                 }
-
-                if (proceedToNextStep) {
-                    // This is a special case for new funnels. We save, then immediately generate the plan.
-                    // We need a way to pass the new funnel ID to handleGenerateMediaPlan.
-                    // A simple way is to re-call it after setting the new funnel data.
-                    toast({ title: 'Strategy Saved!', description: 'Now, let\'s orchestrate the media plan.' });
-                    
-                    const newFunnelForEdit = { ...funnelToEdit, ...savedFunnel };
-
-                    startGeneratingMediaPlan(async () => {
-                        try {
-                            const result = await generateMediaPlanAction({ funnelId: newFunnelForEdit.id });
-                            validateAndSetPlanItems(result.plan);
-                            setStep('orchestrate');
-                            toast({
-                                title: 'Media Plan Generated!',
-                                description: 'Review and edit the suggested content ideas below.'
-                            });
-                        } catch (error: any) {
-                             toast({ variant: 'destructive', title: 'Media Plan Generation Failed', description: error.message, });
-                        }
-                    });
-
-                } else {
-                    onFunnelSaved();
-                }
-
+                onFunnelSaved();
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Save Failed', description: error.message, });
             }
@@ -279,38 +179,9 @@ export function CreateFunnelDialog({
     const handleBlueprintChange = (stageIndex: number, field: keyof EditableStrategy['strategy'][0], value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
     const handleConceptualStepChange = (stageIndex: number, stepIndex: number, field: keyof ConceptualStep, value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex].conceptualSteps[stepIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy });}
 
-    // Media Plan functions
-    const validateAndSetPlanItems = (items: PlanItem[]) => { const validatedItems = items.map(item => { const validFormats = getFormatsForChannel(item.channel); const formatIsValid = validFormats.includes(item.format); return { ...item, format: formatIsValid ? item.format : (validFormats[0] || 'Text Post'), id: crypto.randomUUID(),}; }); setPlanItems(validatedItems); };
-    const handleRegenerateItem = async (itemToRegen: PlanItemWithId) => { const funnelId = funnelToEdit?.id; if (!funnelId || !itemToRegen.conceptualStep) return; setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true })); try { const newItem = await regeneratePlanItem({ funnelId: funnelId, channel: itemToRegen.channel, conceptualStep: itemToRegen.conceptualStep }); const validFormats = getFormatsForChannel(newItem.channel); const formatIsValid = validFormats.includes(newItem.format); setPlanItems(prev => prev.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post') } : item )); toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'}); } catch (error: any) { toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message, }); } finally { setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: false })); } }
-    const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item)); }
-    const handleStageNameChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => { if (item.id === itemId && item.conceptualStep) { return { ...item, conceptualStep: { ...item.conceptualStep, stageName: value } }; } return item; })); };
-    const handleObjectiveChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => { if (item.id === itemId && item.conceptualStep) { return { ...item, conceptualStep: { ...item.conceptualStep, objective: value } }; } return item; })); };
-    const handleRemoveItem = (itemId: string) => { setPlanItems(prev => prev.filter(item => item.id !== itemId)); };
-    const handleAddNewItem = (channel: string) => { const newItem: PlanItemWithId = { id: crypto.randomUUID(), offeringId: selectedOfferingId || '', channel: channel, format: getFormatsForChannel(channel)[0] || 'Text Post', copy: '', hashtags: '', creativePrompt: '', conceptualStep: { objective: 'Your new objective here', stageName: 'Uncategorized', }, }; setPlanItems(prev => [...prev, newItem]); };
-
-    const handleApproveContent = (planItem: PlanItem) => {
-        const offering = offerings.find(o => o.id === planItem.offeringId);
-        if (offering) {
-            setSourcePlanItem(planItem);
-            setOfferingForContent(offering);
-            setIsContentDialogOpen(true);
-        } else {
-             toast({ variant: 'destructive', title: 'Offering not found' });
-        }
-    };
 
     const globalPresets = funnelPresets.filter(p => p.user_id === null);
     const customPresets = funnelPresets.filter(p => p.user_id !== null);
-
-    const groupedByChannel = useMemo(() => {
-        return planItems.reduce((acc, item) => {
-            const channelKey = item.channel || 'General';
-            if (!acc[channelKey]) acc[channelKey] = [];
-            acc[channelKey].push(item);
-            return acc;
-        }, {} as Record<string, PlanItemWithId[]>);
-    }, [planItems]);
-    const channelsForTabs = Object.keys(groupedByChannel);
 
     const renderSelectionStep = () => (
         <>
@@ -360,77 +231,24 @@ export function CreateFunnelDialog({
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}> <ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button onClick={handleGenerateMediaPlan} disabled={isSaving || !generatedContent}>{isSaving ? 'Saving...' : 'Next: Orchestrate Content'} <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                <Button onClick={handleSave} disabled={isSaving || !generatedContent}>{isSaving ? 'Saving...' : 'Save Strategy'}</Button>
             </DialogFooter>
         </>
-    );
-
-    const renderOrchestrateStep = () => (
-         <>
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle><DialogDescription>Generate, edit, and approve the tactical content pieces for each channel.</DialogDescription></DialogHeader>
-            <div className="max-h-[60vh] flex flex-col overflow-hidden py-4">
-                {isGeneratingMediaPlan ? (<div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>) : 
-                planItems.length > 0 ? (
-                    <Tabs defaultValue={channelsForTabs[0]} className="w-full flex-1 flex flex-col min-h-0">
-                        <div className="flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
-                        <div className="flex-1 overflow-y-auto mt-4 pr-4">
-                            {channelsForTabs.map(c => (
-                                <TabsContent key={c} value={c} className="mt-0">
-                                    <div className="space-y-4">{groupedByChannel[c].map((item) => (
-                                        <div key={item.id} className="p-4 border rounded-lg space-y-4 relative">
-                                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
-                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                                            </div>
-                                            <div className="space-y-1 pr-24"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || ''} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" readOnly/></div>
-                                            <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof"/></div>
-                                            <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>)})}</SelectContent></Select></div>
-                                            <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
-                                            <Button size="sm" onClick={() => handleApproveContent(item)}><Wand2 className="mr-2 h-4 w-4"/>Approve & Generate Creative</Button>
-                                        </div>
-                                    ))}</div>
-                                    <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>
-                                </TabsContent>
-                            ))}
-                        </div>
-                    </Tabs>
-                ) : (<div className="text-center text-muted-foreground py-10 flex-1 flex items-center justify-center">Click "Generate Plan" to begin.</div>)}
-            </div>
-             <DialogFooter className="mt-4 pt-4 border-t">
-                <Button variant="outline" onClick={() => setStep('edit_blueprint')} disabled={isSaving}> <ArrowLeft className="mr-2 h-4 w-4" /> Back to Blueprint</Button>
-                <Button onClick={() => handleSave(false)} disabled={isSaving || isGeneratingMediaPlan || planItems.length === 0}>{isSaving ? 'Saving...' : 'Save & Close'}</Button>
-            </DialogFooter>
-         </>
     );
 
     const renderContent = () => {
         switch (step) {
             case 'selection': return renderSelectionStep();
             case 'edit_blueprint': return renderBlueprintStep();
-            case 'orchestrate': return renderOrchestrateStep();
             default: return renderSelectionStep();
         }
     }
 
     return (
-        <>
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-7xl">
+            <DialogContent className="sm:max-w-4xl">
                 {renderContent()}
             </DialogContent>
         </Dialog>
-        {offeringForContent && (
-            <ContentGenerationDialog
-                isOpen={isContentDialogOpen}
-                onOpenChange={setIsContentDialogOpen}
-                offeringId={offeringForContent.id}
-                offeringTitle={offeringForContent.title.primary}
-                funnels={[]} // Funnels are already considered in the strategy, not needed here.
-                sourcePlanItem={sourcePlanItem}
-            />
-        )}
-        </>
     );
 }
