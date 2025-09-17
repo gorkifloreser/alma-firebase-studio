@@ -31,7 +31,7 @@ export type Funnel = {
         id: string;
         title: { primary: string | null };
     } | null;
-    media_plans: MediaPlan | null; // Changed from array to single object
+    media_plans: MediaPlan | null;
 }
 
 export type FunnelPreset = {
@@ -54,7 +54,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans (id, plan_items)
+            media_plans:media_plan_id (id, plan_items)
         `)
         .eq('user_id', user.id);
 
@@ -346,7 +346,7 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Pr
     const { data: mediaPlan, error: mediaPlanError } = await supabase
         .from('media_plans')
         .upsert({
-            funnel_id: funnelId, // This might be ignored on insert if it's a PK
+            funnel_id: funnelId,
             user_id: user.id,
             plan_items: planItems,
         }, { onConflict: 'funnel_id' })
