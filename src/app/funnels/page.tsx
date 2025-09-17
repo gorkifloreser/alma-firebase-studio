@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
 import { getOfferings, Offering } from '../offerings/actions';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, ArrowRight } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
 import { EditStrategyDialog } from './_components/EditStrategyDialog';
 import {
@@ -38,6 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { CustomizePresetDialog } from './_components/CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Link from 'next/link';
 
 
 export default function StrategiesPage() {
@@ -276,7 +277,7 @@ export default function StrategiesPage() {
                         </div>
                     </TabsContent>
                     <TabsContent value="my-funnels" className="mt-6">
-                         {isLoading ? (
+                        {isLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[...Array(3)].map((_, i) => (
                                     <Card key={i}>
@@ -291,70 +292,87 @@ export default function StrategiesPage() {
                                 ))}
                             </div>
                         ) : funnels.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {funnels.map(funnel => (
-                                    <Card key={funnel.id} className="flex flex-col">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <CardTitle className="text-xl">{funnel.name}</CardTitle>
-                                                    <CardDescription>
-                                                        For: {funnel.offerings?.title.primary || 'N/A'}
-                                                    </CardDescription>
+                            <>
+                                <Card className="mb-8 bg-primary/10 border-primary/20">
+                                    <CardHeader>
+                                        <CardTitle>What's Next?</CardTitle>
+                                        <CardDescription>
+                                            Your strategic blueprints are ready. Now, head to the Media Orchestrator to generate a concrete content plan based on these strategies.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardFooter>
+                                        <Button asChild>
+                                            <Link href="/media-plan">
+                                                Go to Media Plan <ArrowRight className="ml-2 h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {funnels.map(funnel => (
+                                        <Card key={funnel.id} className="flex flex-col">
+                                            <CardHeader>
+                                                <div className="flex items-start justify-between">
+                                                    <div>
+                                                        <CardTitle className="text-xl">{funnel.name}</CardTitle>
+                                                        <CardDescription>
+                                                            For: {funnel.offerings?.title.primary || 'N/A'}
+                                                        </CardDescription>
+                                                    </div>
+                                                    <GitBranch className="h-8 w-8 text-muted-foreground" />
                                                 </div>
-                                                <GitBranch className="h-8 w-8 text-muted-foreground" />
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter className="mt-auto pt-4 flex justify-end">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Strategy</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                                <Trash className="mr-2 h-4 w-4" />
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This will permanently delete the funnel and all its associated steps. This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    onClick={() => handleFunnelDelete(funnel.id)}
-                                                                    disabled={isDeleting}
-                                                                    className="bg-destructive hover:bg-destructive/90"
-                                                                >
-                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                            </div>
+                                            </CardHeader>
+                                            <CardContent className="flex-grow">
+                                                <p className="text-sm text-muted-foreground">
+                                                    Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
+                                                </p>
+                                            </CardContent>
+                                            <CardFooter className="mt-auto pt-4 flex justify-end">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Strategy</span>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                    <Trash className="mr-2 h-4 w-4" />
+                                                                    <span>Delete</span>
+                                                                </DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete the funnel and all its associated steps. This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        onClick={() => handleFunnelDelete(funnel.id)}
+                                                                        disabled={isDeleting}
+                                                                        className="bg-destructive hover:bg-destructive/90"
+                                                                    >
+                                                                        {isDeleting ? 'Deleting...' : 'Delete'}
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </CardFooter>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </>
                         ) : (
                             <div className="text-center py-16 border-2 border-dashed rounded-lg">
                                 <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
