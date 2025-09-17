@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
+import { getProfile } from '@/app/settings/actions';
 
 interface CreateFunnelDialogProps {
     isOpen: boolean;
@@ -34,6 +35,11 @@ interface CreateFunnelDialogProps {
     onFunnelCreated: () => void;
     defaultOfferingId?: string | null;
 }
+
+type Profile = {
+    primary_language: string;
+    secondary_language: string | null;
+} | null;
 
 type DialogStep = 'selection' | 'preview';
 
@@ -50,6 +56,7 @@ export function CreateFunnelDialog({
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
     const [funnelName, setFunnelName] = useState('');
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
+    const [profile, setProfile] = useState<Profile>(null);
     
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
@@ -63,6 +70,9 @@ export function CreateFunnelDialog({
             setSelectedPresetId(null);
             setGeneratedContent(null);
             setFunnelName('');
+            
+            // Fetch profile to know about language settings
+            getProfile().then(setProfile);
         }
     }, [isOpen, defaultOfferingId]);
 
@@ -312,7 +322,7 @@ export function CreateFunnelDialog({
                             </Card>
 
                             {/* Secondary Language Section */}
-                            {generatedContent.secondary && (
+                            {generatedContent.secondary && profile?.secondary_language && (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Secondary Language Content</CardTitle>
