@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -222,7 +223,7 @@ export default function FunnelsPage() {
                     </Button>
                 </header>
                 
-                <Tabs defaultValue="templates" className="w-full">
+                <Tabs defaultValue="my-funnels" className="w-full">
                     <div className="flex justify-center">
                         <TabsList>
                             <TabsTrigger value="templates">Funnel Templates</TabsTrigger>
@@ -371,5 +372,7 @@ export default function FunnelsPage() {
         </DashboardLayout>
     );
 }
+
+    
 
     
