@@ -149,7 +149,13 @@ const OfferingsPageContent = () => {
     }
 
     const handleViewFunnel = (offeringId: string) => {
-        router.push(`/funnels/${offeringId}/edit`);
+        // Temporarily disabled to prevent errors
+        toast({
+            title: 'Feature Temporarily Disabled',
+            description: 'The visual editor is currently unavailable. We are working on a fix.',
+            variant: 'destructive',
+        });
+        // router.push(`/funnels/${offeringId}/edit`);
     }
 
     return (
@@ -225,7 +231,7 @@ const OfferingsPageContent = () => {
                                                     <Wand2 className="mr-2 h-4 w-4" />
                                                     <span>Generate Funnel</span>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleViewFunnel(offering.id)} disabled={true}>
+                                                <DropdownMenuItem onSelect={() => handleViewFunnel(offering.id)}>
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     <span>View Funnel</span>
                                                 </DropdownMenuItem>

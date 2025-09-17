@@ -440,7 +440,39 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
 
     const funnelId = funnel.id;
 
-    const initialData = (window as any).__CRAFTJS_EDITOR__.query.serialize();
+    const initialData = {
+        "root": {
+            "type": "div",
+            "props": {
+                "style": {
+                    "padding": "64px"
+                }
+            },
+            "children": [
+                {
+                    "type": "Heading",
+                    "props": {
+                        "text": funnelData.primary.landingPage.title,
+                        "level": "1"
+                    }
+                },
+                {
+                    "type": "Paragraph",
+                    "props": {
+                        "text": funnelData.primary.landingPage.content
+                    }
+                },
+                {
+                    "type": "PrimaryButton",
+                    "props": {
+                        "text": "Get Started"
+                    }
+                }
+            ]
+        },
+        "content": [],
+        "zones": {}
+    }
     
     // 2. Create the landing page step
     const landingPagePath = `lp-${funnelId.substring(0, 8)}`;
