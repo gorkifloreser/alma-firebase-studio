@@ -83,7 +83,7 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   if (!user) throw new Error('User not authenticated');
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { offering_media, ...restOfOfferingData } = offeringData;
+  const { offering_media, updated_at, ...restOfOfferingData } = offeringData;
 
   const payload = {
     ...restOfOfferingData,
@@ -330,3 +330,5 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
         throw new Error("Failed to translate the text. Please try again.");
     }
 }
+
+    
