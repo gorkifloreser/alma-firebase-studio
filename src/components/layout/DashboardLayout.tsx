@@ -20,6 +20,7 @@ import {
   Import,
   BarChart2,
   Heart,
+  ShoppingBag,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -30,6 +31,7 @@ import { cn } from '@/lib/utils';
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
+  { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
   { href: '/records', label: 'Records', icon: FileText },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/imports', label: 'Imports', icon: Import },
