@@ -13,8 +13,8 @@ export default {
         'mesh-gradient': 'radial-gradient(at 27% 37%, hsla(28, 100%, 87%, 1) 0px, transparent 50%), radial-gradient(at 97% 21%, hsla(55, 100%, 90%, 1) 0px, transparent 50%), radial-gradient(at 52% 99%, hsla(355, 100%, 90%, 1) 0px, transparent 50%), radial-gradient(at 10% 29%, hsla(340, 100%, 90%, 1) 0px, transparent 50%), radial-gradient(at 97% 96%, hsla(39, 100%, 85%, 1) 0px, transparent 50%), radial-gradient(at 33% 50%, hsla(5, 100%, 90%, 1) 0px, transparent 50%), radial-gradient(at 79% 53%, hsla(342, 100%, 88%, 1) 0px, transparent 50%)',
       },
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        body: ['var(--font-body)', 'sans-serif'],
+        headline: ['var(--font-body)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
