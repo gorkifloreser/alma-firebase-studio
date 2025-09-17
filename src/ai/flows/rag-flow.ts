@@ -9,7 +9,6 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { embed } from 'genkit/ai';
 
 // Define the input and output schemas for the RAG flow.
 const RagInputSchema = z.object({
@@ -72,7 +71,7 @@ const ragFlow = ai.defineFlow(
     }
 
     // 1. Generate an embedding for the user's query.
-    const embedding = await embed({
+    const embedding = await ai.embed({
       model: 'googleai/text-embedding-004',
       input: query,
     });
