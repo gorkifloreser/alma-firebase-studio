@@ -29,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 type Profile = {
@@ -43,6 +42,7 @@ const OfferingsPageContent = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
+    const [offeringToEdit, setOfferingToEdit] = useState<Offering | null>(null);
     
     const { toast } = useToast();
 
@@ -77,14 +77,24 @@ const OfferingsPageContent = () => {
         };
 
         checkUserAndFetchData();
-    }, [toast]);
+    }, []);
 
-    const handleOfferingCreated = () => {
+    const handleOpenCreateDialog = () => {
+        setOfferingToEdit(null);
+        setIsDialogOpen(true);
+    };
+
+    const handleOpenEditDialog = (offering: Offering) => {
+        setOfferingToEdit(offering);
+        setIsDialogOpen(true);
+    };
+
+    const handleOfferingSaved = () => {
         setIsDialogOpen(false);
         fetchAllData();
         toast({
             title: 'Success!',
-            description: 'Your new offering has been created.',
+            description: `Your offering has been ${offeringToEdit ? 'updated' : 'created'}.`,
         });
     };
 
@@ -115,7 +125,7 @@ const OfferingsPageContent = () => {
                         <h1 className="text-3xl font-bold">Offerings</h1>
                         <p className="text-muted-foreground">Manage your products, services, and events.</p>
                     </div>
-                    <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+                    <Button onClick={handleOpenCreateDialog} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         New Offering
                     </Button>
@@ -154,7 +164,7 @@ const OfferingsPageContent = () => {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         <span>Edit</span>
                                                     </DropdownMenuItem>
@@ -204,7 +214,7 @@ const OfferingsPageContent = () => {
                         <div className="text-center py-16 border-2 border-dashed rounded-lg">
                             <h3 className="text-xl font-semibold">No Offerings Yet</h3>
                             <p className="text-muted-foreground mt-2">Click "New Offering" to add your first product or service.</p>
-                            <Button onClick={() => setIsDialogOpen(true)} className="mt-4 gap-2">
+                            <Button onClick={handleOpenCreateDialog} className="mt-4 gap-2">
                                 <PlusCircle className="h-5 w-5" />
                                 New Offering
                             </Button>
@@ -216,7 +226,8 @@ const OfferingsPageContent = () => {
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 profile={profile}
-                onOfferingCreated={handleOfferingCreated}
+                onOfferingSaved={handleOfferingSaved}
+                offeringToEdit={offeringToEdit}
             />
         </>
     );

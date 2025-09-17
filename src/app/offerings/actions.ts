@@ -6,9 +6,9 @@ import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 
 export type Offering = {
-    id?: string;
-    user_id?: string;
-    created_at?: string;
+    id: string;
+    user_id: string;
+    created_at: string;
     title: { primary: string | null; secondary: string | null };
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
@@ -79,6 +79,44 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
 
   revalidatePath('/offerings');
   return data as Offering;
+}
+
+/**
+ * Updates an existing offering for the currently authenticated user.
+ * @param {string} offeringId The ID of the offering to update.
+ * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>} offeringData The data to update.
+ * @returns {Promise<Offering>} A promise that resolves to the updated offering.
+ * @throws {Error} If the user is not authenticated or if the database operation fails.
+ */
+export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<Offering> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = {
+        ...offeringData,
+        price: offeringData.price || null,
+        currency: offeringData.price ? (offeringData.currency || 'USD') : null,
+        event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
+        duration: offeringData.type === 'Event' ? offeringData.duration : null,
+        updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+        .from('offerings')
+        .update(payload)
+        .eq('id', offeringId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error updating offering:', error.message);
+        throw new Error('Could not update the offering. Please try again.');
+    }
+
+    revalidatePath('/offerings');
+    return data as Offering;
 }
 
 /**

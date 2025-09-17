@@ -16,14 +16,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, translateText, Offering } from '../actions';
+import { createOffering, updateOffering, translateText, Offering } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ImageUpload } from './ImageUpload';
 
 
@@ -32,14 +32,8 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-interface CreateOfferingDialogProps {
-    isOpen: boolean;
-    onOpenChange: (isOpen: boolean) => void;
-    profile: Profile;
-    onOfferingCreated: () => void;
-}
-
-type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at'> & {
+type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'event_date'> & {
+    event_date: Date | null;
     event_time?: string;
 };
 
@@ -113,40 +107,70 @@ const BilingualFormField = ({
     )
 };
 
+
+interface CreateOfferingDialogProps {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    profile: Profile;
+    onOfferingSaved: () => void;
+    offeringToEdit: Offering | null;
+}
+
 export function CreateOfferingDialog({
     isOpen,
     onOpenChange,
     profile,
-    onOfferingCreated,
+    onOfferingSaved,
+    offeringToEdit,
 }: CreateOfferingDialogProps) {
     const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
-    const [eventDate, setEventDate] = useState<Date | undefined>();
 
-
+    const isEditMode = offeringToEdit !== null;
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     useEffect(() => {
-        if (eventDate && offering.event_time) {
-            const [hours, minutes] = offering.event_time.split(':').map(Number);
-            const combinedDate = new Date(eventDate);
-            combinedDate.setHours(hours, minutes);
-            setOffering(prev => ({...prev, event_date: combinedDate.toISOString()}));
-        } else if (eventDate) {
-            setOffering(prev => ({...prev, event_date: eventDate.toISOString()}))
+        if (isEditMode && offeringToEdit) {
+            const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
+            setOffering({
+                ...offeringToEdit,
+                event_date: date,
+                event_time: date ? format(date, 'HH:mm') : '',
+            });
+        } else {
+            setOffering(initialOfferingState);
         }
-    }, [eventDate, offering.event_time]);
+    }, [offeringToEdit, isEditMode, isOpen]);
+
 
     const handleFormChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string,
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string | Date | undefined,
         name?: string
     ) => {
-        if (typeof e === 'string') {
-            setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] | Offering['currency'] }));
-        } else {
-            const { name: inputName, value } = e.target;
+        if (name === 'event_date' && (e instanceof Date || e === undefined)) {
+            const newDate = e || null;
+            setOffering(prev => {
+                const existingDate = prev.event_date || new Date();
+                if (newDate) {
+                    newDate.setHours(existingDate.getHours(), existingDate.getMinutes());
+                }
+                return { ...prev, event_date: newDate };
+            });
+        } else if (typeof e === 'string' && name) {
+             if (name === 'event_time') {
+                const [hours, minutes] = e.split(':').map(Number);
+                setOffering(prev => {
+                    const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
+                    newDate.setHours(hours, minutes);
+                    return { ...prev, event_date: newDate, event_time: e };
+                });
+            } else {
+                setOffering(prev => ({ ...prev, [name]: e as Offering['type'] | Offering['currency'] }));
+            }
+        } else if (typeof e !== 'string' && e && 'target' in e) {
+            const { name: inputName, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
             if (inputName.includes('_')) {
                 const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
                  setOffering(prev => ({
@@ -175,15 +199,18 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                // Create a copy of the offering state to avoid mutating it directly
-                const payload: Partial<OfferingFormData> = { ...offering };
-                // Remove the temporary event_time field before sending to the server
-                delete payload.event_time;
+                const payload = {
+                    ...offering,
+                    event_date: offering.event_date?.toISOString() ?? null,
+                };
+                delete (payload as Partial<typeof payload>).event_time;
 
-                await createOffering(payload as Omit<Offering, 'id' | 'user_id' | 'created_at'>);
-                onOfferingCreated();
-                setOffering(initialOfferingState); // Reset form
-                setEventDate(undefined);
+                if (isEditMode && offeringToEdit) {
+                    await updateOffering(offeringToEdit.id, payload);
+                } else {
+                    await createOffering(payload);
+                }
+                onOfferingSaved();
             } catch (error: any) {
                  toast({
                     variant: 'destructive',
@@ -235,9 +262,9 @@ export function CreateOfferingDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px]">
                 <DialogHeader>
-                    <DialogTitle>Create a New Offering</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'Edit Offering' : 'Create a New Offering'}</DialogTitle>
                     <DialogDescription>
-                        Add a new product, service, or event to your catalog. This will be used by the AI to generate content.
+                        {isEditMode ? 'Update the details of your offering.' : 'Add a new product, service, or event to your catalog.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-8 py-4 max-h-[80vh] overflow-y-auto pr-6">
@@ -314,18 +341,18 @@ export function CreateOfferingDialog({
                                         variant={"outline"}
                                         className={cn(
                                         "w-full justify-start text-left font-normal",
-                                        !eventDate && "text-muted-foreground"
+                                        !offering.event_date && "text-muted-foreground"
                                         )}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {eventDate ? format(eventDate, "PPP") : <span>Pick a date</span>}
+                                        {offering.event_date ? format(offering.event_date, "PPP") : <span>Pick a date</span>}
                                     </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
                                     <Calendar
                                         mode="single"
-                                        selected={eventDate}
-                                        onSelect={setEventDate}
+                                        selected={offering.event_date ?? undefined}
+                                        onSelect={(date) => handleFormChange(date, 'event_date')}
                                         initialFocus
                                     />
                                     </PopoverContent>
@@ -335,7 +362,7 @@ export function CreateOfferingDialog({
                                      <Label htmlFor="event_time">Event Time</Label>
                                     <div className="relative">
                                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="event_time" name="event_time" type="time" value={offering.event_time} onChange={handleFormChange} className="pl-10" />
+                                        <Input id="event_time" name="event_time" type="time" value={offering.event_time} onChange={(e) => handleFormChange(e.target.value, 'event_time')} className="pl-10" />
                                     </div>
                                 </div>
                             </div>
@@ -365,7 +392,7 @@ export function CreateOfferingDialog({
                     <DialogFooter className="sticky bottom-0 bg-background py-4">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
-                            {isSaving ? 'Creating...' : 'Create Offering'}
+                            {isSaving ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? 'Save Changes' : 'Create Offering')}
                         </Button>
                     </DialogFooter>
                 </form>
