@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -56,7 +56,7 @@ export default function BrandHeartPage() {
     const { toast } = useToast();
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
 
     const fetchAllData = async () => {
