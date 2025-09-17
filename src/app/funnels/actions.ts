@@ -11,7 +11,7 @@ export type Funnel = {
     user_id: string;
     offering_id: string;
     name: string;
-    funnel_type: 'Awareness' | 'Consideration' | 'Conversion' | 'Nurture' | null;
+    funnel_type: 'Lead Magnet' | 'Direct Offer' | 'Nurture & Convert' | 'Onboarding & Habit' | null;
     created_at: string;
     offerings: {
         id: string;
@@ -52,7 +52,7 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
     if (!user) throw new Error('User not authenticated');
     
     // 1. Generate funnel content via AI
-    const funnelContent = await genFunnelFlow({ offeringId });
+    const funnelContent = await genFunnelFlow({ offeringId, funnelType: funnelType || '' });
     
     // 2. Create the main funnel record
     const { data: funnel, error: funnelError } = await supabase
@@ -60,7 +60,7 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `Funnel for ${funnelContent.primary.landingPage.title}`,
+            name: `${funnelType}: ${funnelContent.primary.landingPage.title}`,
             funnel_type: funnelType,
         })
         .select('id')
@@ -77,11 +77,12 @@ export async function createFunnel(funnelType: Funnel['funnel_type'], offeringId
     const initialData = {
       root: {
         props: {
-          style: {
-            padding: '64px',
-            backgroundColor: 'var(--background)',
-            color: 'var(--foreground)',
-            fontFamily: 'var(--font-body)',
+            title: funnelContent.primary.landingPage.title,
+            style: {
+                padding: '64px',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                fontFamily: 'var(--font-body)',
           },
         },
       },
