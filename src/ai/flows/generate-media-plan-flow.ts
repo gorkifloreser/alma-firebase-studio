@@ -3,6 +3,7 @@
 
 /**
  * @fileOverview A flow to generate a holistic media plan based on a specific strategy.
+ * This flow parallelizes plan generation for each channel to improve performance.
  */
 
 import { ai } from '@/ai/genkit';
@@ -17,6 +18,10 @@ const PlanItemSchema = z.object({
   description: z.string().describe("A brief description of the content idea, tied to a conceptual step in the strategy."),
 });
 
+const ChannelPlanSchema = z.object({
+  plan: z.array(PlanItemSchema),
+});
+
 const GenerateMediaPlanOutputSchema = z.object({
   plan: z.array(PlanItemSchema),
 });
@@ -28,23 +33,23 @@ const GenerateMediaPlanInputSchema = z.object({
 export type GenerateMediaPlanInput = z.infer<typeof GenerateMediaPlanInputSchema>;
 
 
-const prompt = ai.definePrompt({
-  name: 'generateMediaPlanPrompt',
+const generateChannelPlanPrompt = ai.definePrompt({
+  name: 'generateChannelPlanPrompt',
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
           brandHeart: z.any(),
           strategy: z.any(),
+          channel: z.string(),
       })
   },
-  output: { schema: GenerateMediaPlanOutputSchema },
-  prompt: `You are a world-class media planner who translates high-level strategy into an actionable content plan for conscious creators.
+  output: { schema: ChannelPlanSchema },
+  prompt: `You are a world-class media planner who translates high-level strategy into an actionable content plan for a single, specific channel.
 
 **The Strategy Blueprint to Execute:**
 ---
 **Strategy for Offering: "{{strategy.offerings.title.primary}}" (Offering ID: {{strategy.offering_id}})**
 - Goal: {{strategy.goal}}
-- Selected Channels: {{#each strategy.strategy_brief.channels}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
 **Blueprint Stages:**
 {{#each strategy.strategy_brief.strategy}}
@@ -64,18 +69,20 @@ const prompt = ai.definePrompt({
 
 **Your Task:**
 
-Your job is to create a comprehensive, 1-week media plan. For **EACH stage** of the blueprint, you must generate at least one concrete content idea for **EACH of the selected channels**.
+Your job is to create a 1-week media plan for the **'{{channel}}' channel ONLY**.
+
+For **EACH stage** of the blueprint, you must generate at least one concrete content idea that is perfectly suited for the **'{{channel}}'** channel.
 
 For each content idea in the plan, you must:
 1.  **Specify Offering:** Use the offeringId from the strategy: '{{strategy.offering_id}}'.
-2.  **Specify Channel:** Assign the content to one of the specific channels provided in 'Selected Channels' (e.g., 'instagram', 'facebook', 'webmail', 'website').
-3.  **Define Format:** Propose a specific, tangible format (e.g., '3-part Instagram carousel about the origin story', 'Weekly newsletter announcing early-bird discount', 'Short WhatsApp broadcast sharing a customer quote', 'A new "How it Works" section on the website').
+2.  **Specify Channel:** The channel MUST be '{{channel}}'.
+3.  **Define Format:** Propose a specific, tangible format that works well on '{{channel}}' (e.g., if the channel is Instagram, suggest '3-part Instagram carousel'; if it's Email, suggest 'Weekly newsletter').
 4.  **Describe the Idea:** Write a brief, compelling 'description' for the content piece that clearly executes one of the conceptual steps from the blueprint for that stage.
-5.  **Ensure Full Coverage:** Double-check that every stage in the blueprint has a corresponding content idea for every channel listed in the strategy.
+5.  **Ensure Full Coverage:** Double-check that every stage in the blueprint has at least one corresponding content idea for the '{{channel}}' channel.
 
 Generate this entire plan in the **{{primaryLanguage}}** language.
 
-Return the result as a flat array of plan items in the specified JSON format. Ensure you provide the correct 'offeringId' for each plan item.`,
+Return the result as a flat array of plan items in the specified JSON format. Ensure you provide the correct 'offeringId' and 'channel' for each plan item.`,
 });
 
 
@@ -110,22 +117,35 @@ const generateMediaPlanFlow = ai.defineFlow(
     if (profileError || !profile) throw new Error('User profile not found.');
     if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
     if (!strategy.offerings) throw new Error('The selected strategy is not linked to a valid offering.');
-
+    if (!strategy.strategy_brief?.channels || strategy.strategy_brief.channels.length === 0) {
+      throw new Error('The selected strategy has no channels defined.');
+    }
 
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
+    const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
 
-    const { output } = await prompt({
-        primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,
-        brandHeart,
-        strategy,
-    });
-    
-    if (!output) {
-      throw new Error('The AI model did not return a response.');
+    // Create a parallel generation task for each channel
+    const channelPromises = strategy.strategy_brief.channels.map(channel =>
+        generateChannelPlanPrompt({
+            primaryLanguage,
+            brandHeart,
+            strategy,
+            channel,
+        }).then(result => result.output?.plan || []) // Return the plan array or an empty array on failure
+    );
+
+    // Wait for all channels to finish generating
+    const allChannelPlans = await Promise.all(channelPromises);
+
+    // Flatten the array of arrays into a single plan
+    const finalPlan = allChannelPlans.flat();
+
+    if (finalPlan.length === 0) {
+      throw new Error('The AI model did not return a response for any channel.');
     }
 
-    return output;
+    return { plan: finalPlan };
   }
 );
 
