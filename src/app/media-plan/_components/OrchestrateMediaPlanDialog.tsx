@@ -12,10 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateMediaPlan as generateMediaPlanAction, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
-import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
+import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, updateMediaPlan, type MediaPlan, type PlanItem } from '../actions';
 import { Funnel } from '@/app/funnels/actions';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot, Sparkles, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type PlanItem = GenerateMediaPlanOutput['plan'][0] & { id: string };
+type PlanItemWithId = PlanItem & { id: string };
+type RegeneratingState = { [itemId: string]: boolean };
 
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
@@ -35,30 +35,31 @@ interface OrchestrateMediaPlanDialogProps {
 
 const mediaFormats = [
     // Social
-    '1:1 Square Image (Social)',
-    '4:5 Portrait Image (Social)',
-    '9:16 Story/Reel Video (Social)',
-    'Carousel (3-5 slides, Social)',
-    '16:9 Landscape Video (Social)',
-    'Text Post (Social)',
+    '1:1 Square Image',
+    '4:5 Portrait Image',
+    '9:16 Story/Reel Video',
+    'Carousel (3-5 slides)',
+    '16:9 Landscape Video',
+    'Text Post',
     // Email
-    'Newsletter (Email)',
-    'Promotional Email (Email)',
+    'Newsletter',
+    'Promotional Email',
     // Website
-    'Blog Post (Website)',
-    'Landing Page Section (Website)',
+    'Blog Post',
+    'Landing Page Section',
     // WhatsApp
-    'Text Message (WhatsApp)',
-    'Text with Image (WhatsApp)',
-    'Short Video (WhatsApp)',
+    'Text Message',
+    'Text with Image',
+    'Short Video',
 ];
 
 
 export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, planToEdit, onPlanSaved }: OrchestrateMediaPlanDialogProps) {
     const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
-    const [planItems, setPlanItems] = useState<PlanItem[]>([]);
+    const [planItems, setPlanItems] = useState<PlanItemWithId[]>([]);
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
+    const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
     const { toast } = useToast();
 
     useEffect(() => {
@@ -104,6 +105,36 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
             }
         });
     };
+
+    const handleRegenerateItem = async (itemToRegen: PlanItemWithId) => {
+        if (!selectedStrategyId || !itemToRegen.conceptualStep) return;
+
+        setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
+        try {
+            const newItem = await regeneratePlanItem({
+                funnelId: selectedStrategyId,
+                channel: itemToRegen.channel,
+                conceptualStep: itemToRegen.conceptualStep
+            });
+            setPlanItems(prev => prev.map(item => 
+                item.id === itemToRegen.id 
+                ? { ...newItem, id: itemToRegen.id } 
+                : item
+            ));
+             toast({
+                title: 'Item Regenerated!',
+                description: 'The content idea has been updated.'
+            });
+        } catch (error: any) {
+             toast({
+                variant: 'destructive',
+                title: 'Regeneration Failed',
+                description: error.message,
+            });
+        } finally {
+            setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: false }));
+        }
+    }
     
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
@@ -143,7 +174,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
             }
             acc[channelKey].push(item);
             return acc;
-        }, {} as Record<string, PlanItem[]>);
+        }, {} as Record<string, PlanItemWithId[]>);
     }, [planItems]);
 
     const channels = Object.keys(groupedByChannel);
@@ -213,19 +244,24 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-1">
                                                             <Label htmlFor={`format-${item.id}`}>Format</Label>
-                                                            <Select
-                                                                value={item.format}
-                                                                onValueChange={(value) => handleItemChange(item.id, 'format', value)}
-                                                            >
-                                                                <SelectTrigger id={`format-${item.id}`} className="font-semibold">
-                                                                    <SelectValue placeholder="Select a format" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {mediaFormats.map(format => (
-                                                                        <SelectItem key={format} value={format}>{format}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
+                                                            <div className="flex items-center gap-2">
+                                                                <Select
+                                                                    value={item.format}
+                                                                    onValueChange={(value) => handleItemChange(item.id, 'format', value)}
+                                                                >
+                                                                    <SelectTrigger id={`format-${item.id}`} className="font-semibold">
+                                                                        <SelectValue placeholder="Select a format" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {mediaFormats.map(format => (
+                                                                            <SelectItem key={format} value={format}>{format}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <Button variant="outline" size="icon" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
+                                                                    <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label htmlFor={`hashtags-${item.id}`}>Hashtags</Label>

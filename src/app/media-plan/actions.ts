@@ -1,12 +1,20 @@
 
 'use server';
 
-import { generateMediaPlanForStrategy as generateMediaPlanFlow } from '@/ai/flows/generate-media-plan-flow';
-import type { GenerateMediaPlanInput, GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
+import { 
+    generateMediaPlanForStrategy as generateMediaPlanFlow,
+    regeneratePlanItem as regeneratePlanItemFlow
+} from '@/ai/flows/generate-media-plan-flow';
+import type { 
+    GenerateMediaPlanInput, 
+    GenerateMediaPlanOutput,
+    RegeneratePlanItemInput,
+    PlanItem as PlanItemType
+} from '@/ai/flows/generate-media-plan-flow';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-type PlanItem = GenerateMediaPlanOutput['plan'][0];
+export type PlanItem = PlanItemType;
 
 export type MediaPlan = {
     id: string;
@@ -31,6 +39,22 @@ export async function generateMediaPlan(input: GenerateMediaPlanInput): Promise<
         throw new Error(`Failed to generate media plan: ${error.message}`);
     }
 }
+
+/**
+ * Server action to invoke the Genkit plan item regeneration flow.
+ * @param {RegeneratePlanItemInput} input - Contains context for regeneration.
+ * @returns {Promise<PlanItem>} The newly generated plan item.
+ */
+export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
+    try {
+        const result = await regeneratePlanItemFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error("Plan item regeneration action failed:", error);
+        throw new Error(`Failed to regenerate plan item: ${error.message}`);
+    }
+}
+
 
 /**
  * Saves a new media plan to the database.
