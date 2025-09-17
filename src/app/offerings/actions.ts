@@ -17,6 +17,7 @@ export type Offering = {
     id: string;
     user_id: string;
     created_at: string;
+    updated_at: string;
     title: { primary: string | null; secondary: string | null };
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
@@ -72,17 +73,20 @@ export async function getOfferings(): Promise<Offering[]> {
 
 /**
  * Creates a new offering for the currently authenticated user.
- * @param {Omit<Offering, 'id' | 'user_id' | 'created_at'>} offeringData The data for the new offering.
+ * @param {Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>} offeringData The data for the new offering.
  * @returns {Promise<Offering>} A promise that resolves to the newly created offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>): Promise<Offering> {
+export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Offering> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { offering_media, ...restOfOfferingData } = offeringData;
+
   const payload = {
-    ...offeringData,
+    ...restOfOfferingData,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
@@ -117,17 +121,20 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
 /**
  * Updates an existing offering for the currently authenticated user.
  * @param {string} offeringId The ID of the offering to update.
- * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>} offeringData The data to update.
+ * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>>} offeringData The data to update.
  * @returns {Promise<Offering>} A promise that resolves to the updated offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>>): Promise<Offering> {
+export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<Offering> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { offering_media, ...restOfOfferingData } = offeringData;
 
     const payload = {
-        ...offeringData,
+        ...restOfOfferingData,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
@@ -324,5 +331,3 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
         throw new Error("Failed to translate the text. Please try again.");
     }
 }
-
-    
