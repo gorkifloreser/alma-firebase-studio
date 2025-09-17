@@ -25,7 +25,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 type PlanItem = MediaPlan['plan_items'][0] & { id?: string };
 type OfferingsMap = Map<string, Offering & { offering_media: OfferingMedia[] }>;
