@@ -152,40 +152,41 @@ export function CreateOfferingDialog({
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string | Date | undefined | null,
         name?: string
     ) => {
-        if (name === 'event_date') {
-            const newDate = e instanceof Date ? e : null;
-            setOffering(prev => {
+         setOffering(prev => {
+            if (name === 'event_date') {
+                const newDate = e instanceof Date ? e : null;
                 const existingDate = prev.event_date || new Date();
                 if (newDate) {
                     newDate.setHours(existingDate.getHours(), existingDate.getMinutes());
                 }
                 return { ...prev, event_date: newDate };
-            });
-        } else if (typeof e === 'string' && name) {
-             if (name === 'event_time') {
-                const [hours, minutes] = e.split(':').map(Number);
-                setOffering(prev => {
+            }
+
+            if (typeof e === 'string' && name) {
+                 if (name === 'event_time') {
+                    const [hours, minutes] = e.split(':').map(Number);
                     const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
                     newDate.setHours(hours, minutes);
                     return { ...prev, event_date: newDate };
-                });
-            } else {
-                setOffering(prev => ({ ...prev, [name]: e as Offering['type'] | Offering['currency'] }));
+                }
+                return { ...prev, [name]: e as Offering['type'] | Offering['currency'] };
             }
-        } else if (typeof e !== 'string' && e && 'target' in e) {
-            const { name: inputName, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
-            if (inputName.includes('_')) {
-                const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
-                 setOffering(prev => ({
-                    ...prev,
-                    [field]: { ...prev[field], [lang]: value }
-                }));
-            } else if (inputName === 'price') {
-                setOffering(prev => ({ ...prev, [inputName]: value === '' ? null : Number(value) }));
-            } else {
-                setOffering(prev => ({ ...prev, [inputName]: value }));
+            
+            if (typeof e !== 'string' && e && 'target' in e) {
+                const { name: inputName, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
+                if (inputName.includes('_')) {
+                    const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
+                     return {
+                        ...prev,
+                        [field]: { ...prev[field], [lang]: value }
+                    };
+                } else if (inputName === 'price') {
+                    return { ...prev, [inputName]: value === '' ? null : Number(value) };
+                }
+                return { ...prev, [inputName]: value };
             }
-        }
+            return prev;
+        });
     };
     
     const handleRemoveExistingMedia = async (mediaId: string) => {
@@ -443,5 +444,3 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
-
-    
