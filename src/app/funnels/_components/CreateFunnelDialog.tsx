@@ -158,9 +158,9 @@ export function CreateFunnelDialog({
                 const payload: any = { // Using any to avoid TS errors with partial data
                     presetId: selectedPresetId,
                     offeringId: selectedOfferingId,
-                    funnelName: funnelName,
+                    name: funnelName,
                     goal: goal,
-                    strategyBrief: { ...generatedContent, channels: selectedChannels },
+                    strategy_brief: { ...generatedContent, channels: selectedChannels },
                 };
 
                 if (funnelToEdit) {
@@ -230,12 +230,31 @@ export function CreateFunnelDialog({
                 )}
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}> <ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
+                {funnelToEdit ? (
+                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
+                ) : (
+                    <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back
+                    </Button>
+                )}
                 <Button onClick={handleSave} disabled={isSaving || !generatedContent}>{isSaving ? 'Saving...' : 'Save Strategy'}</Button>
             </DialogFooter>
         </>
     );
+    
+    // When editing, only show the blueprint step.
+    if(funnelToEdit) {
+        return (
+             <Dialog open={isOpen} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-4xl">
+                    {renderBlueprintStep()}
+                </DialogContent>
+            </Dialog>
+        )
+    }
 
+    // For creation, show the multi-step flow.
     const renderContent = () => {
         switch (step) {
             case 'selection': return renderSelectionStep();
