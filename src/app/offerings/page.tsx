@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { redirect } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
 import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, Wand2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, Wand2, Eye } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
 import { ContentGenerationDialog } from './_components/ContentGenerationDialog';
@@ -57,6 +58,7 @@ const OfferingsPageContent = () => {
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
     const [offeringForContent, setOfferingForContent] = useState<OfferingWithMedia | null>(null);
     const [offeringForFunnel, setOfferingForFunnel] = useState<OfferingWithMedia | null>(null);
+    const router = useRouter();
     
     const { toast } = useToast();
 
@@ -146,6 +148,13 @@ const OfferingsPageContent = () => {
         });
     }
 
+    const handleViewFunnel = (offeringId: string) => {
+        // This is a placeholder. In a real app, you'd fetch the funnel associated with the offering.
+        // For now, we'll assume a naming convention or a lookup.
+        // Let's redirect to a non-existent funnel editor page for now.
+        router.push(`/funnels/${offeringId}/edit`);
+    }
+
     return (
         <>
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -218,6 +227,10 @@ const OfferingsPageContent = () => {
                                                 <DropdownMenuItem onSelect={() => handleOpenFunnelDialog(offering)}>
                                                     <Wand2 className="mr-2 h-4 w-4" />
                                                     <span>Generate Funnel</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleViewFunnel(offering.id)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    <span>View Funnel</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>

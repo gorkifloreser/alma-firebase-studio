@@ -81,7 +81,8 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { offering_media, event_date, ...restOfData } = offeringData as any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { offering_media, event_date, updated_at, ...restOfData } = offeringData as any;
 
   const payload = {
     ...restOfData,
@@ -128,6 +129,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { offering_media, event_date, ...restOfData } = offeringData as any;
 
     const payload = {
@@ -333,16 +335,9 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
  * Invokes the Genkit content generation flow.
  * @param {GenerateContentInput} input The offering ID.
  * @returns {Promise<GenerateContentOutput>} The generated content.
- * @throws {Error} If the generation fails.
  */
 export async function generateContentForOffering(input: GenerateContentInput): Promise<GenerateContentOutput> {
-    try {
-        const result = await genContentFlow(input);
-        return result;
-    } catch (error) {
-        console.error("Content generation action failed:", error);
-        throw new Error("Failed to generate content. Please try again.");
-    }
+    return genContentFlow(input);
 }
 
 
@@ -432,7 +427,7 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `Funnel for Offering ${offeringId.substring(0, 8)}`
+            name: `Funnel for ${offeringId.substring(0, 8)}`
         })
         .select('id')
         .single();
@@ -444,60 +439,95 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
 
     const funnelId = funnel.id;
 
-    // 2. Prepare the funnel steps for batch insertion
-    const stepsToInsert = [];
-
-    // Add primary language landing page
-    stepsToInsert.push({
+    // 2. Create the landing page step
+    const landingPagePath = `lp-${funnelId.substring(0, 8)}`;
+    const {data: landingPageStep, error: lpError} = await supabase.from('funnel_steps').insert({
         funnel_id: funnelId,
         user_id: user.id,
         step_order: 0,
         step_type: 'landing_page',
-        title: { primary: funnelData.primary.landingPage.title },
-        content: { primary: funnelData.primary.landingPage.content },
-    });
+        path: landingPagePath,
+        title: { 
+            primary: funnelData.primary.landingPage.title,
+            secondary: funnelData.secondary?.landingPage.title
+        },
+        content: {
+             primary: funnelData.primary.landingPage.content,
+             secondary: funnelData.secondary?.landingPage.content
+        },
+        data: {
+            root: {
+              type: "div",
+              props: {
+                id: "root",
+                style: {
+                  padding: "64px",
+                },
+              },
+            },
+            content: [
+              {
+                type: "Heading",
+                props: {
+                  "puck-id": "heading-1",
+                  level: 1,
+                  text: funnelData.primary.landingPage.title,
+                  align: "center",
+                },
+              },
+              {
+                type: "Text",
+                props: {
+                  "puck-id": "text-1",
+                  text: funnelData.primary.landingPage.content,
+                  align: "center",
+                },
+              },
+              {
+                type: "Button",
+                props: {
+                    "puck-id": "button-1",
+                    label: "Get Started",
+                    href: "#",
+                }
+              }
+            ],
+          }
+    }).select('id').single();
 
-    // Add primary language follow-up sequence
-    funnelData.primary.followUpSequence.forEach((step, index) => {
-        stepsToInsert.push({
-            funnel_id: funnelId,
-            user_id: user.id,
-            step_order: index + 1,
-            step_type: 'follow_up',
-            title: { primary: step.title },
-            content: { primary: step.content },
-        });
-    });
-
-    // If secondary language exists, prepare those steps
-    if (funnelData.secondary) {
-        // Find and update landing page step
-        const lpStep = stepsToInsert.find(s => s.step_order === 0);
-        if (lpStep) {
-            lpStep.title.secondary = funnelData.secondary.landingPage.title;
-            lpStep.content.secondary = funnelData.secondary.landingPage.content;
-        }
-
-        // Find and update follow-up steps
-        funnelData.secondary.followUpSequence.forEach((step, index) => {
-            const followUpStep = stepsToInsert.find(s => s.step_order === index + 1);
-            if (followUpStep) {
-                followUpStep.title.secondary = step.title;
-                followUpStep.content.secondary = step.content;
-            }
-        });
+    if (lpError || !landingPageStep) {
+        console.error('Error creating landing page step:', lpError);
+        throw new Error('Could not create landing page step.');
     }
+    
+    // 3. Prepare follow-up steps for batch insertion
+    const followUpStepsToInsert = funnelData.primary.followUpSequence.map((step, index) => ({
+        funnel_id: funnelId,
+        user_id: user.id,
+        step_order: index + 1,
+        step_type: 'follow_up',
+        title: { 
+            primary: step.title,
+            secondary: funnelData.secondary?.followUpSequence[index]?.title
+        },
+        content: { 
+            primary: step.content,
+            secondary: funnelData.secondary?.followUpSequence[index]?.content
+        },
+    }));
 
-    // 3. Batch insert all steps
-    const { error: stepsError } = await supabase
-        .from('funnel_steps')
-        .insert(stepsToInsert);
 
-    if (stepsError) {
-        console.error('Error saving funnel steps:', stepsError);
-        // Optional: Add cleanup logic to delete the funnel if steps fail
-        await supabase.from('funnels').delete().eq('id', funnelId);
-        throw new Error('Could not save funnel steps.');
+    if (followUpStepsToInsert.length > 0) {
+        const { error: stepsError } = await supabase
+            .from('funnel_steps')
+            .insert(followUpStepsToInsert);
+
+        if (stepsError) {
+            console.error('Error saving funnel steps:', stepsError);
+            // Optional: Add cleanup logic to delete the funnel and landing page if steps fail
+            await supabase.from('funnels').delete().eq('id', funnelId);
+            throw new Error('Could not save funnel steps.');
+        }
     }
 
     revalidatePath('/offerings');
