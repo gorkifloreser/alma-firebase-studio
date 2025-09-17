@@ -15,20 +15,22 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { saveCustomFunnelPreset } from '../actions';
+import { saveCustomFunnelPreset, updateCustomFunnelPreset } from '../actions';
 import type { FunnelPreset } from '../actions';
 
 interface CustomizePresetDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    presetToClone: FunnelPreset | null;
+    preset: FunnelPreset | null;
+    mode: 'clone' | 'edit';
     onPresetSaved: () => void;
 }
 
 export function CustomizePresetDialog({
     isOpen,
     onOpenChange,
-    presetToClone,
+    preset,
+    mode,
     onPresetSaved,
 }: CustomizePresetDialogProps) {
     const [formData, setFormData] = useState({
@@ -41,15 +43,15 @@ export function CustomizePresetDialog({
     const { toast } = useToast();
 
     useEffect(() => {
-        if (presetToClone) {
+        if (preset) {
             setFormData({
-                title: `${presetToClone.title} (Custom)`,
-                description: presetToClone.description,
-                best_for: presetToClone.best_for,
-                principles: presetToClone.principles,
+                title: mode === 'clone' ? `${preset.title} (Custom)` : preset.title,
+                description: preset.description,
+                best_for: preset.best_for,
+                principles: preset.principles,
             });
         }
-    }, [presetToClone]);
+    }, [preset, mode]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -58,13 +60,23 @@ export function CustomizePresetDialog({
     };
 
     const handleSubmit = async () => {
+        if (!preset) return;
+
         startSaving(async () => {
             try {
-                await saveCustomFunnelPreset(formData);
-                toast({
-                    title: 'Template Saved!',
-                    description: 'Your new funnel template has been created.',
-                });
+                if (mode === 'edit') {
+                    await updateCustomFunnelPreset(preset.id, formData);
+                     toast({
+                        title: 'Template Updated!',
+                        description: 'Your custom funnel template has been saved.',
+                    });
+                } else {
+                    await saveCustomFunnelPreset(formData);
+                    toast({
+                        title: 'Template Saved!',
+                        description: 'Your new funnel template has been created.',
+                    });
+                }
                 onPresetSaved();
             } catch (error: any) {
                  toast({
@@ -76,15 +88,15 @@ export function CustomizePresetDialog({
         });
     };
 
-    if (!presetToClone) return null;
+    if (!preset) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Customize Funnel Template</DialogTitle>
+                    <DialogTitle>{mode === 'edit' ? 'Edit' : 'Customize'} Funnel Template</DialogTitle>
                     <DialogDescription>
-                        Edit the details of this template and save it as your own.
+                       {mode === 'edit' ? 'Update the details of your custom template.' : 'Edit the details and save it as your own new template.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
@@ -109,7 +121,7 @@ export function CustomizePresetDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
                     <Button onClick={handleSubmit} disabled={isSaving}>
-                        {isSaving ? 'Saving...' : 'Save as New Template'}
+                        {isSaving ? 'Saving...' : 'Save Template'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

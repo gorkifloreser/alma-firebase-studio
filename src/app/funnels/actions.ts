@@ -250,6 +250,8 @@ export async function getPublicLandingPage(funnelId: string) {
 
 export async function getFunnelPresets(): Promise<FunnelPreset[]> {
     const supabase = createClient();
+    // RLS is enabled, so this will fetch global presets (user_id IS NULL)
+    // and presets owned by the current user.
     const { data, error } = await supabase.from('funnel_presets').select('*').order('id');
     if (error) {
         console.error("Error fetching funnel presets:", error);
@@ -284,4 +286,58 @@ export async function saveCustomFunnelPreset(formData: Omit<FunnelPreset, 'id' |
 
     revalidatePath('/funnels');
     return data;
+}
+
+
+export async function updateCustomFunnelPreset(presetId: number, formData: Omit<FunnelPreset, 'id' | 'user_id' | 'type'>): Promise<FunnelPreset> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    // Ensure type is not updated directly by user, re-generate it
+    const newType = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const payload = {
+        ...formData,
+        type: `${user.id.substring(0, 4)}-${newType}`,
+    };
+
+    const { data, error } = await supabase
+        .from('funnel_presets')
+        .update(payload)
+        .eq('id', presetId)
+        .eq('user_id', user.id) // Security check: user can only update their own presets
+        .select()
+        .single();
+    
+    if (error) {
+        console.error("Error updating custom funnel preset:", error);
+        if (error.code === '23505') {
+            throw new Error("A preset with a similar title already exists. Please choose a different title.");
+        }
+        throw new Error("Could not update the custom funnel preset.");
+    }
+
+    revalidatePath('/funnels');
+    return data;
+}
+
+
+export async function deleteCustomFunnelPreset(presetId: number): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { error } = await supabase
+        .from('funnel_presets')
+        .delete()
+        .eq('id', presetId)
+        .eq('user_id', user.id); // Security check
+
+    if (error) {
+        console.error("Error deleting custom funnel preset:", error);
+        throw new Error("Could not delete the custom funnel preset.");
+    }
+    
+    revalidatePath('/funnels');
+    return { message: "Custom funnel preset deleted successfully." };
 }

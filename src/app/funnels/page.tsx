@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset } from './actions';
+import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
 import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
 import { getOfferings, Offering } from '../offerings/actions';
@@ -42,13 +42,21 @@ export default function FunnelsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
-    const [presetToClone, setPresetToClone] = useState<FunnelPreset | null>(null);
+    const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
+    const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
     const [isDeleting, startDeleting] = useTransition();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
 
     const offeringIdFilter = useMemo(() => searchParams.get('offeringId'), [searchParams]);
+
+    const { globalPresets, customPresets } = useMemo(() => {
+        const global = funnelPresets.filter(p => p.user_id === null);
+        const custom = funnelPresets.filter(p => p.user_id !== null);
+        return { globalPresets: global, customPresets: custom };
+    }, [funnelPresets]);
+
 
     const fetchFunnelsAndOfferings = async () => {
         setIsLoading(true);
@@ -84,13 +92,6 @@ export default function FunnelsPage() {
         checkUserAndFetchData();
     }, [offeringIdFilter]);
 
-    const { globalPresets, customPresets } = useMemo(() => {
-        const global = funnelPresets.filter(p => p.user_id === null);
-        const custom = funnelPresets.filter(p => p.user_id !== null);
-        return { globalPresets: global, customPresets: custom };
-    }, [funnelPresets]);
-
-
     const handleFunnelCreated = () => {
         setIsCreateDialogOpen(false);
         fetchFunnelsAndOfferings();
@@ -116,8 +117,9 @@ export default function FunnelsPage() {
         });
     }
 
-    const handleOpenCustomizeDialog = (preset: FunnelPreset) => {
-        setPresetToClone(preset);
+    const handleOpenCustomizeDialog = (preset: FunnelPreset, mode: 'clone' | 'edit') => {
+        setPresetToCustomize(preset);
+        setCustomizeMode(mode);
         setIsCustomizeDialogOpen(true);
     };
 
@@ -125,13 +127,29 @@ export default function FunnelsPage() {
         setIsCustomizeDialogOpen(false);
         fetchFunnelsAndOfferings();
     };
+    
+    const handlePresetDelete = (presetId: number) => {
+        startDeleting(async () => {
+            try {
+                await deleteCustomFunnelPreset(presetId);
+                toast({ title: 'Success!', description: 'The custom template has been deleted.' });
+                fetchFunnelsAndOfferings();
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Deletion Failed',
+                    description: error.message,
+                });
+            }
+        });
+    };
 
-    const PresetCard = ({ preset }: { preset: FunnelPreset }) => (
+    const PresetCard = ({ preset, isCustom }: { preset: FunnelPreset, isCustom: boolean }) => (
         <Card className="flex flex-col bg-muted/20">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <CardTitle>{preset.title}</CardTitle>
-                    {preset.user_id && <Badge variant="secondary" className="gap-1"><User className="h-3 w-3"/> Custom</Badge>}
+                    {isCustom && <Badge variant="secondary" className="gap-1"><User className="h-3 w-3"/> Custom</Badge>}
                 </div>
                 <CardDescription>{preset.description}</CardDescription>
             </CardHeader>
@@ -140,11 +158,46 @@ export default function FunnelsPage() {
                     <span className="font-semibold">Best for:</span> {preset.best_for}
                 </p>
             </CardContent>
-            <CardFooter>
-                <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset)}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Clone & Customize
-                </Button>
+            <CardFooter className="flex justify-between items-center">
+                 {isCustom ? (
+                    <>
+                        <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset, 'edit')}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                        </Button>
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this custom template?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the '{preset.title}' template. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => handlePresetDelete(preset.id)}
+                                        disabled={isDeleting}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                        {isDeleting ? 'Deleting...' : 'Delete'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </>
+                ) : (
+                    <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset, 'clone')}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Clone & Customize
+                    </Button>
+                )}
             </CardFooter>
         </Card>
     );
@@ -183,14 +236,14 @@ export default function FunnelsPage() {
                                     <div className="mb-8">
                                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Templates</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            {customPresets.map(preset => <PresetCard key={preset.id} preset={preset} />)}
+                                            {customPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={true} />)}
                                         </div>
                                     </div>
                                 )}
                                  <div>
                                     <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Templates</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {globalPresets.map(preset => <PresetCard key={preset.id} preset={preset} />)}
+                                        {globalPresets.map(preset => <PresetCard key={preset.id} preset={preset} isCustom={false} />)}
                                     </div>
                                 </div>
                             </>
@@ -307,7 +360,8 @@ export default function FunnelsPage() {
             <CustomizePresetDialog
                 isOpen={isCustomizeDialogOpen}
                 onOpenChange={setIsCustomizeDialogOpen}
-                presetToClone={presetToClone}
+                preset={presetToCustomize}
+                mode={customizeMode}
                 onPresetSaved={handlePresetSaved}
             />
         </DashboardLayout>
