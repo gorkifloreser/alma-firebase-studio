@@ -83,7 +83,7 @@ const generateMediaPlanFlow = ai.defineFlow(
   {
     name: 'generateMediaPlanFlow',
     inputSchema: GenerateMediaPlanInputSchema,
-    outputSchema: GenerateMedia-plan-flow.tsSchema,
+    outputSchema: GenerateMediaPlanOutputSchema,
   },
   async ({ funnelId }) => {
     const supabase = createClient();
