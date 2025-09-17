@@ -15,7 +15,7 @@ import { GenerateFunnelOutput } from './generate-funnel-flow';
 const PlanItemSchema = z.object({
   offeringId: z.string().describe("The ID of the offering this content is for."),
   channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook')."),
-  format: z.string().describe("The specific visual format for the content (e.g., '1:1 Square Image', '9:16 Reel Video')."),
+  format: z.string().describe("The specific visual format for the content, chosen from the provided list."),
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
   creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
@@ -54,6 +54,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
           brandHeart: z.any(),
           strategy: z.any(),
           channel: z.string(),
+          validFormats: z.array(z.string()),
       })
   },
   output: { schema: ChannelPlanSchema },
@@ -88,7 +89,7 @@ Your job is to generate a list of concrete content packages for the **'{{channel
 For **EACH conceptual step** in the blueprint, you must generate one complete content package. Each package must contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
-3.  **format**: The specific visual format best suited for the concept and channel. Examples: '1:1 Square Image', '9:16 Reel Video', '4:5 Portrait Image', 'Carousel (3-5 slides)'.
+3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write compelling, direct-response ad copy for the post. It must align with the brand's tone of voice and the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
@@ -107,6 +108,7 @@ const regeneratePlanItemPrompt = ai.definePrompt({
             strategy: z.any(),
             channel: z.string(),
             conceptualStep: z.any(),
+            validFormats: z.array(z.string()),
         })
     },
     output: { schema: PlanItemSchema },
@@ -130,7 +132,7 @@ Your job is to generate ONE concrete content package for the **'{{channel}}' cha
 This content package MUST contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
-3.  **format**: Suggest a NEW, DIFFERENT specific visual format from your previous attempt. Examples: '1:1 Square Image', '9:16 Reel Video', '4:5 Portrait Image', 'Carousel (3-5 slides)'.
+3.  **format**: Suggest a NEW, DIFFERENT specific visual format from your previous attempt. **You MUST choose one from this list**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy. It must align with the brand's tone of voice and the objective of the conceptual step.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
 6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator.
@@ -138,6 +140,23 @@ This content package MUST contain:
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });
+
+
+const mediaFormatConfig = [
+    { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
+    { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
+    { label: "Text & Communication", formats: [ { value: 'Text Post', channels: ['facebook', 'linkedin'] }, { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ]
+    }
+];
+
+const getFormatsForChannel = (channel: string): string[] => {
+    const channelLower = channel.toLowerCase();
+    return mediaFormatConfig.flatMap(category => 
+        category.formats
+            .filter(format => format.channels.includes(channelLower))
+            .map(format => format.value)
+    );
+};
 
 
 const generateMediaPlanFlow = ai.defineFlow(
@@ -183,14 +202,16 @@ const generateMediaPlanFlow = ai.defineFlow(
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
 
     // Create a parallel generation task for each channel
-    const channelPromises = channels.map(channel =>
-        generateChannelPlanPrompt({
+    const channelPromises = channels.map(channel => {
+        const validFormats = getFormatsForChannel(channel);
+        return generateChannelPlanPrompt({
             primaryLanguage,
             brandHeart,
             strategy,
             channel,
+            validFormats,
         }).then(result => result.output?.plan || []) // Return the plan array or an empty array on failure
-    );
+    });
 
     // Wait for all channels to finish generating
     const allChannelPlans = await Promise.all(channelPromises);
@@ -235,12 +256,15 @@ const regeneratePlanItemFlow = ai.defineFlow(
         const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
         const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
         
+        const validFormats = getFormatsForChannel(channel);
+
         const { output } = await regeneratePlanItemPrompt({
             primaryLanguage,
             brandHeart,
             strategy,
             channel,
-            conceptualStep
+            conceptualStep,
+            validFormats,
         });
 
         if (!output) {

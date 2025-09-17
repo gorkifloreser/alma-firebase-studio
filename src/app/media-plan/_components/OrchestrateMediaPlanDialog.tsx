@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type PlanItemWithId = PlanItem & { id: string };
 type RegeneratingState = { [itemId: string]: boolean };
@@ -33,25 +33,44 @@ interface OrchestrateMediaPlanDialogProps {
     onPlanSaved: () => void;
 }
 
-const mediaFormats = [
-    // Social
-    '1:1 Square Image',
-    '4:5 Portrait Image',
-    '9:16 Story/Reel Video',
-    'Carousel (3-5 slides)',
-    '16:9 Landscape Video',
-    'Text Post',
-    // Email
-    'Newsletter',
-    'Promotional Email',
-    // Website
-    'Blog Post',
-    'Landing Page Section',
-    // WhatsApp
-    'Text Message',
-    'Text with Image',
-    'Short Video',
+const mediaFormatConfig = [
+    {
+        label: "Image",
+        formats: [
+            { value: '1:1 Square Image', channels: ['instagram', 'facebook'] },
+            { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] },
+            { value: '9:16 Story Image', channels: ['instagram', 'facebook'] },
+        ]
+    },
+    {
+        label: "Video",
+        formats: [
+             { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] },
+             { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] },
+             { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] },
+        ]
+    },
+    {
+        label: "Text & Communication",
+        formats: [
+            { value: 'Text Post', channels: ['facebook', 'linkedin'] },
+            { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] },
+            { value: 'Newsletter', channels: ['webmail'] },
+            { value: 'Promotional Email', channels: ['webmail'] },
+            { value: 'Blog Post', channels: ['website'] },
+            { value: 'Text Message', channels: ['whatsapp', 'telegram'] },
+        ]
+    }
 ];
+
+const getFormatsForChannel = (channel: string): string[] => {
+    const channelLower = channel.toLowerCase();
+    return mediaFormatConfig.flatMap(category => 
+        category.formats
+            .filter(format => format.channels.includes(channelLower))
+            .map(format => format.value)
+    );
+};
 
 
 export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, planToEdit, onPlanSaved }: OrchestrateMediaPlanDialogProps) {
@@ -81,11 +100,11 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
     
     const validateAndSetPlanItems = (items: PlanItem[]) => {
         const validatedItems = items.map(item => {
-            // Ensure format is always valid, default if not
-            const formatIsValid = mediaFormats.includes(item.format);
+            const validFormats = getFormatsForChannel(item.channel);
+            const formatIsValid = validFormats.includes(item.format);
             return {
                 ...item,
-                format: formatIsValid ? item.format : mediaFormats[0],
+                format: formatIsValid ? item.format : (validFormats[0] || 'Text Post'),
                 id: crypto.randomUUID(),
             };
         });
@@ -126,11 +145,12 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                 conceptualStep: itemToRegen.conceptualStep
             });
             
-            const formatIsValid = mediaFormats.includes(newItem.format);
+            const validFormats = getFormatsForChannel(newItem.channel);
+            const formatIsValid = validFormats.includes(newItem.format);
 
             setPlanItems(prev => prev.map(item => 
                 item.id === itemToRegen.id 
-                ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : mediaFormats[0] } 
+                ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post') } 
                 : item
             ));
              toast({
@@ -158,11 +178,12 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
 
     const handleAddNewItem = (channel: string) => {
         const strategy = strategies.find(s => s.id === selectedStrategyId);
+        const validFormats = getFormatsForChannel(channel);
         const newItem: PlanItemWithId = {
             id: crypto.randomUUID(),
             offeringId: strategy?.offering_id || '',
             channel: channel,
-            format: 'Text Post',
+            format: validFormats[0] || 'Text Post',
             copy: '',
             hashtags: '',
             creativePrompt: '',
@@ -283,9 +304,18 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                                         <SelectValue placeholder="Select a format" />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        {mediaFormats.map(format => (
-                                                                            <SelectItem key={format} value={format}>{format}</SelectItem>
-                                                                        ))}
+                                                                        {mediaFormatConfig.map(group => {
+                                                                            const channelFormats = group.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
+                                                                            if (channelFormats.length === 0) return null;
+                                                                            return (
+                                                                                <SelectGroup key={group.label}>
+                                                                                    <SelectLabel>{group.label}</SelectLabel>
+                                                                                    {channelFormats.map(format => (
+                                                                                        <SelectItem key={format.value} value={format.value}>{format.value}</SelectItem>
+                                                                                    ))}
+                                                                                </SelectGroup>
+                                                                            )
+                                                                        })}
                                                                     </SelectContent>
                                                                 </Select>
                                                                 <Button variant="outline" size="icon" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
