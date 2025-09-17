@@ -140,8 +140,8 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error('No file provided or file is empty.');
     }
 
-    const bucketName = 'brand_documents';
-    const filePath = `${user.id}/${Date.now()}-${documentFile.name}`;
+    const bucketName = 'Alma';
+    const filePath = `${user.id}/brand_docs/${user.id}-${Date.now()}-${documentFile.name}`;
 
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
@@ -217,9 +217,11 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
         throw new Error('Could not find the document to delete.');
     }
 
+    const bucketName = 'Alma';
+
     // Then, delete the file from storage
     const { error: storageError } = await supabase.storage
-        .from('brand_documents')
+        .from(bucketName)
         .remove([docData.file_path]);
 
     if (storageError) {
