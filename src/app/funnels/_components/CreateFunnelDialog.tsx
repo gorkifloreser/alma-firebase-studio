@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -45,7 +46,7 @@ export function CreateFunnelDialog({
     defaultOfferingId,
 }: CreateFunnelDialogProps) {
     const [step, setStep] = useState<DialogStep>('selection');
-    const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(defaultOfferingId || null);
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
     
@@ -58,19 +59,19 @@ export function CreateFunnelDialog({
             // Reset state when dialog opens
             setStep('selection');
             setSelectedOfferingId(defaultOfferingId || null);
-            setSelectedType(null);
+            setSelectedPresetId(null);
             setGeneratedContent(null);
         }
     }, [isOpen, defaultOfferingId]);
 
-    const canGenerate = selectedType && selectedOfferingId;
+    const canGenerate = selectedPresetId && selectedOfferingId;
 
     const handleGenerate = async () => {
         if (!canGenerate) return;
 
         startGenerating(async () => {
             try {
-                const preset = funnelPresets.find(p => p.type === selectedType);
+                const preset = funnelPresets.find(p => p.id === selectedPresetId);
                 if (!preset) throw new Error("Selected preset not found.");
 
                 const result = await generateFunnelPreview({
@@ -96,11 +97,11 @@ export function CreateFunnelDialog({
     };
 
     const handleSave = async () => {
-        if (!selectedType || !selectedOfferingId || !generatedContent) return;
+        if (!selectedPresetId || !selectedOfferingId || !generatedContent) return;
 
         startSaving(async () => {
              try {
-                await createFunnel(selectedType, selectedOfferingId, generatedContent);
+                await createFunnel(selectedPresetId, selectedOfferingId, generatedContent);
                 onFunnelCreated();
             } catch (error: any) {
                 toast({
@@ -150,14 +151,14 @@ export function CreateFunnelDialog({
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {customPresets.map((preset) => (
                             <Card 
-                                key={preset.type} 
+                                key={preset.id} 
                                 className={cn(
                                     "cursor-pointer transition-all",
-                                    selectedType === preset.type 
+                                    selectedPresetId === preset.id 
                                         ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
                                         : "hover:bg-muted/50"
                                 )}
-                                onClick={() => setSelectedType(preset.type)}
+                                onClick={() => setSelectedPresetId(preset.id)}
                             >
                                 <CardContent className="p-4">
                                     <h3 className="font-bold">{preset.title}</h3>
@@ -176,14 +177,14 @@ export function CreateFunnelDialog({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {globalPresets.map((preset) => (
                             <Card 
-                                key={preset.type} 
+                                key={preset.id} 
                                 className={cn(
                                     "cursor-pointer transition-all",
-                                    selectedType === preset.type 
+                                    selectedPresetId === preset.id 
                                         ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
                                         : "hover:bg-muted/50"
                                 )}
-                                onClick={() => setSelectedType(preset.type)}
+                                onClick={() => setSelectedPresetId(preset.id)}
                             >
                                 <CardContent className="p-4">
                                     <h3 className="font-bold">{preset.title}</h3>
@@ -370,6 +371,8 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
+
+    
 
     
 

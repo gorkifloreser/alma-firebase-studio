@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -11,12 +12,12 @@ export type Funnel = {
     user_id: string;
     offering_id: string;
     name: string;
-    funnel_type: string | null;
     created_at: string;
     offerings: {
         id: string;
         title: { primary: string | null };
     } | null;
+    funnel_type: number | null;
 }
 
 export type FunnelPreset = {
@@ -66,7 +67,7 @@ export async function generateFunnelPreview(input: GenerateFunnelInput): Promise
     }
 }
 
-export async function createFunnel(funnelType: string, offeringId: string, funnelContent: GenerateFunnelOutput): Promise<string> {
+export async function createFunnel(presetId: number, offeringId: string, funnelContent: GenerateFunnelOutput): Promise<string> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -74,11 +75,11 @@ export async function createFunnel(funnelType: string, offeringId: string, funne
     const { data: preset, error: presetError } = await supabase
         .from('funnel_presets')
         .select('title')
-        .eq('type', funnelType)
+        .eq('id', presetId)
         .single();
 
     if (presetError || !preset) {
-        throw new Error(`Could not find a valid preset for funnel type: ${funnelType}.`);
+        throw new Error(`Could not find a valid preset for the funnel.`);
     }
 
     const { data: offering, error: offeringError } = await supabase
@@ -97,7 +98,7 @@ export async function createFunnel(funnelType: string, offeringId: string, funne
             offering_id: offeringId,
             user_id: user.id,
             name: `${offering.title.primary}: ${preset.title}`,
-            funnel_type: funnelType,
+            funnel_type: presetId,
         })
         .select('id')
         .single();
@@ -361,6 +362,8 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
 }
+
+    
 
     
 
