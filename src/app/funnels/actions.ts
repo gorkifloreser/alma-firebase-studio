@@ -3,7 +3,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Data } from '@measured/puck';
+
+// The 'Data' type from puck-editor is removed as the package is incorrect.
+// This will need to be replaced with the correct type from the new editor library.
+type Data = any;
 
 export async function getLandingPage(funnelId: string) {
     const supabase = createClient();
