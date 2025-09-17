@@ -133,14 +133,14 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                  <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="text-primary" />
-                        Orchestrate Media Plan
+                        {planToEdit ? 'Edit Media Plan' : 'Orchestrate Media Plan'}
                     </DialogTitle>
                     <DialogDescription>
-                        Generate a tactical media plan from one of your saved strategies.
+                        {planToEdit ? 'Edit the details of your saved media plan.' : 'Generate a tactical media plan from one of your saved strategies.'}
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">
-                     <Label htmlFor="strategy-select">Select a Strategy</Label>
+                     <Label htmlFor="strategy-select">Strategy</Label>
                     <div className="flex gap-4">
                         <Select 
                             onValueChange={setSelectedStrategyId} 
@@ -212,7 +212,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                             id={`copy-${item.id}`}
                                                             value={item.copy}
                                                             onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)}
-                                                            className="text-sm text-muted-foreground"
+                                                            className="text-sm"
                                                             rows={4}
                                                         />
                                                     </div>
@@ -222,7 +222,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                             id={`prompt-${item.id}`}
                                                             value={item.creativePrompt}
                                                             onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)}
-                                                            className="text-sm text-muted-foreground font-mono"
+                                                            className="text-sm font-mono"
                                                             rows={3}
                                                         />
                                                     </div>

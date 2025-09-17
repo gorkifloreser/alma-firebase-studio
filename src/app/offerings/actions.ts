@@ -366,7 +366,9 @@ type SaveContentInput = {
     sourcePlan?: {
         channel: string;
         format: string;
-        description: string;
+        copy: string;
+        hashtags: string;
+        creativePrompt: string;
     } | null;
     mediaPlanItemId?: string; // Add this line
 };
@@ -394,9 +396,12 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         source_plan: sourcePlan,
     };
 
-    if (mediaPlanItemId) {
-        payload.media_plan_item_id = mediaPlanItemId;
+    // This is a temporary ID for the media plan item, not a DB ID.
+    // In a real app, you might have a proper relation.
+    if (sourcePlan?.copy) { 
+      payload.media_plan_item_id = sourcePlan.copy.slice(0, 36);
     }
+
 
     const { error } = await supabase.from('content').insert(payload);
 

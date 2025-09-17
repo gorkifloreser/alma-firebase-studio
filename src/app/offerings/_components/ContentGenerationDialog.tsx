@@ -31,8 +31,10 @@ type PlanItem = {
     offeringId: string;
     channel: string;
     format: string;
-    description: string;
-    id?: string; // Make ID optional as it might not exist for ad-hoc generation
+    copy: string;
+    hashtags: string;
+    creativePrompt: string;
+    id?: string;
 };
 
 interface ContentGenerationDialogProps {
@@ -184,7 +186,9 @@ export function ContentGenerationDialog({
           sourcePlan: sourcePlanItem ? {
             channel: sourcePlanItem.channel,
             format: sourcePlanItem.format,
-            description: sourcePlanItem.description,
+            copy: sourcePlanItem.copy,
+            hashtags: sourcePlanItem.hashtags,
+            creativePrompt: sourcePlanItem.creativePrompt,
           } : null,
           mediaPlanItemId: sourcePlanItem?.id,
         });
@@ -253,7 +257,7 @@ export function ContentGenerationDialog({
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.
-             {sourcePlanItem && <p className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.description}"</p>}
+             {sourcePlanItem && <p className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.copy}"</p>}
           </DialogDescription>
         </DialogHeader>
 

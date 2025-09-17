@@ -6,16 +6,13 @@ import type { GenerateMediaPlanInput, GenerateMediaPlanOutput } from '@/ai/flows
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+type PlanItem = GenerateMediaPlanOutput['plan'][0];
+
 export type MediaPlan = {
     id: string;
     user_id: string;
     funnel_id: string;
-    plan_items: Array<{
-        offeringId: string;
-        channel: 'Social Media' | 'Email' | 'WhatsApp' | 'Website';
-        format: string;
-        description: string;
-    }>;
+    plan_items: PlanItem[];
     created_at: string;
     updated_at: string;
 };
@@ -41,7 +38,7 @@ export async function generateMediaPlan(input: GenerateMediaPlanInput): Promise<
  * @param {MediaPlan['plan_items']} planItems The array of content ideas.
  * @returns {Promise<MediaPlan>} The newly created media plan.
  */
-export async function saveMediaPlan(funnelId: string, planItems: MediaPlan['plan_items']): Promise<MediaPlan> {
+export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Promise<MediaPlan> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -71,7 +68,7 @@ export async function saveMediaPlan(funnelId: string, planItems: MediaPlan['plan
  * @param {MediaPlan['plan_items']} planItems The updated array of content ideas.
  * @returns {Promise<MediaPlan>} The updated media plan.
  */
-export async function updateMediaPlan(planId: string, planItems: MediaPlan['plan_items']): Promise<MediaPlan> {
+export async function updateMediaPlan(planId: string, planItems: PlanItem[]): Promise<MediaPlan> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -161,7 +158,9 @@ type SaveContentInput = {
     sourcePlan?: {
         channel: string;
         format: string;
-        description: string;
+        copy: string;
+        hashtags: string;
+        creativePrompt: string;
     } | null;
     mediaPlanItemId?: string; // To link back to the plan item
 };

@@ -27,12 +27,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-type PlanItem = MediaPlan['plan_items'][0];
+type PlanItem = MediaPlan['plan_items'][0] & { id?: string };
 type OfferingsMap = Map<string, Offering & { offering_media: OfferingMedia[] }>;
 
 const ChannelIcon = ({ channel }: { channel: string }) => {
     const lowerChannel = channel.toLowerCase();
-    if (lowerChannel.includes('social')) return <Instagram className="h-5 w-5 text-muted-foreground" />;
+    if (lowerChannel.includes('instagram')) return <Instagram className="h-5 w-5 text-muted-foreground" />;
+    if (lowerChannel.includes('facebook')) return <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5H16.5L17.5 9.5H14V7.5C14 6.47 14 5.5 16 5.5H17.5V2.14C17.174 2.097 15.943 2 14.643 2C11.928 2 10 3.657 10 6.7V9.5H7V13.5H10V22H14V13.5Z"></path></svg>;
     if (lowerChannel.includes('email')) return <Mail className="h-5 w-5 text-muted-foreground" />;
     if (lowerChannel.includes('whatsapp')) return <MessageSquare className="h-5 w-5 text-muted-foreground" />;
     return <Sparkles className="h-5 w-5 text-muted-foreground" />;
@@ -167,8 +168,9 @@ export default function MediaPlanPage() {
                             {mediaPlans.map(plan => {
                                 const strategy = funnels.find(f => f.id === plan.funnel_id);
                                 const groupedPlan = plan.plan_items.reduce((acc, item) => {
+                                    const itemWithId = { ...item, id: crypto.randomUUID() };
                                     if (!acc[item.channel]) acc[item.channel] = [];
-                                    acc[item.channel].push(item);
+                                    acc[item.channel].push(itemWithId);
                                     return acc;
                                 }, {} as Record<string, PlanItem[]>);
 
@@ -211,16 +213,16 @@ export default function MediaPlanPage() {
                                         <CardContent>
                                             {Object.entries(groupedPlan).map(([channel, items]) => (
                                                 <div key={channel} className="mt-4 first:mt-0">
-                                                    <h3 className="font-semibold flex items-center gap-2 mb-2">
+                                                    <h3 className="font-semibold flex items-center gap-2 mb-2 capitalize">
                                                         <ChannelIcon channel={channel} />
-                                                        {channel} Plan
+                                                        {channel.replace(/_/g, ' ')} Plan
                                                     </h3>
                                                     <div className="space-y-3">
-                                                        {items.map((item, index) => (
-                                                            <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors">
+                                                        {items.map((item) => (
+                                                            <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors">
                                                                 <div className="flex-1 mb-2 sm:mb-0">
                                                                     <p className="font-semibold">{item.format}</p>
-                                                                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                                                                    <p className="text-sm text-muted-foreground line-clamp-2">{item.copy}</p>
                                                                 </div>
                                                                 <Button variant="outline" size="sm" onClick={() => handleGenerateContent(item)}>
                                                                     <Wand2 className="mr-2 h-4 w-4" />
