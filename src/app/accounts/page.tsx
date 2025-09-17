@@ -1,26 +1,22 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Plug, CheckCircle, Clock, Link as LinkIcon, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { getUserChannels, updateUserChannels } from './actions';
+import { useToast } from '@/hooks/use-toast';
+import { Toaster } from '@/components/ui/toaster';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 // --- Types ---
-type AccountStatus = 'disconnected' | 'connected' | 'coming_soon';
+type AccountStatus = 'available' | 'coming_soon';
 interface Account {
     id: string;
     name: string;
@@ -28,7 +24,6 @@ interface Account {
     icon: string;
     category: 'meta' | 'email' | 'future';
     status: AccountStatus;
-    connectedPage?: string;
 }
 
 // --- Initial Data ---
@@ -36,42 +31,42 @@ const initialAccounts: Account[] = [
     {
         id: 'instagram',
         name: 'Instagram',
-        description: 'Connect your Instagram account to manage posts and view analytics.',
+        description: 'Enable Instagram for post generation and analytics.',
         icon: '/instagram.svg',
         category: 'meta',
-        status: 'disconnected'
+        status: 'available'
     },
     {
         id: 'facebook',
         name: 'Facebook',
-        description: 'Connect your Facebook Page for content scheduling and insights.',
+        description: 'Enable Facebook for content scheduling and insights.',
         icon: '/facebook.svg',
         category: 'meta',
-        status: 'disconnected'
+        status: 'available'
     },
     {
         id: 'whatsapp',
         name: 'WhatsApp',
-        description: 'Connect your WhatsApp Business account to engage with customers.',
+        description: 'Enable WhatsApp to engage with customers.',
         icon: '/whatsapp.svg',
         category: 'meta',
-        status: 'disconnected'
+        status: 'available'
     },
     {
         id: 'telegram',
         name: 'Telegram',
-        description: 'Connect your Telegram account for messaging and automations.',
+        description: 'Enable Telegram for messaging and automations.',
         icon: '/telegram.svg',
         category: 'meta',
-        status: 'disconnected'
+        status: 'available'
     },
     {
         id: 'webmail',
         name: 'Webmail',
-        description: 'Connect your email account to send newsletters and sequences.',
+        description: 'Enable email to send newsletters and sequences.',
         icon: '/mail.svg',
         category: 'email',
-        status: 'disconnected'
+        status: 'available'
     },
     {
         id: 'tiktok',
@@ -91,29 +86,18 @@ const initialAccounts: Account[] = [
     }
 ];
 
-// --- Sample Data for Connection Dialog ---
-const samplePages = {
-    instagram: [
-        { id: 'insta-1', name: '@conscious_creator_designs' },
-        { id: 'insta-2', name: '@soulful_brand_official' },
-    ],
-    facebook: [
-        { id: 'fb-1', name: 'Conscious Creator Designs Co.' },
-        { id: 'fb-2', name: 'Soulful Brand Community' },
-        { id: 'fb-3', name: 'My Personal Art Page' },
-    ]
-}
-
-// --- Connection Card Component ---
-const ConnectionCard = ({ 
+// --- Account Card Component ---
+const AccountCard = ({ 
     account, 
-    onConnect,
-    onDisconnect
+    isChecked,
+    onCheckedChange
 }: { 
     account: Account,
-    onConnect: (accountId: string) => void;
-    onDisconnect: (accountId: string) => void;
+    isChecked: boolean,
+    onCheckedChange: (checked: boolean) => void;
 }) => {
+    const isDisabled = account.status === 'coming_soon';
+
     return (
         <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-start gap-4">
@@ -126,162 +110,137 @@ const ConnectionCard = ({
                 </div>
             </CardHeader>
             <CardContent className="flex-grow">
-                {account.status === 'connected' && account.connectedPage && (
+                 {isDisabled && (
                     <div className="flex items-center gap-2 rounded-md bg-secondary p-3">
-                        <LinkIcon className="h-4 w-4 text-primary" />
+                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <p className="text-sm font-medium text-secondary-foreground">
-                           Linked to: <span className="font-bold">{account.connectedPage}</span>
+                           Coming Soon
                         </p>
                     </div>
                 )}
             </CardContent>
             <CardFooter>
-                 {account.status === 'disconnected' && (
-                    <Button onClick={() => onConnect(account.id)}>
-                        <Plug className="mr-2 h-4 w-4" />
-                        Connect
-                    </Button>
-                 )}
-                 {account.status === 'connected' && (
-                    <Button variant="destructive" onClick={() => onDisconnect(account.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Disconnect
-                    </Button>
-                 )}
-                 {account.status === 'coming_soon' && (
-                    <Button variant="outline" disabled>
-                         <Clock className="mr-2 h-4 w-4" />
-                        Coming Soon
-                    </Button>
-                 )}
+                 <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id={`check-${account.id}`}
+                        checked={isChecked}
+                        onCheckedChange={onCheckedChange}
+                        disabled={isDisabled}
+                    />
+                    <Label
+                        htmlFor={`check-${account.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                       {isChecked ? 'Enabled' : 'Disabled'}
+                    </Label>
+                </div>
             </CardFooter>
         </Card>
     )
 }
 
-// --- Connection Dialog Component ---
-const ConnectDialog = ({
-    isOpen,
-    onOpenChange,
-    accountToConnect,
-    onLinkPage
-}: {
-    isOpen: boolean;
-    onOpenChange: (isOpen: boolean) => void;
-    accountToConnect: Account | null;
-    onLinkPage: (accountId: string, pageName: string) => void;
-}) => {
-    const [selectedPage, setSelectedPage] = useState<string | null>(null);
-
-    if (!accountToConnect) return null;
-    
-    const pages = accountToConnect.id in samplePages 
-        ? samplePages[accountToConnect.id as keyof typeof samplePages] 
-        : [];
-
-    const handleConfirm = () => {
-        if (selectedPage) {
-            onLinkPage(accountToConnect.id, selectedPage);
-        }
-    }
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Connect to {accountToConnect.name}</DialogTitle>
-                    <DialogDescription>
-                        Select the page you want to link to Alma.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                     <div className="space-y-2">
-                        <Label htmlFor="page-select">Your Pages</Label>
-                        <Select onValueChange={setSelectedPage}>
-                            <SelectTrigger id="page-select">
-                                <SelectValue placeholder="Select a page..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {pages.map(page => (
-                                    <SelectItem key={page.id} value={page.name}>{page.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        This is a simulation. In a real application, you would be redirected to {accountToConnect.name} to authenticate.
-                    </p>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleConfirm} disabled={!selectedPage}>
-                        <LinkIcon className="mr-2 h-4 w-4" />
-                        Link Page
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-
 // --- Main Page Component ---
 export default function AccountsPage() {
-    const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [accountToConnect, setAccountToConnect] = useState<Account | null>(null);
-    
-    const handleConnect = (accountId: string) => {
-        const account = accounts.find(a => a.id === accountId);
-        if (account && (account.id === 'instagram' || account.id === 'facebook')) {
-            setAccountToConnect(account);
-            setIsDialogOpen(true);
-        } else {
-            // Handle other connection types or show a message
+    const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, startSaving] = useTransition();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        async function fetchChannels() {
+            try {
+                const channels = await getUserChannels();
+                setSelectedChannels(new Set(channels));
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error fetching channels',
+                    description: error.message
+                });
+            } finally {
+                setIsLoading(false);
+            }
         }
-    }
-
-    const handleDisconnect = (accountId: string) => {
-        setAccounts(prev => 
-            prev.map(acc => 
-                acc.id === accountId 
-                ? { ...acc, status: 'disconnected', connectedPage: undefined }
-                : acc
-            )
-        );
-    }
+        fetchChannels();
+    }, [toast]);
     
-    const handleLinkPage = (accountId: string, pageName: string) => {
-        setAccounts(prev => 
-            prev.map(acc => 
-                acc.id === accountId 
-                ? { ...acc, status: 'connected', connectedPage: pageName }
-                : acc
-            )
-        );
-        setIsDialogOpen(false);
-        setAccountToConnect(null);
-    }
+    const handleChannelToggle = (channelId: string, checked: boolean) => {
+        startSaving(async () => {
+            const newSelectedChannels = new Set(selectedChannels);
+            if (checked) {
+                newSelectedChannels.add(channelId);
+            } else {
+                newSelectedChannels.delete(channelId);
+            }
+            setSelectedChannels(newSelectedChannels);
+            
+            try {
+                await updateUserChannels(Array.from(newSelectedChannels));
+                toast({
+                    title: 'Channels updated',
+                    description: 'Your channel selections have been saved.'
+                });
+            } catch (error: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Failed to update channels',
+                    description: error.message
+                });
+                // Revert state on failure
+                const revertedChannels = new Set(selectedChannels);
+                 if (checked) {
+                    revertedChannels.delete(channelId);
+                } else {
+                    revertedChannels.add(channelId);
+                }
+                setSelectedChannels(revertedChannels);
+            }
+        });
+    };
 
-    const metaAccounts = accounts.filter(a => a.category === 'meta');
-    const emailAccounts = accounts.filter(a => a.category === 'email');
-    const futureAccounts = accounts.filter(a => a.category === 'future');
+    const renderCard = (account: Account) => (
+        <AccountCard 
+            key={account.id} 
+            account={account} 
+            isChecked={selectedChannels.has(account.id)}
+            onCheckedChange={(checked) => handleChannelToggle(account.id, !!checked)}
+        />
+    )
+
+    const metaAccounts = initialAccounts.filter(a => a.category === 'meta');
+    const emailAccounts = initialAccounts.filter(a => a.category === 'email');
+    const futureAccounts = initialAccounts.filter(a => a.category === 'future');
+
+     if (isLoading) {
+        return (
+            <DashboardLayout>
+                <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+                     <Skeleton className="h-12 w-1/3" />
+                     <Skeleton className="h-8 w-2/3" />
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                        <Skeleton className="h-56 w-full" />
+                        <Skeleton className="h-56 w-full" />
+                        <Skeleton className="h-56 w-full" />
+                     </div>
+                </div>
+            </DashboardLayout>
+        )
+    }
 
     return (
         <DashboardLayout>
+            <Toaster />
              <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header>
                     <h1 className="text-3xl font-bold">Accounts & Integrations</h1>
-                    <p className="text-muted-foreground">Connect your marketing channels to unlock Alma's full potential.</p>
+                    <p className="text-muted-foreground">Select your active marketing channels to be used by the AI.</p>
                 </header>
 
                 <div className="space-y-8">
                     <section>
-                        <h2 className="text-2xl font-semibold mb-4">Meta</h2>
+                        <h2 className="text-2xl font-semibold mb-4">Social & Messaging</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {metaAccounts.map(account => (
-                                <ConnectionCard key={account.id} account={account} onConnect={handleConnect} onDisconnect={handleDisconnect} />
-                            ))}
+                            {metaAccounts.map(renderCard)}
                         </div>
                     </section>
 
@@ -290,30 +249,11 @@ export default function AccountsPage() {
                     <section>
                         <h2 className="text-2xl font-semibold mb-4">Email</h2>
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {emailAccounts.map(account => (
-                                <ConnectionCard key={account.id} account={account} onConnect={handleConnect} onDisconnect={handleDisconnect} />
-                            ))}
-                        </div>
-                    </section>
-
-                    <Separator />
-
-                     <section>
-                        <h2 className="text-2xl font-semibold mb-4">Coming Soon</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {futureAccounts.map(account => (
-                                <ConnectionCard key={account.id} account={account} onConnect={handleConnect} onDisconnect={handleDisconnect} />
-                            ))}
+                            {emailAccounts.map(renderCard)}
                         </div>
                     </section>
                 </div>
             </div>
-            <ConnectDialog
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                accountToConnect={accountToConnect}
-                onLinkPage={handleLinkPage}
-            />
         </DashboardLayout>
     );
 }
