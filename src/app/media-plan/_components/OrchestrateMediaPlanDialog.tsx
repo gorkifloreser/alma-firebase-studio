@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
+import { generateMediaPlan as generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
 import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
 import { Funnel } from '@/app/funnels/actions';
 import { Bot, Sparkles } from 'lucide-react';
@@ -177,7 +177,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                             <div className="flex justify-center">
                                 <TabsList>
                                     {channels.map(channel => (
-                                        <TabsTrigger key={channel} value={channel}>{channel}</TabsTrigger>
+                                        <TabsTrigger key={channel} value={channel} className="capitalize">{channel.replace(/_/g, ' ')}</TabsTrigger>
                                     ))}
                                 </TabsList>
                             </div>
@@ -187,7 +187,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                         <div className="space-y-4">
                                             {groupedByChannel[channel].map((item, index) => (
                                                 <div key={item.id} className="p-4 border rounded-lg space-y-2">
-                                                    <Label htmlFor={`format-${index}`}>{channel} Idea</Label>
+                                                    <Label htmlFor={`format-${index}`} className="capitalize">{channel.replace(/_/g, ' ')} Idea</Label>
                                                     <Input
                                                         id={`format-${index}`}
                                                         value={item.format}

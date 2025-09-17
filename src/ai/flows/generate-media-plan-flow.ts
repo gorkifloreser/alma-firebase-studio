@@ -12,7 +12,7 @@ import { z } from 'genkit';
 
 const PlanItemSchema = z.object({
   offeringId: z.string().describe("The ID of the offering this content is for."),
-  channel: z.enum(["Social Media", "Email", "WhatsApp", "Website"]).describe("The channel this content is for."),
+  channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook', 'Email')."),
   format: z.string().describe("The format of the content (e.g., 'Instagram Carousel', 'Weekly Newsletter')."),
   description: z.string().describe("A brief description of the content idea, tied to a conceptual step in the strategy."),
 });
@@ -68,7 +68,7 @@ Your job is to create a comprehensive, 1-week media plan. For **EACH stage** of 
 
 For each content idea in the plan, you must:
 1.  **Specify Offering:** Use the offeringId from the strategy: '{{strategy.offering_id}}'.
-2.  **Specify Channel:** Assign the content to one of the channels selected in the strategy (Social Media, Email, WhatsApp, Website).
+2.  **Specify Channel:** Assign the content to one of the specific channels provided in 'Selected Channels' (e.g., 'instagram', 'facebook', 'webmail', 'website').
 3.  **Define Format:** Propose a specific, tangible format (e.g., '3-part Instagram carousel about the origin story', 'Weekly newsletter announcing early-bird discount', 'Short WhatsApp broadcast sharing a customer quote', 'A new "How it Works" section on the website').
 4.  **Describe the Idea:** Write a brief, compelling 'description' for the content piece that clearly executes one of the conceptual steps from the blueprint for that stage.
 5.  **Ensure Full Coverage:** Double-check that every stage in the blueprint has a corresponding content idea for every channel listed in the strategy.
@@ -83,7 +83,7 @@ const generateMediaPlanFlow = ai.defineFlow(
   {
     name: 'generateMediaPlanFlow',
     inputSchema: GenerateMediaPlanInputSchema,
-    outputSchema: GenerateMediaPlanOutputSchema,
+    outputSchema: GenerateMedia-plan-flow.tsSchema,
   },
   async ({ funnelId }) => {
     const supabase = createClient();
