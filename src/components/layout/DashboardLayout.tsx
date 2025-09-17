@@ -33,10 +33,10 @@ const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
+  { href: '/media-plan', label: 'Media Plan', icon: BarChart2 },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/imports', label: 'Imports', icon: Import },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
 ];
 
 export default function DashboardLayout({

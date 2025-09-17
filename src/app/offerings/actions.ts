@@ -428,7 +428,7 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `Funnel for ${offeringId.substring(0, 8)}`
+            name: `Funnel for ${funnelData.primary.landingPage.title}`
         })
         .select('id')
         .single();
@@ -441,47 +441,42 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
     const funnelId = funnel.id;
 
     const initialData = {
-        "root": {
-            "type": "div",
-            "props": {
-                "style": {
-                    "padding": "64px"
-                }
-            },
-            "children": [
-                {
-                    "type": "Heading",
-                    "props": {
-                        "text": funnelData.primary.landingPage.title,
-                        "level": "1"
-                    }
-                },
-                {
-                    "type": "Paragraph",
-                    "props": {
-                        "text": funnelData.primary.landingPage.content
-                    }
-                },
-                {
-                    "type": "PrimaryButton",
-                    "props": {
-                        "text": "Get Started"
-                    }
-                }
-            ]
+      root: {
+        props: {
+          style: {
+            padding: '64px',
+            backgroundColor: 'var(--background)',
+            color: 'var(--foreground)',
+            fontFamily: 'var(--font-body)',
+          },
         },
-        "content": [],
-        "zones": {}
-    }
+      },
+      content: [
+        {
+          type: 'Hero',
+          props: {
+            title: funnelData.primary.landingPage.title,
+            description: funnelData.primary.landingPage.content,
+            id: 'Hero',
+          },
+        },
+        {
+          type: 'Button',
+          props: {
+            label: 'Get Started',
+            id: 'Button',
+          }
+        }
+      ],
+    };
     
     // 2. Create the landing page step
-    const landingPagePath = `lp-${funnelId.substring(0, 8)}`;
     const {data: landingPageStep, error: lpError} = await supabase.from('funnel_steps').insert({
         funnel_id: funnelId,
         user_id: user.id,
         step_order: 0,
         step_type: 'landing_page',
-        path: landingPagePath,
+        path: `lp-${funnelId.substring(0, 8)}`,
         title: { 
             primary: funnelData.primary.landingPage.title,
             secondary: funnelData.secondary?.landingPage.title
@@ -529,5 +524,6 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
     }
 
     revalidatePath('/offerings');
+    revalidatePath('/funnels');
     return funnelId;
 }
