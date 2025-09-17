@@ -16,6 +16,7 @@ import { Bot, Sparkles, Wand2, Plus, MessageSquare, Mail, Instagram } from 'luci
 import { getOfferings, Offering, OfferingMedia } from '@/app/offerings/actions';
 import { ContentGenerationDialog } from '@/app/offerings/_components/ContentGenerationDialog';
 import { getProfile } from '@/app/settings/actions';
+import { Funnel, getFunnels } from '@/app/funnels/actions';
 
 
 type PlanItem = GenerateMediaPlanOutput['plan'][0];
@@ -34,6 +35,7 @@ const ChannelIcon = ({ channel }: { channel: string }) => {
 export default function MediaPlanPage() {
     const [mediaPlan, setMediaPlan] = useState<GenerateMediaPlanOutput | null>(null);
     const [offerings, setOfferings] = useState<OfferingsMap>(new Map());
+    const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [isGenerating, startGenerating] = useTransition();
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
@@ -49,13 +51,14 @@ export default function MediaPlanPage() {
                 redirect('/login');
             }
             try {
-                const [profileData, offeringsData] = await Promise.all([
-                    getProfile(),
-                    getOfferings()
+                const [offeringsData, funnelsData] = await Promise.all([
+                    getOfferings(),
+                    getFunnels()
                 ]);
 
                 const offeringsMap = new Map(offeringsData.map(o => [o.id, o]));
                 setOfferings(offeringsMap);
+                setFunnels(funnelsData);
 
             } catch (error: any) {
                  toast({
@@ -146,7 +149,7 @@ export default function MediaPlanPage() {
                     <CardHeader>
                         <CardTitle>Generate a New Plan</CardTitle>
                         <CardDescription>
-                            Click the button to have your AI assistant analyze all your active offerings and create a holistic content plan for the week.
+                            Click the button to have your AI assistant analyze all your active offerings and their strategies to create a holistic content plan for the week.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -211,9 +214,9 @@ export default function MediaPlanPage() {
                     onOpenChange={setIsContentDialogOpen}
                     offeringId={offeringForContent.id}
                     offeringTitle={offeringForContent.title.primary}
+                    funnels={funnels.filter(f => f.offering_id === offeringForContent.id)}
                 />
             )}
         </DashboardLayout>
     );
 }
-
