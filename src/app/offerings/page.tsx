@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
 import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
-import { PlusCircle, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import {
   DropdownMenu,
@@ -260,3 +260,5 @@ export default function OfferingsPage() {
         </DashboardLayout>
     );
 }
+
+    

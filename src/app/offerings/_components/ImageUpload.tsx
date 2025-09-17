@@ -32,9 +32,7 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
   const { toast } = useToast();
 
   useEffect(() => {
-    // Inform the parent component about file changes
     onFilesChange(newFiles);
-    // Cleanup preview URLs
     return () => {
         newFiles.forEach(file => URL.revokeObjectURL(file.preview));
     };
@@ -72,10 +70,10 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
 
   const removeNewFile = (index: number) => {
     setNewFiles(prev => {
-        const newFiles = [...prev];
-        const removedFile = newFiles.splice(index, 1)[0];
+        const newFilesList = [...prev];
+        const removedFile = newFilesList.splice(index, 1)[0];
         URL.revokeObjectURL(removedFile.preview);
-        return newFiles;
+        return newFilesList;
     });
   };
 
@@ -174,3 +172,5 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
     </div>
   );
 }
+
+    

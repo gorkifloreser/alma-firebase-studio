@@ -61,7 +61,13 @@ export async function getOfferings(): Promise<Offering[]> {
         throw new Error('Could not fetch offerings.');
     }
     
-    return data as Offering[];
+    // The type from Supabase might have `media_url` as `url`. Let's cast it properly.
+    const offerings = data.map(o => ({
+        ...o,
+        offering_media: o.offering_media.map((m: any) => ({...m, url: m.media_url}))
+    }))
+
+    return offerings as Offering[];
 }
 
 /**
@@ -156,7 +162,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
 }
 
 /**
- * Deletes an offering for the currently authenticated user.
+ * Deletes an offering for the currently authenticated user, including its media from storage.
  * @param {string} offeringId The ID of the offering to delete.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
@@ -165,6 +171,21 @@ export async function deleteOffering(offeringId: string): Promise<{ message: str
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+
+    const bucketName = 'Alma';
+    const folderPath = `${user.id}/offerings/${offeringId}`;
+
+    const { data: files, error: listError } = await supabase.storage.from(bucketName).list(folderPath);
+
+    if (listError) {
+        console.error('Error listing files for deletion:', listError.message);
+    } else if (files && files.length > 0) {
+        const filePaths = files.map(file => `${folderPath}/${file.name}`);
+        const { error: removeError } = await supabase.storage.from(bucketName).remove(filePaths);
+        if (removeError) {
+            console.error('Error deleting files from storage:', removeError.message);
+        }
+    }
 
     const { error } = await supabase
         .from('offerings')
@@ -195,7 +216,7 @@ export async function uploadOfferingMedia(offeringId: string, formData: FormData
 
     const files = formData.getAll('files') as File[];
     if (files.length === 0) {
-        throw new Error('No files provided.');
+        return { message: 'No new files to upload.'};
     }
 
     const bucketName = 'Alma';
@@ -236,7 +257,7 @@ export async function uploadOfferingMedia(offeringId: string, formData: FormData
 }
 
 /**
- * Deletes a specific media item for an offering.
+ * Deletes a specific media item for an offering from both DB and storage.
  * @param {string} mediaId - The ID of the media to delete.
  * @returns {Promise<{ message: string }>} A success message.
  */
@@ -245,20 +266,34 @@ export async function deleteOfferingMedia(mediaId: string): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // First get the media record to find the file path
     const { data: media, error: fetchError } = await supabase
         .from('offering_media')
-        .select('media_url')
+        .select('media_url, user_id')
         .eq('id', mediaId)
-        .eq('user_id', user.id)
         .single();
     
     if (fetchError || !media) {
         console.error('Error fetching media for deletion:', fetchError);
         throw new Error('Could not find the media to delete.');
     }
+    
+    if (media.user_id !== user.id) {
+        throw new Error("You don't have permission to delete this media.");
+    }
 
-    // Delete the database record
+    const bucketName = 'Alma';
+    const filePath = media.media_url.split(`/${bucketName}/`).pop();
+
+    if (filePath) {
+        const { error: storageError } = await supabase.storage
+            .from(bucketName)
+            .remove([filePath]);
+
+        if (storageError) {
+            console.error('Error deleting file from storage:', storageError.message);
+        }
+    }
+    
     const { error: dbError } = await supabase
         .from('offering_media')
         .delete()
@@ -269,24 +304,10 @@ export async function deleteOfferingMedia(mediaId: string): Promise<{ message: s
         throw new Error('Could not delete media record.');
     }
 
-    // Delete the file from storage
-    const bucketName = 'Alma';
-    const filePath = media.media_url.split(`/${bucketName}/`).pop();
-
-    if (filePath) {
-        const { error: storageError } = await supabase.storage
-            .from(bucketName)
-            .remove([filePath]);
-
-        if (storageError) {
-            console.error('Error deleting file from storage:', storageError);
-            // Don't throw, as the DB record is already deleted, but log it.
-        }
-    }
-
     revalidatePath('/offerings');
     return { message: 'Media deleted successfully.' };
 }
+
 
 /**
  * Invokes the Genkit translation flow.
@@ -303,3 +324,5 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
         throw new Error("Failed to translate the text. Please try again.");
     }
 }
+
+    
