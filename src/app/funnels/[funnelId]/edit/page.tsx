@@ -3,14 +3,14 @@
 
 import { Puck } from '@measured/puck';
 import type { Data } from '@measured/puck';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { getLandingPage, saveLandingPage } from '@/app/funnels/actions';
 import { useToast } from '@/hooks/use-toast';
 import { config } from './components';
 import { Loader2 } from 'lucide-react';
 
-export default function FunnelEditorPage({ params }: { params: { funnelId: string } }) {
-    const { funnelId } = params;
+export default function FunnelEditorPage({ params }: { params: Promise<{ funnelId: string }> }) {
+    const { funnelId } = use(params);
     const [initialData, setInitialData] = useState<Data | undefined>(undefined);
     const { toast } = useToast();
 
