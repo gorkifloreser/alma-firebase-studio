@@ -37,6 +37,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Image from 'next/image';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 type Profile = {
     primary_language: string;
@@ -57,6 +59,7 @@ const OfferingsPageContent = () => {
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
     const [offeringForContent, setOfferingForContent] = useState<OfferingWithMedia | null>(null);
+    const [activeTab, setActiveTab] = useState('all');
     const router = useRouter();
     
     const { toast } = useToast();
@@ -150,6 +153,104 @@ const OfferingsPageContent = () => {
         router.push(`/funnels?offeringId=${offeringId}`);
     }
 
+    const filteredOfferings = offerings.filter(offering => {
+        if (activeTab === 'all') return true;
+        return offering.type.toLowerCase() === activeTab;
+    });
+
+    const renderOfferingGrid = (items: OfferingWithMedia[]) => {
+        if (items.length === 0) {
+            return (
+                 <div className="text-center py-16 border-2 border-dashed rounded-lg col-span-full">
+                    <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mt-4">No {activeTab !== 'all' ? activeTab : ''} Offerings Found</h3>
+                    <p className="text-muted-foreground mt-2">Click "New Offering" to add one.</p>
+                </div>
+            )
+        }
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {items.map(offering => (
+                    <Card key={offering.id} className="flex flex-col group">
+                         <div className="overflow-hidden cursor-pointer" onClick={() => handleOpenDetailDialog(offering)}>
+                            <CardHeader className="p-0">
+                                <div className="relative aspect-video">
+                                    {offering.offering_media && offering.offering_media.length > 0 ? (
+                                        <Image 
+                                            src={offering.offering_media[0].media_url}
+                                            alt={offering.title.primary || 'Offering image'}
+                                            fill
+                                            className="object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                                            <ShoppingBag className="w-12 h-12 text-muted-foreground" />
+                                        </div>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <CardTitle className="group-hover:text-primary transition-colors">{offering.title.primary}</CardTitle>
+                                <CardDescription>{offering.type}</CardDescription>
+                                <p className="text-muted-foreground line-clamp-3 mt-2">
+                                    {offering.description.primary}
+                                </p>
+                            </CardContent>
+                        </div>
+                        <CardFooter className="mt-auto pt-0 flex justify-between items-center">
+                            <Button variant="outline" size="sm" onClick={() => handleOpenContentDialog(offering)}>Generate Content</Button>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => handleManageFunnels(offering.id)}>
+                                        <GitBranch className="mr-2 h-4 w-4" />
+                                        <span>Manage Funnels</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        <span>Edit</span>
+                                    </DropdownMenuItem>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Delete</span>
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete your
+                                                    offering and all associated media.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => handleOfferingDelete(offering.id!)}
+                                                    disabled={isDeleting}
+                                                    className="bg-destructive hover:bg-destructive/90"
+                                                >
+                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        )
+    };
+
     return (
         <>
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -164,114 +265,37 @@ const OfferingsPageContent = () => {
                     </Button>
                 </header>
 
-                <div>
-                    {isLoading ? (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[...Array(3)].map((_, i) => (
-                                <Card key={i}>
-                                    <CardHeader>
-                                        <Skeleton className="h-40 w-full" />
-                                        <Skeleton className="h-6 w-3/4 mt-4" />
-                                        <Skeleton className="h-4 w-1/4" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Skeleton className="h-4 w-full mb-2" />
-                                        <Skeleton className="h-4 w-full" />
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : offerings.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {offerings.map(offering => (
-                                <Card key={offering.id} className="flex flex-col group">
-                                     <div className="overflow-hidden cursor-pointer" onClick={() => handleOpenDetailDialog(offering)}>
-                                        <CardHeader className="p-0">
-                                            <div className="relative aspect-video">
-                                                {offering.offering_media && offering.offering_media.length > 0 ? (
-                                                    <Image 
-                                                        src={offering.offering_media[0].media_url}
-                                                        alt={offering.title.primary || 'Offering image'}
-                                                        fill
-                                                        className="object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                                                        <ShoppingBag className="w-12 h-12 text-muted-foreground" />
-                                                    </div>
-                                                )}
-                                            </div>
+                <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+                     <div className="flex justify-center">
+                        <TabsList>
+                            <TabsTrigger value="all">All</TabsTrigger>
+                            <TabsTrigger value="service">Services</TabsTrigger>
+                            <TabsTrigger value="product">Products</TabsTrigger>
+                            <TabsTrigger value="event">Events</TabsTrigger>
+                        </TabsList>
+                    </div>
+                     <div className="mt-6">
+                        {isLoading ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {[...Array(3)].map((_, i) => (
+                                    <Card key={i}>
+                                        <CardHeader>
+                                            <Skeleton className="h-40 w-full" />
+                                            <Skeleton className="h-6 w-3/4 mt-4" />
+                                            <Skeleton className="h-4 w-1/4" />
                                         </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <CardTitle className="group-hover:text-primary transition-colors">{offering.title.primary}</CardTitle>
-                                            <CardDescription>{offering.type}</CardDescription>
-                                            <p className="text-muted-foreground line-clamp-3 mt-2">
-                                                {offering.description.primary}
-                                            </p>
+                                        <CardContent>
+                                            <Skeleton className="h-4 w-full mb-2" />
+                                            <Skeleton className="h-4 w-full" />
                                         </CardContent>
-                                    </div>
-                                    <CardFooter className="mt-auto pt-0 flex justify-between items-center">
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenContentDialog(offering)}>Generate Content</Button>
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleManageFunnels(offering.id)}>
-                                                    <GitBranch className="mr-2 h-4 w-4" />
-                                                    <span>Manage Funnels</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    <span>Edit</span>
-                                                </DropdownMenuItem>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            <span>Delete</span>
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete your
-                                                                offering and all associated media.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleOfferingDelete(offering.id!)}
-                                                                disabled={isDeleting}
-                                                                className="bg-destructive hover:bg-destructive/90"
-                                                            >
-                                                                {isDeleting ? 'Deleting...' : 'Delete'}
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-16 border-2 border-dashed rounded-lg">
-                            <h3 className="text-xl font-semibold">No Offerings Yet</h3>
-                            <p className="text-muted-foreground mt-2">Click "New Offering" to add your first product or service.</p>
-                            <Button onClick={handleOpenCreateDialog} className="mt-4 gap-2">
-                                <PlusCircle className="h-5 w-5" />
-                                New Offering
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            renderOfferingGrid(filteredOfferings)
+                        )}
+                    </div>
+                </Tabs>
             </div>
              <CreateOfferingDialog
                 isOpen={isCreateDialogOpen}
