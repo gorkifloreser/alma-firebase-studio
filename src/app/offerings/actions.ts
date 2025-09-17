@@ -131,7 +131,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     if (!user) throw new Error('User not authenticated');
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { offering_media, ...restOfOfferingData } = offeringData;
+    const { offering_media, updated_at, ...restOfOfferingData } = offeringData;
 
     const payload = {
         ...restOfOfferingData,
@@ -139,7 +139,6 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
-        updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
