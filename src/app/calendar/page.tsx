@@ -100,9 +100,9 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
              <Card className="p-2 bg-secondary/50 hover:bg-secondary transition-colors">
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                      {item.image_url && (
-                        <div className="relative w-10 h-10 flex-shrink-0">
+                        <div className="relative w-full aspect-video">
                             <Image src={item.image_url} alt="thumbnail" layout="fill" className="rounded-sm object-cover" />
                         </div>
                      )}
