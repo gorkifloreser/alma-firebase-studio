@@ -175,16 +175,20 @@ export function CreateOfferingDialog({
             
             if (typeof e !== 'string' && e && 'target' in e) {
                 const { name: inputName, value } = e.target as HTMLInputElement | HTMLTextAreaElement;
-                if (inputName.includes('_')) {
+                 if (inputName.includes('_')) {
                     const [field, lang] = inputName.split('_') as ['title' | 'description', 'primary' | 'secondary'];
-                     return {
-                        ...prev,
-                        [field]: { ...prev[field], [lang]: value }
-                    };
+                    // This check ensures we only apply this logic to bilingual fields.
+                    if (field === 'title' || field === 'description') {
+                        return {
+                            ...prev,
+                            [field]: { ...prev[field], [lang]: value }
+                        };
+                    }
                 }
                 if (inputName === 'price') {
                     return { ...prev, [inputName]: value === '' ? null : Number(value) };
                 }
+                // Default handler for single value fields like 'contextual_notes'
                 return { ...prev, [inputName]: value };
             }
             return prev;
@@ -230,9 +234,9 @@ export function CreateOfferingDialog({
         startSaving(async () => {
             try {
                 let savedOffering: Offering;
-                const { offering_media, ...payloadData } = offering;
+                
                 const payload = {
-                    ...payloadData,
+                    ...offering,
                     event_date: offering.event_date?.toISOString() ?? null,
                 };
 
