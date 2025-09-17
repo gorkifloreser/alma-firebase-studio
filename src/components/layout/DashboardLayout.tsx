@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -36,7 +37,6 @@ const menuItems = [
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
   { href: '/funnels', label: 'Strategies', icon: GitBranch },
-  { href: '/media-plan', label: 'Media Plan', icon: BarChart2 },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },

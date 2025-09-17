@@ -13,9 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
 import { getOfferings, Offering } from '../offerings/actions';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, ArrowRight } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, ArrowRight, Wand2 } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
-import { EditStrategyDialog } from './_components/EditStrategyDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,8 +46,7 @@ export default function StrategiesPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
+    const [funnelToOrchestrate, setFunnelToOrchestrate] = useState<Funnel | null>(null);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
@@ -100,21 +98,12 @@ export default function StrategiesPage() {
         checkUserAndFetchData();
     }, [offeringIdFilter]);
 
-    const handleFunnelCreated = () => {
+    const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
         fetchFunnelsAndOfferings();
         toast({
             title: 'Success!',
-            description: 'Your new strategy has been created.',
-        });
-    };
-    
-    const handleFunnelUpdated = () => {
-        setIsEditDialogOpen(false);
-        fetchFunnelsAndOfferings();
-        toast({
-            title: 'Success!',
-            description: 'Your strategy has been updated.',
+            description: 'Your strategy has been saved.',
         });
     };
     
@@ -134,9 +123,10 @@ export default function StrategiesPage() {
         });
     }
     
-    const handleOpenEditDialog = (funnel: Funnel) => {
-        setFunnelToEdit(funnel);
-        setIsEditDialogOpen(true);
+    const handleOpenCreateDialog = (funnel: Funnel | null = null, initialStep: 'selection' | 'orchestrate' = 'selection') => {
+        setFunnelToOrchestrate(funnel);
+        setIsCreateDialogOpen(true);
+        // We'll pass the initial step to the dialog itself now
     };
 
     const handleOpenCustomizeDialog = (preset: FunnelPreset, mode: 'clone' | 'edit') => {
@@ -232,10 +222,10 @@ export default function StrategiesPage() {
                     <div>
                         <h1 className="text-3xl font-bold">Strategies</h1>
                         <p className="text-muted-foreground">
-                            Create, manage, and clone strategic marketing funnels.
+                            Create, manage, and orchestrate strategic marketing funnels.
                         </p>
                     </div>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+                    <Button onClick={() => handleOpenCreateDialog(null)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         Create Strategy
                     </Button>
@@ -297,13 +287,13 @@ export default function StrategiesPage() {
                                     <CardHeader>
                                         <CardTitle>What's Next?</CardTitle>
                                         <CardDescription>
-                                            Your strategic blueprints are ready. Now, head to the Media Orchestrator to generate a concrete content plan based on these strategies.
+                                            Your strategies now include tactical media plans. Go to the Calendar to see your scheduled content.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardFooter>
                                         <Button asChild>
-                                            <Link href="/media-plan">
-                                                Go to Media Plan <ArrowRight className="ml-2 h-4 w-4" />
+                                            <Link href="/calendar">
+                                                Go to Calendar <ArrowRight className="ml-2 h-4 w-4" />
                                             </Link>
                                         </Button>
                                     </CardFooter>
@@ -335,7 +325,11 @@ export default function StrategiesPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
+                                                        <DropdownMenuItem onSelect={() => handleOpenCreateDialog(funnel, 'orchestrate')}>
+                                                            <Wand2 className="mr-2 h-4 w-4" />
+                                                            <span>Orchestrate Media</span>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleOpenCreateDialog(funnel, 'selection')}>
                                                             <Edit className="mr-2 h-4 w-4" />
                                                             <span>Edit Strategy</span>
                                                         </DropdownMenuItem>
@@ -351,7 +345,7 @@ export default function StrategiesPage() {
                                                                 <AlertDialogHeader>
                                                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                        This will permanently delete the funnel and all its associated steps. This action cannot be undone.
+                                                                        This will permanently delete the funnel and all its associated content. This action cannot be undone.
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
@@ -380,7 +374,7 @@ export default function StrategiesPage() {
                                 <p className="text-muted-foreground mt-2">
                                     Click 'Create Strategy' to generate your first one from a template.
                                 </p>
-                                <Button onClick={() => setIsCreateDialogOpen(true)} className="mt-4 gap-2">
+                                <Button onClick={() => handleOpenCreateDialog(null)} className="mt-4 gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     Create Strategy
                                 </Button>
@@ -389,20 +383,14 @@ export default function StrategiesPage() {
                     </TabsContent>
                 </Tabs>
             </div>
-            <CreateFunnelDialog
-                isOpen={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
-                offerings={offerings}
-                funnelPresets={funnelPresets}
-                onFunnelCreated={handleFunnelCreated}
-                defaultOfferingId={offeringIdFilter}
-            />
-            {funnelToEdit && (
-                <EditStrategyDialog
-                    isOpen={isEditDialogOpen}
-                    onOpenChange={setIsEditDialogOpen}
-                    funnel={funnelToEdit}
-                    onFunnelUpdated={handleFunnelUpdated}
+            {(isCreateDialogOpen || funnelToOrchestrate) && (
+                <CreateFunnelDialog
+                    isOpen={isCreateDialogOpen}
+                    onOpenChange={setIsCreateDialogOpen}
+                    offerings={offerings}
+                    funnelPresets={funnelPresets}
+                    onFunnelSaved={handleFunnelSaved}
+                    funnelToEdit={funnelToOrchestrate}
                 />
             )}
             <CustomizePresetDialog

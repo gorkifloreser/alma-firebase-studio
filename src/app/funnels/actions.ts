@@ -6,6 +6,11 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Data } from '@measured/puck';
 import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
+import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
+import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
+import { saveContent as saveContentAction } from '@/app/offerings/actions';
+
+export type { PlanItem };
 
 export type Funnel = {
     id: string;
@@ -17,6 +22,7 @@ export type Funnel = {
     preset_id: number;
     goal: string | null;
     strategy_brief: GenerateFunnelOutput | null;
+    media_plan: PlanItem[] | null;
     offerings: {
         id: string;
         title: { primary: string | null };
@@ -76,9 +82,10 @@ type CreateFunnelParams = {
     funnelName: string;
     goal: string;
     strategyBrief: GenerateFunnelOutput;
+    mediaPlan: PlanItem[] | null;
 }
 
-export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief }: CreateFunnelParams): Promise<string> {
+export async function createFunnel({ presetId, offeringId, funnelName, goal, strategyBrief, mediaPlan }: CreateFunnelParams): Promise<Funnel> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -92,8 +99,9 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
             preset_id: presetId,
             goal: goal,
             strategy_brief: strategyBrief,
+            media_plan: mediaPlan,
         })
-        .select('id, name, strategy_brief')
+        .select(`*, offerings (id, title)`)
         .single();
     
     if (funnelError || !funnel) {
@@ -101,76 +109,31 @@ export async function createFunnel({ presetId, offeringId, funnelName, goal, str
         throw new Error(`Could not create funnel record in the database. DB error: ${funnelError?.message}`);
     }
     
-    const websiteStrategy = funnel.strategy_brief?.strategy.find(s => funnel.strategy_brief?.channels?.includes('website'));
-
-    if (websiteStrategy) {
-        const pageContent = websiteStrategy.conceptualSteps.map(step => `## ${step.objective}\n\n${step.concept}`).join('\n\n');
-        
-        const initialData: Data = {
-            content: [
-                {
-                    type: 'Hero',
-                    props: {
-                        title: websiteStrategy.keyMessage || funnel.name,
-                        description: websiteStrategy.objective || ''
-                    },
-                },
-                {
-                    type: 'Text',
-                    props: {
-                        text: pageContent,
-                        align: 'left',
-                    }
-                }
-            ],
-            root: {
-                props: {
-                    title: funnel.name
-                }
-            }
-        };
-
-        const { error: stepError } = await supabase.from('funnel_steps').insert({
-            funnel_id: funnel.id,
-            user_id: user.id,
-            step_type: 'landing_page',
-            step_order: 1,
-            data: initialData,
-        });
-
-        if (stepError) {
-             console.error('Error creating initial landing page step:', stepError?.message);
-        }
-    }
-
-
     revalidatePath('/funnels');
     revalidatePath(`/offerings`);
-    return funnel.id;
+    return funnel as Funnel;
 }
 
 
-export async function updateFunnel(funnelId: string, updates: { name: string; goal: string; strategyBrief: GenerateFunnelOutput }): Promise<Funnel> {
+export async function updateFunnel(funnelId: string, updates: CreateFunnelParams): Promise<Funnel> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { name, goal, strategyBrief } = updates;
+    const { funnelName, goal, strategyBrief, mediaPlan } = updates;
     
     const { data, error } = await supabase
         .from('funnels')
         .update({
-            name,
+            name: funnelName,
             goal,
             strategy_brief: strategyBrief,
+            media_plan: mediaPlan,
             updated_at: new Date().toISOString()
         })
         .eq('id', funnelId)
         .eq('user_id', user.id)
-        .select(`
-            *,
-            offerings (id, title)
-        `)
+        .select(`*, offerings (id, title)`)
         .single();
     
     if (error) {
@@ -203,70 +166,8 @@ export async function deleteFunnel(funnelId: string): Promise<{ message: string 
 }
 
 
-export async function getLandingPage(funnelId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-    
-    const { data: funnelStep, error } = await supabase
-        .from('funnel_steps')
-        .select('id, data')
-        .eq('funnel_id', funnelId)
-        .eq('user_id', user.id)
-        .eq('step_type', 'landing_page')
-        .single();
-    
-    if (error) {
-        console.error('Error fetching landing page data:', error);
-        throw new Error('Could not fetch landing page data.');
-    }
-
-    return funnelStep.data as Data;
-}
-
-
-export async function saveLandingPage({ funnelId, data }: { funnelId: string, data: Data }) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { error } = await supabase
-        .from('funnel_steps')
-        .update({ data, updated_at: new Date().toISOString() })
-        .eq('funnel_id', funnelId)
-        .eq('user_id', user.id)
-        .eq('step_type', 'landing_page');
-        
-    if (error) {
-        console.error('Error saving landing page data:', error);
-        throw new Error('Could not save landing page data.');
-    }
-
-    revalidatePath(`/lp/${funnelId}`);
-}
-
-
-export async function getPublicLandingPage(funnelId: string) {
-    const supabase = createClient();
-
-    const { data: funnelStep, error } = await supabase
-        .from('funnel_steps')
-        .select('data')
-        .eq('path', `lp-${funnelId.substring(0, 8)}`)
-        .eq('step_type', 'landing_page')
-        .single();
-    
-    if (error || !funnelStep) {
-        return null;
-    }
-    
-    return funnelStep.data as Data;
-}
-
 export async function getFunnelPresets(): Promise<FunnelPreset[]> {
     const supabase = createClient();
-    // RLS is enabled, so this will fetch global presets (user_id IS NULL)
-    // and presets owned by the current user.
     const { data, error } = await supabase.from('funnel_presets').select('*').order('id');
     if (error) {
         console.error("Error fetching funnel presets:", error);
@@ -282,20 +183,12 @@ export async function saveCustomFunnelPreset(formData: Omit<FunnelPreset, 'id' |
     if (!user) throw new Error("User not authenticated.");
 
     const newType = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-    const payload = {
-        ...formData,
-        type: `${user.id.substring(0, 4)}-${newType}`, // Create a unique type
-        user_id: user.id
-    };
-
+    const payload = { ...formData, type: `${user.id.substring(0, 4)}-${newType}`, user_id: user.id };
     const { data, error } = await supabase.from('funnel_presets').insert(payload).select().single();
 
     if (error) {
         console.error("Error saving custom funnel preset:", error);
-        if (error.code === '23505') { // unique constraint violation
-            throw new Error("A preset with a similar title already exists. Please choose a different title.");
-        }
+        if (error.code === '23505') throw new Error("A preset with a similar title already exists.");
         throw new Error("Could not save the custom funnel preset.");
     }
 
@@ -309,26 +202,14 @@ export async function updateCustomFunnelPreset(presetId: number, formData: Omit<
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
-    // Ensure type is not updated directly by user, re-generate it
     const newType = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    const payload = {
-        ...formData,
-        type: `${user.id.substring(0, 4)}-${newType}`,
-    };
+    const payload = { ...formData, type: `${user.id.substring(0, 4)}-${newType}` };
 
-    const { data, error } = await supabase
-        .from('funnel_presets')
-        .update(payload)
-        .eq('id', presetId)
-        .eq('user_id', user.id) // Security check: user can only update their own presets
-        .select()
-        .single();
+    const { data, error } = await supabase.from('funnel_presets').update(payload).eq('id', presetId).eq('user_id', user.id).select().single();
     
     if (error) {
         console.error("Error updating custom funnel preset:", error);
-        if (error.code === '23505') {
-            throw new Error("A preset with a similar title already exists. Please choose a different title.");
-        }
+        if (error.code === '23505') throw new Error("A preset with a similar title already exists.");
         throw new Error("Could not update the custom funnel preset.");
     }
 
@@ -342,11 +223,7 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
-    const { error } = await supabase
-        .from('funnel_presets')
-        .delete()
-        .eq('id', presetId)
-        .eq('user_id', user.id); // Security check
+    const { error } = await supabase.from('funnel_presets').delete().eq('id', presetId).eq('user_id', user.id);
 
     if (error) {
         console.error("Error deleting custom funnel preset:", error);
@@ -355,4 +232,27 @@ export async function deleteCustomFunnelPreset(presetId: number): Promise<{ mess
     
     revalidatePath('/funnels');
     return { message: "Custom funnel preset deleted successfully." };
+}
+
+// Media Plan Actions
+export async function generateMediaPlan(input: GenerateMediaPlanInput): Promise<GenerateMediaPlanOutput> {
+    try {
+        return await generateMediaPlanFlow(input);
+    } catch (error: any) {
+        console.error("Media Plan generation action failed:", error);
+        throw new Error(`Failed to generate media plan: ${error.message}`);
+    }
+}
+
+export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
+    try {
+        return await regeneratePlanItemFlow(input);
+    } catch (error: any) {
+        console.error("Plan item regeneration action failed:", error);
+        throw new Error(`Failed to regenerate plan item: ${error.message}`);
+    }
+}
+
+export async function saveContent(input: Parameters<typeof saveContentAction>[0]): Promise<{ message: string }> {
+    return saveContentAction(input);
 }
