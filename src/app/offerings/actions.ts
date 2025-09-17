@@ -64,7 +64,6 @@ export async function getOfferings(): Promise<Offering[]> {
         throw new Error('Could not fetch offerings.');
     }
     
-    // The type from Supabase might have `media_url` as `url`. Let's cast it properly.
     const offerings = data.map(o => ({
         ...o,
         offering_media: o.offering_media.map((m: any) => ({...m, url: m.media_url}))
@@ -84,13 +83,13 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { updated_at, ...restOfData } = offeringData as any;
+  const { updated_at, offering_media, event_date, ...restOfData } = offeringData as any;
 
   const payload = {
     ...restOfData,
+    event_date: offeringData.type === 'Event' ? (offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null) : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
-    event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
     user_id: user.id,
   };
@@ -131,14 +130,13 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // Destructure to remove fields that shouldn't be sent to the DB
-    const { offering_media, updated_at, ...restOfOfferingData } = offeringData as any;
+    const { offering_media, updated_at, event_date, ...restOfOfferingData } = offeringData as any;
 
     const payload = {
         ...restOfOfferingData,
+        event_date: offeringData.type === 'Event' ? (offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null) : null,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
-        event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
     };
 
