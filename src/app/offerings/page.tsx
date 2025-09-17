@@ -37,7 +37,7 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-export default function OfferingsPage() {
+const OfferingsPageContent = () => {
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -108,8 +108,7 @@ export default function OfferingsPage() {
     }
 
     return (
-        <DashboardLayout>
-            <Toaster />
+        <>
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex items-center justify-between">
                     <div>
@@ -219,6 +218,15 @@ export default function OfferingsPage() {
                 profile={profile}
                 onOfferingCreated={handleOfferingCreated}
             />
+        </>
+    );
+}
+
+export default function OfferingsPage() {
+    return (
+        <DashboardLayout>
+            <Toaster />
+            <OfferingsPageContent />
         </DashboardLayout>
     );
 }
