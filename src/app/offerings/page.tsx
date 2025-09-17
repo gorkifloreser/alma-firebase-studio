@@ -14,6 +14,7 @@ import { getProfile } from '@/app/settings/actions';
 import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
+import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,9 +45,11 @@ const OfferingsPageContent = () => {
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<OfferingWithMedia[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
+    const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
     
     const { toast } = useToast();
 
@@ -85,16 +88,21 @@ const OfferingsPageContent = () => {
 
     const handleOpenCreateDialog = () => {
         setOfferingToEdit(null);
-        setIsDialogOpen(true);
+        setIsCreateDialogOpen(true);
     };
 
     const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
-        setIsDialogOpen(true);
+        setIsCreateDialogOpen(true);
+    };
+
+    const handleOpenDetailDialog = (offering: OfferingWithMedia) => {
+        setOfferingToView(offering);
+        setIsDetailDialogOpen(true);
     };
 
     const handleOfferingSaved = () => {
-        setIsDialogOpen(false);
+        setIsCreateDialogOpen(false);
         fetchAllData();
         toast({
             title: 'Success!',
@@ -155,76 +163,74 @@ const OfferingsPageContent = () => {
                     ) : offerings.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {offerings.map(offering => (
-                                <Card key={offering.id} className="flex flex-col">
-                                    <CardHeader className="p-0">
-                                        <div className="relative aspect-video">
-                                            {offering.offering_media && offering.offering_media.length > 0 ? (
-                                                <Image 
-                                                    src={offering.offering_media[0].media_url}
-                                                    alt={offering.title.primary || 'Offering image'}
-                                                    fill
-                                                    className="object-cover rounded-t-lg"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center">
-                                                    <ShoppingBag className="w-12 h-12 text-muted-foreground" />
-                                                </div>
-                                            )}
-                                        </div>
-                                         <div className="flex justify-between items-start p-6 pb-2">
-                                            <div>
-                                                <CardTitle>{offering.title.primary}</CardTitle>
-                                                <CardDescription>{offering.type}</CardDescription>
+                                <Card key={offering.id} className="flex flex-col group cursor-pointer">
+                                     <div className="overflow-hidden" onClick={() => handleOpenDetailDialog(offering)}>
+                                        <CardHeader className="p-0">
+                                            <div className="relative aspect-video">
+                                                {offering.offering_media && offering.offering_media.length > 0 ? (
+                                                    <Image 
+                                                        src={offering.offering_media[0].media_url}
+                                                        alt={offering.title.primary || 'Offering image'}
+                                                        fill
+                                                        className="object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                                                        <ShoppingBag className="w-12 h-12 text-muted-foreground" />
+                                                    </div>
+                                                )}
                                             </div>
-                                             <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit</span>
-                                                    </DropdownMenuItem>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This action cannot be undone. This will permanently delete your
-                                                                    offering and all associated media.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    onClick={() => handleOfferingDelete(offering.id!)}
-                                                                    disabled={isDeleting}
-                                                                    className="bg-destructive hover:bg-destructive/90"
-                                                                >
-                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="flex-grow">
-                                        <p className="text-muted-foreground line-clamp-3">
-                                            {offering.description.primary}
-                                        </p>
-                                    </CardContent>
-                                    <CardFooter>
+                                        </CardHeader>
+                                        <CardContent className="pt-6">
+                                            <CardTitle className="group-hover:text-primary transition-colors">{offering.title.primary}</CardTitle>
+                                            <CardDescription>{offering.type}</CardDescription>
+                                            <p className="text-muted-foreground line-clamp-3 mt-2">
+                                                {offering.description.primary}
+                                            </p>
+                                        </CardContent>
+                                    </div>
+                                    <CardFooter className="mt-auto pt-0 flex justify-between items-center">
                                         <Button variant="outline" size="sm">Generate Content</Button>
+                                         <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    <span>Edit</span>
+                                                </DropdownMenuItem>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            <span>Delete</span>
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone. This will permanently delete your
+                                                                offering and all associated media.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={() => handleOfferingDelete(offering.id!)}
+                                                                disabled={isDeleting}
+                                                                className="bg-destructive hover:bg-destructive/90"
+                                                            >
+                                                                {isDeleting ? 'Deleting...' : 'Delete'}
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </CardFooter>
                                 </Card>
                             ))}
@@ -242,12 +248,20 @@ const OfferingsPageContent = () => {
                 </div>
             </div>
              <CreateOfferingDialog
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
+                isOpen={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
                 profile={profile}
                 onOfferingSaved={handleOfferingSaved}
                 offeringToEdit={offeringToEdit}
             />
+            {offeringToView && (
+                <OfferingDetailDialog
+                    isOpen={isDetailDialogOpen}
+                    onOpenChange={setIsDetailDialogOpen}
+                    offering={offeringToView}
+                    profile={profile}
+                />
+            )}
         </>
     );
 }
@@ -260,5 +274,3 @@ export default function OfferingsPage() {
         </DashboardLayout>
     );
 }
-
-    
