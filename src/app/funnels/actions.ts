@@ -97,7 +97,7 @@ export async function createFunnel(presetId: number, offeringId: string, funnelC
         .insert({
             offering_id: offeringId,
             user_id: user.id,
-            name: `${offering.title.primary}: ${preset.title}`,
+            name: `${offering.title?.primary || 'Untitled'}: ${preset.title}`,
             funnel_type: presetId,
         })
         .select('id')
