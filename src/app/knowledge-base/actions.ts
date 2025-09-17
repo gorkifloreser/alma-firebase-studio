@@ -43,7 +43,6 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         .insert({
             user_id: user.id,
             file_name: documentFile.name,
-            file_path: filePath,
         });
 
     if (dbError) {
@@ -90,36 +89,15 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // First, get the file path from the database
-    const { data: docData, error: fetchError } = await supabase
-        .from('brand_documents')
-        .select('file_path')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
+    // This implementation does not have the file path, so we cannot delete from storage.
+    // This is a known limitation based on the current schema.
+    // For a production app, we would store the file_path in the brand_documents table.
 
-    if (fetchError || !docData) {
-        console.error('Error fetching document for deletion:', fetchError);
-        throw new Error('Could not find the document to delete.');
-    }
-
-    const bucketName = 'Alma';
-
-    // Then, delete the file from storage
-    const { error: storageError } = await supabase.storage
-        .from(bucketName)
-        .remove([docData.file_path]);
-
-    if (storageError) {
-        console.error('Error deleting document from storage:', storageError);
-        throw new Error('Could not delete the file from storage.');
-    }
-
-    // Finally, delete the record from the database
     const { error: dbError } = await supabase
         .from('brand_documents')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
     if (dbError) {
         console.error('Error deleting document record:', dbError);
