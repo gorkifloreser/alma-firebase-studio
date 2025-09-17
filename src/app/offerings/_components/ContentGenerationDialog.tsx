@@ -27,6 +27,12 @@ import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Funnel } from '@/app/funnels/actions';
 
+type PlanItem = {
+    offeringId: string;
+    channel: string;
+    format: string;
+    description: string;
+};
 
 interface ContentGenerationDialogProps {
   isOpen: boolean;
@@ -34,6 +40,7 @@ interface ContentGenerationDialogProps {
   offeringId: string | null;
   offeringTitle: string | null;
   funnels: Funnel[];
+  sourcePlanItem?: PlanItem | null;
 }
 
 type Profile = {
@@ -55,7 +62,8 @@ export function ContentGenerationDialog({
   onOpenChange,
   offeringId,
   offeringTitle,
-  funnels
+  funnels,
+  sourcePlanItem,
 }: ContentGenerationDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
   const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
@@ -145,7 +153,7 @@ export function ContentGenerationDialog({
 
   const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
     setEditableContent(prev => {
-        if (!prev) return null;
+        if (!prev) return { primary: null, secondary: null, [language]: value };
         return { ...prev, [language]: value };
     });
   };
@@ -164,16 +172,20 @@ export function ContentGenerationDialog({
       try {
         await saveContent({
           offeringId,
-          funnelId: selectedFunnelId,
           contentBody: editableContent,
           imageUrl: creative?.imageUrl || null,
           carouselSlidesText: creative?.carouselSlidesText || null,
           videoScript: creative?.videoScript || null,
           status: 'approved',
+          sourcePlan: sourcePlanItem ? {
+            channel: sourcePlanItem.channel,
+            format: sourcePlanItem.format,
+            description: sourcePlanItem.description,
+          } : null,
         });
         toast({
           title: 'Approved!',
-          description: 'The content has been saved to your collection.',
+          description: 'The content has been saved and is ready for the calendar.',
         });
         onOpenChange(false);
       } catch (error: any) {
@@ -236,6 +248,7 @@ export function ContentGenerationDialog({
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.
+             {sourcePlanItem && <p className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.description}"</p>}
           </DialogDescription>
         </DialogHeader>
 
@@ -336,5 +349,3 @@ export function ContentGenerationDialog({
     </Dialog>
   );
 }
-
-    

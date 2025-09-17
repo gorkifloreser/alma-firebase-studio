@@ -358,12 +358,16 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
 
 type SaveContentInput = {
     offeringId: string;
-    funnelId?: string | null;
     contentBody: { primary: string | null; secondary: string | null; } | null;
     imageUrl: string | null;
     carouselSlidesText: string | null;
     videoScript: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
+    sourcePlan?: {
+        channel: string;
+        format: string;
+        description: string;
+    } | null;
 };
 
 /**
@@ -376,17 +380,17 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, funnelId, contentBody, imageUrl, carouselSlidesText, videoScript, status } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status, sourcePlan } = input;
 
     const payload = {
         user_id: user.id,
         offering_id: offeringId,
-        funnel_id: funnelId,
         content_body: contentBody,
         image_url: imageUrl,
         carousel_slides_text: carouselSlidesText,
         video_script: videoScript,
         status: status,
+        source_plan: sourcePlan,
     };
 
     const { error } = await supabase.from('content').insert(payload);
@@ -396,8 +400,6 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         throw new Error('Could not save the content. Please try again.');
     }
     
-    revalidatePath('/content');
+    revalidatePath('/calendar');
     return { message: 'Content approved and saved successfully.' };
 }
-
-    

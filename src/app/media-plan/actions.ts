@@ -1,18 +1,19 @@
 
 'use server';
 
-import { generateMediaPlan as generateMediaPlanFlow } from '@/ai/flows/generate-media-plan-flow';
-import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
+import { generateMediaPlanForStrategy as generateMediaPlanFlow } from '@/ai/flows/generate-media-plan-flow';
+import type { GenerateMediaPlanInput, GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Server action to invoke the Genkit media plan generation flow.
+ * Server action to invoke the Genkit media plan generation flow for a specific strategy.
+ * @param {GenerateMediaPlanInput} input - Contains the funnelId of the strategy.
  * @returns {Promise<GenerateMediaPlanOutput>} The AI-generated media plan.
  */
-export async function generateMediaPlan(): Promise<GenerateMediaPlanOutput> {
+export async function generateMediaPlan(input: GenerateMediaPlanInput): Promise<GenerateMediaPlanOutput> {
     try {
-        const result = await generateMediaPlanFlow();
+        const result = await generateMediaPlanFlow(input);
         return result;
     } catch (error: any) {
         console.error("Media Plan generation action failed:", error);
@@ -65,6 +66,6 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         throw new Error('Could not save the content. Please try again.');
     }
     
-    revalidatePath('/content'); // You might want to have a dedicated content page later
+    revalidatePath('/calendar');
     return { message: 'Content approved and saved successfully.' };
 }
