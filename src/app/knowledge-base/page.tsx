@@ -23,12 +23,14 @@ export default function KnowledgeBasePage() {
     const [documents, setDocuments] = useState<BrandDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, startUploading] = useTransition();
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [isDeleting, startDeleting] = useTransition();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchAllData = async () => {
+        setIsLoading(true);
         try {
             const documentsData = await getBrandDocuments();
             setDocuments(documentsData);
@@ -50,8 +52,7 @@ export default function KnowledgeBasePage() {
             if (!user) {
                 redirect('/login');
             }
-            setIsLoading(true);
-            await fetchAllData();
+            fetchAllData();
         };
 
         checkUserAndFetchData();
@@ -97,6 +98,7 @@ export default function KnowledgeBasePage() {
     };
 
     const handleDocumentDelete = (id: string) => {
+        setDeletingId(id);
         startDeleting(async () => {
             try {
                 const result = await deleteBrandDocument(id);
@@ -104,6 +106,8 @@ export default function KnowledgeBasePage() {
                 await fetchAllData(); // Refresh documents list
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Deletion failed', description: error.message });
+            } finally {
+                setDeletingId(null);
             }
         });
     };
@@ -172,9 +176,13 @@ export default function KnowledgeBasePage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleDocumentDelete(doc.id)}
-                                                    disabled={isDeleting}
+                                                    disabled={isDeleting && deletingId === doc.id}
                                                 >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                   {isDeleting && deletingId === doc.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    )}
                                                 </Button>
                                             </li>
                                         ))}

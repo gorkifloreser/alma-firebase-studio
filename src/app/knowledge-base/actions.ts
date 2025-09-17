@@ -8,6 +8,7 @@ export type BrandDocument = {
     id: string;
     file_name: string;
     created_at: string;
+    file_path: string;
 };
 
 /**
@@ -43,6 +44,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         .insert({
             user_id: user.id,
             file_name: documentFile.name,
+            file_path: filePath,
         });
 
     if (dbError) {
@@ -67,7 +69,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
 
     const { data, error } = await supabase
         .from('brand_documents')
-        .select('id, file_name, created_at')
+        .select('id, file_name, created_at, file_path')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -89,10 +91,32 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // This implementation does not have the file path, so we cannot delete from storage.
-    // This is a known limitation based on the current schema.
-    // For a production app, we would store the file_path in the brand_documents table.
+    // First, get the file path from the database.
+    const { data: document, error: fetchError } = await supabase
+      .from('brand_documents')
+      .select('file_path')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
 
+    if (fetchError || !document) {
+        console.error('Error fetching document for deletion:', fetchError);
+        throw new Error('Could not find the document to delete.');
+    }
+
+    // Now, delete the object from storage.
+    const bucketName = 'Alma';
+    const { error: storageError } = await supabase.storage
+      .from(bucketName)
+      .remove([document.file_path]);
+    
+    if (storageError) {
+        console.error('Error deleting document from storage:', storageError);
+        // We will still attempt to delete the DB record even if storage deletion fails.
+        // You might want more robust error handling here in a real app.
+    }
+
+    // Finally, delete the record from the database.
     const { error: dbError } = await supabase
         .from('brand_documents')
         .delete()
