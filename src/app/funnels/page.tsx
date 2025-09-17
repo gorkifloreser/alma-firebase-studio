@@ -167,7 +167,7 @@ export default function FunnelsPage() {
                                         <CardFooter>
                                             <Button variant="outline" size="sm" onClick={() => handleClonePreset(preset.type)}>
                                                 <Copy className="mr-2 h-4 w-4" />
-                                                Clone Template
+                                                Clone & Customize
                                             </Button>
                                         </CardFooter>
                                     </Card>
