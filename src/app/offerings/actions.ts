@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
-import { generateContentForOffering, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
+import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 
 
 export type OfferingMedia = {
@@ -83,12 +83,11 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Destructure to remove fields that should not be in the payload
-  const { offering_media, updated_at, ...restOfData } = offeringData as any;
-
+  const { event_date, ...restOfData } = offeringData;
+  
   const payload = {
     ...restOfData,
-    event_date: offeringData.type === 'Event' ? (offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null) : null,
+    event_date: offeringData.type === 'Event' ? (event_date ? new Date(event_date).toISOString() : null) : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -131,12 +130,11 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // Destructure to remove fields that should not be in the payload for update
-    const { offering_media, updated_at, ...restOfOfferingData } = offeringData as any;
+    const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
 
     const payload = {
-        ...restOfOfferingData,
-        event_date: offeringData.type === 'Event' ? (offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null) : null,
+        ...restOfData,
+        event_date: offeringData.type === 'Event' ? (event_date ? new Date(event_date).toISOString() : null) : null,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -332,6 +330,19 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
     }
 }
 
-export { generateContentForOffering };
-
+/**
+ * Invokes the Genkit content generation flow.
+ * @param {GenerateContentInput} input The offering ID.
+ * @returns {Promise<GenerateContentOutput>} The generated content.
+ * @throws {Error} If the generation fails.
+ */
+export async function generateContentForOffering(input: GenerateContentInput): Promise<GenerateContentOutput> {
+    try {
+        const result = await genContentFlow(input);
+        return result;
+    } catch (error) {
+        console.error("Content generation action failed:", error);
+        throw new Error("Failed to generate content. Please try again.");
+    }
+}
     
