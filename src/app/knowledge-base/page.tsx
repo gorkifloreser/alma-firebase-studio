@@ -26,8 +26,12 @@ interface ChatMessage {
     content: string;
 }
 
+// Extend BrandDocument to include the group id
+type BrandDocumentWithGroup = BrandDocument & { document_group_id: string };
+
+
 export default function KnowledgeBasePage() {
-    const [documents, setDocuments] = useState<BrandDocument[]>([]);
+    const [documents, setDocuments] = useState<BrandDocumentWithGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, startUploading] = useTransition();
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -46,7 +50,7 @@ export default function KnowledgeBasePage() {
         setIsLoading(true);
         try {
             const documentsData = await getBrandDocuments();
-            setDocuments(documentsData);
+            setDocuments(documentsData as BrandDocumentWithGroup[]);
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -110,11 +114,11 @@ export default function KnowledgeBasePage() {
         });
     };
 
-    const handleDocumentDelete = (id: string) => {
-        setDeletingId(id);
+    const handleDocumentDelete = (groupId: string) => {
+        setDeletingId(groupId);
         startDeleting(async () => {
             try {
-                const result = await deleteBrandDocument(id);
+                const result = await deleteBrandDocument(groupId);
                 toast({ title: 'Success!', description: result.message });
                 await fetchAllData(); // Refresh documents list
             } catch (error: any) {
@@ -197,7 +201,7 @@ export default function KnowledgeBasePage() {
                                         ) : documents.length > 0 ? (
                                             <ul className="divide-y divide-border rounded-md border">
                                                 {documents.map(doc => (
-                                                    <li key={doc.id} className="flex items-center justify-between p-3">
+                                                    <li key={doc.document_group_id} className="flex items-center justify-between p-3">
                                                         <div className="flex items-center gap-3 overflow-hidden">
                                                             <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                                                             <div className="flex-grow overflow-hidden">
@@ -210,10 +214,10 @@ export default function KnowledgeBasePage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => handleDocumentDelete(doc.id)}
-                                                            disabled={isDeleting && deletingId === doc.id}
+                                                            onClick={() => handleDocumentDelete(doc.document_group_id)}
+                                                            disabled={isDeleting && deletingId === doc.document_group_id}
                                                         >
-                                                        {isDeleting && deletingId === doc.id ? (
+                                                        {isDeleting && deletingId === doc.document_group_id ? (
                                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                             ) : (
                                                                 <Trash2 className="h-4 w-4 text-destructive" />

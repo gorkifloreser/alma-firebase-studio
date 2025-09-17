@@ -15,9 +15,22 @@ export type BrandDocument = {
     created_at: string;
 };
 
+// Helper function to split text into chunks
+function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
+    const chunks: string[] = [];
+    let i = 0;
+    while (i < text.length) {
+        const end = i + chunkSize;
+        chunks.push(text.slice(i, end));
+        i = end - overlap;
+    }
+    return chunks;
+}
+
+
 /**
- * Uploads a document, extracts its content, generates an embedding,
- * and saves everything to the database.
+ * Uploads a document, extracts its content, splits it into chunks,
+ * generates an embedding for each chunk, and saves everything to the database.
  * @param {FormData} formData The form data containing the file to upload.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If any step of the process fails.
@@ -55,12 +68,17 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error('Could not extract any text content from the document.');
     }
 
-    // Generate embedding for the content
-    const embedding = await ai.embed({
-      model: 'googleai/text-embedding-004',
-      input: content,
-    });
+    // Split content into chunks
+    const chunks = chunkText(content);
+    const documentGroupId = crypto.randomUUID();
 
+    // Generate embeddings for each chunk
+    const embeddings = await Promise.all(
+      chunks.map(chunk => ai.embed({
+        model: 'googleai/text-embedding-004',
+        input: chunk,
+      }))
+    );
 
     // Upload the original file to storage
     const bucketName = 'Alma';
@@ -74,22 +92,27 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error(`Document Storage Failed: ${uploadError.message}`);
     }
 
-    // Save metadata, content, and embedding to the database
+    // Prepare data for batch insert
+    const recordsToInsert = chunks.map((chunk, index) => ({
+        user_id: user.id,
+        file_name: documentFile.name,
+        file_path: filePath,
+        content: chunk,
+        embedding: embeddings[index],
+        document_group_id: documentGroupId,
+    }));
+
+
+    // Save metadata, content, and embedding for each chunk to the database
     const { error: dbError } = await supabase
         .from('brand_documents')
-        .insert({
-            user_id: user.id,
-            file_name: documentFile.name,
-            file_path: filePath,
-            content: content,
-            embedding: embedding,
-        });
+        .insert(recordsToInsert);
 
     if (dbError) {
-        console.error('Error saving document metadata:', dbError);
+        console.error('Error saving document chunks:', dbError);
         // Attempt to delete the file from storage if the DB insert fails
         await supabase.storage.from(bucketName).remove([filePath]);
-        throw new Error('Could not save document metadata.');
+        throw new Error('Could not save document chunks.');
     }
     
     revalidatePath('/knowledge-base');
@@ -99,16 +122,19 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 
 /**
  * Fetches the list of processed brand documents for the current user.
- * @returns {Promise<BrandDocument[]>} A promise that resolves to an array of documents.
+ * It groups documents by the document_group_id to show one entry per file.
+ * @returns {Promise<BrandDocument[]>} A promise that resolves to an array of unique documents.
  */
 export async function getBrandDocuments(): Promise<BrandDocument[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
+    // This query is simplified. A more robust query would use `DISTINCT ON`
+    // to get the latest created_at for each file_name/group.
     const { data, error } = await supabase
         .from('brand_documents')
-        .select('id, file_name, created_at')
+        .select('id, file_name, created_at, document_group_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -116,26 +142,31 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
         console.error('Error fetching brand documents:', error);
         return [];
     }
-    return data;
+
+    // Deduplicate documents based on document_group_id
+    const uniqueDocuments = Array.from(new Map(data.map(doc => [doc.document_group_id, doc])).values());
+    
+    return uniqueDocuments;
 }
 
 /**
- * Deletes a brand document from the database and the corresponding file from storage.
- * @param {string} id The ID of the document to delete.
+ * Deletes all chunks of a brand document from the database and the corresponding file from storage.
+ * @param {string} document_group_id The group ID of the document to delete.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If the user is not authenticated or the deletion fails.
  */
-export async function deleteBrandDocument(id: string): Promise<{ message: string }> {
+export async function deleteBrandDocument(document_group_id: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // First, get the file_path from the document record
+    // First, get the file_path from one of the document chunks
     const { data: document, error: fetchError } = await supabase
         .from('brand_documents')
         .select('file_path')
-        .eq('id', id)
+        .eq('document_group_id', document_group_id)
         .eq('user_id', user.id)
+        .limit(1)
         .single();
     
     if (fetchError || !document) {
@@ -143,28 +174,27 @@ export async function deleteBrandDocument(id: string): Promise<{ message: string
         throw new Error('Could not find the document to delete.');
     }
 
-    // Next, delete the file from storage
+    // Next, delete all chunks from the database
+    const { error: dbError } = await supabase
+        .from('brand_documents')
+        .delete()
+        .eq('document_group_id', document_group_id)
+        .eq('user_id', user.id);
+
+    if (dbError) {
+        console.error('Error deleting document records:', dbError);
+        throw new Error('Could not delete the document records.');
+    }
+
+    // Finally, delete the file from storage
     if (document.file_path) {
         const { error: storageError } = await supabase.storage
             .from('Alma')
             .remove([document.file_path]);
         if (storageError) {
             console.error('Error deleting file from storage:', storageError);
-            // We can choose to continue and still delete the DB record, or stop.
-            // For now, we'll log the error and continue.
+            // We can choose to continue or stop. In this case, we'll log the error but consider the primary (DB) deletion successful.
         }
-    }
-
-    // Finally, delete the record from the database
-    const { error: dbError } = await supabase
-        .from('brand_documents')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-    if (dbError) {
-        console.error('Error deleting document record:', dbError);
-        throw new Error('Could not delete the document record.');
     }
     
     revalidatePath('/knowledge-base');
