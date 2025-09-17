@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createOffering, translateText, Offering } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { languages } from '@/lib/languages';
+import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,7 @@ const initialOfferingState: OfferingFormData = {
     type: 'Service',
     contextual_notes: '',
     price: null,
+    currency: 'USD',
     event_date: null,
     duration: null,
     event_time: '',
@@ -142,7 +144,7 @@ export function CreateOfferingDialog({
         name?: string
     ) => {
         if (typeof e === 'string') {
-            setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] }));
+            setOffering(prev => ({ ...prev, [name!]: e as Offering['type'] | Offering['currency'] }));
         } else {
             const { name: inputName, value } = e.target;
             if (inputName.includes('_')) {
@@ -276,8 +278,28 @@ export function CreateOfferingDialog({
                     />
                     
                     <div className="space-y-2">
-                         <Label htmlFor="price" className="text-md font-semibold">Price</Label>
-                        <Input id="price" name="price" type="number" value={offering.price || ''} onChange={handleFormChange} placeholder="e.g., 99.99" />
+                         <Label className="text-md font-semibold">Price</Label>
+                        <div className="flex gap-2">
+                            <Input 
+                                id="price" 
+                                name="price" 
+                                type="number" 
+                                value={offering.price || ''} 
+                                onChange={handleFormChange} 
+                                placeholder="e.g., 99.99"
+                                className="w-2/3"
+                            />
+                            <Select name="currency" value={offering.currency || 'USD'} onValueChange={(value) => handleFormChange(value, 'currency')}>
+                                <SelectTrigger className="w-1/3">
+                                    <SelectValue placeholder="Currency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {currencies.map(c => (
+                                        <SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {offering.type === 'Event' && (
@@ -351,4 +373,3 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
-
