@@ -172,14 +172,14 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     }
 
-    const handleConceptualStepObjectiveChange = (itemId: string, value: string) => {
+    const handleConceptualStepChange = (itemId: string, field: 'objective' | 'stageName', value: string) => {
         setPlanItems(prev => prev.map(item => {
             if (item.id === itemId && item.conceptualStep) {
                 return {
                     ...item,
                     conceptualStep: {
                         ...item.conceptualStep,
-                        objective: value
+                        [field]: value
                     }
                 };
             }
@@ -191,7 +191,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         setPlanItems(prev => prev.filter(item => item.id !== itemId));
     };
 
-    const handleAddNewItem = (channel: string, stageName: string) => {
+    const handleAddNewItem = (channel: string) => {
         const strategy = strategies.find(s => s.id === selectedStrategyId);
         const validFormats = getFormatsForChannel(channel);
         const newItem: PlanItemWithId = {
@@ -204,7 +204,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
             creativePrompt: '',
             conceptualStep: {
                 objective: 'Your new objective here',
-                stageName: stageName,
+                stageName: 'Uncategorized',
             },
         };
         setPlanItems(prev => [...prev, newItem]);
@@ -247,21 +247,6 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         }, {} as Record<string, PlanItemWithId[]>);
     }, [planItems]);
     
-    const groupedByChannelAndStage = useMemo(() => {
-        const result: Record<string, Record<string, PlanItemWithId[]>> = {};
-        for (const channel in groupedByChannel) {
-            result[channel] = groupedByChannel[channel].reduce((acc, item) => {
-                const stageName = item.conceptualStep?.stageName || 'Uncategorized';
-                if (!acc[stageName]) {
-                    acc[stageName] = [];
-                }
-                acc[stageName].push(item);
-                return acc;
-            }, {} as Record<string, PlanItemWithId[]>);
-        }
-        return result;
-    }, [groupedByChannel]);
-
     const channels = Object.keys(groupedByChannel);
 
     return (
@@ -323,98 +308,104 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                             <div className="flex-1 overflow-y-auto mt-4 pr-4">
                                 {channels.map(channel => (
                                     <TabsContent key={channel} value={channel} className="mt-0">
-                                         {Object.entries(groupedByChannelAndStage[channel] || {}).map(([stageName, items]) => (
-                                            <div key={stageName} className="mb-6">
-                                                <h3 className="text-lg font-semibold mb-3 border-b pb-2">{stageName}</h3>
-                                                <div className="space-y-4">
-                                                    {items.map((item) => (
-                                                        <div key={item.id} className="p-4 border rounded-lg space-y-4 relative">
-                                                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
-                                                                    <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
-                                                                </Button>
-                                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
+                                        <div className="space-y-4">
+                                            {groupedByChannel[channel].map((item) => (
+                                                <div key={item.id} className="p-4 border rounded-lg space-y-4 relative">
+                                                    <div className="absolute top-2 right-2 flex items-center gap-2">
+                                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
+                                                            <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
+                                                        </Button>
+                                                        <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
 
-                                                            <div className="space-y-1 pr-24">
-                                                                <Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label>
-                                                                <Input 
-                                                                    id={`objective-${item.id}`}
-                                                                    value={item.conceptualStep?.objective || ''}
-                                                                    onChange={(e) => handleConceptualStepObjectiveChange(item.id, e.target.value)}
-                                                                    placeholder="e.g., Build social proof by showcasing success"
-                                                                />
-                                                            </div>
-                                                            
-                                                            <div className="space-y-1">
-                                                                <Label htmlFor={`format-${item.id}`}>Format</Label>
-                                                                <Select
-                                                                    value={item.format}
-                                                                    onValueChange={(value) => handleItemChange(item.id, 'format', value)}
-                                                                >
-                                                                    <SelectTrigger id={`format-${item.id}`} className="font-semibold">
-                                                                        <SelectValue placeholder="Select a format" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {mediaFormatConfig.map(group => {
-                                                                            const channelFormats = group.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
-                                                                            if (channelFormats.length === 0) return null;
-                                                                            return (
-                                                                                <SelectGroup key={group.label}>
-                                                                                    <SelectLabel>{group.label}</SelectLabel>
-                                                                                    {channelFormats.map(format => (
-                                                                                        <SelectItem key={format.value} value={format.value}>{format.value}</SelectItem>
-                                                                                    ))}
-                                                                                </SelectGroup>
-                                                                            )
-                                                                        })}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
+                                                    <div className="space-y-1 pr-24">
+                                                        <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
+                                                        <Input 
+                                                            id={`stageName-${item.id}`}
+                                                            value={item.conceptualStep?.stageName || ''}
+                                                            onChange={(e) => handleConceptualStepChange(item.id, 'stageName', e.target.value)}
+                                                            className="font-semibold bg-muted/50"
+                                                            readOnly
+                                                        />
+                                                    </div>
+                                                    
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label>
+                                                        <Input 
+                                                            id={`objective-${item.id}`}
+                                                            value={item.conceptualStep?.objective || ''}
+                                                            onChange={(e) => handleConceptualStepChange(item.id, 'objective', e.target.value)}
+                                                            placeholder="e.g., Build social proof by showcasing success"
+                                                        />
+                                                    </div>
+                                                    
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`format-${item.id}`}>Format</Label>
+                                                        <Select
+                                                            value={item.format}
+                                                            onValueChange={(value) => handleItemChange(item.id, 'format', value)}
+                                                        >
+                                                            <SelectTrigger id={`format-${item.id}`} className="font-semibold">
+                                                                <SelectValue placeholder="Select a format" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {mediaFormatConfig.map(group => {
+                                                                    const channelFormats = group.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
+                                                                    if (channelFormats.length === 0) return null;
+                                                                    return (
+                                                                        <SelectGroup key={group.label}>
+                                                                            <SelectLabel>{group.label}</SelectLabel>
+                                                                            {channelFormats.map(format => (
+                                                                                <SelectItem key={format.value} value={format.value}>{format.value}</SelectItem>
+                                                                            ))}
+                                                                        </SelectGroup>
+                                                                    )
+                                                                })}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
 
-                                                            <div className="space-y-1">
-                                                                <Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label>
-                                                                <Input
-                                                                    id={`hashtags-${item.id}`}
-                                                                    value={item.hashtags}
-                                                                    onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}
-                                                                />
-                                                            </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label>
+                                                        <Input
+                                                            id={`hashtags-${item.id}`}
+                                                            value={item.hashtags}
+                                                            onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}
+                                                        />
+                                                    </div>
 
-                                                            <div className="space-y-1">
-                                                                <Label htmlFor={`copy-${item.id}`}>Copy</Label>
-                                                                <Textarea
-                                                                    id={`copy-${item.id}`}
-                                                                    value={item.copy}
-                                                                    onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)}
-                                                                    className="text-sm"
-                                                                    rows={4}
-                                                                />
-                                                            </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`copy-${item.id}`}>Copy</Label>
+                                                        <Textarea
+                                                            id={`copy-${item.id}`}
+                                                            value={item.copy}
+                                                            onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)}
+                                                            className="text-sm"
+                                                            rows={4}
+                                                        />
+                                                    </div>
 
-                                                            <div className="space-y-1">
-                                                                <Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label>
-                                                                <Textarea
-                                                                    id={`prompt-${item.id}`}
-                                                                    value={item.creativePrompt}
-                                                                    onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)}
-                                                                    className="text-sm font-mono"
-                                                                    rows={3}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label>
+                                                        <Textarea
+                                                            id={`prompt-${item.id}`}
+                                                            value={item.creativePrompt}
+                                                            onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)}
+                                                            className="text-sm font-mono"
+                                                            rows={3}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                 <div className="flex justify-center mt-6">
-                                                    <Button variant="outline" onClick={() => handleAddNewItem(channel, stageName)}>
-                                                        <PlusCircle className="mr-2 h-4 w-4" />
-                                                        Add New Idea to this Stage
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                        <div className="flex justify-center mt-6">
+                                            <Button variant="outline" onClick={() => handleAddNewItem(channel)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" />
+                                                Add New Idea to this Channel
+                                            </Button>
+                                        </div>
                                     </TabsContent>
                                 ))}
                             </div>
@@ -437,3 +428,5 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         </Dialog>
     );
 }
+
+    
