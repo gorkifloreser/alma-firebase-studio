@@ -6,18 +6,18 @@ import React, { useEffect, useState, useMemo, useTransition } from 'react';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek } from 'date-fns';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays } from 'date-fns';
 import { getContent, scheduleContent, unscheduleContent, type ContentItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { EditContentDialog } from './_components/EditContentDialog';
+import Image from 'next/image';
 
 
 const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
@@ -68,7 +68,7 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick }: { day: Date
         <div 
             ref={setNodeRef}
             className={cn(
-                "relative flex flex-col h-32 p-2 border-t border-l",
+                "relative flex flex-col h-48 p-2 border-t border-l",
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
                 isOver ? "bg-accent" : "",
             )}
@@ -76,7 +76,7 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick }: { day: Date
             <time dateTime={format(day, 'yyyy-MM-dd')} className={cn("text-sm", isSameDay(day, new Date()) ? "font-bold text-primary" : "")}>
                 {format(day, 'd')}
             </time>
-             <div className="mt-1 flex-1 overflow-y-auto">
+             <div className="mt-1 flex-1 overflow-y-auto space-y-1">
                 {content.map(item => <CalendarEvent key={item.id} item={item} onClick={() => onEventClick(item)} />)}
             </div>
         </div>
@@ -95,24 +95,35 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
     } : undefined;
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="relative mb-1 group">
-            <Badge variant="secondary" className="w-full justify-start text-left whitespace-normal h-auto cursor-grab">
-                 <div {...listeners} className="flex items-center gap-1 flex-1">
-                    <ChannelIcon channel={item.source_plan?.channel} />
-                    <span className="truncate">{item.content_body?.primary || 'Untitled'}</span>
+        <div ref={setNodeRef} style={style} {...attributes}>
+             <Card className="p-2 bg-secondary/50 hover:bg-secondary transition-colors">
+                <div className="flex gap-2">
+                     {item.image_url && (
+                        <div className="relative w-10 h-10 flex-shrink-0">
+                            <Image src={item.image_url} alt="thumbnail" layout="fill" className="rounded-sm object-cover" />
+                        </div>
+                     )}
+                     <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{item.content_body?.primary || 'Untitled'}</p>
+                        <div className="flex items-center justify-between mt-1">
+                            <div {...listeners} className="flex items-center gap-1 cursor-grab">
+                                <ChannelIcon channel={item.source_plan?.channel} />
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClick();
+                                }}
+                            >
+                                <Pencil className="h-3 w-3"/>
+                            </Button>
+                        </div>
+                     </div>
                 </div>
-                 <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                        e.stopPropagation(); // Prevent drag from starting
-                        onClick();
-                    }}
-                 >
-                    <Pencil className="h-3 w-3"/>
-                 </Button>
-            </Badge>
+            </Card>
         </div>
     )
 }
@@ -122,6 +133,7 @@ export default function CalendarPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isScheduling, startScheduling] = useTransition();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [view, setView] = useState<'week' | 'month'>('week');
     const { toast } = useToast();
 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -168,11 +180,40 @@ export default function CalendarPage() {
         return { unscheduled, scheduled };
     }, [contentItems]);
 
-    const firstDayOfMonth = startOfMonth(currentDate);
-    const lastDayOfMonth = endOfMonth(currentDate);
-    const firstDayOfCalendar = startOfWeek(firstDayOfMonth);
-    const lastDayOfCalendar = endOfWeek(lastDayOfMonth);
-    const calendarDays = eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar });
+    const { calendarDays, headerLabel } = useMemo(() => {
+        if (view === 'month') {
+            const firstDayOfMonth = startOfMonth(currentDate);
+            const lastDayOfMonth = endOfMonth(currentDate);
+            const firstDayOfCalendar = startOfWeek(firstDayOfMonth);
+            const lastDayOfCalendar = endOfWeek(lastDayOfMonth);
+            return {
+                calendarDays: eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar }),
+                headerLabel: format(currentDate, 'MMMM yyyy'),
+            };
+        } else { // week view
+            const firstDayOfWeek = startOfWeek(currentDate);
+            const lastDayOfWeek = endOfWeek(currentDate);
+            return {
+                calendarDays: eachDayOfInterval({ start: firstDayOfWeek, end: lastDayOfWeek }),
+                headerLabel: `${format(firstDayOfWeek, 'MMM d')} - ${format(lastDayOfWeek, 'MMM d, yyyy')}`,
+            };
+        }
+    }, [currentDate, view]);
+
+    const handlePrev = () => {
+        if (view === 'month') {
+            setCurrentDate(subMonths(currentDate, 1));
+        } else {
+            setCurrentDate(subDays(currentDate, 7));
+        }
+    };
+    const handleNext = () => {
+         if (view === 'month') {
+            setCurrentDate(addMonths(currentDate, 1));
+        } else {
+            setCurrentDate(addDays(currentDate, 7));
+        }
+    };
     
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -223,16 +264,14 @@ export default function CalendarPage() {
         else if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
              const targetDate = over.data.current?.date as Date;
              
-             // Check if it's actually a new date
              const originalItem = contentItems.find(item => item.id === contentId);
              if (originalItem && originalItem.scheduled_at && isSameDay(new Date(originalItem.scheduled_at), targetDate)) {
-                 return; // Dropped on the same day, do nothing.
+                 return; 
              }
 
              startScheduling(async () => {
                 try {
                     await scheduleContent(contentId, targetDate);
-                    // Optimistic update
                     setContentItems(prev => prev.map(item => 
                         item.id === contentId 
                         ? { ...item, status: 'scheduled', scheduled_at: targetDate.toISOString() } 
@@ -256,7 +295,6 @@ export default function CalendarPage() {
             <DndContext onDragEnd={handleDragEnd}>
                 <Toaster />
                 <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-                    {/* Sidebar for Unscheduled Content */}
                     <aside ref={unscheduledAreaRef} className={cn("w-full lg:w-80 border-r p-4 overflow-y-auto", isOverUnscheduled ? "bg-destructive/10" : "")}>
                         <h2 className="text-xl font-bold mb-4">Approved Content</h2>
                         {isLoading ? (
@@ -275,15 +313,20 @@ export default function CalendarPage() {
                         {isOverUnscheduled && <div className="text-center p-4 text-destructive font-bold">Return to Unscheduled</div>}
                     </aside>
 
-                    {/* Main Calendar View */}
                     <main className="flex-1 flex flex-col">
                         <header className="flex items-center justify-between p-4 border-b">
-                             <h1 className="text-2xl font-bold">{format(currentDate, 'MMMM yyyy')}</h1>
-                             <div className="flex items-center gap-2">
-                                 <Button variant="outline" size="icon" onClick={() => setCurrentDate(prev => addDays(prev, -30))}><ChevronLeft /></Button>
-                                <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Today</Button>
-                                <Button variant="outline" size="icon" onClick={() => setCurrentDate(prev => addDays(prev, 30))}><ChevronRight /></Button>
-                            </div>
+                             <h1 className="text-2xl font-bold">{headerLabel}</h1>
+                             <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                                    <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
+                                    <Button variant={view === 'month' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('month')}>Month</Button>
+                                </div>
+                                 <div className="flex items-center gap-2">
+                                     <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft /></Button>
+                                    <Button variant="outline" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                                    <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
+                                </div>
+                             </div>
                         </header>
                          <div className="grid grid-cols-7 flex-1">
                             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
