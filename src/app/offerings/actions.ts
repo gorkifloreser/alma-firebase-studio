@@ -118,17 +118,20 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
 /**
  * Updates an existing offering for the currently authenticated user.
  * @param {string} offeringId The ID of the offering to update.
- * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>>} offeringData The data to update.
+ * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>} offeringData The data to update.
  * @returns {Promise<Offering>} A promise that resolves to the updated offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at' | 'offering_media'>>): Promise<Offering> {
+export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<Offering> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
+    // Destructure to remove offering_media from the payload sent to the DB
+    const { offering_media, ...restOfOfferingData } = offeringData;
+
     const payload = {
-        ...offeringData,
+        ...restOfOfferingData,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         event_date: offeringData.type === 'Event' ? offeringData.event_date : null,
