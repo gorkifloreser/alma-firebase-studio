@@ -58,6 +58,14 @@ const initialAccounts: Account[] = [
         status: 'disconnected'
     },
     {
+        id: 'telegram',
+        name: 'Telegram',
+        description: 'Connect your Telegram account for messaging and automations.',
+        icon: '/telegram.svg',
+        category: 'meta',
+        status: 'disconnected'
+    },
+    {
         id: 'webmail',
         name: 'Webmail',
         description: 'Connect your email account to send newsletters and sequences.',
