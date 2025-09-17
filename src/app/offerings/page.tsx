@@ -11,9 +11,26 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
-import { getOfferings, createOffering, translateText, Offering } from './actions';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { getOfferings, deleteOffering, Offering } from './actions';
+import { PlusCircle, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type Profile = {
     primary_language: string;
@@ -25,6 +42,7 @@ export default function OfferingsPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDeleting, startDeleting] = useTransition();
     
     const { toast } = useToast();
 
@@ -63,12 +81,31 @@ export default function OfferingsPage() {
 
     const handleOfferingCreated = () => {
         setIsDialogOpen(false);
-        fetchAllData(); // Refetch offerings to show the new one
+        fetchAllData();
         toast({
             title: 'Success!',
             description: 'Your new offering has been created.',
         });
     };
+
+    const handleOfferingDelete = (offeringId: string) => {
+        startDeleting(async () => {
+            try {
+                await deleteOffering(offeringId);
+                toast({
+                    title: 'Success!',
+                    description: 'Your offering has been deleted.',
+                });
+                fetchAllData();
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Deletion Failed',
+                    description: error.message,
+                });
+            }
+        });
+    }
 
     return (
         <DashboardLayout>
@@ -98,9 +135,6 @@ export default function OfferingsPage() {
                                         <Skeleton className="h-4 w-full mb-2" />
                                         <Skeleton className="h-4 w-full" />
                                     </CardContent>
-                                    <CardFooter>
-                                        <Skeleton className="h-10 w-24" />
-                                    </CardFooter>
                                 </Card>
                             ))}
                         </div>
@@ -109,21 +143,60 @@ export default function OfferingsPage() {
                             {offerings.map(offering => (
                                 <Card key={offering.id} className="flex flex-col">
                                     <CardHeader>
-                                        <CardTitle>{offering.title.primary}</CardTitle>
-                                        <CardDescription>{offering.type}</CardDescription>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <CardTitle>{offering.title.primary}</CardTitle>
+                                                <CardDescription>{offering.type}</CardDescription>
+                                            </div>
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        <span>Edit</span>
+                                                    </DropdownMenuItem>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This action cannot be undone. This will permanently delete your
+                                                                    offering.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleOfferingDelete(offering.id!)}
+                                                                    disabled={isDeleting}
+                                                                    className="bg-destructive hover:bg-destructive/90"
+                                                                >
+                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="flex-grow">
                                         <p className="text-muted-foreground line-clamp-3">
                                             {offering.description.primary}
                                         </p>
                                     </CardContent>
-                                    <CardFooter className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="icon">
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                    <CardFooter>
+                                        <Button variant="outline" size="sm">Generate Content</Button>
                                     </CardFooter>
                                 </Card>
                             ))}

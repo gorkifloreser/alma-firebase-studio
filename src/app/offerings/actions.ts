@@ -39,7 +39,7 @@ export async function getOfferings(): Promise<Offering[]> {
         throw new Error('Could not fetch offerings.');
     }
     
-    return data;
+    return data as Offering[];
 }
 
 /**
@@ -70,7 +70,33 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   }
 
   revalidatePath('/offerings');
-  return data;
+  return data as Offering;
+}
+
+/**
+ * Deletes an offering for the currently authenticated user.
+ * @param {string} offeringId The ID of the offering to delete.
+ * @returns {Promise<{ message: string }>} A success message.
+ * @throws {Error} If the user is not authenticated or if the database operation fails.
+ */
+export async function deleteOffering(offeringId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('offerings')
+        .delete()
+        .eq('id', offeringId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error deleting offering:', error.message);
+        throw new Error('Could not delete the offering. Please try again.');
+    }
+
+    revalidatePath('/offerings');
+    return { message: 'Offering deleted successfully.' };
 }
 
 
