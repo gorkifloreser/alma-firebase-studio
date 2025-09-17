@@ -151,9 +151,11 @@ export default function CalendarPage() {
         const contentId = active.id as string;
         const targetId = over.id as string;
         const sourceType = active.data.current?.type;
+        const targetType = over.data.current?.type;
 
-        if (sourceType === 'contentItem' && over.data.current?.type === 'calendarDay') {
-            const targetDate = over.data.current.date as Date;
+        // From unscheduled to calendar
+        if (sourceType === 'contentItem' && targetType === 'calendarDay') {
+            const targetDate = over.data.current?.date as Date;
             
             startScheduling(async () => {
                 try {
@@ -169,7 +171,9 @@ export default function CalendarPage() {
                     toast({ variant: 'destructive', title: 'Scheduling Failed', description: error.message });
                 }
             });
-        } else if (sourceType === 'calendarEvent' && over.data.current?.type === 'unscheduledArea') {
+        } 
+        // From calendar back to unscheduled
+        else if (sourceType === 'calendarEvent' && targetType === 'unscheduledArea') {
             startScheduling(async () => {
                 try {
                     await unscheduleContent(contentId);
@@ -181,6 +185,31 @@ export default function CalendarPage() {
                     toast({ title: "Content Unscheduled", description: "The item has been returned to the 'Approved' list." });
                 } catch (error: any) {
                      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+                }
+            });
+        }
+        // From calendar to another day on the calendar (rescheduling)
+        else if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
+             const targetDate = over.data.current?.date as Date;
+             
+             // Check if it's actually a new date
+             const originalItem = contentItems.find(item => item.id === contentId);
+             if (originalItem && isSameDay(new Date(originalItem.scheduled_at!), targetDate)) {
+                 return; // Dropped on the same day, do nothing.
+             }
+
+             startScheduling(async () => {
+                try {
+                    await scheduleContent(contentId, targetDate);
+                    // Optimistic update
+                    setContentItems(prev => prev.map(item => 
+                        item.id === contentId 
+                        ? { ...item, status: 'scheduled', scheduled_at: targetDate.toISOString() } 
+                        : item
+                    ));
+                    toast({ title: "Content Rescheduled!", description: "The item's date has been updated." });
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Rescheduling Failed', description: error.message });
                 }
             });
         }
