@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, updateMediaPlan, type MediaPlan, type PlanItem } from '../actions';
 import { Funnel } from '@/app/funnels/actions';
-import { Bot, Sparkles, RefreshCw } from 'lucide-react';
+import { Bot, Sparkles, RefreshCw, Trash2, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -78,6 +78,19 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
             }
         }
     }, [isOpen, planToEdit]);
+    
+    const validateAndSetPlanItems = (items: PlanItem[]) => {
+        const validatedItems = items.map(item => {
+            // Ensure format is always valid, default if not
+            const formatIsValid = mediaFormats.includes(item.format);
+            return {
+                ...item,
+                format: formatIsValid ? item.format : mediaFormats[0],
+                id: crypto.randomUUID(),
+            };
+        });
+        setPlanItems(validatedItems);
+    };
 
     const handleGeneratePlan = () => {
         if (!selectedStrategyId) {
@@ -87,11 +100,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         startGenerating(async () => {
             try {
                 const result = await generateMediaPlanAction({ funnelId: selectedStrategyId });
-                const itemsWithIds = result.plan.map(item => ({
-                    ...item,
-                    id: crypto.randomUUID()
-                }));
-                setPlanItems(itemsWithIds);
+                validateAndSetPlanItems(result.plan);
                 toast({
                     title: 'Media Plan Generated!',
                     description: 'Review and edit the suggested content ideas below.'
@@ -116,9 +125,12 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                 channel: itemToRegen.channel,
                 conceptualStep: itemToRegen.conceptualStep
             });
+            
+            const formatIsValid = mediaFormats.includes(newItem.format);
+
             setPlanItems(prev => prev.map(item => 
                 item.id === itemToRegen.id 
-                ? { ...newItem, id: itemToRegen.id } 
+                ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : mediaFormats[0] } 
                 : item
             ));
              toast({
@@ -139,6 +151,24 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     }
+    
+    const handleRemoveItem = (itemId: string) => {
+        setPlanItems(prev => prev.filter(item => item.id !== itemId));
+    };
+
+    const handleAddNewItem = (channel: string) => {
+        const strategy = strategies.find(s => s.id === selectedStrategyId);
+        const newItem: PlanItemWithId = {
+            id: crypto.randomUUID(),
+            offeringId: strategy?.offering_id || '',
+            channel: channel,
+            format: 'Text Post',
+            copy: '',
+            hashtags: '',
+            creativePrompt: '',
+        };
+        setPlanItems(prev => [...prev, newItem]);
+    };
 
     const handleSavePlan = async () => {
         if (!selectedStrategyId) return;
@@ -261,6 +291,9 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                                 <Button variant="outline" size="icon" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}>
                                                                     <RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} />
                                                                 </Button>
+                                                                <Button variant="destructive" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                         <div className="space-y-1">
@@ -294,6 +327,12 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                                     </div>
                                                 </div>
                                             ))}
+                                             <div className="flex justify-center mt-6">
+                                                <Button variant="outline" onClick={() => handleAddNewItem(channel)}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                                    Add New Idea
+                                                </Button>
+                                            </div>
                                         </div>
                                     </TabsContent>
                                 ))}
