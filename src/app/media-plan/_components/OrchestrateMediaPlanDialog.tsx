@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateMediaPlan, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
+import { generateMediaPlan as generateMediaPlanAction, saveMediaPlan, updateMediaPlan, type MediaPlan } from '../actions';
 import type { GenerateMediaPlanOutput } from '@/ai/flows/generate-media-plan-flow';
 import { Funnel } from '@/app/funnels/actions';
 import { Bot, Sparkles } from 'lucide-react';
@@ -64,7 +64,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         }
         startGenerating(async () => {
             try {
-                const result = await generateMediaPlan({ funnelId: selectedStrategyId });
+                const result = await generateMediaPlanAction({ funnelId: selectedStrategyId });
                 const itemsWithIds = result.plan.map(item => ({
                     ...item,
                     id: crypto.randomUUID()
@@ -84,7 +84,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
         });
     };
     
-    const handleItemChange = (itemId: string, field: 'format' | 'description', value: string) => {
+    const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     }
 
@@ -126,7 +126,6 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
     }, [planItems]);
 
     const channels = Object.keys(groupedByChannel);
-    const selectedStrategy = strategies.find(s => s.id === selectedStrategyId);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -145,7 +144,7 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                     <div className="flex gap-4">
                         <Select 
                             onValueChange={setSelectedStrategyId} 
-                            defaultValue={planToEdit?.funnel_id}
+                            defaultValue={planToEdit?.funnel_id ?? undefined}
                             disabled={!!planToEdit || isGenerating}
                         >
                             <SelectTrigger id="strategy-select" className="flex-1">
@@ -186,22 +185,47 @@ export function OrchestrateMediaPlanDialog({ isOpen, onOpenChange, strategies, p
                                 {channels.map(channel => (
                                     <TabsContent key={channel} value={channel} className="mt-0">
                                         <div className="space-y-4">
-                                            {groupedByChannel[channel].map((item, index) => (
-                                                <div key={item.id} className="p-4 border rounded-lg space-y-2">
-                                                    <Label htmlFor={`format-${item.id}`} className="capitalize">{channel.replace(/_/g, ' ')} Idea</Label>
-                                                    <Input
-                                                        id={`format-${item.id}`}
-                                                        value={item.format}
-                                                        onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
-                                                        className="font-semibold"
-                                                    />
-                                                    <Textarea
-                                                        id={`description-${item.id}`}
-                                                        value={item.description}
-                                                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                                        className="text-sm text-muted-foreground"
-                                                        rows={2}
-                                                    />
+                                            {groupedByChannel[channel].map((item) => (
+                                                <div key={item.id} className="p-4 border rounded-lg space-y-4">
+                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <Label htmlFor={`format-${item.id}`}>Format</Label>
+                                                            <Input
+                                                                id={`format-${item.id}`}
+                                                                value={item.format}
+                                                                onChange={(e) => handleItemChange(item.id, 'format', e.target.value)}
+                                                                className="font-semibold"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label htmlFor={`hashtags-${item.id}`}>Hashtags</Label>
+                                                            <Input
+                                                                id={`hashtags-${item.id}`}
+                                                                value={item.hashtags}
+                                                                onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`copy-${item.id}`}>Copy</Label>
+                                                        <Textarea
+                                                            id={`copy-${item.id}`}
+                                                            value={item.copy}
+                                                            onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)}
+                                                            className="text-sm text-muted-foreground"
+                                                            rows={4}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label>
+                                                        <Textarea
+                                                            id={`prompt-${item.id}`}
+                                                            value={item.creativePrompt}
+                                                            onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)}
+                                                            className="text-sm text-muted-foreground font-mono"
+                                                            rows={3}
+                                                        />
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

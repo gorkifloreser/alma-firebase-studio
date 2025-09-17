@@ -13,9 +13,11 @@ import { z } from 'genkit';
 
 const PlanItemSchema = z.object({
   offeringId: z.string().describe("The ID of the offering this content is for."),
-  channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook', 'Email')."),
-  format: z.string().describe("The format of the content (e.g., 'Instagram Carousel', 'Weekly Newsletter')."),
-  description: z.string().describe("A brief description of the content idea, tied to a conceptual step in the strategy."),
+  channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook')."),
+  format: z.string().describe("The specific visual format for the content (e.g., '1:1 Square Image', '9:16 Reel Video')."),
+  copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
+  hashtags: z.string().describe("A space-separated list of relevant hashtags."),
+  creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
 });
 
 const ChannelPlanSchema = z.object({
@@ -44,7 +46,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are a world-class media planner who translates high-level strategy into an actionable content plan for a single, specific channel.
+  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint.
 
 **The Strategy Blueprint to Execute:**
 ---
@@ -65,24 +67,22 @@ const generateChannelPlanPrompt = ai.definePrompt({
 **Brand Identity:**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Mission: {{brandHeart.mission.primary}}
+- Target Audience: Conscious creators, entrepreneurs, artists, healers.
 ---
 
 **Your Task:**
 
-Your job is to create a 1-week media plan for the **'{{channel}}' channel ONLY**.
+Your job is to generate a list of concrete content packages for the **'{{channel}}' channel ONLY**.
 
-For **EACH stage** of the blueprint, you must generate at least one concrete content idea that is perfectly suited for the **'{{channel}}'** channel.
+For **EACH conceptual step** in the blueprint, you must generate one complete content package. Each package must contain:
+1.  **format**: The specific visual format best suited for the concept and channel. Examples: '1:1 Square Image', '9:16 Reel Video', '4:5 Portrait Image', 'Carousel (3 slides)'.
+2.  **copy**: Write compelling, direct-response ad copy for the post. It must align with the brand's tone of voice and the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
+3.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post.
+4.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
 
-For each content idea in the plan, you must:
-1.  **Specify Offering:** Use the offeringId from the strategy: '{{strategy.offering_id}}'.
-2.  **Specify Channel:** The channel MUST be '{{channel}}'.
-3.  **Define Format:** Propose a specific, tangible format that works well on '{{channel}}' (e.g., if the channel is Instagram, suggest '3-part Instagram carousel'; if it's Email, suggest 'Weekly newsletter').
-4.  **Describe the Idea:** Write a brief, compelling 'description' for the content piece that clearly executes one of the conceptual steps from the blueprint for that stage.
-5.  **Ensure Full Coverage:** Double-check that every stage in the blueprint has at least one corresponding content idea for the '{{channel}}' channel.
+Ensure you provide the correct 'offeringId' ('{{strategy.offering_id}}') and 'channel' ('{{channel}}') for each generated content package.
 
-Generate this entire plan in the **{{primaryLanguage}}** language.
-
-Return the result as a flat array of plan items in the specified JSON format. Ensure you provide the correct 'offeringId' and 'channel' for each plan item.`,
+Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
 
 
