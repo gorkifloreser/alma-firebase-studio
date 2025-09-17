@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
+import { generateFunnel as genFunnelFlow, GenerateFunnelInput, GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 
 
 export type OfferingMedia = {
@@ -80,11 +81,11 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
+  const { offering_media, event_date, ...restOfData } = offeringData as any;
 
   const payload = {
     ...restOfData,
-    event_date: offeringData.type === 'Event' && offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null,
+    event_date: offeringData.type === 'Event' && event_date ? new Date(event_date).toISOString() : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -127,11 +128,11 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { offering_media, updated_at, event_date, ...restOfData } = offeringData as any;
+    const { offering_media, event_date, ...restOfData } = offeringData as any;
 
     const payload = {
         ...restOfData,
-        event_date: offeringData.type === 'Event' && offeringData.event_date ? new Date(offeringData.event_date).toISOString() : null,
+        event_date: offeringData.type === 'Event' && event_date ? new Date(event_date).toISOString() : null,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -399,5 +400,106 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         throw new Error('Could not save the content. Please try again.');
     }
     
+    revalidatePath('/content');
     return { message: 'Content approved and saved successfully.' };
+}
+
+
+/**
+ * Invokes the Genkit funnel generation flow.
+ * @param {GenerateFunnelInput} input The offering ID.
+ * @returns {Promise<GenerateFunnelOutput>} The generated funnel content.
+ */
+export async function generateFunnelForOffering(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+    return genFunnelFlow(input);
+}
+
+
+/**
+ * Saves a generated funnel to the database.
+ * @param offeringId The ID of the offering this funnel belongs to.
+ * @param funnelData The AI-generated funnel data.
+ * @returns The ID of the newly created funnel.
+ */
+export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelOutput): Promise<string> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // 1. Create the main funnel record
+    const { data: funnel, error: funnelError } = await supabase
+        .from('funnels')
+        .insert({
+            offering_id: offeringId,
+            user_id: user.id,
+            name: `Funnel for Offering ${offeringId.substring(0, 8)}`
+        })
+        .select('id')
+        .single();
+
+    if (funnelError || !funnel) {
+        console.error('Error creating funnel record:', funnelError);
+        throw new Error('Could not create funnel record.');
+    }
+
+    const funnelId = funnel.id;
+
+    // 2. Prepare the funnel steps for batch insertion
+    const stepsToInsert = [];
+
+    // Add primary language landing page
+    stepsToInsert.push({
+        funnel_id: funnelId,
+        user_id: user.id,
+        step_order: 0,
+        step_type: 'landing_page',
+        title: { primary: funnelData.primary.landingPage.title },
+        content: { primary: funnelData.primary.landingPage.content },
+    });
+
+    // Add primary language follow-up sequence
+    funnelData.primary.followUpSequence.forEach((step, index) => {
+        stepsToInsert.push({
+            funnel_id: funnelId,
+            user_id: user.id,
+            step_order: index + 1,
+            step_type: 'follow_up',
+            title: { primary: step.title },
+            content: { primary: step.content },
+        });
+    });
+
+    // If secondary language exists, prepare those steps
+    if (funnelData.secondary) {
+        // Find and update landing page step
+        const lpStep = stepsToInsert.find(s => s.step_order === 0);
+        if (lpStep) {
+            lpStep.title.secondary = funnelData.secondary.landingPage.title;
+            lpStep.content.secondary = funnelData.secondary.landingPage.content;
+        }
+
+        // Find and update follow-up steps
+        funnelData.secondary.followUpSequence.forEach((step, index) => {
+            const followUpStep = stepsToInsert.find(s => s.step_order === index + 1);
+            if (followUpStep) {
+                followUpStep.title.secondary = step.title;
+                followUpStep.content.secondary = step.content;
+            }
+        });
+    }
+
+    // 3. Batch insert all steps
+    const { error: stepsError } = await supabase
+        .from('funnel_steps')
+        .insert(stepsToInsert);
+
+    if (stepsError) {
+        console.error('Error saving funnel steps:', stepsError);
+        // Optional: Add cleanup logic to delete the funnel if steps fail
+        await supabase.from('funnels').delete().eq('id', funnelId);
+        throw new Error('Could not save funnel steps.');
+    }
+
+    revalidatePath('/offerings');
+    return funnelId;
 }

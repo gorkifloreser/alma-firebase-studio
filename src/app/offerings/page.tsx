@@ -12,14 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getProfile } from '@/app/settings/actions';
 import { getOfferings, deleteOffering, Offering, OfferingMedia } from './actions';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, Wand2 } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
 import { ContentGenerationDialog } from './_components/ContentGenerationDialog';
+import { FunnelGenerationDialog } from './_components/FunnelGenerationDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -49,10 +51,12 @@ const OfferingsPageContent = () => {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
+    const [isFunnelDialogOpen, setIsFunnelDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
     const [offeringForContent, setOfferingForContent] = useState<OfferingWithMedia | null>(null);
+    const [offeringForFunnel, setOfferingForFunnel] = useState<OfferingWithMedia | null>(null);
     
     const { toast } = useToast();
 
@@ -107,6 +111,11 @@ const OfferingsPageContent = () => {
     const handleOpenContentDialog = (offering: OfferingWithMedia) => {
         setOfferingForContent(offering);
         setIsContentDialogOpen(true);
+    };
+    
+    const handleOpenFunnelDialog = (offering: OfferingWithMedia) => {
+        setOfferingForFunnel(offering);
+        setIsFunnelDialogOpen(true);
     };
 
     const handleOfferingSaved = () => {
@@ -206,6 +215,11 @@ const OfferingsPageContent = () => {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => handleOpenFunnelDialog(offering)}>
+                                                    <Wand2 className="mr-2 h-4 w-4" />
+                                                    <span>Generate Funnel</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     <span>Edit</span>
@@ -276,6 +290,14 @@ const OfferingsPageContent = () => {
                     onOpenChange={setIsContentDialogOpen}
                     offeringId={offeringForContent.id}
                     offeringTitle={offeringForContent.title.primary}
+                />
+            )}
+             {offeringForFunnel && (
+                <FunnelGenerationDialog
+                    isOpen={isFunnelDialogOpen}
+                    onOpenChange={setIsFunnelDialogOpen}
+                    offeringId={offeringForFunnel.id}
+                    offeringTitle={offeringForFunnel.title.primary}
                 />
             )}
         </>

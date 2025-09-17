@@ -4,3 +4,4 @@ import './flows/translate-flow';
 import './flows/rag-flow';
 import './flows/generate-content-flow';
 import './flows/generate-creative-flow';
+import './flows/generate-funnel-flow';
