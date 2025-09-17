@@ -1,23 +1,40 @@
 
+'use client';
+
 import { notFound } from 'next/navigation';
 import { getPublicLandingPage } from '@/app/funnels/actions';
+import { Frame, Element } from '@craftjs/core';
+import { CjsButton, CjsText, CjsContainer } from '@/app/funnels/[funnelId]/edit/components';
+import { useEffect, useState } from 'react';
 
-// The 'Render' component and 'Config' type from puck-editor have been removed as the package is incorrect.
-// The public landing page will need to be re-implemented with the correct visual editor.
+export default function PublicLandingPage({ params }: { params: { pageId: string } }) {
+    const [data, setData] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-export default async function PublicLandingPage({ params }: { params: { pageId: string } }) {
+    useEffect(() => {
+        getPublicLandingPage(params.pageId).then(pageData => {
+            if (!pageData) {
+                notFound();
+            }
+            setData(pageData);
+            setLoading(false);
+        });
+    }, [params.pageId]);
 
-    const data = await getPublicLandingPage(params.pageId);
-    
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
     if (!data) {
-        notFound();
+        return notFound();
     }
 
     return (
-        <div>
-            <h1>Landing Page</h1>
-            <p>The visual editor component is missing. Please check package dependencies.</p>
-            <pre>{JSON.stringify(data, null, 2)}</pre>
-        </div>
+        <Frame json={data}>
+             <Element is={CjsContainer} padding={20} background="#fff" canvas>
+                <CjsText text="Hi there" fontSize={20} />
+                <CjsButton size="small" text="Click me" />
+            </Element>
+        </Frame>
     );
 }

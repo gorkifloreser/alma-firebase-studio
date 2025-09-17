@@ -149,9 +149,6 @@ const OfferingsPageContent = () => {
     }
 
     const handleViewFunnel = (offeringId: string) => {
-        // This is a placeholder. In a real app, you'd fetch the funnel associated with the offering.
-        // For now, we'll assume a naming convention or a lookup.
-        // Let's redirect to a non-existent funnel editor page for now.
         router.push(`/funnels/${offeringId}/edit`);
     }
 
@@ -228,7 +225,7 @@ const OfferingsPageContent = () => {
                                                     <Wand2 className="mr-2 h-4 w-4" />
                                                     <span>Generate Funnel</span>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleViewFunnel(offering.id)}>
+                                                <DropdownMenuItem onSelect={() => handleViewFunnel(offering.id)} disabled={true}>
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     <span>View Funnel</span>
                                                 </DropdownMenuItem>

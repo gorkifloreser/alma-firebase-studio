@@ -4,10 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-// The 'Data' type from puck-editor is removed as the package is incorrect.
-// This will need to be replaced with the correct type from the new editor library.
-type Data = any;
-
+// This function now expects the `data` to be a JSON string from Craft.js
 export async function getLandingPage(funnelId: string) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -47,13 +44,14 @@ export async function getLandingPage(funnelId: string) {
     return {
         id: landingPageStep.id,
         path: landingPageStep.path,
-        data: landingPageStep.data as Data,
+        data: landingPageStep.data, // This will be a JSON string or null
         offeringId: data.offering_id,
     };
 }
 
 
-export async function saveLandingPage({ stepId, data }: { stepId: string, data: Data }) {
+// This function now saves the `data` as a JSON string from Craft.js
+export async function saveLandingPage({ stepId, data }: { stepId: string, data: string }) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -81,6 +79,7 @@ export async function saveLandingPage({ stepId, data }: { stepId: string, data: 
     return { message: 'Landing page saved successfully!' };
 }
 
+// This function now expects the `data` to be a JSON string from Craft.js
 export async function getPublicLandingPage(path: string) {
     const supabase = createClient();
     
@@ -95,5 +94,5 @@ export async function getPublicLandingPage(path: string) {
         return null;
     }
 
-    return data.data as Data;
+    return data.data as string;
 }

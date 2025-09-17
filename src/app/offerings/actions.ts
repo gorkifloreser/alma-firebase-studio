@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -439,6 +440,8 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
 
     const funnelId = funnel.id;
 
+    const initialData = (window as any).__CRAFTJS_EDITOR__.query.serialize();
+    
     // 2. Create the landing page step
     const landingPagePath = `lp-${funnelId.substring(0, 8)}`;
     const {data: landingPageStep, error: lpError} = await supabase.from('funnel_steps').insert({
@@ -455,44 +458,7 @@ export async function saveFunnel(offeringId: string, funnelData: GenerateFunnelO
              primary: funnelData.primary.landingPage.content,
              secondary: funnelData.secondary?.landingPage.content
         },
-        data: {
-            root: {
-              type: "div",
-              props: {
-                id: "root",
-                style: {
-                  padding: "64px",
-                },
-              },
-            },
-            content: [
-              {
-                type: "Heading",
-                props: {
-                  "puck-id": "heading-1",
-                  level: 1,
-                  text: funnelData.primary.landingPage.title,
-                  align: "center",
-                },
-              },
-              {
-                type: "Text",
-                props: {
-                  "puck-id": "text-1",
-                  text: funnelData.primary.landingPage.content,
-                  align: "center",
-                },
-              },
-              {
-                type: "Button",
-                props: {
-                    "puck-id": "button-1",
-                    label: "Get Started",
-                    href: "#",
-                }
-              }
-            ],
-          }
+        data: initialData,
     }).select('id').single();
 
     if (lpError || !landingPageStep) {
