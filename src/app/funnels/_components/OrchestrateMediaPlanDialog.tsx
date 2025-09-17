@@ -68,7 +68,7 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         if (isOpen) {
-            const existingPlan = funnel.media_plans?.[0]?.plan_items;
+            const existingPlan = funnel.media_plans?.plan_items;
             if (existingPlan) {
                 validateAndSetPlanItems(existingPlan);
             } else {
@@ -223,7 +223,7 @@ export function OrchestrateMediaPlanDialog({
                                                 </div>
                                                 <div className="space-y-1 pr-24">
                                                     <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" readOnly />
+                                                    <Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label>
