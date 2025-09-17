@@ -324,7 +324,7 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
     try {
         const result = await translateFlow(input);
         return result;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Translation action failed:", error);
         throw new Error("Failed to translate the text. Please try again.");
     }
