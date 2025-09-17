@@ -16,6 +16,7 @@ import { uploadBrandDocument, getBrandDocuments, deleteBrandDocument, BrandDocum
 import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLeft, Sparkles } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -102,10 +103,9 @@ export default function KnowledgeBasePage() {
                 toast({ title: 'Success!', description: result.message });
                 setSelectedFile(null);
                 if(fileInputRef.current) fileInputRef.current.value = "";
-                // Optimistically wait a few seconds for processing before refetching
-                setTimeout(() => fetchAllData(), 3000);
+                await fetchAllData();
             } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
+                toast({ variant: 'destructive', title: 'Processing failed', description: error.message });
             }
         });
     };
