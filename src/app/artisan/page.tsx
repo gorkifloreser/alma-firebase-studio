@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
@@ -58,42 +57,100 @@ const StoryPreview = ({
     profile,
     isLoading,
     creative,
+    selectedCreativeType,
     editableContent,
     handleContentChange,
+    handleCarouselSlideChange,
 }: {
     profile: Profile,
     isLoading: boolean,
     creative: GenerateCreativeOutput | null,
+    selectedCreativeType: CreativeType,
     editableContent: GenerateContentOutput['content'] | null,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
+    handleCarouselSlideChange: (index: number, newText: string) => void,
 }) => {
-     const postUser = profile?.full_name || 'Your Brand';
+    const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+    const [currentSlide, setCurrentSlide] = useState(0);
 
+    const renderBackground = () => {
+        if (isLoading) {
+            return <Skeleton className="w-full h-full" />;
+        }
+        if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
+            return (
+                <Carousel onSlideChange={(api) => setCurrentSlide(api.selectedScrollSnap())}>
+                    <CarouselContent>
+                         {creative.carouselSlides.map((slide, index) => (
+                            <CarouselItem key={index}>
+                                <div className="relative w-full h-full">
+                                    {slide.imageUrl ? (
+                                        <Image src={slide.imageUrl} alt={slide.title} layout="fill" objectFit="cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                            <ImageIcon className="w-24 h-24 text-zinc-300 dark:text-zinc-600" />
+                                        </div>
+                                    )}
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
+                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
+                </Carousel>
+            )
+        }
+         if (creative?.imageUrl) {
+            return <Image src={creative.imageUrl} alt="Story preview" layout="fill" objectFit="cover" />;
+        }
+        return (
+            <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                <ImageIcon className="w-24 h-24 text-zinc-300 dark:text-zinc-600" />
+            </div>
+        );
+    }
+    
+    const renderTextOverlay = () => {
+        if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
+             const slide = creative.carouselSlides[currentSlide];
+             if (!slide) return null;
+             return (
+                <Textarea
+                    value={slide.body || ''}
+                    onChange={(e) => handleCarouselSlideChange(currentSlide, e.target.value)}
+                    className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                    placeholder="Your slide text..."
+                />
+            )
+        }
+        return (
+            <Textarea
+                value={editableContent?.primary || ''}
+                onChange={(e) => handleContentChange('primary', e.target.value)}
+                className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                placeholder="Your story text..."
+            />
+        )
+    }
+
+    const progressCount = creative?.carouselSlides?.length || 1;
+    
     return (
-        <div className="w-full max-w-sm mx-auto sticky top-8">
+        <div className="w-full max-w-sm mx-auto">
             <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden shadow-lg bg-black">
-                {/* Background Image/Video Placeholder */}
-                {isLoading ? (
-                    <Skeleton className="w-full h-full" />
-                ) : (
-                    creative?.imageUrl ? (
-                        <Image src={creative.imageUrl} alt="Story preview" layout="fill" objectFit="cover" />
-                    ) : (
-                         <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                            <ImageIcon className="w-24 h-24 text-zinc-300 dark:text-zinc-600" />
-                        </div>
-                    )
-                )}
+                {renderBackground()}
 
                 {/* Content Overlay */}
                 <div className="absolute inset-0 flex flex-col p-3 text-white bg-gradient-to-t from-black/50 via-transparent to-black/50">
                     {/* Header */}
                     <div className="flex-shrink-0">
-                         <div className="flex items-center gap-2 mb-2">
-                             <div className="flex-1 h-1 bg-white/20 rounded-full">
-                                <div className="h-1 bg-white rounded-full w-1/3"></div>
-                            </div>
+                         <div className="flex items-center gap-1 mb-2">
+                             {[...Array(progressCount)].map((_, i) => (
+                                 <div key={i} className="flex-1 h-1 bg-white/30 rounded-full">
+                                    <div className={cn("h-1 rounded-full", i === currentSlide ? "bg-white" : "")}></div>
+                                </div>
+                             ))}
                         </div>
                         <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
@@ -109,12 +166,7 @@ const StoryPreview = ({
                     
                     {/* Editable Text Area */}
                     <div className="flex-1 flex items-center justify-center">
-                        <Textarea
-                            value={editableContent?.primary || ''}
-                            onChange={(e) => handleContentChange('primary', e.target.value)}
-                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
-                            placeholder="Your story text..."
-                        />
+                       {renderTextOverlay()}
                     </div>
                     
                     {/* Footer */}
@@ -162,15 +214,17 @@ const SocialPostPreview = ({
             <StoryPreview
                 profile={profile}
                 isLoading={isLoading}
+                selectedCreativeType={selectedCreativeType}
                 creative={creative}
                 editableContent={editableContent}
                 handleContentChange={handleContentChange}
+                handleCarouselSlideChange={handleCarouselSlideChange}
             />
         )
     }
 
     return (
-        <Card className="w-full mx-auto sticky top-24">
+        <Card className="w-full mx-auto">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 <Avatar>
                     <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
