@@ -48,6 +48,7 @@ export default function ArtisanPage() {
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
+    const [dimension, setDimension] = useState('square');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, startSaving] = useTransition();
@@ -377,18 +378,33 @@ export default function ArtisanPage() {
                                     <RadioGroup 
                                         value={selectedCreativeType} 
                                         onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
-                                        className="space-y-3"
+                                        className="grid grid-cols-2 gap-4"
                                         disabled={isLoading}
                                     >
                                         {creativeOptions.map(({ id, label, icon: Icon }) => (
                                             <div key={id} className="flex items-center space-x-2">
                                                 <RadioGroupItem value={id} id={id} />
-                                                <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
+                                                <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer font-normal">
                                                     <Icon /> {label}
                                                 </Label>
                                             </div>
                                         ))}
                                     </RadioGroup>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="dimension-select">4. Dimensions</Label>
+                                    <Select onValueChange={setDimension} disabled={isLoading} value={dimension}>
+                                        <SelectTrigger id="dimension-select">
+                                            <SelectValue placeholder="Select dimensions..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="square">Square (1:1)</SelectItem>
+                                            <SelectItem value="portrait">Portrait (4:5)</SelectItem>
+                                            <SelectItem value="story">Story (9:16)</SelectItem>
+                                            <SelectItem value="landscape">Landscape (16:9)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                              </CardContent>
                              <CardFooter className="flex-col gap-4">
