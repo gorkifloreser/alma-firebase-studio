@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
@@ -22,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { cn } from '@/lib/utils';
 
 type Profile = {
     full_name: string | null;
@@ -39,6 +41,13 @@ const creativeOptions: { id: CreativeType, label: string, icon: React.ElementTyp
     { id: 'video', label: 'Video', icon: Video },
 ];
 
+const dimensionMap = {
+    '1:1': 'aspect-square',
+    '4:5': 'aspect-[4/5]',
+    '9:16': 'aspect-[9/16]',
+    '16:9': 'aspect-[16/9]',
+};
+
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
     const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -47,7 +56,7 @@ export default function ArtisanPage() {
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
-    const [dimension, setDimension] = useState('1:1');
+    const [dimension, setDimension] = useState<keyof typeof dimensionMap>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
@@ -112,8 +121,9 @@ export default function ArtisanPage() {
             const promises = [];
             const offeringId = selectedQueueItem.source_plan_item.offeringId;
 
-            const contentPromise = generateContentForOffering({ offeringId });
-            promises.push(contentPromise);
+            // No need to generate content separately, it's already in the queue item
+            // const contentPromise = generateContentForOffering({ offeringId });
+            // promises.push(contentPromise);
 
             const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             if (visualBasedSelected) {
@@ -129,8 +139,8 @@ export default function ArtisanPage() {
             }
         
             const results = await Promise.all(promises);
-            const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
-            if (contentResult) setEditableContent(contentResult.content);
+            // const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
+            // if (contentResult) setEditableContent(contentResult.content);
             
             if (visualBasedSelected) {
                 const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
@@ -224,6 +234,7 @@ export default function ArtisanPage() {
     const SocialPostPreview = () => {
         const postUser = profile?.full_name || 'Your Brand';
         const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+        const aspectRatioClass = dimensionMap[dimension];
 
         return (
             <Card className="w-full max-w-md mx-auto sticky top-24">
@@ -239,11 +250,11 @@ export default function ArtisanPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
-                        <Skeleton className="aspect-square w-full" />
+                        <Skeleton className={cn("w-full", aspectRatioClass)} />
                     ) : (
                         <>
                             {selectedCreativeType === 'image' && creative?.imageUrl && (
-                                <div className="relative aspect-square w-full">
+                                <div className={cn("relative w-full", aspectRatioClass)}>
                                     <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
                                 </div>
                             )}
@@ -252,7 +263,7 @@ export default function ArtisanPage() {
                                     <CarouselContent>
                                         {creative.carouselSlides.map((slide, index) => (
                                             <CarouselItem key={index}>
-                                                <div className="relative aspect-square w-full">
+                                                <div className={cn("relative w-full", aspectRatioClass)}>
                                                     {slide.imageUrl ? (
                                                         <Image src={slide.imageUrl} alt={slide.title} fill className="object-cover" />
                                                     ) : (
@@ -273,7 +284,7 @@ export default function ArtisanPage() {
                                 </Carousel>
                             )}
                             {selectedCreativeType === 'video' && creative?.videoScript && (
-                                <div className="p-4 text-sm text-muted-foreground bg-secondary aspect-square flex flex-col justify-center">
+                                <div className={cn("p-4 text-sm text-muted-foreground bg-secondary flex flex-col justify-center", aspectRatioClass)}>
                                     <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
                                     <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
                                 </div>
@@ -295,6 +306,11 @@ export default function ArtisanPage() {
                         onChange={(e) => handleContentChange('primary', e.target.value)}
                         className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
                         placeholder="Your post copy will appear here..."
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                // This is now handled by default textarea behavior
+                            }
+                        }}
                     />
                     {secondaryLangName && editableContent?.secondary && (
                         <>
@@ -399,7 +415,7 @@ export default function ArtisanPage() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="dimension-select">4. Dimensions</Label>
-                                    <Select onValueChange={setDimension} disabled={isLoading} value={dimension}>
+                                    <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
                                         <SelectTrigger id="dimension-select">
                                             <SelectValue placeholder="Select dimensions..." />
                                         </SelectTrigger>
@@ -430,5 +446,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-    
