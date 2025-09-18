@@ -39,7 +39,7 @@ import { OrchestrateMediaPlanDialog } from './_components/OrchestrateMediaPlanDi
 import { EditStrategyDialog } from './_components/EditStrategyDialog';
 
 
-export default function StrategiesPage() {
+export default function AiStrategistPage() {
     const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [funnelPresets, setFunnelPresets] = useState<FunnelPreset[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -232,7 +232,7 @@ export default function StrategiesPage() {
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">Strategies</h1>
+                        <h1 className="text-3xl font-bold">AI Strategist</h1>
                         <p className="text-muted-foreground">
                             Create, manage, and orchestrate strategic marketing funnels.
                         </p>
@@ -243,11 +243,11 @@ export default function StrategiesPage() {
                     </Button>
                 </header>
                 
-                <Tabs defaultValue="my-funnels" className="w-full">
+                <Tabs defaultValue="my-strategies" className="w-full">
                     <div className="flex justify-center">
                         <TabsList>
                             <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
-                            <TabsTrigger value="my-funnels">My Strategies</TabsTrigger>
+                            <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
                         </TabsList>
                     </div>
                     <TabsContent value="templates" className="mt-6">
@@ -278,7 +278,7 @@ export default function StrategiesPage() {
                             )}
                         </div>
                     </TabsContent>
-                    <TabsContent value="my-funnels" className="mt-6">
+                    <TabsContent value="my-strategies" className="mt-6">
                         {isLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[...Array(3)].map((_, i) => (

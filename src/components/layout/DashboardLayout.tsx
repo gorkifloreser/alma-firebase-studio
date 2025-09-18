@@ -38,7 +38,7 @@ const menuItems = [
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
   { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
-  { href: '/funnels', label: 'Strategies', icon: GitBranch },
+  { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
