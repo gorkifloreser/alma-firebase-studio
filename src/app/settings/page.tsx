@@ -1,95 +1,22 @@
 
-'use client';
-
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { updateProfile, getProfile } from './actions';
-import { useEffect, useState, useTransition } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
-import { Skeleton } from '@/components/ui/skeleton';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Toaster } from '@/components/ui/toaster';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getProfile, updateProfile } from './actions';
 import { languages } from '@/lib/languages';
-import type { Profile } from './actions';
-import { Avatar } from '@/components/auth/Avatar';
-import { User } from '@supabase/supabase-js';
+import { SettingsForm } from './_components/SettingsForm';
 
-export default function SettingsPage() {
-    const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isPending, startTransition] = useTransition();
-    const { toast } = useToast();
+export default async function SettingsPage() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // Use keys to force re-render of Select components on state change
-    const [primaryKey, setPrimaryKey] = useState(Date.now());
-    const [secondaryKey, setSecondaryKey] = useState(Date.now() + 1);
+    if (!user) {
+        redirect('/login');
+    }
 
-    useEffect(() => {
-        const checkUserAndFetchData = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                redirect('/login');
-            }
-            setUser(user);
-
-            setIsLoading(true);
-            try {
-                const data = await getProfile();
-                setProfile(data);
-            } catch (error: any) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Error Fetching Profile',
-                    description: error.message,
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        checkUserAndFetchData();
-    }, [toast]);
-
-    const handleFileSelect = (file: File | null) => {
-        setAvatarFile(file);
-    };
-
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        if (avatarFile) {
-            formData.append('avatar', avatarFile);
-        }
-        
-        startTransition(async () => {
-            try {
-                const result = await updateProfile(formData);
-                setProfile(result.profile);
-                setAvatarFile(null); // Clear the file input after successful upload
-                // Update keys to force re-render of Select components with new values
-                setPrimaryKey(Date.now());
-                setSecondaryKey(Date.now() + 1);
-                toast({
-                    title: 'Success!',
-                    description: result.message,
-                });
-            } catch (error: any) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Update Failed',
-                    description: error.message,
-                });
-            }
-        });
-    };
+    const profile = await getProfile();
 
     return (
         <DashboardLayout>
@@ -108,70 +35,15 @@ export default function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
-                            <div className="space-y-6 max-w-md">
-                                <Skeleton className="h-24 w-24 rounded-full" />
-                                <Skeleton className="h-10 w-full" />
-                                <Skeleton className="h-10 w-full" />
-                                <Skeleton className="h-10 w-24" />
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
-                                <div>
-                                    <Label>Avatar</Label>
-                                    <Avatar
-                                        url={profile?.avatar_url}
-                                        isUploading={isPending}
-                                        onFileSelect={handleFileSelect}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="fullName">Full Name</Label>
-                                    <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} disabled={isPending} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="website">Website</Label>
-                                    <Input id="website" name="website" defaultValue={profile?.website || ''} disabled={isPending} />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="primary-language">Primary Language</Label>
-                                    <Select key={primaryKey} name="primaryLanguage" defaultValue={profile?.primary_language || 'en'} disabled={isPending}>
-                                        <SelectTrigger id="primary-language">
-                                            <SelectValue placeholder="Select primary language" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {languages.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value}>
-                                                    {lang.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="secondary-language">Secondary Language (Optional)</Label>
-                                    <Select key={secondaryKey} name="secondaryLanguage" defaultValue={profile?.secondary_language || 'none'} disabled={isPending}>
-                                        <SelectTrigger id="secondary-language">
-                                            <SelectValue placeholder="Select secondary language" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">None</SelectItem>
-                                            {languages.map((lang) => (
-                                                <SelectItem key={lang.value} value={lang.value}>
-                                                    {lang.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button type="submit" disabled={isPending}>
-                                    {isPending ? 'Saving...' : 'Save Changes'}
-                                </Button>
-                            </form>
-                        )}
+                        <SettingsForm
+                            profile={profile}
+                            languages={languages}
+                            updateProfileAction={updateProfile}
+                        />
                     </CardContent>
                 </Card>
             </div>
         </DashboardLayout>
     );
 }
+
