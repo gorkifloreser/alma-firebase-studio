@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
@@ -6,12 +7,13 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import { getOfferings, generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import type { Offering } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, Wifi, Signal, Battery, ChevronLeft, MoreHorizontal, X, Music, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -24,6 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
+
 
 type Profile = {
     full_name: string | null;
@@ -73,6 +77,18 @@ const SocialPostPreview = ({
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const aspectRatioClass = dimensionMap[dimension];
+
+    if (dimension === '9:16') {
+        return (
+            <StoryPreview
+                profile={profile}
+                isLoading={isLoading}
+                creative={creative}
+                editableContent={editableContent}
+                handleContentChange={handleContentChange}
+            />
+        )
+    }
 
     return (
         <Card className="w-full max-w-md mx-auto sticky top-24">
@@ -178,8 +194,93 @@ const SocialPostPreview = ({
     );
 }
 
+const StoryPreview = ({
+    profile,
+    isLoading,
+    creative,
+    editableContent,
+    handleContentChange,
+}: {
+    profile: Profile,
+    isLoading: boolean,
+    creative: GenerateCreativeOutput | null,
+    editableContent: GenerateContentOutput['content'] | null,
+    handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
+}) => {
+    const postUser = profile?.full_name || 'Your Brand';
+    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+
+    return (
+        <div className="w-[320px] h-[570px] bg-black rounded-3xl p-3 shadow-2xl mx-auto sticky top-8">
+            <div className="relative w-full h-full rounded-[1.25rem] overflow-hidden">
+                {isLoading ? (
+                    <Skeleton className="w-full h-full" />
+                ) : (
+                    creative?.imageUrl ? (
+                        <Image src={creative.imageUrl} alt="Story preview" layout="fill" objectFit="cover" />
+                    ) : (
+                         <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                            <ImageIcon className="w-24 h-24 text-zinc-600" />
+                        </div>
+                    )
+                )}
+
+                <div className="absolute inset-0 flex flex-col justify-between text-white p-3 bg-gradient-to-t from-black/50 via-transparent to-black/30">
+                    {/* Header */}
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold">12:05</span>
+                        <div className="flex items-center gap-1">
+                            <Signal size={14} />
+                            <Wifi size={14} />
+                            <Battery size={16} />
+                        </div>
+                    </div>
+                    
+                    {/* Story Content */}
+                    <div className="absolute top-10 left-3 right-3">
+                         <div className="w-full h-0.5 bg-white/30 rounded-full mb-2">
+                            <div className="w-1/3 h-full bg-white rounded-full"></div>
+                        </div>
+                         <div className="flex items-center gap-2">
+                             <Avatar className="h-8 w-8">
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-semibold">{postUserHandle}</span>
+                             <span className="text-xs text-white/70">8h</span>
+                             <MoreHorizontal size={16} className="ml-auto" />
+                             <X size={20}/>
+                        </div>
+                    </div>
+                    
+                    {/* Main Text */}
+                    <div className="flex-1 flex items-center justify-center">
+                         <Textarea
+                            value={editableContent?.primary || ''}
+                            onChange={(e) => handleContentChange('primary', e.target.value)}
+                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                            placeholder="Your story text..."
+                        />
+                    </div>
+                    
+                    {/* Footer */}
+                     <div className="flex items-center gap-3">
+                        <div className="flex-1 rounded-full border border-white/50 px-4 py-2 text-xs text-white/80">
+                            Add comment...
+                        </div>
+                        <Heart size={24} />
+                        <Send size={24} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
+    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
     const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
 
@@ -193,14 +294,24 @@ export default function ArtisanPage() {
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
-    const selectedQueueItem = queueItems.find(item => item.id === selectedQueueItemId) || null;
+    const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
+
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
         setSelectedQueueItemId(queueItemId);
+        if (queueItemId === 'custom') {
+            setCreativePrompt('');
+            setEditableContent(null);
+            setCreative(null);
+            setSelectedOfferingId(null);
+            return;
+        }
+
         const item = items.find(q => q.id === queueItemId);
         if (item) {
             setCreativePrompt(item.source_plan_item.creativePrompt || '');
             setEditableContent({ primary: item.source_plan_item.copy || '', secondary: null });
+            setSelectedOfferingId(item.source_plan_item.offeringId);
 
             const format = item.source_plan_item.format.toLowerCase();
             if (format.includes('video')) setSelectedCreativeType('video');
@@ -218,14 +329,19 @@ export default function ArtisanPage() {
         async function fetchData() {
             try {
                 setIsLoading(true);
-                const [profileData, queueData] = await Promise.all([
+                const [profileData, queueData, offeringsData] = await Promise.all([
                     getProfile(),
                     getQueueItems(),
+                    getOfferings(),
                 ]);
                 setProfile(profileData);
                 setQueueItems(queueData);
+                setOfferings(offeringsData);
+                
                 if (queueData.length > 0) {
                     handleQueueItemSelect(queueData[0].id, queueData);
+                } else {
+                    handleQueueItemSelect('custom', []);
                 }
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
@@ -237,8 +353,8 @@ export default function ArtisanPage() {
     }, [toast, handleQueueItemSelect]);
 
     const handleGenerate = async () => {
-        if (!selectedQueueItem) {
-            toast({ variant: 'destructive', title: 'Please select an item from the queue first.' });
+        if (!selectedOfferingId) {
+            toast({ variant: 'destructive', title: 'Please select an offering for your custom creative.' });
             return;
         }
 
@@ -249,14 +365,13 @@ export default function ArtisanPage() {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
 
             const promises = [];
-            const offeringId = selectedQueueItem.source_plan_item.offeringId;
-
+            
             const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             if (visualBasedSelected) {
                 const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
                 if (creativeTypesForFlow.length > 0) {
                     const creativePromise = generateCreativeForOffering({
-                        offeringId,
+                        offeringId: selectedOfferingId,
                         creativeTypes: creativeTypesForFlow,
                         aspectRatio: dimension,
                     });
@@ -287,12 +402,10 @@ export default function ArtisanPage() {
     };
 
     const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
-        setEditableContent(prev => ({
-            primary: null,
-            secondary: null,
-            ...prev,
-            [language]: value,
-        }));
+        setEditableContent(prev => {
+            if (!prev) return { primary: null, secondary: null, [language]: value };
+            return { ...prev, [language]: value };
+        });
     };
 
     const handleCarouselSlideChange = (index: number, newText: string) => {
@@ -305,40 +418,42 @@ export default function ArtisanPage() {
     };
 
     const handleApprove = () => {
-        if (!selectedQueueItem) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Queue item is missing.' });
+        if (!selectedOfferingId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
         }
         if (!editableContent && !creative) {
             toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
             return;
         }
+        const currentQueueItem = queueItems.find(item => item.id === selectedQueueItemId) || null;
 
         startSaving(async () => {
             try {
                 await saveContent({
-                    offeringId: selectedQueueItem.source_plan_item.offeringId,
+                    offeringId: selectedOfferingId,
                     contentBody: editableContent,
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
                     videoScript: creative?.videoScript || null,
                     status: 'approved',
-                    sourcePlan: selectedQueueItem.source_plan_item,
+                    sourcePlan: currentQueueItem?.source_plan_item || null,
                 });
-                await updateQueueItemStatus(selectedQueueItem.id, 'completed');
+                if (currentQueueItem) {
+                    await updateQueueItemStatus(currentQueueItem.id, 'completed');
+                }
                 toast({
                     title: 'Approved!',
                     description: 'The content has been saved and is ready for the calendar.',
                 });
+                
+                // Refresh queue and move to next item
                 const updatedQueue = await getQueueItems();
                 setQueueItems(updatedQueue);
                 if (updatedQueue.length > 0) {
                     handleQueueItemSelect(updatedQueue[0].id, updatedQueue);
                 } else {
-                    setSelectedQueueItemId(null);
-                    setCreativePrompt('');
-                    setEditableContent(null);
-                    setCreative(null);
+                    handleQueueItemSelect('custom', []);
                 }
 
             } catch (error: any) {
@@ -374,12 +489,14 @@ export default function ArtisanPage() {
                              </CardHeader>
                              <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="queue-select">1. Choose an Item from the Queue</Label>
+                                    <Label htmlFor="queue-select">1. Choose an Item or Go Custom</Label>
                                     <Select onValueChange={(value) => handleQueueItemSelect(value, queueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                         <SelectTrigger id="queue-select">
                                             <SelectValue placeholder="Select a content idea..." />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="custom">Custom AI Creative</SelectItem>
+                                            <Separator className="my-1"/>
                                             {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                              queueItems.length > 0 ? (
                                                 queueItems.map(item => (
@@ -391,9 +508,25 @@ export default function ArtisanPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                
+                                {selectedQueueItemId === 'custom' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="offering-select">2. Choose an Offering</Label>
+                                        <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
+                                            <SelectTrigger id="offering-select">
+                                                <SelectValue placeholder="Select an offering..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {offerings.map(o => (
+                                                    <SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
 
                                 <div>
-                                    <Label htmlFor="creative-prompt">2. AI Creative Prompt</Label>
+                                    <Label htmlFor="creative-prompt">{selectedQueueItemId === 'custom' ? '3.' : '2.'} AI Creative Prompt</Label>
                                     <Textarea
                                         id="creative-prompt"
                                         value={creativePrompt}
@@ -404,7 +537,7 @@ export default function ArtisanPage() {
                                 </div>
 
                                 <div>
-                                    <h3 className="font-medium mb-4">3. Creative Type</h3>
+                                    <h3 className="font-medium mb-4">{selectedQueueItemId === 'custom' ? '4.' : '3.'} Creative Type</h3>
                                     <RadioGroup
                                         value={selectedCreativeType}
                                         onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -423,7 +556,7 @@ export default function ArtisanPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="dimension-select">4. Dimensions</Label>
+                                    <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Dimensions</Label>
                                     <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
                                         <SelectTrigger id="dimension-select">
                                             <SelectValue placeholder="Select dimensions..." />
@@ -438,8 +571,8 @@ export default function ArtisanPage() {
                                 </div>
                              </CardContent>
                              <CardFooter className="flex-col gap-4">
-                                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedQueueItemId}>
-                                    {isLoading ? 'Generating...' : 'Generate Creatives'}
+                                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
+                                    {isLoading ? 'Generating...' : 'Regenerate'}
                                 </Button>
                                 <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
                                     {isSaving ? 'Approving...' : 'Approve & Save'}
