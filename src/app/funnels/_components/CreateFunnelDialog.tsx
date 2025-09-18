@@ -50,6 +50,7 @@ interface CreateFunnelDialogProps {
     offerings: Offering[];
     funnelPresets: FunnelPreset[];
     onFunnelSaved: () => void;
+    funnelToEdit: Funnel | null;
 }
 
 type EditableStrategy = {
@@ -72,6 +73,7 @@ export function CreateFunnelDialog({
     offerings,
     funnelPresets,
     onFunnelSaved,
+    funnelToEdit,
 }: CreateFunnelDialogProps) {
     const [step, setStep] = useState<'selection' | 'edit_blueprint' | 'orchestrate'>('selection');
     
@@ -95,25 +97,42 @@ export function CreateFunnelDialog({
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
+
+    const isEditMode = !!funnelToEdit;
     
     useEffect(() => {
         if (isOpen) {
-            // Reset all state when dialog opens
-            setStep('selection');
-            setSelectedOfferingId(null);
-            setSelectedPresetId(null);
-            setGeneratedContent(null);
-            setName('');
-            setGoal('');
-            setCreatedFunnelId(null);
-            setPlanItems([]);
+            if (funnelToEdit) {
+                // Editing an existing funnel, start at step 2
+                setSelectedOfferingId(funnelToEdit.offering_id);
+                setSelectedPresetId(funnelToEdit.preset_id);
+                setGoal(funnelToEdit.goal || '');
+                setName(funnelToEdit.name || '');
+                setGeneratedContent(funnelToEdit.strategy_brief);
+                setCreatedFunnelId(funnelToEdit.id);
+                setStep('edit_blueprint');
+            } else {
+                 // Reset all state for new funnel
+                setStep('selection');
+                setSelectedOfferingId(null);
+                setSelectedPresetId(null);
+                setGeneratedContent(null);
+                setName('');
+                setGoal('');
+                setCreatedFunnelId(null);
+                setPlanItems([]);
+            }
             
             getUserChannels().then(channels => {
                 setAvailableChannels(channels);
-                setSelectedChannels(channels); // Default to all selected
+                if (funnelToEdit?.strategy_brief?.channels) {
+                    setSelectedChannels(funnelToEdit.strategy_brief.channels);
+                } else {
+                    setSelectedChannels(channels); // Default to all selected for new funnels
+                }
             });
         }
-    }, [isOpen]);
+    }, [isOpen, funnelToEdit]);
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
@@ -135,7 +154,7 @@ export function CreateFunnelDialog({
                 });
                 
                 setGeneratedContent(result);
-                setName(`${offering.title.primary}: ${preset.title}`);
+                setName(name || `${offering.title.primary}: ${preset.title}`);
                 setStep('edit_blueprint');
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Blueprint Generation Failed', description: error.message });
@@ -148,29 +167,28 @@ export function CreateFunnelDialog({
 
         startSaving(async () => {
              try {
-                // If we haven't created the funnel yet, create it now.
-                if (!createdFunnelId) {
-                    const payload = {
-                        presetId: selectedPresetId,
-                        offeringId: selectedOfferingId,
-                        name,
-                        goal,
-                        strategyBrief: { ...generatedContent, channels: selectedChannels },
-                    };
+                let funnelIdToUse = createdFunnelId;
+                
+                const payload = {
+                    presetId: selectedPresetId,
+                    offeringId: selectedOfferingId,
+                    name,
+                    goal,
+                    strategyBrief: { ...generatedContent, channels: selectedChannels },
+                };
+
+                if (isEditMode && funnelIdToUse) {
+                    await updateFunnel(funnelIdToUse, payload);
+                } else {
                     const newFunnel = await createFunnel(payload);
                     setCreatedFunnelId(newFunnel.id);
-                    await handleGenerateMediaPlan(newFunnel.id);
-                } else {
-                    // Funnel exists, just update it and move to next step
-                     await updateFunnel(createdFunnelId, {
-                        name,
-                        goal,
-                        strategyBrief: { ...generatedContent, channels: selectedChannels },
-                    });
-                    if (planItems.length === 0) {
-                        await handleGenerateMediaPlan(createdFunnelId);
-                    }
+                    funnelIdToUse = newFunnel.id;
                 }
+                
+                if (funnelIdToUse) {
+                    await handleGenerateMediaPlan(funnelIdToUse);
+                }
+
                 setStep('orchestrate');
                 onFunnelSaved(); // To re-fetch on the main page
             } catch (error: any) {
@@ -213,9 +231,7 @@ export function CreateFunnelDialog({
         setIsRegeneratingItem(prev => ({ ...prev, [itemToRegen.id]: true }));
         try {
             const newItem = await regeneratePlanItem({ funnelId: createdFunnelId, channel: itemToRegen.channel, conceptualStep: itemToRegen.conceptualStep });
-            const validFormats = getFormatsForChannel(newItem.channel);
-            const formatIsValid = validFormats.includes(newItem.format);
-            setPlanItems(prev => prev.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post') } : item ));
+            validateAndSetPlanItems(prev => prev.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id } : item ));
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
         } finally {
@@ -224,7 +240,15 @@ export function CreateFunnelDialog({
     };
     
     const validateAndSetPlanItems = (items: PlanItem[]) => {
-        const validatedItems = items.map(item => ({ ...item, id: crypto.randomUUID() }));
+        const validatedItems = items.map(item => {
+            const validFormats = getFormatsForChannel(item.channel);
+            const formatIsValid = validFormats.includes(item.format);
+            return {
+                ...item,
+                format: formatIsValid ? item.format : (validFormats[0] || 'Text Post'),
+                id: crypto.randomUUID(),
+            };
+        });
         setPlanItems(validatedItems);
     };
 
@@ -236,7 +260,7 @@ export function CreateFunnelDialog({
     const handleStageNameChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, stageName: value } } : item)); };
     const handleObjectiveChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, objective: value } } : item)); };
     const handleRemoveItem = (itemId: string) => { setPlanItems(prev => prev.filter(item => item.id !== itemId)); };
-    const handleAddNewItem = (channel: string) => { const newItem: PlanItemWithId = { id: crypto.randomUUID(), offeringId: selectedOfferingId || '', channel: channel, format: getFormatsForChannel(channel)[0] || 'Text Post', copy: '', hashtags: '', creativePrompt: '', conceptualStep: { objective: 'Your new objective here', stageName: 'Uncategorized' }, }; setPlanItems(prev => [...prev, newItem]); };
+    const handleAddNewItem = (channel: string) => { const newItem: PlanItemWithId = { id: crypto.randomUUID(), offeringId: selectedOfferingId || '', channel: channel, format: getFormatsForChannel(channel)[0] || 'Text Post', copy: '', hashtags: '', creativePrompt: '', conceptualStep: { step: 99, objective: 'Your new objective here', concept: 'Your new concept here' }, }; setPlanItems(prev => [...prev, newItem]); };
 
 
     // --- Render Functions for each step ---
@@ -280,7 +304,7 @@ export function CreateFunnelDialog({
                 )}
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving}>
+                 <Button variant="outline" onClick={() => setStep('selection')} disabled={isSaving || isEditMode}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                 </Button>
@@ -321,7 +345,7 @@ export function CreateFunnelDialog({
                                                 </div>
                                                 <div className="space-y-1 pr-24"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" /></div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof"/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><Label>{g.label}</Label>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
@@ -368,6 +392,3 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
-
-
-    
