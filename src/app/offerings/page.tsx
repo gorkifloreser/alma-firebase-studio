@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { redirect, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -17,7 +17,6 @@ import { getFunnels, Funnel } from '@/app/funnels/actions';
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, Wand2, Eye, GitBranch } from 'lucide-react';
 import { CreateOfferingDialog } from './_components/CreateOfferingDialog';
 import { OfferingDetailDialog } from './_components/OfferingDetailDialog';
-import { ContentGenerationDialog } from './_components/ContentGenerationDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,11 +53,9 @@ const OfferingsPageContent = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-    const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
-    const [offeringForContent, setOfferingForContent] = useState<OfferingWithMedia | null>(null);
     const [activeTab, setActiveTab] = useState('all');
     const router = useRouter();
     
@@ -114,11 +111,6 @@ const OfferingsPageContent = () => {
     const handleOpenDetailDialog = (offering: OfferingWithMedia) => {
         setOfferingToView(offering);
         setIsDetailDialogOpen(true);
-    };
-
-    const handleOpenContentDialog = (offering: OfferingWithMedia) => {
-        setOfferingForContent(offering);
-        setIsContentDialogOpen(true);
     };
 
     const handleOfferingSaved = () => {
@@ -197,8 +189,7 @@ const OfferingsPageContent = () => {
                                 </p>
                             </CardContent>
                         </div>
-                        <CardFooter className="mt-auto pt-0 flex justify-between items-center">
-                            <Button variant="outline" size="sm" onClick={() => handleOpenContentDialog(offering)}>Generate Content</Button>
+                        <CardFooter className="mt-auto pt-0 flex justify-end items-center">
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -310,15 +301,6 @@ const OfferingsPageContent = () => {
                     onOpenChange={setIsDetailDialogOpen}
                     offering={offeringToView}
                     profile={profile}
-                />
-            )}
-            {offeringForContent && (
-                <ContentGenerationDialog
-                    isOpen={isContentDialogOpen}
-                    onOpenChange={setIsContentDialogOpen}
-                    offeringId={offeringForContent.id}
-                    offeringTitle={offeringForContent.title.primary}
-                    funnels={funnels.filter(f => f.offering_id === offeringForContent.id)}
                 />
             )}
         </>

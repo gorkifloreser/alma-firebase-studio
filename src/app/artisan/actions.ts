@@ -1,0 +1,107 @@
+
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
+import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { getOfferings as getOfferingsAction, getFunnels as getFunnelsAction, Offering, Funnel } from '@/app/offerings/actions';
+
+/**
+ * Fetches all offerings for the currently authenticated user.
+ * @returns {Promise<Offering[]>} A promise that resolves to an array of offerings.
+ */
+export async function getOfferings(): Promise<Offering[]> {
+    return getOfferingsAction();
+}
+
+/**
+ * Fetches all funnels for the currently authenticated user.
+ * @returns {Promise<Funnel[]>} A promise that resolves to an array of funnels.
+ */
+export async function getFunnels(): Promise<Funnel[]> {
+    return getFunnelsAction();
+}
+
+/**
+ * Invokes the Genkit content generation flow.
+ * @param {GenerateContentInput} input The offering ID.
+ * @returns {Promise<GenerateContentOutput>} The generated content.
+ */
+export async function generateContentForOffering(input: GenerateContentInput): Promise<GenerateContentOutput> {
+    return genContentFlow(input);
+}
+
+
+/**
+ * Invokes the Genkit creative generation flow.
+ * @param {GenerateCreativeInput} input The offering ID and creative type.
+ * @returns {Promise<GenerateCreativeOutput>} The generated creative.
+ * @throws {Error} If the generation fails.
+ */
+export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
+    try {
+        const result = await genCreativeFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error("Creative generation action failed:", error);
+        throw new Error("Failed to generate creative. Please try again.");
+    }
+}
+
+type SaveContentInput = {
+    offeringId: string;
+    contentBody: { primary: string | null; secondary: string | null; } | null;
+    imageUrl: string | null;
+    carouselSlides: CarouselSlide[] | null;
+    videoScript: string | null;
+    status: 'draft' | 'approved' | 'scheduled' | 'published';
+    sourcePlan?: {
+        channel: string;
+        format: string;
+        copy: string;
+        hashtags: string;
+        creativePrompt: string;
+    } | null;
+    mediaPlanItemId?: string; 
+};
+
+/**
+ * Saves or updates content for an offering.
+ * @param {SaveContentInput} input - The content data to save.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function saveContent(input: SaveContentInput): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoScript, status, sourcePlan, mediaPlanItemId } = input;
+
+    const payload: any = {
+        user_id: user.id,
+        offering_id: offeringId,
+        content_body: contentBody,
+        image_url: imageUrl,
+        carousel_slides: carouselSlides,
+        video_script: videoScript,
+        status: status,
+        source_plan: sourcePlan,
+    };
+
+    if (sourcePlan?.creativePrompt) { 
+      payload.media_plan_item_id = sourcePlan.creativePrompt.slice(0, 36);
+    }
+
+
+    const { error } = await supabase.from('content').insert(payload);
+
+    if (error) {
+        console.error('Error saving content:', error.message);
+        throw new Error('Could not save the content. Please try again.');
+    }
+    
+    revalidatePath('/calendar');
+    return { message: 'Content approved and saved successfully.' };
+}
+
