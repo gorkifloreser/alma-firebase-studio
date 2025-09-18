@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const mediaFormatConfig = [
     { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
     { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Text Post', channels: ['facebook', 'linkedin'] }, { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
+    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
 ];
 
 const getFormatsForChannel = (channel: string): string[] => {
@@ -245,17 +245,20 @@ export function CreateFunnelDialog({
         }
     };
     
-    const validateAndSetPlanItems = (items: PlanItem[]) => {
-        const validatedItems = items.map(item => {
-            const validFormats = getFormatsForChannel(item.channel);
-            const formatIsValid = validFormats.includes(item.format);
-            return {
-                ...item,
-                format: formatIsValid ? item.format : (validFormats[0] || 'Text Post'),
-                id: crypto.randomUUID(),
-            };
-        });
-        setPlanItems(validatedItems);
+    const validateAndSetPlanItems = (items: PlanItem[] | ((prev: PlanItemWithId[]) => PlanItemWithId[])) => {
+        const updateFunction = (prevItems: PlanItemWithId[]) => {
+            const itemsToProcess = typeof items === 'function' ? items(prevItems) : items;
+            return itemsToProcess.map(item => {
+                const itemWithId = 'id' in item ? item as PlanItemWithId : { ...item, id: crypto.randomUUID() };
+                const validFormats = getFormatsForChannel(itemWithId.channel);
+                const formatIsValid = validFormats.includes(itemWithId.format);
+                return {
+                    ...itemWithId,
+                    format: formatIsValid ? itemWithId.format : (validFormats[0] || 'Blog Post'),
+                };
+            });
+        };
+        setPlanItems(updateFunction);
     };
 
     // --- Change handlers ---
@@ -266,7 +269,7 @@ export function CreateFunnelDialog({
     const handleStageNameChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, stageName: value } } : item)); };
     const handleObjectiveChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, objective: value } } : item)); };
     const handleRemoveItem = (itemId: string) => { setPlanItems(prev => prev.filter(item => item.id !== itemId)); };
-    const handleAddNewItem = (channel: string) => { const newItem: PlanItemWithId = { id: crypto.randomUUID(), offeringId: selectedOfferingId || '', channel: channel, format: getFormatsForChannel(channel)[0] || 'Text Post', copy: '', hashtags: '', creativePrompt: '', conceptualStep: { step: 99, objective: 'Your new objective here', concept: 'Your new concept here' }, }; setPlanItems(prev => [...prev, newItem]); };
+    const handleAddNewItem = (channel: string) => { const newItem: PlanItemWithId = { id: crypto.randomUUID(), offeringId: selectedOfferingId || '', channel: channel, format: getFormatsForChannel(channel)[0] || 'Blog Post', copy: '', hashtags: '', creativePrompt: '', conceptualStep: { step: 99, objective: 'Your new objective here', concept: 'Your new concept here' }, }; setPlanItems(prev => [...prev, newItem]); };
 
 
     // --- Render Functions for each step ---

@@ -39,7 +39,7 @@ type RegeneratingState = { [itemId: string]: boolean };
 const mediaFormatConfig = [
     { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
     { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Text Post', channels: ['facebook', 'linkedin'] }, { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
+    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
 ];
 
 const getFormatsForChannel = (channel: string): string[] => {
@@ -106,7 +106,7 @@ export function OrchestrateMediaPlanDialog({
             const formatIsValid = validFormats.includes(item.format);
             return {
                 ...item,
-                format: formatIsValid ? item.format : (validFormats[0] || 'Text Post'),
+                format: formatIsValid ? item.format : (validFormats[0] || 'Blog Post'),
                 id: crypto.randomUUID(),
             };
         });
@@ -161,7 +161,7 @@ export function OrchestrateMediaPlanDialog({
                             ...(newItem.conceptualStep || {}),
                         },
                         id: itemToRegen.id,
-                        format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post'),
+                        format: formatIsValid ? newItem.format : (validFormats[0] || 'Blog Post'),
                     };
                 }
                 return item;
@@ -252,7 +252,7 @@ export function OrchestrateMediaPlanDialog({
             id: crypto.randomUUID(),
             offeringId: funnel.offering_id || '',
             channel: channel,
-            format: getFormatsForChannel(channel)[0] || 'Text Post',
+            format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
             creativePrompt: '',
