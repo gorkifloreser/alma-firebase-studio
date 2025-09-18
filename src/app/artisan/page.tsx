@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -50,35 +50,16 @@ export default function ArtisanPage() {
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
     const [dimension, setDimension] = useState('square');
     const [creativePrompt, setCreativePrompt] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     const selectedQueueItem = queueItems.find(item => item.id === selectedQueueItemId) || null;
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                setIsLoading(true);
-                const [profileData, queueData] = await Promise.all([
-                    getProfile(),
-                    getQueueItems(),
-                ]);
-                setProfile(profileData);
-                setQueueItems(queueData);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchData();
-    }, [toast]);
-
-    const handleQueueItemSelect = (queueItemId: string) => {
+    const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
         setSelectedQueueItemId(queueItemId);
-        const item = queueItems.find(q => q.id === queueItemId);
+        const item = items.find(q => q.id === queueItemId);
         if (item) {
             setCreativePrompt(item.source_plan_item.creativePrompt || '');
             setEditableContent({ primary: item.source_plan_item.copy || '', secondary: null });
@@ -93,7 +74,29 @@ export default function ArtisanPage() {
              setEditableContent(null);
         }
         setCreative(null);
-    }
+    }, []);
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                setIsLoading(true);
+                const [profileData, queueData] = await Promise.all([
+                    getProfile(),
+                    getQueueItems(),
+                ]);
+                setProfile(profileData);
+                setQueueItems(queueData);
+                if (queueData.length > 0) {
+                    handleQueueItemSelect(queueData[0].id, queueData);
+                }
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchData();
+    }, [toast, handleQueueItemSelect]);
 
     const handleGenerate = async () => {
         if (!selectedQueueItem) {
@@ -197,10 +200,14 @@ export default function ArtisanPage() {
                 // Refresh queue
                 const updatedQueue = await getQueueItems();
                 setQueueItems(updatedQueue);
-                setSelectedQueueItemId(null);
-                setCreativePrompt('');
-                setEditableContent(null);
-                setCreative(null);
+                if (updatedQueue.length > 0) {
+                    handleQueueItemSelect(updatedQueue[0].id, updatedQueue);
+                } else {
+                    setSelectedQueueItemId(null);
+                    setCreativePrompt('');
+                    setEditableContent(null);
+                    setCreative(null);
+                }
 
             } catch (error: any) {
                 toast({
@@ -345,7 +352,7 @@ export default function ArtisanPage() {
                              <CardContent className="space-y-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="queue-select">1. Choose an Item from the Queue</Label>
-                                    <Select onValueChange={handleQueueItemSelect} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                    <Select onValueChange={(value) => handleQueueItemSelect(value, queueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                         <SelectTrigger id="queue-select">
                                             <SelectValue placeholder="Select a content idea..." />
                                         </SelectTrigger>
@@ -425,3 +432,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
+    
