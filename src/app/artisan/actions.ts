@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { getOfferings as getOfferingsAction, getFunnels as getFunnelsAction, Offering, Funnel } from '@/app/offerings/actions';
+import { getOfferings as getOfferingsAction, Offering } from '@/app/offerings/actions';
 
 /**
  * Fetches all offerings for the currently authenticated user.
@@ -13,14 +13,6 @@ import { getOfferings as getOfferingsAction, getFunnels as getFunnelsAction, Off
  */
 export async function getOfferings(): Promise<Offering[]> {
     return getOfferingsAction();
-}
-
-/**
- * Fetches all funnels for the currently authenticated user.
- * @returns {Promise<Funnel[]>} A promise that resolves to an array of funnels.
- */
-export async function getFunnels(): Promise<Funnel[]> {
-    return getFunnelsAction();
 }
 
 /**
@@ -104,4 +96,3 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     revalidatePath('/calendar');
     return { message: 'Content approved and saved successfully.' };
 }
-

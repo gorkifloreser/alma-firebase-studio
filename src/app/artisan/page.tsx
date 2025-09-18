@@ -6,11 +6,11 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getOfferings, getFunnels, Offering, Funnel } from './actions';
+import { generateContentForOffering, saveContent, generateCreativeForOffering, getOfferings, Offering } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -42,13 +42,11 @@ const creativeOptions: { id: CreativeType, label: string, icon: React.ElementTyp
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<Offering[]>([]);
-    const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
-    const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, startSaving] = useTransition();
@@ -58,14 +56,12 @@ export default function ArtisanPage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const [profileData, offeringsData, funnelsData] = await Promise.all([
+                const [profileData, offeringsData] = await Promise.all([
                     getProfile(),
                     getOfferings(),
-                    getFunnels(),
                 ]);
                 setProfile(profileData);
                 setOfferings(offeringsData);
-                setFunnels(funnelsData);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
             }
@@ -92,7 +88,7 @@ export default function ArtisanPage() {
             const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             const promises = [];
             
-            const contentPromise = generateContentForOffering({ offeringId: selectedOfferingId, funnelId: selectedFunnelId });
+            const contentPromise = generateContentForOffering({ offeringId: selectedOfferingId });
             promises.push(contentPromise);
 
             if (visualBasedSelected) {
@@ -328,25 +324,9 @@ export default function ArtisanPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="funnel-select">2. Funnel (Optional)</Label>
-                                    <Select onValueChange={setSelectedFunnelId} disabled={isLoading || !selectedOfferingId}>
-                                        <SelectTrigger id="funnel-select">
-                                            <SelectValue placeholder="Select a funnel context..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No Funnel</SelectItem>
-                                            {funnels.filter(f => f.offering_id === selectedOfferingId).map(funnel => (
-                                                <SelectItem key={funnel.id} value={funnel.id}>{funnel.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <p className="text-xs text-muted-foreground">Select a funnel to provide more context to the AI.</p>
-                                </div>
                                 
                                 <div>
-                                    <Label htmlFor="creative-prompt">3. AI Creative Prompt</Label>
+                                    <Label htmlFor="creative-prompt">2. AI Creative Prompt</Label>
                                     <Textarea
                                         id="creative-prompt"
                                         value={creativePrompt}
@@ -357,7 +337,7 @@ export default function ArtisanPage() {
                                 </div>
 
                                 <div>
-                                    <h3 className="font-medium mb-4">4. Creative Type</h3>
+                                    <h3 className="font-medium mb-4">3. Creative Type</h3>
                                     <RadioGroup 
                                         value={selectedCreativeType} 
                                         onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -393,4 +373,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-

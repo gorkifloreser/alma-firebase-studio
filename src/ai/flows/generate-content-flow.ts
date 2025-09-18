@@ -24,7 +24,6 @@ export type GenerateContentOutput = z.infer<typeof GenerateContentOutputSchema>;
 // Define the input schema for the flow
 const GenerateContentInputSchema = z.object({
   offeringId: z.string(),
-  funnelId: z.string().nullable().optional(),
 });
 export type GenerateContentInput = z.infer<typeof GenerateContentInputSchema>;
 
@@ -37,7 +36,6 @@ const prompt = ai.definePrompt({
           secondaryLanguage: z.string().optional(),
           brandHeart: z.any(),
           offering: z.any(),
-          funnel: z.any().optional(),
       })
   },
   output: { schema: GenerateContentOutputSchema },
@@ -62,13 +60,6 @@ const prompt = ai.definePrompt({
 - Important Contextual Notes for this campaign: {{offering.contextual_notes}}
 {{/if}}
 
-{{#if funnel}}
-**Funnel Context:**
-- Funnel Name: {{funnel.name}}
-- Funnel Type: {{funnel.funnel_type}}
-This content should align with the '{{funnel.funnel_type}}' funnel strategy.
-{{/if}}
-
 **Your Task:**
 
 1.  Write an engaging and authentic social media post in the **{{primaryLanguage}}** language that promotes the offering.
@@ -76,7 +67,6 @@ This content should align with the '{{funnel.funnel_type}}' funnel strategy.
     - Clearly communicate the value of the offering.
     - End with a clear call to action.
     - Ensure the output is only the text for the social media post.
-    - If a funnel context is provided, make sure the tone and message of the post are appropriate for that funnel stage.
 
 {{#if secondaryLanguage}}
 2.  Translate the post you just created into **{{secondaryLanguage}}**. Ensure the translation is natural and culturally relevant.
@@ -92,7 +82,7 @@ const generateContentFlow = ai.defineFlow(
     inputSchema: GenerateContentInputSchema,
     outputSchema: GenerateContentOutputSchema,
   },
-  async ({ offeringId, funnelId }) => {
+  async ({ offeringId }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -100,27 +90,20 @@ const generateContentFlow = ai.defineFlow(
       throw new Error('User not authenticated.');
     }
 
-    // Fetch Brand Heart, Profile, Offering, and optional Funnel
+    // Fetch Brand Heart, Profile, Offering
     const [
         { data: brandHeart, error: brandHeartError },
         { data: profile, error: profileError },
         { data: offering, error: offeringError },
-        funnelResult,
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single(),
         supabase.from('offerings').select('*').eq('id', offeringId).single(),
-        funnelId ? supabase.from('funnels').select('*').eq('id', funnelId).single() : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found. Please define your brand heart first.');
     if (profileError || !profile) throw new Error('User profile not found.');
     if (offeringError || !offering) throw new Error('Offering not found.');
-    if (funnelId && (funnelResult.error || !funnelResult.data)) {
-        console.warn(`Funnel with ID ${funnelId} not found, proceeding without it.`);
-    }
-
-    const funnel = funnelResult.data;
 
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
@@ -130,7 +113,6 @@ const generateContentFlow = ai.defineFlow(
         secondaryLanguage: profile.secondary_language ? languageNames.get(profile.secondary_language) : undefined,
         brandHeart,
         offering,
-        funnel,
     });
     
     if (!output) {
