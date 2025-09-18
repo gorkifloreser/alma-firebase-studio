@@ -16,16 +16,18 @@ import { generateContentForOffering, saveContent, generateCreativeForOffering } 
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, Image as ImageIcon, Video, Layers, Type } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sparkles, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Funnel } from '@/app/funnels/actions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 type PlanItem = {
     offeringId: string;
@@ -47,9 +49,12 @@ interface ContentGenerationDialogProps {
 }
 
 type Profile = {
+    full_name: string | null;
+    avatar_url: string | null;
     primary_language: string;
     secondary_language: string | null;
 } | null;
+
 
 type CreativeType = 'text' | 'image' | 'carousel' | 'video';
 
@@ -71,7 +76,7 @@ export function ContentGenerationDialog({
   const [profile, setProfile] = useState<Profile>(null);
   const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
   const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
-  const [selectedCreativeTypes, setSelectedCreativeTypes] = useState<CreativeType[]>(['text']);
+  const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, startSaving] = useTransition();
@@ -94,46 +99,60 @@ export function ContentGenerationDialog({
       setEditableContent(null);
       setCreative(null);
       setIsLoading(false);
-      setSelectedCreativeTypes(['text']);
+      setSelectedCreativeType('image');
       setSelectedFunnelId(null);
+    } else {
+        if (sourcePlanItem) {
+            if (sourcePlanItem.format.toLowerCase().includes('video')) {
+                setSelectedCreativeType('video');
+            } else if (sourcePlanItem.format.toLowerCase().includes('carousel')) {
+                setSelectedCreativeType('carousel');
+            } else if (sourcePlanItem.format.toLowerCase().includes('image')) {
+                setSelectedCreativeType('image');
+            } else {
+                setSelectedCreativeType('text');
+            }
+        }
     }
-  }, [isOpen]);
+  }, [isOpen, sourcePlanItem]);
 
   const handleGenerate = async () => {
-    if (!offeringId || selectedCreativeTypes.length === 0) return;
+    if (!offeringId) return;
 
     setIsLoading(true);
     setEditableContent(null);
     setCreative(null);
     
     try {
+        const creativeTypes: CreativeType[] = [selectedCreativeType];
+        
         let finalCreativeOutput: GenerateCreativeOutput = {};
         let finalContentOutput: GenerateContentOutput['content'] | null = null;
 
-        const textBasedSelected = selectedCreativeTypes.includes('text') || selectedCreativeTypes.includes('carousel');
-        const visualBasedSelected = selectedCreativeTypes.includes('image') || selectedCreativeTypes.includes('video');
+        const textBasedSelected = creativeTypes.includes('text') || creativeTypes.includes('carousel');
+        const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
 
         const promises = [];
+        
+        const contentPromise = generateContentForOffering({ offeringId, funnelId: selectedFunnelId });
+        promises.push(contentPromise);
 
-        if (textBasedSelected) {
-            promises.push(generateContentForOffering({ offeringId, funnelId: selectedFunnelId }));
-        }
         if (visualBasedSelected) {
-            const creativeTypesForFlow = selectedCreativeTypes.filter(t => t !== 'text' && (t === 'image' || t === 'carousel' || t === 'video')) as ('image' | 'carousel' | 'video')[];
+            const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
             if (creativeTypesForFlow.length > 0) {
-                 promises.push(generateCreativeForOffering({ 
+                 const creativePromise = generateCreativeForOffering({ 
                     offeringId, 
                     creativeTypes: creativeTypesForFlow
-                }));
+                });
+                promises.push(creativePromise);
             }
         }
       
         const results = await Promise.all(promises);
 
-        if (textBasedSelected) {
-            const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
-            if (contentResult) finalContentOutput = contentResult.content;
-        }
+        const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
+        if (contentResult) finalContentOutput = contentResult.content;
+        
         if (visualBasedSelected) {
             const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlidesText' in r)) as GenerateCreativeOutput | undefined;
             if (creativeResult) finalCreativeOutput = creativeResult;
@@ -211,45 +230,80 @@ export function ContentGenerationDialog({
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
-  const CreativePreview = () => {
-    if (isLoading) {
-      return <Skeleton className="aspect-video w-full" />
-    }
-
-    if (!creative) return null;
+  const SocialPostPreview = () => {
+    const postUser = profile?.full_name || 'Your Brand';
+    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
 
     return (
-        <div className="space-y-4">
-            {selectedCreativeTypes.includes('image') && creative.imageUrl && (
-                 <Image src={creative.imageUrl} alt="Generated creative" width={512} height={512} className="rounded-lg object-contain mx-auto" />
-            )}
-             {selectedCreativeTypes.includes('carousel') && creative.carouselSlidesText && (
-                <Card>
-                    <CardHeader><CardTitle className="text-base">Carousel Slide Suggestions</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{creative.carouselSlidesText}</CardContent>
-                </Card>
-            )}
-            {selectedCreativeTypes.includes('video') && creative.videoScript && (
-                <Card>
-                    <CardHeader><CardTitle className="text-base">Video Script</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{creative.videoScript}</CardContent>
-                </Card>
-            )}
-        </div>
-    );
-  }
-
-  const handleCheckboxChange = (type: CreativeType) => {
-    setSelectedCreativeTypes(prev => 
-        prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
+        <Card className="w-full max-w-md mx-auto">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                <Avatar>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                    <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="grid gap-0.5">
+                    <span className="font-semibold">{postUser}</span>
+                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                </div>
+            </CardHeader>
+            <CardContent className="p-0">
+                 {isLoading ? (
+                    <Skeleton className="aspect-square w-full" />
+                ) : (
+                    <>
+                        {selectedCreativeType === 'image' && creative?.imageUrl && (
+                            <div className="relative aspect-square w-full">
+                                <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
+                            </div>
+                        )}
+                        {selectedCreativeType === 'carousel' && (
+                            <>
+                                {creative?.imageUrl && (
+                                     <div className="relative aspect-square w-full">
+                                        <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
+                                    </div>
+                                )}
+                                {creative?.carouselSlidesText && (
+                                    <div className="p-4 text-sm text-muted-foreground bg-secondary/50">
+                                        <h4 className="font-semibold text-foreground mb-2">Carousel Slide Text:</h4>
+                                        <p className="whitespace-pre-wrap">{creative.carouselSlidesText}</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                         {selectedCreativeType === 'video' && creative?.videoScript && (
+                            <div className="p-4 text-sm text-muted-foreground bg-secondary aspect-square flex flex-col justify-center">
+                                <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
+                                <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
+                            </div>
+                        )}
+                    </>
+                 )}
+            </CardContent>
+            <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                <div className="flex justify-between w-full">
+                    <div className="flex gap-4">
+                        <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                        <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                    </div>
+                    <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                </div>
+                 {editableContent?.primary && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{editableContent.primary}</p>}
+                 {secondaryLangName && editableContent?.secondary && (
+                    <>
+                        <Separator className="my-2"/>
+                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">({secondaryLangName}): {editableContent.secondary}</p>
+                    </>
+                 )}
+            </CardFooter>
+        </Card>
     );
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="text-primary" />
@@ -261,9 +315,9 @@ export function ContentGenerationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col md:flex-row gap-6 py-4">
-            <div className="md:w-1/3">
-                 <div className="space-y-2 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
+            <aside className="space-y-6">
+                 <div className="space-y-2">
                     <Label htmlFor="funnel-select">Funnel (Optional)</Label>
                     <Select onValueChange={setSelectedFunnelId} disabled={isLoading}>
                         <SelectTrigger id="funnel-select">
@@ -278,72 +332,62 @@ export function ContentGenerationDialog({
                     </Select>
                      <p className="text-xs text-muted-foreground">Select a funnel to provide more context to the AI.</p>
                 </div>
-                <h3 className="font-semibold mb-4">Creative Types</h3>
-                <div className="space-y-3">
-                    {creativeOptions.map(({ id, label, icon: Icon }) => (
-                         <div key={id} className="flex items-center space-x-2">
-                            <Checkbox 
-                                id={id}
-                                checked={selectedCreativeTypes.includes(id)}
-                                onCheckedChange={() => handleCheckboxChange(id)}
-                                disabled={isLoading}
-                            />
-                            <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
-                                <Icon /> {label}
-                            </Label>
-                        </div>
-                    ))}
+                <div>
+                    <h3 className="font-semibold mb-4">Creative Types</h3>
+                     <RadioGroup 
+                        value={selectedCreativeType} 
+                        onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
+                        className="space-y-3"
+                        disabled={isLoading}
+                    >
+                        {creativeOptions.map(({ id, label, icon: Icon }) => (
+                            <div key={id} className="flex items-center space-x-2">
+                                <RadioGroupItem value={id} id={id} />
+                                <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
+                                    <Icon /> {label}
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
                 </div>
-                <Button onClick={handleGenerate} className="w-full mt-6" disabled={isLoading || isSaving || selectedCreativeTypes.length === 0}>
+                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving}>
                     {isLoading ? 'Generating...' : 'Generate Creatives'}
                 </Button>
-            </div>
-            <div className="md:w-2/3 max-h-[70vh] overflow-y-auto pr-6 space-y-6">
-                <CreativePreview />
-                {isLoading ? (
-                    <div className="space-y-6">
-                        <Skeleton className="h-48 w-full" />
-                        {profile?.secondary_language && <Skeleton className="h-48 w-full" />}
-                    </div>
-                ) : editableContent ? (
-                    <div className="space-y-6">
+                
+                 {(editableContent?.primary || creative?.imageUrl) && (
                     <Card>
                         <CardHeader>
-                        <CardTitle className="text-lg">{primaryLangName} Post</CardTitle>
+                            <CardTitle>Edit Text</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                        <Textarea 
-                            value={editableContent.primary || ''}
-                            onChange={(e) => handleContentChange('primary', e.target.value)}
-                            className="h-48 resize-none"
-                            placeholder="Primary content..."
-                        />
+                        <CardContent className="space-y-4">
+                             <div>
+                                <Label className="text-muted-foreground">{primaryLangName} Post</Label>
+                                <Textarea 
+                                    value={editableContent?.primary || ''}
+                                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                                    className="h-32 resize-none mt-1"
+                                    placeholder="Primary content..."
+                                />
+                            </div>
+                            {secondaryLangName && (
+                                <div>
+                                     <Label className="text-muted-foreground">{secondaryLangName} Post</Label>
+                                    <Textarea 
+                                        value={editableContent?.secondary || ''}
+                                        onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                        className="h-32 resize-none mt-1"
+                                        placeholder="Secondary content..."
+                                    />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
-                    {secondaryLangName && (
-                        <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">{secondaryLangName} Post</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Textarea 
-                            value={editableContent.secondary || ''}
-                            onChange={(e) => handleContentChange('secondary', e.target.value)}
-                            className="h-48 resize-none"
-                            placeholder="Secondary content..."
-                            />
-                        </CardContent>
-                        </Card>
-                    )}
-                    </div>
-                ) : (
-                    !isLoading && (
-                        <div className="text-center text-muted-foreground py-10">
-                            Select creative types and click "Generate" to start.
-                        </div>
-                    )
-                )}
-            </div>
+                 )}
+
+            </aside>
+            <main className="flex items-center justify-center max-h-[70vh] overflow-y-auto">
+                <SocialPostPreview />
+            </main>
         </div>
 
         <DialogFooter>
@@ -358,3 +402,5 @@ export function ContentGenerationDialog({
     </Dialog>
   );
 }
+
+    
