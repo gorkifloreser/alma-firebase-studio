@@ -257,7 +257,7 @@ export function ContentGenerationDialog({
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.
-             {sourcePlanItem && <p className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.copy}"</p>}
+            {sourcePlanItem && <div className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.copy}"</div>}
           </DialogDescription>
         </DialogHeader>
 
