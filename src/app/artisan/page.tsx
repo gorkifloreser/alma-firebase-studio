@@ -14,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, Wifi, Signal, Battery, ChevronLeft, MoreHorizontal, X, Music, CheckCircle } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -71,7 +71,7 @@ const StoryPreview = ({
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
 
     return (
-        <div className="w-full max-w-[280px] mx-auto sticky top-8">
+        <div className="w-full max-w-sm mx-auto sticky top-8">
             <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden shadow-lg bg-black">
                 {/* Background Image/Video Placeholder */}
                 {isLoading ? (
@@ -170,7 +170,7 @@ const SocialPostPreview = ({
     }
 
     return (
-        <Card className="w-full max-w-md mx-auto sticky top-24">
+        <Card className="w-full mx-auto sticky top-24">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 <Avatar>
                     <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
