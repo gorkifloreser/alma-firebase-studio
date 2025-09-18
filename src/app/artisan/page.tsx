@@ -11,7 +11,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -48,7 +48,7 @@ export default function ArtisanPage() {
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
-    const [dimension, setDimension] = useState('square');
+    const [dimension, setDimension] = useState('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
@@ -109,7 +109,6 @@ export default function ArtisanPage() {
         
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            let finalCreativeOutput: GenerateCreativeOutput = {};
             
             const promises = [];
             const offeringId = selectedQueueItem.source_plan_item.offeringId;
@@ -125,7 +124,8 @@ export default function ArtisanPage() {
                 if (creativeTypesForFlow.length > 0) {
                     const creativePromise = generateCreativeForOffering({ 
                         offeringId, 
-                        creativeTypes: creativeTypesForFlow
+                        creativeTypes: creativeTypesForFlow,
+                        aspectRatio: dimension,
                     });
                     promises.push(creativePromise);
                 }
@@ -227,6 +227,20 @@ export default function ArtisanPage() {
         const postUser = profile?.full_name || 'Your Brand';
         const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
 
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+            if (e.key === 'Enter' && e.shiftKey) {
+                // Allow shift+enter to create a new line
+            } else if (e.key === 'Enter') {
+                // Prevent default form submission on enter, but don't block the newline
+                e.preventDefault();
+                const { selectionStart, value } = e.currentTarget;
+                const newValue = value.substring(0, selectionStart) + '\n' + value.substring(selectionStart);
+                e.currentTarget.value = newValue;
+                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = selectionStart + 1;
+                handleContentChange('primary', newValue);
+            }
+        };
+
         return (
             <Card className="w-full max-w-md mx-auto sticky top-24">
                 <CardHeader className="flex flex-row items-center gap-3 space-y-0">
@@ -295,6 +309,7 @@ export default function ArtisanPage() {
                     <Textarea 
                         value={editableContent?.primary || ''}
                         onChange={(e) => handleContentChange('primary', e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
                         placeholder="Your post copy will appear here..."
                     />
@@ -406,10 +421,10 @@ export default function ArtisanPage() {
                                             <SelectValue placeholder="Select dimensions..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="square">Square (1:1)</SelectItem>
-                                            <SelectItem value="portrait">Portrait (4:5)</SelectItem>
-                                            <SelectItem value="story">Story (9:16)</SelectItem>
-                                            <SelectItem value="landscape">Landscape (16:9)</SelectItem>
+                                            <SelectItem value="1:1">Square (1:1)</SelectItem>
+                                            <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                                            <SelectItem value="9:16">Story (9:16)</SelectItem>
+                                            <SelectItem value="16:9">Landscape (16:9)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -432,5 +447,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-    

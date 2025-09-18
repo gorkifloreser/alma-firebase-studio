@@ -14,6 +14,7 @@ import { googleAI } from '@genkit-ai/googleai';
 const GenerateCreativeInputSchema = z.object({
   offeringId: z.string(),
   creativeTypes: z.array(z.enum(['image', 'carousel', 'video'])),
+  aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -128,7 +129,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes }) => {
+  async ({ offeringId, creativeTypes, aspectRatio }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -144,11 +145,17 @@ export const generateCreativeFlow = ai.defineFlow(
     const promptPayload = { brandHeart, offering };
     let output: GenerateCreativeOutput = {};
 
+    const imageConfig: any = {};
+    if (aspectRatio) {
+        imageConfig.aspectRatio = aspectRatio;
+    }
+
     if (creativeTypes.includes('image')) {
         const { text } = await imagePrompt(promptPayload);
         const { media } = await ai.generate({
             model: googleAI.model('imagen-4.0-fast-generate-001'),
             prompt: text,
+            config: imageConfig,
         });
         if (media?.url) {
             output.imageUrl = media.url;
@@ -162,6 +169,7 @@ export const generateCreativeFlow = ai.defineFlow(
                 const { media } = await ai.generate({
                     model: googleAI.model('imagen-4.0-fast-generate-001'),
                     prompt: slide.creativePrompt,
+                    config: imageConfig,
                 });
                 return {
                     ...slide,
