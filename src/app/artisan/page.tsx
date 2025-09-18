@@ -48,11 +48,141 @@ const dimensionMap = {
     '16:9': 'aspect-[16/9]',
 };
 
+// --- Standalone SocialPostPreview Component ---
+const SocialPostPreview = ({
+    profile,
+    dimension,
+    isLoading,
+    selectedCreativeType,
+    creative,
+    editableContent,
+    secondaryLangName,
+    handleContentChange,
+    handleCarouselSlideChange,
+}: {
+    profile: Profile,
+    dimension: keyof typeof dimensionMap,
+    isLoading: boolean,
+    selectedCreativeType: CreativeType,
+    creative: GenerateCreativeOutput | null,
+    editableContent: GenerateContentOutput['content'] | null,
+    secondaryLangName: string | null,
+    handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
+    handleCarouselSlideChange: (index: number, newText: string) => void,
+}) => {
+    const postUser = profile?.full_name || 'Your Brand';
+    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+    const aspectRatioClass = dimensionMap[dimension];
+
+    return (
+        <Card className="w-full max-w-md mx-auto sticky top-24">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                <Avatar>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                    <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="grid gap-0.5">
+                    <span className="font-semibold">{postUser}</span>
+                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                </div>
+            </CardHeader>
+            <CardContent className="p-0">
+                {isLoading ? (
+                    <Skeleton className={cn("w-full", aspectRatioClass)} />
+                ) : (
+                    <>
+                        {selectedCreativeType === 'image' && creative?.imageUrl && (
+                            <div className={cn("relative w-full", aspectRatioClass)}>
+                                <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
+                            </div>
+                        )}
+                        {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
+                            <Carousel>
+                                <CarouselContent>
+                                    {creative.carouselSlides.map((slide, index) => (
+                                        <CarouselItem key={index}>
+                                            <div className={cn("relative w-full", aspectRatioClass)}>
+                                                {slide.imageUrl ? (
+                                                    <Image src={slide.imageUrl} alt={slide.title} fill className="object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                                        <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {creative.carouselSlides.length > 1 && (
+                                    <>
+                                    <CarouselPrevious className="left-2" />
+                                    <CarouselNext className="right-2" />
+                                    </>
+                                )}
+                            </Carousel>
+                        )}
+                        {selectedCreativeType === 'video' && creative?.videoScript && (
+                            <div className={cn("p-4 text-sm text-muted-foreground bg-secondary flex flex-col justify-center", aspectRatioClass)}>
+                                <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
+                                <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
+                            </div>
+                        )}
+                    </>
+                )}
+            </CardContent>
+            <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                <div className="flex justify-between w-full">
+                    <div className="flex gap-4">
+                        <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                        <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                    </div>
+                    <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                </div>
+                <Textarea
+                    value={editableContent?.primary || ''}
+                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                    placeholder="Your post copy will appear here..."
+                />
+                {secondaryLangName && editableContent?.secondary && (
+                    <>
+                        <Separator className="my-2"/>
+                        <Textarea
+                            value={editableContent?.secondary || ''}
+                            onChange={(e) => handleContentChange('secondary', e.target.value)}
+                            className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                            placeholder="Your secondary language post copy..."
+                        />
+                    </>
+                )}
+                {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
+                    <div className="w-full mt-2 space-y-2">
+                        <h4 className="font-semibold text-sm">Carousel Slide Text:</h4>
+                        {creative.carouselSlides.map((slide, index) => (
+                            <div key={index} className="space-y-1">
+                                <Label htmlFor={`slide-${index}`} className="text-xs font-bold">{slide.title}</Label>
+                                <Textarea
+                                    id={`slide-${index}`}
+                                    value={slide.body}
+                                    onChange={(e) => handleCarouselSlideChange(index, e.target.value)}
+                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                    placeholder={`Text for slide ${index + 1}...`}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardFooter>
+        </Card>
+    );
+}
+
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
     const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
     const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
-    
+
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
@@ -114,34 +244,28 @@ export default function ArtisanPage() {
 
         setIsLoading(true);
         setCreative(null);
-        
+
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            
+
             const promises = [];
             const offeringId = selectedQueueItem.source_plan_item.offeringId;
-
-            // No need to generate content separately, it's already in the queue item
-            // const contentPromise = generateContentForOffering({ offeringId });
-            // promises.push(contentPromise);
 
             const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             if (visualBasedSelected) {
                 const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
                 if (creativeTypesForFlow.length > 0) {
-                    const creativePromise = generateCreativeForOffering({ 
-                        offeringId, 
+                    const creativePromise = generateCreativeForOffering({
+                        offeringId,
                         creativeTypes: creativeTypesForFlow,
                         aspectRatio: dimension,
                     });
                     promises.push(creativePromise);
                 }
             }
-        
+
             const results = await Promise.all(promises);
-            // const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
-            // if (contentResult) setEditableContent(contentResult.content);
-            
+
             if (visualBasedSelected) {
                 const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
                 if (creativeResult) setCreative(creativeResult);
@@ -189,7 +313,7 @@ export default function ArtisanPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
             return;
         }
-        
+
         startSaving(async () => {
             try {
                 await saveContent({
@@ -227,118 +351,8 @@ export default function ArtisanPage() {
         });
     };
 
-
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
-
-    const SocialPostPreview = () => {
-        const postUser = profile?.full_name || 'Your Brand';
-        const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
-        const aspectRatioClass = dimensionMap[dimension];
-
-        return (
-            <Card className="w-full max-w-md mx-auto sticky top-24">
-                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                    <Avatar>
-                        <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                        <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid gap-0.5">
-                        <span className="font-semibold">{postUser}</span>
-                        <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {isLoading ? (
-                        <Skeleton className={cn("w-full", aspectRatioClass)} />
-                    ) : (
-                        <>
-                            {selectedCreativeType === 'image' && creative?.imageUrl && (
-                                <div className={cn("relative w-full", aspectRatioClass)}>
-                                    <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
-                                </div>
-                            )}
-                            {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
-                                <Carousel>
-                                    <CarouselContent>
-                                        {creative.carouselSlides.map((slide, index) => (
-                                            <CarouselItem key={index}>
-                                                <div className={cn("relative w-full", aspectRatioClass)}>
-                                                    {slide.imageUrl ? (
-                                                        <Image src={slide.imageUrl} alt={slide.title} fill className="object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                                            <ImageIcon className="w-16 h-16 text-muted-foreground" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CarouselItem>
-                                        ))}
-                                    </CarouselContent>
-                                    {creative.carouselSlides.length > 1 && (
-                                        <>
-                                        <CarouselPrevious className="left-2" />
-                                        <CarouselNext className="right-2" />
-                                        </>
-                                    )}
-                                </Carousel>
-                            )}
-                            {selectedCreativeType === 'video' && creative?.videoScript && (
-                                <div className={cn("p-4 text-sm text-muted-foreground bg-secondary flex flex-col justify-center", aspectRatioClass)}>
-                                    <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
-                                    <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </CardContent>
-                <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                    <div className="flex justify-between w-full">
-                        <div className="flex gap-4">
-                            <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                            <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                            <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                        <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                    </div>
-                    <Textarea 
-                        value={editableContent?.primary || ''}
-                        onChange={(e) => handleContentChange('primary', e.target.value)}
-                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                        placeholder="Your post copy will appear here..."
-                    />
-                    {secondaryLangName && editableContent?.secondary && (
-                        <>
-                            <Separator className="my-2"/>
-                            <Textarea 
-                                value={editableContent?.secondary || ''}
-                                onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                placeholder="Your secondary language post copy..."
-                            />
-                        </>
-                    )}
-                    {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
-                        <div className="w-full mt-2 space-y-2">
-                            <h4 className="font-semibold text-sm">Carousel Slide Text:</h4>
-                            {creative.carouselSlides.map((slide, index) => (
-                                <div key={index} className="space-y-1">
-                                    <Label htmlFor={`slide-${index}`} className="text-xs font-bold">{slide.title}</Label>
-                                    <Textarea 
-                                        id={`slide-${index}`}
-                                        value={slide.body}
-                                        onChange={(e) => handleCarouselSlideChange(index, e.target.value)}
-                                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                        placeholder={`Text for slide ${index + 1}...`}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardFooter>
-            </Card>
-        );
-    }
 
     return (
         <DashboardLayout>
@@ -377,7 +391,7 @@ export default function ArtisanPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                
+
                                 <div>
                                     <Label htmlFor="creative-prompt">2. AI Creative Prompt</Label>
                                     <Textarea
@@ -391,8 +405,8 @@ export default function ArtisanPage() {
 
                                 <div>
                                     <h3 className="font-medium mb-4">3. Creative Type</h3>
-                                    <RadioGroup 
-                                        value={selectedCreativeType} 
+                                    <RadioGroup
+                                        value={selectedCreativeType}
                                         onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
                                         className="grid grid-cols-2 gap-4"
                                         disabled={isLoading}
@@ -434,7 +448,17 @@ export default function ArtisanPage() {
                         </Card>
                     </aside>
                     <main>
-                        <SocialPostPreview />
+                         <SocialPostPreview
+                            profile={profile}
+                            dimension={dimension}
+                            isLoading={isLoading}
+                            selectedCreativeType={selectedCreativeType}
+                            creative={creative}
+                            editableContent={editableContent}
+                            secondaryLangName={secondaryLangName}
+                            handleContentChange={handleContentChange}
+                            handleCarouselSlideChange={handleCarouselSlideChange}
+                        />
                     </main>
                 </div>
             </div>
