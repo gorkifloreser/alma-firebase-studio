@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
@@ -113,11 +112,9 @@ export default function ArtisanPage() {
             const promises = [];
             const offeringId = selectedQueueItem.source_plan_item.offeringId;
 
-            // Always generate new text content based on the latest context
             const contentPromise = generateContentForOffering({ offeringId });
             promises.push(contentPromise);
 
-            // Generate visuals if needed
             const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             if (visualBasedSelected) {
                 const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
@@ -156,10 +153,12 @@ export default function ArtisanPage() {
     };
 
     const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
-        setEditableContent(prev => {
-            if (!prev) return { primary: null, secondary: null, [language]: value };
-            return { ...prev, [language]: value };
-        });
+        setEditableContent(prev => ({
+            primary: null,
+            secondary: null,
+            ...prev,
+            [language]: value,
+        }));
     };
 
     const handleCarouselSlideChange = (index: number, newText: string) => {
@@ -197,7 +196,6 @@ export default function ArtisanPage() {
                     title: 'Approved!',
                     description: 'The content has been saved and is ready for the calendar.',
                 });
-                // Refresh queue
                 const updatedQueue = await getQueueItems();
                 setQueueItems(updatedQueue);
                 if (updatedQueue.length > 0) {
@@ -226,20 +224,6 @@ export default function ArtisanPage() {
     const SocialPostPreview = () => {
         const postUser = profile?.full_name || 'Your Brand';
         const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
-
-        const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-            if (e.key === 'Enter' && e.shiftKey) {
-                // Allow shift+enter to create a new line
-            } else if (e.key === 'Enter') {
-                // Prevent default form submission on enter, but don't block the newline
-                e.preventDefault();
-                const { selectionStart, value } = e.currentTarget;
-                const newValue = value.substring(0, selectionStart) + '\n' + value.substring(selectionStart);
-                e.currentTarget.value = newValue;
-                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = selectionStart + 1;
-                handleContentChange('primary', newValue);
-            }
-        };
 
         return (
             <Card className="w-full max-w-md mx-auto sticky top-24">
@@ -309,7 +293,6 @@ export default function ArtisanPage() {
                     <Textarea 
                         value={editableContent?.primary || ''}
                         onChange={(e) => handleContentChange('primary', e.target.value)}
-                        onKeyDown={handleKeyDown}
                         className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
                         placeholder="Your post copy will appear here..."
                     />
@@ -447,3 +430,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
+    
