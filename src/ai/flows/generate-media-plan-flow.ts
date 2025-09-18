@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { GenerateFunnelOutput } from './generate-funnel-flow';
+import { GenerateFunnelOutput, ConceptualStep } from './generate-funnel-flow';
 
 
 const PlanItemSchema = z.object({
@@ -128,6 +128,7 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 Your job is to generate ONE concrete content package for the **'{{channel}}' channel**, based ONLY on this conceptual step:
 - **Concept**: {{conceptualStep.concept}}
 - **Objective**: {{conceptualStep.objective}}
+- **Stage Name**: {{conceptualStep.stageName}}
 
 This content package MUST contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
@@ -136,7 +137,7 @@ This content package MUST contain:
 4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy. It must align with the brand's tone of voice and the objective of the conceptual step.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
 6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator.
-7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on.
+7.  **conceptualStep**: Include the original conceptual step object from the input. It MUST include the 'stageName', 'concept', and 'objective' fields.
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });
@@ -300,5 +301,3 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
-
-    

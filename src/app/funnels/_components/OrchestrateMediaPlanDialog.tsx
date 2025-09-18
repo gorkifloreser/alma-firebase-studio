@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -124,7 +123,22 @@ export function OrchestrateMediaPlanDialog({
             const newItem = await regeneratePlanItem({ funnelId: funnel.id, channel: itemToRegen.channel, conceptualStep: itemToRegen.conceptualStep });
             const validFormats = getFormatsForChannel(newItem.channel);
             const formatIsValid = validFormats.includes(newItem.format);
-            setPlanItems(prev => prev.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id, format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post') } : item ));
+            
+            setPlanItems(prev => prev.map(item => {
+                if (item.id === itemToRegen.id) {
+                    return {
+                        ...newItem,
+                        conceptualStep: {
+                            ...itemToRegen.conceptualStep, // Preserve original conceptual step
+                            ...(newItem.conceptualStep || {}), // Overlay new conceptual step data
+                        },
+                        id: itemToRegen.id,
+                        format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post'),
+                    };
+                }
+                return item;
+            }));
+
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
