@@ -7,8 +7,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
-import { getOfferings, type Offering } from '../offerings/actions';
+import { getOfferings, generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import type { Offering } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -81,6 +81,7 @@ const SocialPostPreview = ({
     if (dimension === '9:16') {
         return (
             <StoryPreview
+                profile={profile}
                 isLoading={isLoading}
                 creative={creative}
                 editableContent={editableContent}
@@ -194,19 +195,25 @@ const SocialPostPreview = ({
 }
 
 const StoryPreview = ({
+    profile,
     isLoading,
     creative,
     editableContent,
     handleContentChange,
 }: {
+    profile: Profile,
     isLoading: boolean,
     creative: GenerateCreativeOutput | null,
     editableContent: GenerateContentOutput['content'] | null,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
 }) => {
+     const postUser = profile?.full_name || 'Your Brand';
+    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+
     return (
-        <div className="w-full max-w-sm mx-auto sticky top-8">
-            <div className="relative aspect-[9/16] w-full rounded-xl overflow-hidden shadow-lg border">
+        <div className="w-full max-w-[280px] mx-auto sticky top-8">
+            <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden shadow-lg border-2 border-zinc-200 dark:border-zinc-700 bg-black">
+                {/* Background Image/Video Placeholder */}
                 {isLoading ? (
                     <Skeleton className="w-full h-full" />
                 ) : (
@@ -218,13 +225,48 @@ const StoryPreview = ({
                         </div>
                     )
                 )}
-                <div className="absolute inset-0 flex flex-col justify-center text-white p-4 bg-gradient-to-t from-black/40 via-transparent to-transparent">
-                     <Textarea
-                        value={editableContent?.primary || ''}
-                        onChange={(e) => handleContentChange('primary', e.target.value)}
-                        className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
-                        placeholder="Your story text..."
-                    />
+
+                {/* Content Overlay */}
+                <div className="absolute inset-0 flex flex-col p-3 text-white bg-gradient-to-t from-black/50 via-transparent to-black/50">
+                    {/* Header */}
+                    <div className="flex-shrink-0">
+                         <div className="flex items-center gap-2 mb-2">
+                             <div className="flex-1 h-1 bg-white/20 rounded-full">
+                                <div className="h-1 bg-white rounded-full w-1/3"></div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-bold">{postUserHandle}</span>
+                            <span className="text-xs text-white/70">1h</span>
+                             <MoreHorizontal className="ml-auto h-5 w-5" />
+                            <X className="h-5 w-5" />
+                        </div>
+                    </div>
+                    
+                    {/* Editable Text Area */}
+                    <div className="flex-1 flex items-center justify-center">
+                        <Textarea
+                            value={editableContent?.primary || ''}
+                            onChange={(e) => handleContentChange('primary', e.target.value)}
+                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                            placeholder="Your story text..."
+                        />
+                    </div>
+                    
+                    {/* Footer */}
+                     <div className="flex-shrink-0 flex items-center gap-2">
+                        <input
+                            type="text"
+                            placeholder="Send message"
+                            className="flex-1 bg-black/30 backdrop-blur-sm border border-white/40 rounded-full px-4 py-2 text-sm placeholder:text-white/70 focus:ring-1 focus:ring-white outline-none"
+                        />
+                         <Heart className="h-6 w-6 cursor-pointer" />
+                        <Send className="h-6 w-6 cursor-pointer" />
+                    </div>
                 </div>
             </div>
         </div>
