@@ -81,7 +81,6 @@ const SocialPostPreview = ({
     if (dimension === '9:16') {
         return (
             <StoryPreview
-                profile={profile}
                 isLoading={isLoading}
                 creative={creative}
                 editableContent={editableContent}
@@ -195,82 +194,37 @@ const SocialPostPreview = ({
 }
 
 const StoryPreview = ({
-    profile,
     isLoading,
     creative,
     editableContent,
     handleContentChange,
 }: {
-    profile: Profile,
     isLoading: boolean,
     creative: GenerateCreativeOutput | null,
     editableContent: GenerateContentOutput['content'] | null,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
 }) => {
-    const postUser = profile?.full_name || 'Your Brand';
-    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
-
     return (
-        <div className="w-[320px] h-[570px] bg-black rounded-3xl p-3 shadow-2xl mx-auto sticky top-8">
-            <div className="relative w-full h-full rounded-[1.25rem] overflow-hidden">
+        <div className="w-full max-w-sm mx-auto sticky top-8">
+            <div className="relative aspect-[9/16] w-full rounded-xl overflow-hidden shadow-lg border">
                 {isLoading ? (
                     <Skeleton className="w-full h-full" />
                 ) : (
                     creative?.imageUrl ? (
                         <Image src={creative.imageUrl} alt="Story preview" layout="fill" objectFit="cover" />
                     ) : (
-                         <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                            <ImageIcon className="w-24 h-24 text-zinc-600" />
+                         <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                            <ImageIcon className="w-24 h-24 text-zinc-300 dark:text-zinc-600" />
                         </div>
                     )
                 )}
-
-                <div className="absolute inset-0 flex flex-col justify-between text-white p-3 bg-gradient-to-t from-black/50 via-transparent to-black/30">
-                    {/* Header */}
-                    <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold">12:05</span>
-                        <div className="flex items-center gap-1">
-                            <Signal size={14} />
-                            <Wifi size={14} />
-                            <Battery size={16} />
-                        </div>
-                    </div>
-                    
-                    {/* Story Content */}
-                    <div className="absolute top-10 left-3 right-3">
-                         <div className="w-full h-0.5 bg-white/30 rounded-full mb-2">
-                            <div className="w-1/3 h-full bg-white rounded-full"></div>
-                        </div>
-                         <div className="flex items-center gap-2">
-                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-semibold">{postUserHandle}</span>
-                             <span className="text-xs text-white/70">8h</span>
-                             <MoreHorizontal size={16} className="ml-auto" />
-                             <X size={20}/>
-                        </div>
-                    </div>
-                    
-                    {/* Main Text */}
-                    <div className="flex-1 flex items-center justify-center">
-                         <Textarea
-                            value={editableContent?.primary || ''}
-                            onChange={(e) => handleContentChange('primary', e.target.value)}
-                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
-                            placeholder="Your story text..."
-                        />
-                    </div>
-                    
-                    {/* Footer */}
-                     <div className="flex items-center gap-3">
-                        <div className="flex-1 rounded-full border border-white/50 px-4 py-2 text-xs text-white/80">
-                            Add comment...
-                        </div>
-                        <Heart size={24} />
-                        <Send size={24} />
-                    </div>
+                <div className="absolute inset-0 flex flex-col justify-center text-white p-4 bg-gradient-to-t from-black/40 via-transparent to-transparent">
+                     <Textarea
+                        value={editableContent?.primary || ''}
+                        onChange={(e) => handleContentChange('primary', e.target.value)}
+                        className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-4 h-auto resize-none bg-transparent shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                        placeholder="Your story text..."
+                    />
                 </div>
             </div>
         </div>
