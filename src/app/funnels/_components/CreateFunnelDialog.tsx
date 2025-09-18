@@ -14,11 +14,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel, Funnel, generateMediaPlan, regeneratePlanItem, saveMediaPlan } from '../actions';
 import { getOfferings, Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, ArrowLeft, RefreshCw, Trash2, PlusCircle } from 'lucide-react';
+import { Bot, User, Stars, Sparkles, ArrowLeft, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,8 +102,8 @@ export function CreateFunnelDialog({
     useEffect(() => {
         if (isOpen) {
             // Fetch Offerings when dialog opens for the first time or when creating new
-            if (!isEditMode || offerings.length === 0) {
-                getOfferings().then(setOfferings);
+            if (!isEditMode) {
+                 getOfferings().then(setOfferings);
             }
 
             if (funnelToEdit) {
@@ -136,7 +136,7 @@ export function CreateFunnelDialog({
                 }
             });
         }
-    }, [isOpen, funnelToEdit, isEditMode, offerings.length]);
+    }, [isOpen, funnelToEdit, isEditMode]);
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
@@ -188,6 +188,8 @@ export function CreateFunnelDialog({
                     setCreatedFunnelId(newFunnel.id);
                     funnelIdToUse = newFunnel.id;
                 }
+                
+                toast({ title: "Strategy Saved!", description: "Now generating your media plan..." });
                 
                 if (funnelIdToUse) {
                     await handleGenerateMediaPlan(funnelIdToUse);
@@ -329,8 +331,10 @@ export function CreateFunnelDialog({
         return (
              <>
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Content</DialogTitle>
-                    <DialogDescription>Review, edit, and refine the specific content ideas for each channel.</DialogDescription>
+                    <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle>
+                    <DialogDescription>
+                        Generate, edit, and approve the tactical content pieces for the '{name}' strategy.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] flex flex-col overflow-hidden py-4">
                     {isGeneratingPlan ? (
@@ -349,7 +353,7 @@ export function CreateFunnelDialog({
                                                 </div>
                                                 <div className="space-y-1 pr-24"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" /></div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof"/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><Label>{g.label}</Label>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
@@ -365,7 +369,9 @@ export function CreateFunnelDialog({
                             <Stars className="h-12 w-12 mb-4" />
                             <h3 className="font-semibold text-lg">No media plan exists for this strategy yet.</h3>
                             <p>Click the button below to generate one with AI.</p>
-                            <Button className="mt-6" onClick={() => handleGenerateMediaPlan(createdFunnelId!)} disabled={isGeneratingPlan}>Generate Media Plan</Button>
+                            <Button className="mt-6" onClick={() => handleGenerateMediaPlan(createdFunnelId!)} disabled={isGeneratingPlan}>
+                                Generate Media Plan
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -373,7 +379,7 @@ export function CreateFunnelDialog({
                     <Button variant="outline" onClick={() => setStep('edit_blueprint')} disabled={isSaving}>
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Blueprint
                     </Button>
-                    <Button onClick={handleSaveAndClose} disabled={isSaving || isGeneratingPlan}>{isSaving ? 'Saving...' : 'Save & Close'}</Button>
+                    <Button onClick={handleSaveAndClose} disabled={isSaving || isGeneratingPlan}>{isSaving ? 'Saving...' : 'Save Plan & Close'}</Button>
                 </DialogFooter>
             </>
         )
