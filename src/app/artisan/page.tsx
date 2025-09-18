@@ -306,11 +306,6 @@ export default function ArtisanPage() {
                         onChange={(e) => handleContentChange('primary', e.target.value)}
                         className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
                         placeholder="Your post copy will appear here..."
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                // This is now handled by default textarea behavior
-                            }
-                        }}
                     />
                     {secondaryLangName && editableContent?.secondary && (
                         <>
