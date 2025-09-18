@@ -16,14 +16,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan } from '../actions';
-import { getOfferings, saveContent, Offering } from '@/app/offerings/actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
+import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue } from '../actions';
+import { getOfferings, Offering } from '@/app/offerings/actions';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { ContentGenerationDialog } from '@/app/offerings/_components/ContentGenerationDialog';
 
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
@@ -55,16 +54,12 @@ export function OrchestrateMediaPlanDialog({
     onPlanSaved,
 }: OrchestrateMediaPlanDialogProps) {
     const [planItems, setPlanItems] = useState<PlanItemWithId[]>([]);
-    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
+    const [isAddingToQueue, setIsAddingToQueue] = useState<RegeneratingState>({});
+    const [queuedItemIds, setQueuedItemIds] = useState<Set<string>>(new Set());
     const { toast } = useToast();
-
-    // State for the nested content generation dialog
-    const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
-    const [offeringForContent, setOfferingForContent] = useState<Offering | null>(null);
-    const [sourcePlanItem, setSourcePlanItem] = useState<PlanItem | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -74,7 +69,7 @@ export function OrchestrateMediaPlanDialog({
             } else {
                 setPlanItems([]);
             }
-            getOfferings().then(setOfferings);
+            setQueuedItemIds(new Set());
         }
     }, [isOpen, funnel]);
 
@@ -138,6 +133,29 @@ export function OrchestrateMediaPlanDialog({
         }
     };
 
+    const handleAddToQueue = (item: PlanItemWithId) => {
+        setIsAddingToQueue(prev => ({ ...prev, [item.id]: true }));
+        const { id, ...planItem } = item;
+        addToArtisanQueue(funnel.id, planItem)
+            .then(() => {
+                toast({
+                    title: 'Added to Queue!',
+                    description: 'This item is now ready for generation in the AI Artisan workshop.'
+                });
+                setQueuedItemIds(prev => new Set(prev).add(id));
+            })
+            .catch((error: any) => {
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to Add to Queue',
+                    description: error.message
+                });
+            })
+            .finally(() => {
+                setIsAddingToQueue(prev => ({ ...prev, [item.id]: false }));
+            });
+    }
+
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     };
@@ -178,17 +196,6 @@ export function OrchestrateMediaPlanDialog({
         setPlanItems(prev => [...prev, newItem]);
     };
 
-    const handleApproveContent = (planItem: PlanItem) => {
-        const offering = offerings.find(o => o.id === planItem.offeringId);
-        if (offering) {
-            setSourcePlanItem(planItem);
-            setOfferingForContent(offering);
-            setIsContentDialogOpen(true);
-        } else {
-             toast({ variant: 'destructive', title: 'Offering not found' });
-        }
-    };
-    
     const groupedByChannel = useMemo(() => {
         return planItems.reduce((acc, item) => {
             const channelKey = item.channel || 'General';
@@ -251,7 +258,17 @@ export function OrchestrateMediaPlanDialog({
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
-                                                <Button size="sm" onClick={() => handleApproveContent(item)}><Wand2 className="mr-2 h-4 w-4"/>Approve & Generate Creative</Button>
+                                                 <Button 
+                                                    size="sm" 
+                                                    onClick={() => handleAddToQueue(item)}
+                                                    disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)}
+                                                >
+                                                    {queuedItemIds.has(item.id) ? (
+                                                        <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</>
+                                                    ) : (
+                                                        <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>
+                                                    )}
+                                                </Button>
                                             </div>
                                         ))}</div>
                                         <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>
@@ -276,16 +293,6 @@ export function OrchestrateMediaPlanDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-        {offeringForContent && (
-            <ContentGenerationDialog
-                isOpen={isContentDialogOpen}
-                onOpenChange={setIsContentDialogOpen}
-                offeringId={offeringForContent.id}
-                offeringTitle={offeringForContent.title.primary}
-                funnels={[]} // Funnels are already considered in the strategy, not needed here.
-                sourcePlanItem={sourcePlanItem}
-            />
-        )}
         </>
     );
 }

@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -373,4 +374,27 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Pr
     
     revalidatePath('/funnels');
     return { message: "Media plan saved successfully." };
+}
+
+export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+        .from('content_generation_queue')
+        .insert({
+            user_id: user.id,
+            funnel_id: funnelId,
+            offering_id: planItem.offeringId,
+            status: 'pending',
+            source_plan_item: planItem
+        });
+
+    if (error) {
+        console.error('Error adding to artisan queue:', error);
+        throw new Error('Could not add item to the Artisan Queue.');
+    }
+
+    return { message: 'Item added to Artisan Queue successfully.' };
 }
