@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -16,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan } from '../actions';
-import { saveContent, Offering } from '@/app/offerings/actions';
+import { getOfferings, saveContent, Offering } from '@/app/offerings/actions';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
@@ -29,7 +30,6 @@ interface OrchestrateMediaPlanDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     funnel: Funnel;
     onPlanSaved: () => void;
-    offerings: Offering[];
 }
 
 type PlanItemWithId = PlanItem & { id: string };
@@ -53,9 +53,9 @@ export function OrchestrateMediaPlanDialog({
     onOpenChange,
     funnel,
     onPlanSaved,
-    offerings,
 }: OrchestrateMediaPlanDialogProps) {
     const [planItems, setPlanItems] = useState<PlanItemWithId[]>([]);
+    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
@@ -74,6 +74,7 @@ export function OrchestrateMediaPlanDialog({
             } else {
                 setPlanItems([]);
             }
+            getOfferings().then(setOfferings);
         }
     }, [isOpen, funnel]);
 

@@ -12,7 +12,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFunnels, deleteFunnel, Funnel, getFunnelPresets, FunnelPreset, deleteCustomFunnelPreset } from './actions';
-import { getOfferings, Offering } from '../offerings/actions';
 import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2 } from 'lucide-react';
 import { CreateFunnelDialog } from './_components/CreateFunnelDialog';
 import {
@@ -37,15 +36,16 @@ import { CustomizePresetDialog } from './_components/CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './_components/OrchestrateMediaPlanDialog';
+import { EditStrategyDialog } from './_components/EditStrategyDialog';
 
 
 export default function StrategiesPage() {
     const [funnels, setFunnels] = useState<Funnel[]>([]);
     const [funnelPresets, setFunnelPresets] = useState<FunnelPreset[]>([]);
-    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isOrchestrateDialogOpen, setIsOrchestrateDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
     const [funnelToOrchestrate, setFunnelToOrchestrate] = useState<Funnel | null>(null);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
@@ -65,16 +65,14 @@ export default function StrategiesPage() {
     }, [funnelPresets]);
 
 
-    const fetchFunnelsAndOfferings = async () => {
+    const fetchFunnelsAndPresets = async () => {
         setIsLoading(true);
         try {
-            const [funnelsData, offeringsData, presetsData] = await Promise.all([
+            const [funnelsData, presetsData] = await Promise.all([
                 getFunnels(offeringIdFilter ?? undefined),
-                getOfferings(),
                 getFunnelPresets(),
             ]);
             setFunnels(funnelsData);
-            setOfferings(offeringsData);
             setFunnelPresets(presetsData);
         } catch (error: any) {
             toast({
@@ -94,15 +92,18 @@ export default function StrategiesPage() {
             if (!user) {
                 redirect('/login');
             }
-            fetchFunnelsAndOfferings();
+            fetchFunnelsAndPresets();
         };
         checkUserAndFetchData();
     }, [offeringIdFilter, toast]);
 
     const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
+        setIsEditDialogOpen(false);
+        setIsOrchestrateDialogOpen(false);
         setFunnelToEdit(null);
-        fetchFunnelsAndOfferings();
+        setFunnelToOrchestrate(null);
+        fetchFunnelsAndPresets();
         toast({
             title: 'Success!',
             description: 'Your strategy has been saved.',
@@ -114,7 +115,7 @@ export default function StrategiesPage() {
             try {
                 await deleteFunnel(funnelId);
                 toast({ title: 'Success!', description: 'The funnel has been deleted.' });
-                fetchFunnelsAndOfferings();
+                fetchFunnelsAndPresets();
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -125,9 +126,14 @@ export default function StrategiesPage() {
         });
     }
     
-    const handleOpenEditDialog = (funnel: Funnel | null) => {
-        setFunnelToEdit(funnel);
+    const handleOpenCreateDialog = () => {
+        setFunnelToEdit(null);
         setIsCreateDialogOpen(true);
+    };
+
+    const handleOpenEditDialog = (funnel: Funnel) => {
+        setFunnelToEdit(funnel);
+        setIsEditDialogOpen(true);
     };
 
      const handleOpenOrchestrateDialog = (funnel: Funnel) => {
@@ -143,7 +149,7 @@ export default function StrategiesPage() {
 
     const handlePresetSaved = () => {
         setIsCustomizeDialogOpen(false);
-        fetchFunnelsAndOfferings();
+        fetchFunnelsAndPresets();
     };
     
     const handlePresetDelete = (presetId: number) => {
@@ -151,7 +157,7 @@ export default function StrategiesPage() {
             try {
                 await deleteCustomFunnelPreset(presetId);
                 toast({ title: 'Success!', description: 'The custom template has been deleted.' });
-                fetchFunnelsAndOfferings();
+                fetchFunnelsAndPresets();
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -231,7 +237,7 @@ export default function StrategiesPage() {
                             Create, manage, and orchestrate strategic marketing funnels.
                         </p>
                     </div>
-                    <Button onClick={() => handleOpenEditDialog(null)} className="gap-2">
+                    <Button onClick={handleOpenCreateDialog} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         Create Strategy
                     </Button>
@@ -365,7 +371,7 @@ export default function StrategiesPage() {
                                 <p className="text-muted-foreground mt-2">
                                     Click 'Create Strategy' to generate your first one from a template.
                                 </p>
-                                <Button onClick={() => handleOpenEditDialog(null)} className="mt-4 gap-2">
+                                <Button onClick={handleOpenCreateDialog} className="mt-4 gap-2">
                                     <PlusCircle className="h-5 w-5" />
                                     Create Strategy
                                 </Button>
@@ -381,10 +387,9 @@ export default function StrategiesPage() {
                         if (!open) setFunnelToEdit(null);
                         setIsCreateDialogOpen(open);
                     }}
-                    offerings={offerings}
                     funnelPresets={funnelPresets}
                     onFunnelSaved={handleFunnelSaved}
-                    funnelToEdit={funnelToEdit}
+                    funnelToEdit={null}
                 />
             )}
              {isOrchestrateDialogOpen && funnelToOrchestrate && (
@@ -393,7 +398,15 @@ export default function StrategiesPage() {
                     onOpenChange={setIsOrchestrateDialogOpen}
                     funnel={funnelToOrchestrate}
                     onPlanSaved={handleFunnelSaved}
-                    offerings={offerings}
+                    offerings={[]}
+                />
+            )}
+            {isEditDialogOpen && funnelToEdit && (
+                <EditStrategyDialog
+                    isOpen={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                    funnel={funnelToEdit}
+                    onFunnelUpdated={handleFunnelSaved}
                 />
             )}
             <CustomizePresetDialog

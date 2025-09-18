@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel, Funnel, generateMediaPlan, regeneratePlanItem, saveMediaPlan } from '../actions';
-import { Offering } from '@/app/offerings/actions';
+import { getOfferings, Offering } from '@/app/offerings/actions';
 import { Bot, User, Stars, Sparkles, ArrowLeft, RefreshCw, Trash2, PlusCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,6 @@ const getFormatsForChannel = (channel: string): string[] => {
 interface CreateFunnelDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    offerings: Offering[];
     funnelPresets: FunnelPreset[];
     onFunnelSaved: () => void;
     funnelToEdit: Funnel | null;
@@ -70,7 +69,6 @@ type RegeneratingState = { [itemId: string]: boolean };
 export function CreateFunnelDialog({
     isOpen,
     onOpenChange,
-    offerings,
     funnelPresets,
     onFunnelSaved,
     funnelToEdit,
@@ -78,6 +76,7 @@ export function CreateFunnelDialog({
     const [step, setStep] = useState<'selection' | 'edit_blueprint' | 'orchestrate'>('selection');
     
     // Step 1 State
+    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     const [name, setName] = useState('');
@@ -102,6 +101,11 @@ export function CreateFunnelDialog({
     
     useEffect(() => {
         if (isOpen) {
+            // Fetch Offerings when dialog opens for the first time or when creating new
+            if (!isEditMode || offerings.length === 0) {
+                getOfferings().then(setOfferings);
+            }
+
             if (funnelToEdit) {
                 // Editing an existing funnel, start at step 2
                 setSelectedOfferingId(funnelToEdit.offering_id);
@@ -132,7 +136,7 @@ export function CreateFunnelDialog({
                 }
             });
         }
-    }, [isOpen, funnelToEdit]);
+    }, [isOpen, funnelToEdit, isEditMode, offerings.length]);
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
 
