@@ -78,6 +78,7 @@ export function ContentGenerationDialog({
   const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
   const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
+  const [creativePrompt, setCreativePrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, startSaving] = useTransition();
   const { toast } = useToast();
@@ -101,6 +102,7 @@ export function ContentGenerationDialog({
       setIsLoading(false);
       setSelectedCreativeType('image');
       setSelectedFunnelId(null);
+      setCreativePrompt('');
     } else {
         if (sourcePlanItem) {
             if (sourcePlanItem.format.toLowerCase().includes('video')) {
@@ -112,6 +114,8 @@ export function ContentGenerationDialog({
             } else {
                 setSelectedCreativeType('text');
             }
+            setCreativePrompt(sourcePlanItem.creativePrompt || '');
+            setEditableContent({ primary: sourcePlanItem.copy || '', secondary: null });
         }
     }
   }, [isOpen, sourcePlanItem]);
@@ -289,11 +293,21 @@ export function ContentGenerationDialog({
                     </div>
                     <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
                 </div>
-                 {editableContent?.primary && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{editableContent.primary}</p>}
+                 <Textarea 
+                    value={editableContent?.primary || ''}
+                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                    placeholder="Your post copy will appear here..."
+                 />
                  {secondaryLangName && editableContent?.secondary && (
                     <>
                         <Separator className="my-2"/>
-                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">({secondaryLangName}): {editableContent.secondary}</p>
+                         <Textarea 
+                            value={editableContent?.secondary || ''}
+                            onChange={(e) => handleContentChange('secondary', e.target.value)}
+                            className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                            placeholder="Your secondary language post copy..."
+                         />
                     </>
                  )}
             </CardFooter>
@@ -332,6 +346,18 @@ export function ContentGenerationDialog({
                     </Select>
                      <p className="text-xs text-muted-foreground">Select a funnel to provide more context to the AI.</p>
                 </div>
+                
+                <div>
+                     <Label htmlFor="creative-prompt">AI Creative Prompt</Label>
+                     <Textarea
+                        id="creative-prompt"
+                        value={creativePrompt}
+                        onChange={(e) => setCreativePrompt(e.target.value)}
+                        placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
+                        className="h-24 mt-1 resize-none"
+                     />
+                </div>
+
                 <div>
                     <h3 className="font-semibold mb-4">Creative Types</h3>
                      <RadioGroup 
@@ -353,37 +379,6 @@ export function ContentGenerationDialog({
                 <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving}>
                     {isLoading ? 'Generating...' : 'Generate Creatives'}
                 </Button>
-                
-                 {(editableContent?.primary || creative?.imageUrl) && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Edit Text</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div>
-                                <Label className="text-muted-foreground">{primaryLangName} Post</Label>
-                                <Textarea 
-                                    value={editableContent?.primary || ''}
-                                    onChange={(e) => handleContentChange('primary', e.target.value)}
-                                    className="h-32 resize-none mt-1"
-                                    placeholder="Primary content..."
-                                />
-                            </div>
-                            {secondaryLangName && (
-                                <div>
-                                     <Label className="text-muted-foreground">{secondaryLangName} Post</Label>
-                                    <Textarea 
-                                        value={editableContent?.secondary || ''}
-                                        onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                        className="h-32 resize-none mt-1"
-                                        placeholder="Secondary content..."
-                                    />
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                 )}
-
             </aside>
             <main className="flex items-center justify-center max-h-[70vh] overflow-y-auto">
                 <SocialPostPreview />
@@ -402,5 +397,3 @@ export function ContentGenerationDialog({
     </Dialog>
   );
 }
-
-    
