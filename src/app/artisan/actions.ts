@@ -5,14 +5,47 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { getOfferings as getOfferingsAction, Offering } from '@/app/offerings/actions';
+
+export type QueueItem = {
+    id: string;
+    created_at: string;
+    status: 'pending' | 'completed' | 'failed';
+    source_plan_item: {
+        copy: string;
+        format: string;
+        channel: string;
+        hashtags: string;
+        offeringId: string;
+        conceptualStep: {
+            concept: string;
+            objective: string;
+            stageName: string;
+        };
+        creativePrompt: string;
+    }
+}
 
 /**
- * Fetches all offerings for the currently authenticated user.
- * @returns {Promise<Offering[]>} A promise that resolves to an array of offerings.
+ * Fetches pending items from the content generation queue for the current user.
+ * @returns {Promise<QueueItem[]>} A promise that resolves to an array of queue items.
  */
-export async function getOfferings(): Promise<Offering[]> {
-    return getOfferingsAction();
+export async function getQueueItems(): Promise<QueueItem[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { data, error } = await supabase
+        .from('content_generation_queue')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error("Error fetching queue items:", error);
+        throw new Error("Could not fetch the content generation queue.");
+    }
+    return data;
 }
 
 /**
@@ -95,4 +128,30 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     
     revalidatePath('/calendar');
     return { message: 'Content approved and saved successfully.' };
+}
+
+/**
+ * Updates the status of a queue item.
+ * @param {string} queueItemId - The ID of the queue item to update.
+ * @param {'completed' | 'failed'} newStatus - The new status.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function updateQueueItemStatus(queueItemId: string, newStatus: 'completed' | 'failed'): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('content_generation_queue')
+        .update({ status: newStatus })
+        .eq('id', queueItemId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error updating queue item status:', error);
+        throw new Error('Could not update queue item status.');
+    }
+
+    revalidatePath('/artisan');
+    return { message: `Queue item marked as ${newStatus}.` };
 }

@@ -6,7 +6,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getOfferings, Offering } from './actions';
+import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,8 +42,8 @@ const creativeOptions: { id: CreativeType, label: string, icon: React.ElementTyp
 
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
-    const [offerings, setOfferings] = useState<Offering[]>([]);
-    const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
+    const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+    const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
     
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
@@ -53,49 +54,73 @@ export default function ArtisanPage() {
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
+    const selectedQueueItem = queueItems.find(item => item.id === selectedQueueItemId) || null;
+
     useEffect(() => {
         async function fetchData() {
             try {
-                const [profileData, offeringsData] = await Promise.all([
+                setIsLoading(true);
+                const [profileData, queueData] = await Promise.all([
                     getProfile(),
-                    getOfferings(),
+                    getQueueItems(),
                 ]);
                 setProfile(profileData);
-                setOfferings(offeringsData);
+                setQueueItems(queueData);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
+            } finally {
+                setIsLoading(false);
             }
         }
         fetchData();
     }, [toast]);
 
+    const handleQueueItemSelect = (queueItemId: string) => {
+        setSelectedQueueItemId(queueItemId);
+        const item = queueItems.find(q => q.id === queueItemId);
+        if (item) {
+            setCreativePrompt(item.source_plan_item.creativePrompt || '');
+            setEditableContent({ primary: item.source_plan_item.copy || '', secondary: null });
+
+            const format = item.source_plan_item.format.toLowerCase();
+            if (format.includes('video')) setSelectedCreativeType('video');
+            else if (format.includes('carousel')) setSelectedCreativeType('carousel');
+            else if (format.includes('image')) setSelectedCreativeType('image');
+            else setSelectedCreativeType('text');
+        } else {
+             setCreativePrompt('');
+             setEditableContent(null);
+        }
+        setCreative(null);
+    }
+
     const handleGenerate = async () => {
-        if (!selectedOfferingId) {
-            toast({ variant: 'destructive', title: 'Please select an offering first.' });
+        if (!selectedQueueItem) {
+            toast({ variant: 'destructive', title: 'Please select an item from the queue first.' });
             return;
         }
 
         setIsLoading(true);
-        setEditableContent(null);
         setCreative(null);
         
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            
             let finalCreativeOutput: GenerateCreativeOutput = {};
-            let finalContentOutput: GenerateContentOutput['content'] | null = null;
-
-            const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
-            const promises = [];
             
-            const contentPromise = generateContentForOffering({ offeringId: selectedOfferingId });
+            const promises = [];
+            const offeringId = selectedQueueItem.source_plan_item.offeringId;
+
+            // Always generate new text content based on the latest context
+            const contentPromise = generateContentForOffering({ offeringId });
             promises.push(contentPromise);
 
+            // Generate visuals if needed
+            const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
             if (visualBasedSelected) {
                 const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
                 if (creativeTypesForFlow.length > 0) {
                     const creativePromise = generateCreativeForOffering({ 
-                        offeringId: selectedOfferingId, 
+                        offeringId, 
                         creativeTypes: creativeTypesForFlow
                     });
                     promises.push(creativePromise);
@@ -103,17 +128,13 @@ export default function ArtisanPage() {
             }
         
             const results = await Promise.all(promises);
-
             const contentResult = results.find(r => r && 'content' in r) as GenerateContentOutput | undefined;
-            if (contentResult) finalContentOutput = contentResult.content;
+            if (contentResult) setEditableContent(contentResult.content);
             
             if (visualBasedSelected) {
                 const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
-                if (creativeResult) finalCreativeOutput = creativeResult;
+                if (creativeResult) setCreative(creativeResult);
             }
-
-            setEditableContent(finalContentOutput);
-            setCreative(finalCreativeOutput);
 
             toast({
                 title: 'Content Generated!',
@@ -147,8 +168,8 @@ export default function ArtisanPage() {
     };
 
     const handleApprove = () => {
-        if (!selectedOfferingId) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
+        if (!selectedQueueItem) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Queue item is missing.' });
             return;
         }
         if (!editableContent && !creative) {
@@ -159,17 +180,27 @@ export default function ArtisanPage() {
         startSaving(async () => {
             try {
                 await saveContent({
-                    offeringId: selectedOfferingId,
+                    offeringId: selectedQueueItem.source_plan_item.offeringId,
                     contentBody: editableContent,
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
                     videoScript: creative?.videoScript || null,
                     status: 'approved',
+                    sourcePlan: selectedQueueItem.source_plan_item,
                 });
+                await updateQueueItemStatus(selectedQueueItem.id, 'completed');
                 toast({
                     title: 'Approved!',
                     description: 'The content has been saved and is ready for the calendar.',
                 });
+                // Refresh queue
+                const updatedQueue = await getQueueItems();
+                setQueueItems(updatedQueue);
+                setSelectedQueueItemId(null);
+                setCreativePrompt('');
+                setEditableContent(null);
+                setCreative(null);
+
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -301,7 +332,7 @@ export default function ArtisanPage() {
                         <Wand2 className="h-8 w-8 text-primary" />
                         AI Artisan
                     </h1>
-                    <p className="text-muted-foreground">The workshop for generating all your creative content.</p>
+                    <p className="text-muted-foreground">The workshop for generating all your creative content from your media plan.</p>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
@@ -312,15 +343,20 @@ export default function ArtisanPage() {
                              </CardHeader>
                              <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="offering-select">1. Choose an Offering</Label>
-                                    <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
-                                        <SelectTrigger id="offering-select">
-                                            <SelectValue placeholder="Select an offering..." />
+                                    <Label htmlFor="queue-select">1. Choose an Item from the Queue</Label>
+                                    <Select onValueChange={handleQueueItemSelect} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                        <SelectTrigger id="queue-select">
+                                            <SelectValue placeholder="Select a content idea..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {offerings.map(offering => (
-                                                <SelectItem key={offering.id} value={offering.id}>{offering.title.primary}</SelectItem>
-                                            ))}
+                                            {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
+                                             queueItems.length > 0 ? (
+                                                queueItems.map(item => (
+                                                    <SelectItem key={item.id} value={item.id}>{item.source_plan_item.conceptualStep.concept}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -356,7 +392,7 @@ export default function ArtisanPage() {
                                 </div>
                              </CardContent>
                              <CardFooter className="flex-col gap-4">
-                                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
+                                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedQueueItemId}>
                                     {isLoading ? 'Generating...' : 'Generate Creatives'}
                                 </Button>
                                 <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
