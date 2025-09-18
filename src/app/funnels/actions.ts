@@ -398,3 +398,29 @@ export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): P
 
     return { message: 'Item added to Artisan Queue successfully.' };
 }
+
+export async function addMultipleToArtisanQueue(funnelId: string, planItems: PlanItem[]): Promise<{ count: number }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    if (planItems.length === 0) return { count: 0 };
+
+    const recordsToInsert = planItems.map(item => ({
+        user_id: user.id,
+        funnel_id: funnelId,
+        offering_id: item.offeringId,
+        status: 'pending' as const,
+        source_plan_item: item,
+    }));
+
+    const { count, error } = await supabase
+        .from('content_generation_queue')
+        .insert(recordsToInsert);
+
+    if (error) {
+        console.error('Error bulk adding to artisan queue:', error);
+        throw new Error('Could not add items to the Artisan Queue.');
+    }
+
+    return { count: count || 0 };
+}

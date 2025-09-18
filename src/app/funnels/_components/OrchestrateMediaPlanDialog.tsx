@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -15,13 +16,15 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue } from '../actions';
+import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue } from '../actions';
 import { getOfferings, Offering } from '@/app/offerings/actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus } from 'lucide-react';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
@@ -58,7 +61,21 @@ export function OrchestrateMediaPlanDialog({
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
     const [isAddingToQueue, setIsAddingToQueue] = useState<RegeneratingState>({});
     const [queuedItemIds, setQueuedItemIds] = useState<Set<string>>(new Set());
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState('');
+    
     const { toast } = useToast();
+
+    const groupedByChannel = useMemo(() => {
+        return planItems.reduce((acc, item) => {
+            const channelKey = item.channel || 'General';
+            if (!acc[channelKey]) acc[channelKey] = [];
+            acc[channelKey].push(item);
+            return acc;
+        }, {} as Record<string, PlanItemWithId[]>);
+    }, [planItems]);
+    const channelsForTabs = Object.keys(groupedByChannel);
 
     useEffect(() => {
         if (isOpen) {
@@ -69,8 +86,19 @@ export function OrchestrateMediaPlanDialog({
                 setPlanItems([]);
             }
             setQueuedItemIds(new Set());
+            setIsSelectionMode(false);
+            setSelectedItemIds(new Set());
+            if (channelsForTabs.length > 0 && !activeTab) {
+                setActiveTab(channelsForTabs[0]);
+            }
         }
     }, [isOpen, funnel]);
+
+    useEffect(() => {
+        if(channelsForTabs.length > 0 && !channelsForTabs.includes(activeTab)) {
+            setActiveTab(channelsForTabs[0] || '');
+        }
+    }, [channelsForTabs, activeTab]);
 
     const validateAndSetPlanItems = (items: PlanItem[]) => {
         const validatedItems = items.map(item => {
@@ -129,8 +157,8 @@ export function OrchestrateMediaPlanDialog({
                     return {
                         ...newItem,
                         conceptualStep: {
-                            ...itemToRegen.conceptualStep, // Preserve original conceptual step
-                            ...(newItem.conceptualStep || {}), // Overlay new conceptual step data
+                            ...itemToRegen.conceptualStep,
+                            ...(newItem.conceptualStep || {}),
                         },
                         id: itemToRegen.id,
                         format: formatIsValid ? newItem.format : (validFormats[0] || 'Text Post'),
@@ -168,6 +196,29 @@ export function OrchestrateMediaPlanDialog({
             .finally(() => {
                 setIsAddingToQueue(prev => ({ ...prev, [item.id]: false }));
             });
+    }
+
+    const handleBulkAddToQueue = () => {
+        const itemsToAdd = planItems.filter(item => selectedItemIds.has(item.id) && !queuedItemIds.has(item.id));
+        if (itemsToAdd.length === 0) {
+            toast({ title: 'No new items to add', description: 'All selected items are already in the queue.' });
+            return;
+        }
+
+        const itemsPayload = itemsToAdd.map(({ id, ...rest }) => rest);
+        startSaving(async () => {
+            try {
+                const { count } = await addMultipleToArtisanQueue(funnel.id, itemsPayload);
+                toast({ title: 'Success!', description: `${count} item(s) added to the Artisan Queue.` });
+                const newQueuedIds = new Set(queuedItemIds);
+                itemsToAdd.forEach(item => newQueuedIds.add(item.id));
+                setQueuedItemIds(newQueuedIds);
+                setSelectedItemIds(new Set());
+                setIsSelectionMode(false);
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
+            }
+        });
     }
 
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
@@ -209,80 +260,83 @@ export function OrchestrateMediaPlanDialog({
         };
         setPlanItems(prev => [...prev, newItem]);
     };
+    
+    const handleToggleSelectionMode = () => {
+        setIsSelectionMode(prev => !prev);
+        setSelectedItemIds(new Set());
+    }
 
-    const groupedByChannel = useMemo(() => {
-        return planItems.reduce((acc, item) => {
-            const channelKey = item.channel || 'General';
-            if (!acc[channelKey]) acc[channelKey] = [];
-            acc[channelKey].push(item);
-            return acc;
-        }, {} as Record<string, PlanItemWithId[]>);
-    }, [planItems]);
-    const channelsForTabs = Object.keys(groupedByChannel);
+    const handleItemSelection = (itemId: string, checked: boolean) => {
+        setSelectedItemIds(prev => {
+            const newSet = new Set(prev);
+            if (checked) {
+                newSet.add(itemId);
+            } else {
+                newSet.delete(itemId);
+            }
+            return newSet;
+        });
+    }
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const currentTabItemIds = (groupedByChannel[activeTab] || []).map(item => item.id);
+            setSelectedItemIds(new Set(currentTabItemIds));
+        } else {
+            setSelectedItemIds(new Set());
+        }
+    }
+
+    const currentTabItems = groupedByChannel[activeTab] || [];
+    const isAllSelected = currentTabItems.length > 0 && currentTabItems.every(item => selectedItemIds.has(item.id));
 
     return (
-        <>
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-7xl">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle>
+                    <div className="flex justify-between items-center">
+                         <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle>
+                        {planItems.length > 0 && (
+                            <Button variant="outline" size="sm" onClick={handleToggleSelectionMode}>
+                                {isSelectionMode ? <><X className="mr-2 h-4 w-4"/>Cancel</> : <><Rows className="mr-2 h-4 w-4"/>Bulk Select</>}
+                            </Button>
+                        )}
+                    </div>
                     <DialogDescription>Generate, edit, and approve the tactical content pieces for the '{funnel.name}' strategy.</DialogDescription>
+                    {isSelectionMode && (
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={handleSelectAll} />
+                            <Label htmlFor="select-all">Select all on this tab</Label>
+                        </div>
+                    )}
                 </DialogHeader>
                 <div className="max-h-[60vh] flex flex-col overflow-hidden py-4">
                     {isGenerating ? (
                         <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>
                     ) : planItems.length > 0 ? (
-                        <Tabs defaultValue={channelsForTabs[0]} className="w-full flex-1 flex flex-col min-h-0">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
                             <div className="flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
                             <div className="flex-1 overflow-y-auto mt-4 pr-4">
                                 {channelsForTabs.map(c => (
                                     <TabsContent key={c} value={c} className="mt-0">
                                         <div className="space-y-4">{groupedByChannel[c].map((item) => (
-                                            <div key={item.id} className="p-4 border rounded-lg space-y-4 relative">
-                                                <div className="absolute top-2 right-2 flex items-center gap-2">
+                                            <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
+                                                {isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
+                                                <div className={cn("absolute top-2 right-2 flex items-center gap-2", isSelectionMode && "hidden")}>
                                                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
                                                     <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                                 </div>
-                                                <div className="space-y-1 pr-24">
-                                                    <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" />
+                                                <div className={cn("space-y-4", isSelectionMode && "pl-8")}>
+                                                    <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" /></div>
+                                                    <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof"/></div>
+                                                    <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                    <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
+                                                    <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
+                                                    <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
+                                                    <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
+                                                        {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
+                                                    </Button>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label>
-                                                    <Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof"/>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label htmlFor={`format-${item.id}`}>Format</Label>
-                                                    <Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}>
-                                                        <SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {mediaFormatConfig.map(g => {
-                                                                const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase()));
-                                                                if (channelFormats.length === 0) return null;
-                                                                return (
-                                                                    <SelectGroup key={g.label}>
-                                                                        <SelectLabel>{g.label}</SelectLabel>
-                                                                        {channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}
-                                                                    </SelectGroup>
-                                                                )
-                                                            })}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
-                                                 <Button 
-                                                    size="sm" 
-                                                    onClick={() => handleAddToQueue(item)}
-                                                    disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)}
-                                                >
-                                                    {queuedItemIds.has(item.id) ? (
-                                                        <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</>
-                                                    ) : (
-                                                        <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>
-                                                    )}
-                                                </Button>
                                             </div>
                                         ))}</div>
                                         <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>
@@ -295,9 +349,7 @@ export function OrchestrateMediaPlanDialog({
                             <Stars className="h-12 w-12 mb-4" />
                             <h3 className="font-semibold text-lg">No media plan exists for this strategy yet.</h3>
                             <p>Click the button below to generate one with AI.</p>
-                            <Button className="mt-6" onClick={handleGeneratePlan} disabled={isGenerating}>
-                                Generate Media Plan
-                            </Button>
+                            <Button className="mt-6" onClick={handleGeneratePlan} disabled={isGenerating}> Generate Media Plan </Button>
                         </div>
                     )}
                 </div>
@@ -305,8 +357,17 @@ export function OrchestrateMediaPlanDialog({
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving || isGenerating}>Cancel</Button>
                     <Button onClick={handleSave} disabled={isSaving || isGenerating || planItems.length === 0}>{isSaving ? 'Saving...' : 'Save Plan & Close'}</Button>
                 </DialogFooter>
+
+                 {isSelectionMode && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 flex items-center justify-between animate-in slide-in-from-bottom-12 duration-300">
+                        <p className="text-sm font-semibold">{selectedItemIds.size} item(s) selected</p>
+                        <Button onClick={handleBulkAddToQueue} disabled={selectedItemIds.size === 0 || isSaving}>
+                            <ListPlus className="mr-2 h-4 w-4" />
+                            Add to Queue
+                        </Button>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
-        </>
     );
 }
