@@ -17,12 +17,21 @@ const GenerateCreativeInputSchema = z.object({
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
+const CarouselSlideSchema = z.object({
+    title: z.string(),
+    body: z.string(),
+    imageUrl: z.string().optional().describe("The URL of the generated image for this slide. This will be a data URI."),
+    creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for this slide."),
+});
+export type CarouselSlide = z.infer<typeof CarouselSlideSchema>;
+
 const GenerateCreativeOutputSchema = z.object({
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
-  carouselSlidesText: z.string().optional().describe('Suggest text for carousel slides.'),
+  carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
   videoScript: z.string().optional().describe('A short script for a video ad.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
+
 
 const imagePrompt = ai.definePrompt({
     name: 'generateImagePrompt',
@@ -65,12 +74,13 @@ const carouselPrompt = ai.definePrompt({
             slides: z.array(z.object({
                 title: z.string(),
                 body: z.string(),
-            })).describe('An array of 3-5 carousel slides, each with a title and body.'),
+                creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: 'A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1'."),
+            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique creative prompt for its image.'),
         })
     },
   prompt: `You are a marketing expert specializing in creating engaging social media carousels.
 Based on the Brand Heart and Offering below, create a 3-5 slide carousel script.
-Each slide should have a short, punchy title and a brief body text. The goal is to tell a story that leads to the offering.
+Each slide must have a short, punchy title, a brief body text, and a unique, detailed creative prompt to generate an image for that specific slide. The goal is to tell a story that leads to the offering.
 
 **Brand Heart:**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
@@ -134,7 +144,7 @@ export const generateCreativeFlow = ai.defineFlow(
     const promptPayload = { brandHeart, offering };
     let output: GenerateCreativeOutput = {};
 
-    if (creativeTypes.includes('image') || creativeTypes.includes('carousel')) {
+    if (creativeTypes.includes('image')) {
         const { text } = await imagePrompt(promptPayload);
         const { media } = await ai.generate({
             model: googleAI.model('imagen-4.0-fast-generate-001'),
@@ -147,8 +157,18 @@ export const generateCreativeFlow = ai.defineFlow(
     
     if (creativeTypes.includes('carousel')) {
         const { output: carouselOutput } = await carouselPrompt(promptPayload);
-        if (carouselOutput) {
-            output.carouselSlidesText = carouselOutput.slides.map((slide, i) => `Slide ${i+1}: ${slide.title}\n${slide.body}`).join('\n\n');
+        if (carouselOutput?.slides) {
+            const slidePromises = carouselOutput.slides.map(async (slide) => {
+                const { media } = await ai.generate({
+                    model: googleAI.model('imagen-4.0-fast-generate-001'),
+                    prompt: slide.creativePrompt,
+                });
+                return {
+                    ...slide,
+                    imageUrl: media?.url,
+                };
+            });
+            output.carouselSlides = await Promise.all(slidePromises);
         }
     }
 

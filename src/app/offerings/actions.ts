@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
-import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
+import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 
 export type OfferingMedia = {
     id: string;
@@ -360,7 +360,7 @@ type SaveContentInput = {
     offeringId: string;
     contentBody: { primary: string | null; secondary: string | null; } | null;
     imageUrl: string | null;
-    carouselSlidesText: string | null;
+    carouselSlides: CarouselSlide[] | null;
     videoScript: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     sourcePlan?: {
@@ -383,14 +383,14 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlidesText, videoScript, status, sourcePlan, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoScript, status, sourcePlan, mediaPlanItemId } = input;
 
     const payload: any = {
         user_id: user.id,
         offering_id: offeringId,
         content_body: contentBody,
         image_url: imageUrl,
-        carousel_slides_text: carouselSlidesText,
+        carousel_slides: carouselSlides,
         video_script: videoScript,
         status: status,
         source_plan: sourcePlan,
@@ -398,8 +398,8 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
 
     // This is a temporary ID for the media plan item, not a DB ID.
     // In a real app, you might have a proper relation.
-    if (sourcePlan?.copy) { 
-      payload.media_plan_item_id = sourcePlan.copy.slice(0, 36);
+    if (sourcePlan?.creativePrompt) { 
+      payload.media_plan_item_id = sourcePlan.creativePrompt.slice(0, 36);
     }
 
 

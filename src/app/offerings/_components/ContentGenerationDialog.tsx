@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateContentForOffering, saveContent, generateCreativeForOffering } from '../actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
-import type { GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
+import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Funnel } from '@/app/funnels/actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 type PlanItem = {
     offeringId: string;
@@ -158,7 +159,7 @@ export function ContentGenerationDialog({
         if (contentResult) finalContentOutput = contentResult.content;
         
         if (visualBasedSelected) {
-            const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlidesText' in r)) as GenerateCreativeOutput | undefined;
+            const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
             if (creativeResult) finalCreativeOutput = creativeResult;
         }
 
@@ -187,6 +188,15 @@ export function ContentGenerationDialog({
     });
   };
 
+  const handleCarouselSlideChange = (index: number, newText: string) => {
+    setCreative(prev => {
+        if (!prev || !prev.carouselSlides) return prev;
+        const newSlides = [...prev.carouselSlides];
+        newSlides[index] = { ...newSlides[index], body: newText };
+        return { ...prev, carouselSlides: newSlides };
+    });
+  };
+
   const handleApprove = () => {
     if (!offeringId) {
         toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
@@ -203,7 +213,7 @@ export function ContentGenerationDialog({
           offeringId,
           contentBody: editableContent,
           imageUrl: creative?.imageUrl || null,
-          carouselSlidesText: creative?.carouselSlidesText || null,
+          carouselSlides: creative?.carouselSlides || null,
           videoScript: creative?.videoScript || null,
           status: 'approved',
           sourcePlan: sourcePlanItem ? {
@@ -260,20 +270,30 @@ export function ContentGenerationDialog({
                                 <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
                             </div>
                         )}
-                        {selectedCreativeType === 'carousel' && (
-                            <>
-                                {creative?.imageUrl && (
-                                     <div className="relative aspect-square w-full">
-                                        <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
-                                    </div>
+                        {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
+                            <Carousel>
+                                <CarouselContent>
+                                    {creative.carouselSlides.map((slide, index) => (
+                                        <CarouselItem key={index}>
+                                            <div className="relative aspect-square w-full">
+                                                 {slide.imageUrl ? (
+                                                    <Image src={slide.imageUrl} alt={slide.title} fill className="object-cover" />
+                                                 ) : (
+                                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                                        <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                                                    </div>
+                                                 )}
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                {creative.carouselSlides.length > 1 && (
+                                    <>
+                                    <CarouselPrevious className="left-2" />
+                                    <CarouselNext className="right-2" />
+                                    </>
                                 )}
-                                {creative?.carouselSlidesText && (
-                                    <div className="p-4 text-sm text-muted-foreground bg-secondary/50">
-                                        <h4 className="font-semibold text-foreground mb-2">Carousel Slide Text:</h4>
-                                        <p className="whitespace-pre-wrap">{creative.carouselSlidesText}</p>
-                                    </div>
-                                )}
-                            </>
+                            </Carousel>
                         )}
                          {selectedCreativeType === 'video' && creative?.videoScript && (
                             <div className="p-4 text-sm text-muted-foreground bg-secondary aspect-square flex flex-col justify-center">
@@ -310,6 +330,23 @@ export function ContentGenerationDialog({
                          />
                     </>
                  )}
+                 {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
+                    <div className="w-full mt-2 space-y-2">
+                        <h4 className="font-semibold text-sm">Carousel Slide Text:</h4>
+                        {creative.carouselSlides.map((slide, index) => (
+                             <div key={index} className="space-y-1">
+                                <Label htmlFor={`slide-${index}`} className="text-xs font-bold">{slide.title}</Label>
+                                <Textarea 
+                                    id={`slide-${index}`}
+                                    value={slide.body}
+                                    onChange={(e) => handleCarouselSlideChange(index, e.target.value)}
+                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                    placeholder={`Text for slide ${index + 1}...`}
+                                />
+                             </div>
+                        ))}
+                    </div>
+                 )}
             </CardFooter>
         </Card>
     );
@@ -325,7 +362,7 @@ export function ContentGenerationDialog({
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.
-            {sourcePlanItem && <div className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.copy}"</div>}
+            {sourcePlanItem && <div className="mt-1 font-medium text-primary">From Media Plan: "{sourcePlanItem.creativePrompt}"</div>}
           </DialogDescription>
         </DialogHeader>
 
