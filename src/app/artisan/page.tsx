@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
@@ -143,6 +144,9 @@ const PostPreview = ({
                 </Carousel>
             );
         }
+        if (isStory && creative?.imageUrl) {
+            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
+        }
         if (creative?.imageUrl) {
             return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
@@ -261,8 +265,32 @@ const PostPreview = ({
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className={cn("relative w-full", aspectRatioClass)}>
-                    {renderVisualContent()}
+                <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
+                    {selectedCreativeType === 'carousel' && creative?.carouselSlides ? (
+                        <Carousel setApi={setApi} className="w-full h-full">
+                            <CarouselContent>
+                                {creative.carouselSlides.map((slide, index) => (
+                                    <CarouselItem key={index} className="relative">
+                                        {slide.imageUrl ? (
+                                            <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                                <ImageIcon className="w-24 h-24 text-muted-foreground" />
+                                            </div>
+                                        )}
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            {creative.carouselSlides.length > 1 && (
+                                <>
+                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
+                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
+                                </>
+                            )}
+                        </Carousel>
+                    ) : (
+                        renderVisualContent()
+                    )}
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col items-start gap-2 pt-2">
@@ -290,23 +318,6 @@ const PostPreview = ({
                             placeholder="Your secondary language post copy..."
                         />
                     </>
-                )}
-                {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
-                    <div className="w-full mt-2 space-y-2">
-                        <h4 className="font-semibold text-sm">Carousel Slide Text:</h4>
-                        {creative.carouselSlides.map((slide, index) => (
-                            <div key={index} className="space-y-1">
-                                <Label htmlFor={`slide-${index}`} className="text-xs font-bold">{slide.title}</Label>
-                                <Textarea
-                                    id={`slide-${index}`}
-                                    value={slide.body}
-                                    onChange={(e) => handleCarouselSlideChange(index, e.target.value)}
-                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                    placeholder={`Text for slide ${index + 1}...`}
-                                />
-                            </div>
-                        ))}
-                    </div>
                 )}
             </CardFooter>
         </Card>
