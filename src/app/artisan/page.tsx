@@ -116,8 +116,8 @@ const PostPreview = ({
                     </CarouselContent>
                     {isStory && creative.carouselSlides.length > 1 && (
                         <>
-                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
-                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
+                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white" />
+                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white" />
                         </>
                     )}
                 </Carousel>
@@ -144,12 +144,12 @@ const PostPreview = ({
     if (isStory) {
         return (
             <div className={cn("relative w-full rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
-                 <div className="absolute inset-0 bg-black text-white">
+                 <div className="absolute inset-0 bg-black">
                     {renderVisualContent()}
                 </div>
                 
                 {/* Content Overlay */}
-                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
+                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none text-white">
                     {/* Header */}
                     <div className="flex-shrink-0">
                          <div className="flex items-center gap-1 mb-2">
