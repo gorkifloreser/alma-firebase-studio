@@ -569,8 +569,8 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main className="sticky top-24 h-[70vh] flex items-center justify-center">
-                         <div className="w-full">
+                    <main className="sticky top-24 flex items-center justify-center">
+                         <div className="w-full max-h-[calc(100vh-8rem)]">
                            <PostPreview
                                 profile={profile}
                                 dimension={dimension}
@@ -589,5 +589,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-
