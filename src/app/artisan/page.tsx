@@ -14,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -302,17 +302,40 @@ const PostPreview = ({
 }
 
 const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) => {
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [isSelectMode, setIsSelectMode] = useState(false);
+
+    const goBack = () => iframeRef.current?.contentWindow?.history.back();
+    const goForward = () => iframeRef.current?.contentWindow?.history.forward();
+    
+    const openInNewTab = () => {
+        if (iframeRef.current?.srcdoc) {
+            const newWindow = window.open();
+            newWindow?.document.write(iframeRef.current.srcdoc);
+            newWindow?.document.close();
+        }
+    };
+
     return (
         <div className="w-full max-w-md mx-auto aspect-[9/16] bg-background shadow-2xl overflow-hidden border border-border rounded-2xl flex flex-col">
             {/* Header */}
-            <div className="flex-shrink-0 bg-muted/50 p-2">
-                 <div className="w-full h-8 bg-input/80 rounded-lg flex items-center px-2 text-xs text-muted-foreground gap-2">
-                    <ArrowLeft size={16} />
-                    <ArrowRight size={16} className="opacity-50" />
-                    <div className="flex-1 text-center bg-background/50 rounded-md p-1 truncate">
-                        alma-ai.app
+            <div className="flex-shrink-0 bg-zinc-800 p-2">
+                <div className="w-full h-8 bg-zinc-700 rounded-md flex items-center px-2 text-sm text-zinc-400 gap-2">
+                    <button onClick={goBack} className="hover:text-white"><ArrowLeft size={16} /></button>
+                    <button onClick={goForward} className="hover:text-white"><ArrowRight size={16} /></button>
+                    <div className="flex-1 text-center bg-zinc-800 rounded-sm p-1 truncate text-zinc-300">
+                        alma-ai.app/preview
                     </div>
-                    <Share size={16} />
+                     <button
+                        onClick={() => setIsSelectMode(!isSelectMode)}
+                        className={cn("hover:text-white", isSelectMode && "text-blue-400")}
+                        title="Select element to edit"
+                    >
+                        <MousePointerClick size={16} />
+                    </button>
+                    <button onClick={openInNewTab} className="hover:text-white" title="Open in new tab">
+                        <ExternalLink size={16} />
+                    </button>
                 </div>
             </div>
 
@@ -320,10 +343,11 @@ const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) =>
             <div className="flex-1 bg-white dark:bg-black relative">
                 {htmlContent ? (
                      <iframe
+                        ref={iframeRef}
                         srcDoc={htmlContent}
                         title="Landing Page Preview"
                         className="w-full h-full border-0"
-                        sandbox="allow-scripts" // Be careful with this in production
+                        sandbox="allow-scripts allow-same-origin"
                     />
                 ) : (
                     <div className="w-full h-full bg-background flex items-center justify-center">
