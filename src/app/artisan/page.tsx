@@ -158,7 +158,7 @@ const PostPreview = ({
                                 </div>
                              ))}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-white">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
                                 <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
@@ -187,7 +187,7 @@ const PostPreview = ({
                     </div>
                     
                     {/* Footer */}
-                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto">
+                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto text-white">
                         <input
                             type="text"
                             placeholder="Send message"
@@ -202,7 +202,7 @@ const PostPreview = ({
     }
 
     return (
-        <Card className="w-full">
+        <Card className="w-full max-w-md mx-auto">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 <Avatar>
                     <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
@@ -569,20 +569,18 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main className="sticky top-24 flex items-center justify-center">
-                         <div className="w-full max-h-[calc(100vh-8rem)]">
-                           <PostPreview
-                                profile={profile}
-                                dimension={dimension}
-                                isLoading={isLoading}
-                                selectedCreativeType={selectedCreativeType}
-                                creative={creative}
-                                editableContent={editableContent}
-                                secondaryLangName={secondaryLangName}
-                                handleContentChange={handleContentChange}
-                                handleCarouselSlideChange={handleCarouselSlideChange}
-                            />
-                         </div>
+                    <main className="flex items-center justify-center">
+                        <PostPreview
+                            profile={profile}
+                            dimension={dimension}
+                            isLoading={isLoading}
+                            selectedCreativeType={selectedCreativeType}
+                            creative={creative}
+                            editableContent={editableContent}
+                            secondaryLangName={secondaryLangName}
+                            handleContentChange={handleContentChange}
+                            handleCarouselSlideChange={handleCarouselSlideChange}
+                        />
                     </main>
                 </div>
             </div>
