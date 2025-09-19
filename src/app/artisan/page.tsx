@@ -629,20 +629,22 @@ export default function ArtisanPage() {
                                     </RadioGroup>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Dimensions</Label>
-                                    <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
-                                        <SelectTrigger id="dimension-select">
-                                            <SelectValue placeholder="Select dimensions..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video' || selectedCreativeType === 'landing_page'}>Square (1:1)</SelectItem>
-                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video' || selectedCreativeType === 'landing_page'}>Portrait (4:5)</SelectItem>
-                                            <SelectItem value="9:16">Story (9:16)</SelectItem>
-                                            <SelectItem value="16:9">Landscape (16:9)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {selectedCreativeType !== 'landing_page' && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Aspect Ratio</Label>
+                                        <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
+                                            <SelectTrigger id="dimension-select">
+                                                <SelectValue placeholder="Select aspect ratio..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
+                                                <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
+                                                <SelectItem value="9:16">Story (9:16)</SelectItem>
+                                                <SelectItem value="16:9">Landscape (16:9)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                              </CardContent>
                              <CardFooter className="flex-col gap-4">
                                 <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
