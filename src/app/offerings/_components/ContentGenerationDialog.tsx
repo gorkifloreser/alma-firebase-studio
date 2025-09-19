@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -57,10 +58,9 @@ type Profile = {
 } | null;
 
 
-type CreativeType = 'text' | 'image' | 'carousel' | 'video';
+type CreativeType = 'image' | 'carousel' | 'video';
 
 const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
-    { id: 'text', label: 'Text Post', icon: Type },
     { id: 'image', label: 'Single Image', icon: ImageIcon },
     { id: 'carousel', label: 'Carousel', icon: Layers },
     { id: 'video', label: 'Video', icon: Video },
@@ -113,7 +113,7 @@ export function ContentGenerationDialog({
             } else if (sourcePlanItem.format.toLowerCase().includes('image')) {
                 setSelectedCreativeType('image');
             } else {
-                setSelectedCreativeType('text');
+                setSelectedCreativeType('image');
             }
             setCreativePrompt(sourcePlanItem.creativePrompt || '');
             setEditableContent({ primary: sourcePlanItem.copy || '', secondary: null });
@@ -134,7 +134,6 @@ export function ContentGenerationDialog({
         let finalCreativeOutput: GenerateCreativeOutput = {};
         let finalContentOutput: GenerateContentOutput['content'] | null = null;
 
-        const textBasedSelected = creativeTypes.includes('text') || creativeTypes.includes('carousel');
         const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
 
         const promises = [];

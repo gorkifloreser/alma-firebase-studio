@@ -40,7 +40,6 @@ type Profile = {
 type CreativeType = 'text' | 'image' | 'carousel' | 'video';
 
 const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
-    { id: 'text', label: 'Text Post', icon: Type },
     { id: 'image', label: 'Single Image', icon: ImageIcon },
     { id: 'carousel', label: 'Carousel', icon: Layers },
     { id: 'video', label: 'Video', icon: Video },
@@ -307,7 +306,7 @@ export default function ArtisanPage() {
             if (format.includes('video')) setSelectedCreativeType('video');
             else if (format.includes('carousel')) setSelectedCreativeType('carousel');
             else if (format.includes('image')) setSelectedCreativeType('image');
-            else setSelectedCreativeType('text');
+            else setSelectedCreativeType('image');
         } else {
              setCreativePrompt('');
              setEditableContent(null);
@@ -570,7 +569,7 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main className="flex justify-center items-start">
+                    <main className="sticky top-24 h-[calc(100vh-8rem)] flex items-center justify-center">
                          <div className="w-full">
                            <PostPreview
                                 profile={profile}
@@ -590,3 +589,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
