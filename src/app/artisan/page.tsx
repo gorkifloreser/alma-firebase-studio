@@ -124,14 +124,16 @@ const PostPreview = ({
                 <Carousel setApi={setApi} className="w-full h-full">
                     <CarouselContent>
                         {creative.carouselSlides.map((slide, index) => (
-                             <CarouselItem key={index} className={cn("relative", aspectRatioClass)}>
-                                {slide.imageUrl ? (
-                                    <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                        <ImageIcon className="w-24 h-24 text-muted-foreground" />
-                                    </div>
-                                )}
+                             <CarouselItem key={index} className="relative">
+                                <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
+                                    {slide.imageUrl ? (
+                                        <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                            <ImageIcon className="w-24 h-24 text-muted-foreground" />
+                                        </div>
+                                    )}
+                                </div>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
@@ -143,9 +145,6 @@ const PostPreview = ({
                     )}
                 </Carousel>
             );
-        }
-        if (isStory && creative?.imageUrl) {
-            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
         if (creative?.imageUrl) {
             return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
@@ -271,13 +270,15 @@ const PostPreview = ({
                             <CarouselContent>
                                 {creative.carouselSlides.map((slide, index) => (
                                     <CarouselItem key={index} className="relative">
-                                        {slide.imageUrl ? (
-                                            <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                                <ImageIcon className="w-24 h-24 text-muted-foreground" />
-                                            </div>
-                                        )}
+                                         <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
+                                            {slide.imageUrl ? (
+                                                <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                                    <ImageIcon className="w-24 h-24 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
@@ -303,8 +304,14 @@ const PostPreview = ({
                     <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
                 </div>
                 <Textarea
-                    value={editableContent?.primary || ''}
-                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                    value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
+                    onChange={(e) => {
+                        if (selectedCreativeType === 'carousel' && currentSlideData) {
+                            handleCarouselSlideChange(current, e.target.value)
+                        } else {
+                            handleContentChange('primary', e.target.value)
+                        }
+                    }}
                     className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
                     placeholder="Your post copy will appear here..."
                 />
@@ -531,8 +538,8 @@ export default function ArtisanPage() {
     }, [toast, handleQueueItemSelect]);
 
     useEffect(() => {
-        if (selectedCreativeType === 'video' && (dimension === '1:1' || dimension === '4:5')) {
-            setDimension('9:16');
+        if (selectedCreativeType === 'video' && (dimension !== '9:16' && dimension !== '16:9')) {
+             setDimension('9:16');
             toast({
                 title: 'Aspect Ratio Adjusted',
                 description: 'Video generation is only supported in 9:16 and 16:9. Your selection has been updated.',
