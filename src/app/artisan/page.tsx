@@ -386,12 +386,14 @@ const CodeEditor = ({
     setCode,
     theme,
     onThemeToggle,
+    onClose,
     language = 'html'
 }: {
     code: string,
     setCode: (code: string) => void,
     theme: 'light' | 'dark',
     onThemeToggle: () => void,
+    onClose: () => void,
     language?: string
 }) => {
     const { toast } = useToast();
@@ -416,6 +418,9 @@ const CodeEditor = ({
                     </Button>
                     <Button variant="ghost" size="icon" onClick={handleCopy}>
                         <Copy className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onClose}>
+                        <X className="h-5 w-5" />
                     </Button>
                 </div>
             </CardHeader>
@@ -560,12 +565,15 @@ export default function ArtisanPage() {
     const handleCodeEditorToggle = (forceState?: boolean) => {
         const newState = forceState ?? !isCodeEditorOpen;
         setIsCodeEditorOpen(newState);
-        if (newState) {
+    };
+
+    useEffect(() => {
+        if (isCodeEditorOpen) {
             setActiveAccordion(prev => [...new Set([...prev, 'code-editor'])]);
         } else {
             setActiveAccordion(prev => prev.filter(item => item !== 'code-editor'));
         }
-    };
+    }, [isCodeEditorOpen]);
 
 
     const handleGenerate = async () => {
@@ -819,6 +827,7 @@ export default function ArtisanPage() {
                                         setCode={setEditableHtml}
                                         theme={editorTheme}
                                         onThemeToggle={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')}
+                                        onClose={() => handleCodeEditorToggle(false)}
                                     />
                                 </AccordionItem>
                             )}
@@ -837,7 +846,7 @@ export default function ArtisanPage() {
                             editableContent={editableContent}
                             secondaryLangName={secondaryLangName}
                             isCodeEditorOpen={isCodeEditorOpen}
-                            onCodeEditorToggle={handleCodeEditorToggle}
+                            onCodeEditorToggle={() => handleCodeEditorToggle()}
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
                         />
@@ -847,3 +856,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
