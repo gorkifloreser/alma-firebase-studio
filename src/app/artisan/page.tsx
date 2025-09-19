@@ -27,8 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 type Profile = {
@@ -615,104 +614,112 @@ export default function ArtisanPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>Creative Controls</CardTitle>
-                             </CardHeader>
-                             <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="queue-select">1. Choose an Item or Go Custom</Label>
-                                    <Select onValueChange={(value) => handleQueueItemSelect(value, queueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
-                                        <SelectTrigger id="queue-select">
-                                            <SelectValue placeholder="Select a content idea..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="custom">Custom AI Creative</SelectItem>
-                                            <Separator className="my-1"/>
-                                            {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
-                                             queueItems.length > 0 ? (
-                                                queueItems.map(item => (
-                                                    <SelectItem key={item.id} value={item.id}>{item.source_plan_item.conceptualStep.concept}</SelectItem>
-                                                ))
-                                            ) : (
-                                                <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                
-                                {selectedQueueItemId === 'custom' && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="offering-select">2. Choose an Offering</Label>
-                                        <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
-                                            <SelectTrigger id="offering-select">
-                                                <SelectValue placeholder="Select an offering..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {offerings.map(o => (
-                                                    <SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <Label htmlFor="creative-prompt">{selectedQueueItemId === 'custom' ? '3.' : '2.'} AI Creative Prompt</Label>
-                                    <Textarea
-                                        id="creative-prompt"
-                                        value={creativePrompt}
-                                        onChange={(e) => setCreativePrompt(e.target.value)}
-                                        placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
-                                        className="h-24 mt-1 resize-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <h3 className="font-medium mb-4">{selectedQueueItemId === 'custom' ? '4.' : '3.'} Creative Type</h3>
-                                    <RadioGroup
-                                        value={selectedCreativeType}
-                                        onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
-                                        className="grid grid-cols-2 gap-4"
-                                        disabled={isLoading}
-                                    >
-                                        {creativeOptions.map(({ id, label, icon: Icon }) => (
-                                            <div key={id} className="flex items-center space-x-2">
-                                                <RadioGroupItem value={id} id={id} />
-                                                <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer font-normal">
-                                                    <Icon /> {label}
-                                                </Label>
+                        <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+                            <AccordionItem value="item-1" className="border-none">
+                                <Card>
+                                    <AccordionTrigger className="p-6">
+                                         <CardHeader className="p-0">
+                                            <CardTitle>Creative Controls</CardTitle>
+                                         </CardHeader>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <CardContent className="space-y-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="queue-select">1. Choose an Item or Go Custom</Label>
+                                                <Select onValueChange={(value) => handleQueueItemSelect(value, queueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                                    <SelectTrigger id="queue-select">
+                                                        <SelectValue placeholder="Select a content idea..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="custom">Custom AI Creative</SelectItem>
+                                                        <Separator className="my-1"/>
+                                                        {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
+                                                        queueItems.length > 0 ? (
+                                                            queueItems.map(item => (
+                                                                <SelectItem key={item.id} value={item.id}>{item.source_plan_item.conceptualStep.concept}</SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-                                        ))}
-                                    </RadioGroup>
-                                </div>
+                                            
+                                            {selectedQueueItemId === 'custom' && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="offering-select">2. Choose an Offering</Label>
+                                                    <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
+                                                        <SelectTrigger id="offering-select">
+                                                            <SelectValue placeholder="Select an offering..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {offerings.map(o => (
+                                                                <SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
 
-                                {selectedCreativeType !== 'landing_page' && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Aspect Ratio</Label>
-                                        <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
-                                            <SelectTrigger id="dimension-select">
-                                                <SelectValue placeholder="Select aspect ratio..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
-                                                <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
-                                                <SelectItem value="9:16">Story (9:16)</SelectItem>
-                                                <SelectItem value="16:9">Landscape (16:9)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                             </CardContent>
-                             <CardFooter className="flex-col gap-4">
-                                <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
-                                    {isLoading ? 'Generating...' : 'Regenerate'}
-                                </Button>
-                                <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
-                                    {isSaving ? 'Approving...' : 'Approve & Save'}
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                                            <div>
+                                                <Label htmlFor="creative-prompt">{selectedQueueItemId === 'custom' ? '3.' : '2.'} AI Creative Prompt</Label>
+                                                <Textarea
+                                                    id="creative-prompt"
+                                                    value={creativePrompt}
+                                                    onChange={(e) => setCreativePrompt(e.target.value)}
+                                                    placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
+                                                    className="h-24 mt-1 resize-none"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <h3 className="font-medium mb-4">{selectedQueueItemId === 'custom' ? '4.' : '3.'} Creative Type</h3>
+                                                <RadioGroup
+                                                    value={selectedCreativeType}
+                                                    onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
+                                                    className="grid grid-cols-2 gap-4"
+                                                    disabled={isLoading}
+                                                >
+                                                    {creativeOptions.map(({ id, label, icon: Icon }) => (
+                                                        <div key={id} className="flex items-center space-x-2">
+                                                            <RadioGroupItem value={id} id={id} />
+                                                            <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer font-normal">
+                                                                <Icon /> {label}
+                                                            </Label>
+                                                        </div>
+                                                    ))}
+                                                </RadioGroup>
+                                            </div>
+
+                                            {selectedCreativeType !== 'landing_page' && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Aspect Ratio</Label>
+                                                    <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
+                                                        <SelectTrigger id="dimension-select">
+                                                            <SelectValue placeholder="Select aspect ratio..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
+                                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
+                                                            <SelectItem value="9:16">Story (9:16)</SelectItem>
+                                                            <SelectItem value="16:9">Landscape (16:9)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                        <CardFooter className="flex-col gap-4">
+                                            <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
+                                                {isLoading ? 'Generating...' : 'Regenerate'}
+                                            </Button>
+                                            <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
+                                                {isSaving ? 'Approving...' : 'Approve & Save'}
+                                            </Button>
+                                        </CardFooter>
+                                    </AccordionContent>
+                                </Card>
+                            </AccordionItem>
+                        </Accordion>
                         
                          {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
                             <Card className="mt-8">
@@ -725,7 +732,6 @@ export default function ArtisanPage() {
                                         onChange={(e) => handleLandingPageHtmlChange(e.target.value)}
                                         className="w-full h-96 border rounded-md resize-y bg-zinc-900 text-white font-mono text-xs p-4"
                                         placeholder="HTML code..."
-                                        style={{ tabSize: 4 }}
                                     />
                                 </CardContent>
                             </Card>
@@ -753,4 +759,5 @@ export default function ArtisanPage() {
     );
 }
 
+    
     
