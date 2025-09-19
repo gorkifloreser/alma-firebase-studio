@@ -118,12 +118,12 @@ const PostPreview = ({
                 <Carousel setApi={setApi} className="w-full h-full">
                     <CarouselContent>
                         {creative.carouselSlides.map((slide, index) => (
-                            <CarouselItem key={index} className={cn("relative", aspectRatioClass)}>
+                             <CarouselItem key={index} className={cn("relative", aspectRatioClass)}>
                                 {slide.imageUrl ? (
                                     <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
                                 ) : (
-                                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                                        <ImageIcon className="w-24 h-24 text-zinc-600" />
+                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                        <ImageIcon className="w-24 h-24 text-muted-foreground" />
                                     </div>
                                 )}
                             </CarouselItem>
@@ -370,6 +370,16 @@ export default function ArtisanPage() {
         fetchData();
     }, [toast, handleQueueItemSelect]);
 
+    useEffect(() => {
+        if (selectedCreativeType === 'video' && (dimension === '1:1' || dimension === '4:5')) {
+            setDimension('9:16');
+            toast({
+                title: 'Aspect Ratio Adjusted',
+                description: 'Video generation is only supported in 9:16 and 16:9. Your selection has been updated.',
+            });
+        }
+    }, [selectedCreativeType, dimension, toast]);
+
     const handleGenerate = async () => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Please select an offering for your custom creative.' });
@@ -581,8 +591,8 @@ export default function ArtisanPage() {
                                             <SelectValue placeholder="Select dimensions..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="1:1">Square (1:1)</SelectItem>
-                                            <SelectItem value="4:5">Portrait (4:5)</SelectItem>
+                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
+                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
                                             <SelectItem value="9:16">Story (9:16)</SelectItem>
                                             <SelectItem value="16:9">Landscape (16:9)</SelectItem>
                                         </SelectContent>
