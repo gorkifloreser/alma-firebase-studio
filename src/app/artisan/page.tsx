@@ -303,43 +303,33 @@ const PostPreview = ({
 
 const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) => {
     return (
-        <div className="w-full max-w-md mx-auto aspect-[9/16] bg-white rounded-[40px] shadow-2xl overflow-hidden border-[8px] border-black box-content">
-            <div className="h-full w-full relative">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-black rounded-b-xl z-20"></div>
-                
-                {/* Header */}
-                <div className="absolute top-0 left-0 right-0 h-24 bg-gray-100 dark:bg-gray-800 z-10 p-2 flex flex-col justify-end">
-                    <div className="flex justify-between items-center text-xs text-gray-700 dark:text-gray-300 px-2 pb-1">
-                        <span className="font-bold">9:41</span>
-                        <div className="flex items-center gap-1">
-                           <Wifi size={14} />
-                           <Battery size={14} />
-                        </div>
+        <div className="w-full max-w-md mx-auto aspect-[9/16] bg-background shadow-2xl overflow-hidden border border-border rounded-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex-shrink-0 bg-muted/50 p-2">
+                 <div className="w-full h-8 bg-input/80 rounded-lg flex items-center px-2 text-xs text-muted-foreground gap-2">
+                    <ArrowLeft size={16} />
+                    <ArrowRight size={16} className="opacity-50" />
+                    <div className="flex-1 text-center bg-background/50 rounded-md p-1 truncate">
+                        alma-ai.app
                     </div>
-                    <div className="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center px-2 text-xs text-gray-500 dark:text-gray-400 gap-2">
-                       <ArrowLeft size={14} />
-                       <ArrowRight size={14} className="opacity-50" />
-                       <div className="flex-1 text-center bg-gray-300/50 dark:bg-gray-600/50 rounded-md p-1 truncate">alma-ai.app</div>
-                       <Share size={14} />
-                    </div>
+                    <Share size={16} />
                 </div>
+            </div>
 
-                {/* Content */}
-                <div className="absolute top-24 bottom-0 left-0 right-0">
-                    {htmlContent ? (
-                         <iframe
-                            srcDoc={htmlContent}
-                            title="Landing Page Preview"
-                            className="w-full h-full border-0"
-                            sandbox="allow-scripts" // Be careful with this in production
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                            <Globe className="w-20 h-20 text-gray-300" />
-                        </div>
-                    )}
-                </div>
+            {/* Content */}
+            <div className="flex-1 bg-white dark:bg-black relative">
+                {htmlContent ? (
+                     <iframe
+                        srcDoc={htmlContent}
+                        title="Landing Page Preview"
+                        className="w-full h-full border-0"
+                        sandbox="allow-scripts" // Be careful with this in production
+                    />
+                ) : (
+                    <div className="w-full h-full bg-background flex items-center justify-center">
+                        <Globe className="w-20 h-20 text-muted-foreground/50" />
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -664,8 +654,8 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main className="flex items-center justify-center">
-                        <div className="w-full">
+                     <main className="flex items-start justify-center">
+                        <div className="w-full max-w-md mx-auto">
                              <PostPreview
                                 profile={profile}
                                 dimension={dimension}
