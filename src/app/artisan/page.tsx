@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useCallback } from 'react';
+import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -37,7 +37,7 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-type CreativeType = 'text' | 'image' | 'carousel' | 'video';
+type CreativeType = 'image' | 'carousel' | 'video';
 
 const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
     { id: 'image', label: 'Single Image', icon: ImageIcon },
@@ -80,6 +80,22 @@ const PostPreview = ({
     const isStory = dimension === '9:16';
     const [api, setApi] = useState<CarouselApi>()
     const [current, setCurrent] = useState(0)
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    const togglePlay = () => {
+        const video = videoRef.current;
+        if (video) {
+            if (video.paused) {
+                video.play();
+                setIsPlaying(true);
+            } else {
+                video.pause();
+                setIsPlaying(false);
+            }
+        }
+    };
+
 
     useEffect(() => {
         if (!api) return;
@@ -125,11 +141,24 @@ const PostPreview = ({
         if (creative?.imageUrl) {
             return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
-        if (selectedCreativeType === 'video' && creative?.videoScript) {
+        if (selectedCreativeType === 'video' && creative?.videoUrl) {
             return (
-                <div className="p-4 text-sm text-muted-foreground bg-secondary h-full flex flex-col justify-center">
-                    <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
-                    <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
+                 <div className="relative w-full h-full">
+                    <video
+                        ref={videoRef}
+                        src={creative.videoUrl}
+                        className="w-full h-full object-cover"
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        loop
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20" onClick={togglePlay}>
+                        {!isPlaying && (
+                            <div className="p-4 bg-black/50 rounded-full">
+                                <Play className="h-8 w-8 text-white fill-white" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -363,6 +392,7 @@ export default function ArtisanPage() {
                         offeringId: selectedOfferingId,
                         creativeTypes: creativeTypesForFlow,
                         aspectRatio: dimension,
+                        creativePrompt: creativePrompt,
                     });
                     promises.push(creativePromise);
                 }
@@ -371,7 +401,7 @@ export default function ArtisanPage() {
             const results = await Promise.all(promises);
 
             if (visualBasedSelected) {
-                const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoScript' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
+                const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoUrl' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
                 if (creativeResult) setCreative(creativeResult);
             }
 
@@ -424,7 +454,7 @@ export default function ArtisanPage() {
                     contentBody: editableContent,
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
-                    videoScript: creative?.videoScript || null,
+                    videoUrl: creative?.videoUrl || null,
                     status: 'approved',
                     sourcePlan: currentQueueItem?.source_plan_item || null,
                 });

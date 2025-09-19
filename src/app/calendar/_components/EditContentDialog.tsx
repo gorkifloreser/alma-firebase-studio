@@ -110,17 +110,16 @@ export function EditContentDialog({
                     <Image src={contentItem.image_url} alt="Content image" fill className="rounded-lg object-contain mx-auto" />
                 </div>
             )}
-             {contentItem.carousel_slides_text && (
+             {contentItem.carousel_slides && (
                 <Card>
-                    <CardHeader><CardTitle className="text-base">Carousel Slide Suggestions</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{contentItem.carousel_slides_text}</CardContent>
+                    <CardHeader><CardTitle className="text-base">Carousel Slides</CardTitle></CardHeader>
+                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{JSON.stringify(contentItem.carousel_slides, null, 2)}</CardContent>
                 </Card>
             )}
-            {contentItem.video_script && (
-                <Card>
-                    <CardHeader><CardTitle className="text-base">Video Script</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{contentItem.video_script}</CardContent>
-                </Card>
+            {contentItem.video_url && (
+                <div className="relative aspect-video w-full rounded-lg overflow-hidden">
+                    <video src={contentItem.video_url} controls className="w-full h-full" />
+                </div>
             )}
             {isLoadingProfile ? (
                 <div className="space-y-6">

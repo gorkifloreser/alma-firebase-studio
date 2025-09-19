@@ -13,8 +13,8 @@ export type ContentItem = {
     content_body: { primary: string | null; secondary: string | null; } | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     image_url: string | null;
-    carousel_slides_text: string | null;
-    video_script: string | null;
+    carousel_slides: any | null;
+    video_url: string | null;
     source_plan: { channel: string; format: string; description: string; } | null;
     scheduled_at: string | null;
     scheduled_for_channel: string | null;

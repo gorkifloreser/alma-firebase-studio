@@ -70,7 +70,7 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
         return result;
     } catch (error: any) {
         console.error("Creative generation action failed:", error);
-        throw new Error("Failed to generate creative. Please try again.");
+        throw new Error(`Failed to generate creative. Please try again. ${error.message}`);
     }
 }
 
@@ -79,7 +79,7 @@ type SaveContentInput = {
     contentBody: { primary: string | null; secondary: string | null; } | null;
     imageUrl: string | null;
     carouselSlides: CarouselSlide[] | null;
-    videoScript: string | null;
+    videoUrl: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     sourcePlan?: {
         channel: string;
@@ -101,7 +101,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoScript, status, sourcePlan, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, status, sourcePlan, mediaPlanItemId } = input;
 
     const payload: any = {
         user_id: user.id,
@@ -109,7 +109,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         content_body: contentBody,
         image_url: imageUrl,
         carousel_slides: carouselSlides,
-        video_script: videoScript,
+        video_url: videoUrl,
         status: status,
         source_plan: sourcePlan,
     };

@@ -9,12 +9,17 @@ import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+import * as fs from 'fs';
+import { Readable } from 'stream';
+import type { MediaPart } from 'genkit';
+
 
 // Define schemas
 const GenerateCreativeInputSchema = z.object({
   offeringId: z.string(),
   creativeTypes: z.array(z.enum(['image', 'carousel', 'video'])),
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
+  creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -29,9 +34,32 @@ export type CarouselSlide = z.infer<typeof CarouselSlideSchema>;
 const GenerateCreativeOutputSchema = z.object({
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
-  videoScript: z.string().optional().describe('A short script for a video ad.'),
+  videoUrl: z.string().optional().describe('The data URI of the generated video.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
+
+
+async function downloadVideo(video: MediaPart): Promise<string> {
+  const fetch = (await import('node-fetch')).default;
+  // Add API key before fetching the video.
+  const videoDownloadResponse = await fetch(
+    `${video.media!.url}&key=${process.env.GEMINI_API_KEY}`
+  );
+  if (
+    !videoDownloadResponse ||
+    videoDownloadResponse.status !== 200 ||
+    !videoDownloadResponse.body
+  ) {
+    throw new Error('Failed to fetch video');
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of videoDownloadResponse.body) {
+    chunks.push(chunk as Buffer);
+  }
+  const buffer = Buffer.concat(chunks);
+  return `data:video/mp4;base64,${buffer.toString('base64')}`;
+}
 
 
 const imagePrompt = ai.definePrompt({
@@ -40,9 +68,13 @@ const imagePrompt = ai.definePrompt({
         schema: z.object({
             brandHeart: z.any(),
             offering: z.any(),
+            creativePrompt: z.string().optional(),
         })
     },
-    prompt: `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering.
+    prompt: `{{#if creativePrompt}}
+{{creativePrompt}}
+{{else}}
+Generate a stunning, high-quality, and visually appealing advertisement image for the following offering.
 
 **Brand Identity:**
 - Brand Name: {{brandHeart.brand_name}}
@@ -59,7 +91,7 @@ const imagePrompt = ai.definePrompt({
 {{/if}}
 
 The image should be magnetic and aligned with a regenerative marketing philosophy. It should attract, not pursue. Evoke a feeling of calm and authenticity. Do not include any text in the image.
-`,
+{{/if}}`,
 });
 
 const carouselPrompt = ai.definePrompt({
@@ -95,31 +127,33 @@ Generate the carousel slides in the specified JSON format.`,
 });
 
 
-const videoScriptPrompt = ai.definePrompt({
-    name: 'generateVideoScriptPrompt',
+const videoPrompt = ai.definePrompt({
+    name: 'generateVideoPrompt',
     input: {
         schema: z.object({
             brandHeart: z.any(),
             offering: z.any(),
+            creativePrompt: z.string().optional(),
         })
     },
-    output: {
-        schema: z.object({
-            script: z.string().describe('A short, 15-30 second video script with scene descriptions and spoken words.'),
-        })
-    },
-  prompt: `You are a scriptwriter for short, impactful social media video ads.
-Create a 15-30 second video script for the following offering, keeping the brand's soul in mind.
-The script should include visual scene descriptions and any voiceover or on-screen text.
+    prompt: `{{#if creativePrompt}}
+{{creativePrompt}}
+{{else}}
+Generate a visually stunning, high-quality, 5-second video for the following offering.
 
-**Brand Heart:**
+**Brand Identity:**
+- Brand Name: {{brandHeart.brand_name}}
+- Brand Brief: {{brandHeart.brand_brief.primary}}
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
-- Mission: {{brandHeart.mission.primary}}
+- Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
 
 **Offering:**
 - Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
 
-Generate the video script in the specified JSON format.`,
+The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. It should attract, not pursue. Evoke a feeling of calm and authenticity. There should be no text in the video.
+{{/if}}
+`
 });
 
 
@@ -129,7 +163,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes, aspectRatio }) => {
+  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -142,12 +176,44 @@ export const generateCreativeFlow = ai.defineFlow(
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
     if (offeringError || !offering) throw new Error('Offering not found.');
 
-    const promptPayload = { brandHeart, offering };
+    const promptPayload = { brandHeart, offering, creativePrompt };
     let output: GenerateCreativeOutput = {};
 
     const imageConfig: any = {};
     if (aspectRatio) {
         imageConfig.aspectRatio = aspectRatio;
+    }
+    
+    if (creativeTypes.includes('video')) {
+        const { text: videoGenPrompt } = await videoPrompt(promptPayload);
+        let { operation } = await ai.generate({
+            model: googleAI.model('veo-2.0-generate-001'),
+            prompt: videoGenPrompt,
+            config: {
+                durationSeconds: 5,
+                aspectRatio: aspectRatio,
+            },
+        });
+        
+        if (!operation) {
+            throw new Error('Expected the model to return an operation for video generation.');
+        }
+
+        while (!operation.done) {
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            operation = await ai.checkOperation(operation);
+        }
+
+        if (operation.error) {
+            throw new Error(`Failed to generate video: ${operation.error.message}`);
+        }
+
+        const video = operation.output?.message?.content.find(p => !!p.media);
+        if (!video || !video.media?.url) {
+            throw new Error('Failed to find the generated video in the operation result.');
+        }
+
+        output.videoUrl = await downloadVideo(video);
     }
 
     if (creativeTypes.includes('image')) {
@@ -179,14 +245,7 @@ export const generateCreativeFlow = ai.defineFlow(
             output.carouselSlides = await Promise.all(slidePromises);
         }
     }
-
-    if (creativeTypes.includes('video')) {
-        const { output: videoOutput } = await videoScriptPrompt(promptPayload);
-        if (videoOutput?.script) {
-            output.videoScript = videoOutput.script;
-        }
-    }
-
+    
     return output;
   }
 );
