@@ -142,7 +142,7 @@ const PostPreview = ({
 
     if (isStory) {
         return (
-            <div className={cn("relative w-full rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
+            <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
                  <div className="absolute inset-0 bg-black">
                     {renderVisualContent()}
                 </div>
