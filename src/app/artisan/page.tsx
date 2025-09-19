@@ -53,26 +53,32 @@ const dimensionMap = {
     '16:9': 'aspect-[16/9]',
 };
 
-// --- Standalone SocialPostPreview Component ---
-const StoryPreview = ({
+// --- Standalone PostPreview Component ---
+const PostPreview = ({
     profile,
+    dimension,
     isLoading,
-    creative,
     selectedCreativeType,
+    creative,
     editableContent,
+    secondaryLangName,
     handleContentChange,
     handleCarouselSlideChange,
 }: {
     profile: Profile,
+    dimension: keyof typeof dimensionMap,
     isLoading: boolean,
-    creative: GenerateCreativeOutput | null,
     selectedCreativeType: CreativeType,
+    creative: GenerateCreativeOutput | null,
     editableContent: GenerateContentOutput['content'] | null,
+    secondaryLangName: string | null,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+    const aspectRatioClass = dimensionMap[dimension];
+    const isStory = dimension === '9:16';
     const [api, setApi] = useState<CarouselApi>()
     const [current, setCurrent] = useState(0)
 
@@ -87,45 +93,61 @@ const StoryPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
 
-    return (
-        <div className="w-full max-w-sm mx-auto">
-             <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden shadow-lg bg-black text-white">
-                
-                {/* Background Image/Carousel */}
-                <div className="absolute inset-0">
-                    {isLoading ? (
-                        <Skeleton className="w-full h-full" />
-                    ) : (
-                        <>
-                           {selectedCreativeType === 'carousel' && creative?.carouselSlides ? (
-                                <Carousel setApi={setApi} className="w-full h-full">
-                                    <CarouselContent>
-                                        {creative.carouselSlides.map((slide, index) => (
-                                            <CarouselItem key={index}>
-                                                <div className="relative w-full h-full">
-                                                    {slide.imageUrl ? (
-                                                        <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                                                            <ImageIcon className="w-24 h-24 text-zinc-600" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CarouselItem>
-                                        ))}
-                                    </CarouselContent>
-                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
-                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
-                                </Carousel>
-                           ) : creative?.imageUrl ? (
-                                <Image src={creative.imageUrl} alt="Story preview" fill className="object-cover" />
-                           ) : (
-                                <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                                    <ImageIcon className="w-24 h-24 text-zinc-600" />
+
+    const renderVisualContent = () => {
+        if (isLoading) {
+            return <Skeleton className="w-full h-full" />;
+        }
+        if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
+            return (
+                <Carousel setApi={setApi} className="w-full h-full">
+                    <CarouselContent>
+                        {creative.carouselSlides.map((slide, index) => (
+                            <CarouselItem key={index}>
+                                <div className="relative w-full h-full">
+                                    {slide.imageUrl ? (
+                                        <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                            <ImageIcon className="w-24 h-24 text-zinc-600" />
+                                        </div>
+                                    )}
                                 </div>
-                           )}
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    {creative.carouselSlides.length > 1 && (
+                        <>
+                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
+                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
                         </>
                     )}
+                </Carousel>
+            );
+        }
+        if (creative?.imageUrl) {
+            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
+        }
+        if (selectedCreativeType === 'video' && creative?.videoScript) {
+            return (
+                <div className="p-4 text-sm text-muted-foreground bg-secondary h-full flex flex-col justify-center">
+                    <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
+                    <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
+                </div>
+            );
+        }
+        return (
+            <div className="w-full h-full bg-secondary flex items-center justify-center">
+                <ImageIcon className="w-16 h-16 text-muted-foreground" />
+            </div>
+        );
+    };
+
+    if (isStory) {
+        return (
+            <div className={cn("relative w-full rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
+                <div className="absolute inset-0 bg-black text-white">
+                    {renderVisualContent()}
                 </div>
 
                 {/* Content Overlay */}
@@ -179,50 +201,11 @@ const StoryPreview = ({
                     </div>
                 </div>
             </div>
-        </div>
-    )
-}
-const SocialPostPreview = ({
-    profile,
-    dimension,
-    isLoading,
-    selectedCreativeType,
-    creative,
-    editableContent,
-    secondaryLangName,
-    handleContentChange,
-    handleCarouselSlideChange,
-}: {
-    profile: Profile,
-    dimension: keyof typeof dimensionMap,
-    isLoading: boolean,
-    selectedCreativeType: CreativeType,
-    creative: GenerateCreativeOutput | null,
-    editableContent: GenerateContentOutput['content'] | null,
-    secondaryLangName: string | null,
-    handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
-    handleCarouselSlideChange: (index: number, newText: string) => void,
-}) => {
-    const postUser = profile?.full_name || 'Your Brand';
-    const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
-    const aspectRatioClass = dimensionMap[dimension];
-
-    if (dimension === '9:16') {
-        return (
-            <StoryPreview
-                profile={profile}
-                isLoading={isLoading}
-                selectedCreativeType={selectedCreativeType}
-                creative={creative}
-                editableContent={editableContent}
-                handleContentChange={handleContentChange}
-                handleCarouselSlideChange={handleCarouselSlideChange}
-            />
-        )
+        );
     }
 
     return (
-        <Card className="w-full mx-auto">
+        <Card className="w-full">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 <Avatar>
                     <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
@@ -234,48 +217,9 @@ const SocialPostPreview = ({
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                {isLoading ? (
-                    <Skeleton className={cn("w-full", aspectRatioClass)} />
-                ) : (
-                    <>
-                        {selectedCreativeType === 'image' && creative?.imageUrl && (
-                            <div className={cn("relative w-full", aspectRatioClass)}>
-                                <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
-                            </div>
-                        )}
-                        {selectedCreativeType === 'carousel' && creative?.carouselSlides && (
-                            <Carousel>
-                                <CarouselContent>
-                                    {creative.carouselSlides.map((slide, index) => (
-                                        <CarouselItem key={index}>
-                                            <div className={cn("relative w-full", aspectRatioClass)}>
-                                                {slide.imageUrl ? (
-                                                    <Image src={slide.imageUrl} alt={slide.title} fill className="object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                                        <ImageIcon className="w-16 h-16 text-muted-foreground" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </CarouselItem>
-                                    ))}
-                                </CarouselContent>
-                                {creative.carouselSlides.length > 1 && (
-                                    <>
-                                    <CarouselPrevious className="left-2" />
-                                    <CarouselNext className="right-2" />
-                                    </>
-                                )}
-                            </Carousel>
-                        )}
-                        {selectedCreativeType === 'video' && creative?.videoScript && (
-                            <div className={cn("p-4 text-sm text-muted-foreground bg-secondary flex flex-col justify-center", aspectRatioClass)}>
-                                <h4 className="font-semibold text-foreground mb-2">Video Script:</h4>
-                                <p className="whitespace-pre-wrap flex-1 overflow-y-auto">{creative.videoScript}</p>
-                            </div>
-                        )}
-                    </>
-                )}
+                <div className={cn("relative w-full", aspectRatioClass)}>
+                    {renderVisualContent()}
+                </div>
             </CardContent>
             <CardFooter className="flex flex-col items-start gap-2 pt-2">
                 <div className="flex justify-between w-full">
@@ -628,18 +572,20 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main>
-                         <SocialPostPreview
-                            profile={profile}
-                            dimension={dimension}
-                            isLoading={isLoading}
-                            selectedCreativeType={selectedCreativeType}
-                            creative={creative}
-                            editableContent={editableContent}
-                            secondaryLangName={secondaryLangName}
-                            handleContentChange={handleContentChange}
-                            handleCarouselSlideChange={handleCarouselSlideChange}
-                        />
+                    <main className="flex justify-center items-start">
+                         <div className="w-full">
+                           <PostPreview
+                                profile={profile}
+                                dimension={dimension}
+                                isLoading={isLoading}
+                                selectedCreativeType={selectedCreativeType}
+                                creative={creative}
+                                editableContent={editableContent}
+                                secondaryLangName={secondaryLangName}
+                                handleContentChange={handleContentChange}
+                                handleCarouselSlideChange={handleCarouselSlideChange}
+                            />
+                         </div>
                     </main>
                 </div>
             </div>
