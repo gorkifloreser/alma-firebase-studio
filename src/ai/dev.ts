@@ -6,3 +6,4 @@ import './flows/generate-content-flow';
 import './flows/generate-creative-flow';
 import './flows/generate-funnel-flow';
 import './flows/generate-media-plan-flow';
+import './flows/generate-landing-page-flow';

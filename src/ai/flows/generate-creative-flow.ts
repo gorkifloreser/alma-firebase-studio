@@ -12,12 +12,13 @@ import { googleAI } from '@genkit-ai/googleai';
 import * as fs from 'fs';
 import { Readable } from 'stream';
 import type { MediaPart } from 'genkit';
+import { generateLandingPage } from './generate-landing-page-flow';
 
 
 // Define schemas
 const GenerateCreativeInputSchema = z.object({
   offeringId: z.string(),
-  creativeTypes: z.array(z.enum(['image', 'carousel', 'video'])),
+  creativeTypes: z.array(z.enum(['image', 'carousel', 'video', 'landing_page'])),
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
 });
@@ -35,6 +36,7 @@ const GenerateCreativeOutputSchema = z.object({
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
   videoUrl: z.string().optional().describe('The data URI of the generated video.'),
+  landingPageHtml: z.string().optional().describe('The generated HTML content for the landing page.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
 
@@ -182,6 +184,11 @@ export const generateCreativeFlow = ai.defineFlow(
     const imageConfig: any = {};
     if (aspectRatio) {
         imageConfig.aspectRatio = aspectRatio;
+    }
+
+    if (creativeTypes.includes('landing_page')) {
+        const { htmlContent } = await generateLandingPage({ offeringId, creativePrompt: creativePrompt || 'Generate a beautiful landing page for this offering.' });
+        output.landingPageHtml = htmlContent;
     }
     
     if (creativeTypes.includes('video')) {

@@ -14,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -37,12 +37,13 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-type CreativeType = 'image' | 'carousel' | 'video';
+type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page';
 
 const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
     { id: 'image', label: 'Single Image', icon: ImageIcon },
     { id: 'carousel', label: 'Carousel', icon: Layers },
     { id: 'video', label: 'Video', icon: Video },
+    { id: 'landing_page', label: 'Landing Page', icon: Globe },
 ];
 
 const dimensionMap = {
@@ -113,6 +114,13 @@ const PostPreview = ({
         if (isLoading) {
             return <Skeleton className="w-full h-full" />;
         }
+
+        if (selectedCreativeType === 'landing_page') {
+            return (
+                <LandingPagePreview htmlContent={creative?.landingPageHtml} />
+            )
+        }
+
         if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
             return (
                 <Carousel setApi={setApi} className="w-full h-full">
@@ -169,7 +177,14 @@ const PostPreview = ({
         );
     };
 
-    if (isStory) {
+    if (isStory || selectedCreativeType === 'landing_page') {
+        if (selectedCreativeType === 'landing_page') {
+            return (
+                <div className="w-full max-w-md mx-auto">
+                    {renderVisualContent()}
+                </div>
+            )
+        }
         return (
             <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
                  <div className="absolute inset-0 bg-black">
@@ -295,6 +310,50 @@ const PostPreview = ({
     );
 }
 
+const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) => {
+    return (
+        <div className="w-full aspect-[9/16] bg-white rounded-[40px] shadow-2xl overflow-hidden border-[8px] border-black box-content">
+            <div className="h-full w-full">
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-black rounded-b-xl z-20"></div>
+                
+                {/* Header */}
+                <div className="absolute top-0 left-0 right-0 h-24 bg-gray-100 dark:bg-gray-800 z-10 p-2 flex flex-col justify-end">
+                    <div className="flex justify-between items-center text-xs text-gray-700 dark:text-gray-300 px-2 pb-1">
+                        <span className="font-bold">9:41</span>
+                        <div className="flex items-center gap-1">
+                           <Wifi size={14} />
+                           <Battery size={14} />
+                        </div>
+                    </div>
+                    <div className="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center px-2 text-xs text-gray-500 dark:text-gray-400 gap-2">
+                       <ArrowLeft size={14} />
+                       <ArrowRight size={14} className="opacity-50" />
+                       <div className="flex-1 text-center bg-gray-300/50 dark:bg-gray-600/50 rounded-md p-1 truncate">alma-ai.app</div>
+                       <Share size={14} />
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="absolute top-24 bottom-0 left-0 right-0">
+                    {htmlContent ? (
+                         <iframe
+                            srcDoc={htmlContent}
+                            title="Landing Page Preview"
+                            className="w-full h-full border-0"
+                            sandbox="allow-scripts" // Be careful with this in production
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+                            <Globe className="w-20 h-20 text-gray-300" />
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
@@ -335,6 +394,7 @@ export default function ArtisanPage() {
             if (format.includes('video')) setSelectedCreativeType('video');
             else if (format.includes('carousel')) setSelectedCreativeType('carousel');
             else if (format.includes('image')) setSelectedCreativeType('image');
+            else if (format.includes('landing')) setSelectedCreativeType('landing_page');
             else setSelectedCreativeType('image');
         } else {
              setCreativePrompt('');
@@ -378,6 +438,9 @@ export default function ArtisanPage() {
                 description: 'Video generation is only supported in 9:16 and 16:9. Your selection has been updated.',
             });
         }
+         if (selectedCreativeType === 'landing_page') {
+            setDimension('9:16');
+        }
     }, [selectedCreativeType, dimension, toast]);
 
     const handleGenerate = async () => {
@@ -394,9 +457,9 @@ export default function ArtisanPage() {
 
             const promises = [];
             
-            const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel');
+            const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel') || creativeTypes.includes('landing_page');
             if (visualBasedSelected) {
-                const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video')[];
+                const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video' | 'landing_page')[];
                 if (creativeTypesForFlow.length > 0) {
                     const creativePromise = generateCreativeForOffering({
                         offeringId: selectedOfferingId,
@@ -411,7 +474,7 @@ export default function ArtisanPage() {
             const results = await Promise.all(promises);
 
             if (visualBasedSelected) {
-                const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoUrl' in r || 'carouselSlides' in r)) as GenerateCreativeOutput | undefined;
+                const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoUrl' in r || 'carouselSlides' in r || 'landingPageHtml' in r)) as GenerateCreativeOutput | undefined;
                 if (creativeResult) setCreative(creativeResult);
             }
 
@@ -465,6 +528,7 @@ export default function ArtisanPage() {
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
                     videoUrl: creative?.videoUrl || null,
+                    landingPageHtml: creative?.landingPageHtml || null,
                     status: 'approved',
                     sourcePlan: currentQueueItem?.source_plan_item || null,
                 });
@@ -591,8 +655,8 @@ export default function ArtisanPage() {
                                             <SelectValue placeholder="Select dimensions..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
-                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
+                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video' || selectedCreativeType === 'landing_page'}>Square (1:1)</SelectItem>
+                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video' || selectedCreativeType === 'landing_page'}>Portrait (4:5)</SelectItem>
                                             <SelectItem value="9:16">Story (9:16)</SelectItem>
                                             <SelectItem value="16:9">Landscape (16:9)</SelectItem>
                                         </SelectContent>
@@ -609,19 +673,21 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <main className="flex items-center justify-center">
-                        <PostPreview
-                            profile={profile}
-                            dimension={dimension}
-                            isLoading={isLoading}
-                            selectedCreativeType={selectedCreativeType}
-                            creative={creative}
-                            editableContent={editableContent}
-                            secondaryLangName={secondaryLangName}
-                            handleContentChange={handleContentChange}
-                            handleCarouselSlideChange={handleCarouselSlideChange}
-                        />
-                    </main>
+                    <div className="flex items-center justify-center">
+                        <div className="w-full max-w-full">
+                            <PostPreview
+                                profile={profile}
+                                dimension={dimension}
+                                isLoading={isLoading}
+                                selectedCreativeType={selectedCreativeType}
+                                creative={creative}
+                                editableContent={editableContent}
+                                secondaryLangName={secondaryLangName}
+                                handleContentChange={handleContentChange}
+                                handleCarouselSlideChange={handleCarouselSlideChange}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </DashboardLayout>

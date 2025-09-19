@@ -80,6 +80,7 @@ type SaveContentInput = {
     imageUrl: string | null;
     carouselSlides: CarouselSlide[] | null;
     videoUrl: string | null;
+    landingPageHtml: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     sourcePlan?: {
         channel: string;
@@ -101,7 +102,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, status, sourcePlan, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, sourcePlan, mediaPlanItemId } = input;
 
     const payload: any = {
         user_id: user.id,
@@ -110,6 +111,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         image_url: imageUrl,
         carousel_slides: carouselSlides,
         video_url: videoUrl,
+        landing_page_html: landingPageHtml,
         status: status,
         source_plan: sourcePlan,
     };
