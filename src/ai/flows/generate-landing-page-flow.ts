@@ -58,7 +58,7 @@ Generate a complete, self-contained HTML file for a landing page. The landing pa
 **Requirements for the HTML:**
 1.  **Single File:** The entire output must be a single HTML file.
 2.  **Tailwind CSS:** Use Tailwind CSS utility classes for ALL styling. You can assume Tailwind is available. Use classes for layout (flexbox, grid), spacing (p-*, m-*), typography (text-*, font-*), colors, etc.
-3.  **Responsive Design:** The layout must be mobile-first and fully responsive.
+3.  **Responsive Design:** The layout must be **mobile-first** and **fully responsive**. Use Tailwind's responsive prefixes (e.g., \`md:\`, \`lg:\`) to create a great experience on both mobile and desktop screens.
 4.  **Structure:** Include at least these sections:
     *   A compelling hero section with a strong headline and a call-to-action (CTA).
     *   A features or benefits section.
