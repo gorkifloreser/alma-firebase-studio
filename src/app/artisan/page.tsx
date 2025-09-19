@@ -114,13 +114,6 @@ const PostPreview = ({
         if (isLoading) {
             return <Skeleton className="w-full h-full" />;
         }
-
-        if (selectedCreativeType === 'landing_page') {
-            return (
-                <LandingPagePreview htmlContent={creative?.landingPageHtml} />
-            )
-        }
-
         if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
             return (
                 <Carousel setApi={setApi} className="w-full h-full">
@@ -176,23 +169,21 @@ const PostPreview = ({
             </div>
         );
     };
+    
+    if (selectedCreativeType === 'landing_page') {
+        return <LandingPagePreview htmlContent={creative?.landingPageHtml} />;
+    }
 
-    if (isStory || selectedCreativeType === 'landing_page') {
-        if (selectedCreativeType === 'landing_page') {
-            return (
-                <div className="w-full max-w-md mx-auto">
-                    {renderVisualContent()}
-                </div>
-            )
-        }
+
+    if (isStory) {
         return (
-            <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
+            <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
                  <div className="absolute inset-0 bg-black">
                     {renderVisualContent()}
                 </div>
                 
                 {/* Content Overlay */}
-                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none text-white">
+                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
                     {/* Header */}
                     <div className="flex-shrink-0">
                          <div className="flex items-center gap-1 mb-2">
@@ -202,7 +193,7 @@ const PostPreview = ({
                                 </div>
                              ))}
                         </div>
-                        <div className="flex items-center gap-2 text-white">
+                        <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
                                 <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
@@ -231,7 +222,7 @@ const PostPreview = ({
                     </div>
                     
                     {/* Footer */}
-                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto text-white">
+                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto">
                         <input
                             type="text"
                             placeholder="Send message"
@@ -312,8 +303,8 @@ const PostPreview = ({
 
 const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) => {
     return (
-        <div className="w-full aspect-[9/16] bg-white rounded-[40px] shadow-2xl overflow-hidden border-[8px] border-black box-content">
-            <div className="h-full w-full">
+        <div className="w-full max-w-md mx-auto aspect-[9/16] bg-white rounded-[40px] shadow-2xl overflow-hidden border-[8px] border-black box-content">
+            <div className="h-full w-full relative">
                 {/* Notch */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-black rounded-b-xl z-20"></div>
                 
@@ -673,9 +664,9 @@ export default function ArtisanPage() {
                             </CardFooter>
                         </Card>
                     </aside>
-                    <div className="flex items-center justify-center">
-                        <div className="w-full max-w-full">
-                            <PostPreview
+                    <main className="flex items-center justify-center">
+                        <div className="w-full">
+                             <PostPreview
                                 profile={profile}
                                 dimension={dimension}
                                 isLoading={isLoading}
@@ -687,7 +678,7 @@ export default function ArtisanPage() {
                                 handleCarouselSlideChange={handleCarouselSlideChange}
                             />
                         </div>
-                    </div>
+                    </main>
                 </div>
             </div>
         </DashboardLayout>
