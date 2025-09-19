@@ -13,7 +13,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, Moon, Sun } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -383,13 +383,11 @@ const CodeEditor = ({
     code,
     setCode,
     theme,
-    onThemeToggle,
     onClose
 }: {
     code: string,
     setCode: (code: string) => void,
     theme: 'light' | 'dark',
-    onThemeToggle: () => void,
     onClose: () => void
 }) => {
     const { toast } = useToast();
@@ -407,9 +405,6 @@ const CodeEditor = ({
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className={cn(theme === 'dark' ? 'text-zinc-200' : 'text-zinc-800')}>Live Code Editor</CardTitle>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={onThemeToggle} className={cn(theme === 'dark' ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black')}>
-                        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    </Button>
                     <Button variant="ghost" size="icon" onClick={handleCopy} className={cn(theme === 'dark' ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black')}>
                         <Copy className="h-5 w-5" />
                     </Button>
@@ -457,7 +452,7 @@ export default function ArtisanPage() {
 
     const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
     const [activeAccordion, setActiveAccordion] = useState<string[]>(['creative-controls']);
-    const [editorTheme, setEditorTheme] = useState<'light' | 'dark'>('dark');
+    const [globalTheme, setGlobalTheme] = useState<'light' | 'dark'>('light');
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
@@ -517,6 +512,11 @@ export default function ArtisanPage() {
             }
         }
         fetchData();
+        
+        // Sync with global theme
+        const currentTheme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+        setGlobalTheme(currentTheme);
+
     }, [toast, handleQueueItemSelect]);
 
     useEffect(() => {
@@ -546,7 +546,7 @@ export default function ArtisanPage() {
         setIsCodeEditorOpen(newState);
     };
 
-    useEffect(() => {
+     useEffect(() => {
         if (isCodeEditorOpen) {
             setActiveAccordion(prev => [...new Set([...prev, 'code-editor'])]);
         } else {
@@ -804,8 +804,7 @@ export default function ArtisanPage() {
                                     <CodeEditor
                                         code={editableHtml || ''}
                                         setCode={setEditableHtml}
-                                        theme={editorTheme}
-                                        onThemeToggle={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')}
+                                        theme={globalTheme}
                                         onClose={() => handleCodeEditorToggle(false)}
                                     />
                                 </AccordionItem>
@@ -836,6 +835,8 @@ export default function ArtisanPage() {
     );
 }
 
+
+    
 
     
 
