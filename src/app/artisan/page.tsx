@@ -13,7 +13,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, Moon, Sun } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -28,6 +28,8 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus, vs as vsLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 
 type Profile = {
@@ -66,7 +68,6 @@ const PostPreview = ({
     onCodeEditorToggle,
     handleContentChange,
     handleCarouselSlideChange,
-    handleLandingPageHtmlChange,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -79,7 +80,6 @@ const PostPreview = ({
     onCodeEditorToggle: () => void,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
-    handleLandingPageHtmlChange: (html: string) => void,
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -323,8 +323,8 @@ const LandingPagePreview = ({ htmlContent, onCodeEditorToggle, isCodeEditorOpen 
     const goForward = () => iframeRef.current?.contentWindow?.history.forward();
     
     const openInNewTab = () => {
-        if (iframeRef.current?.srcdoc) {
-            const blob = new Blob([iframeRef.current.srcdoc], { type: 'text/html' });
+        if (htmlContent) {
+            const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
             URL.revokeObjectURL(url);
@@ -381,6 +381,76 @@ const LandingPagePreview = ({ htmlContent, onCodeEditorToggle, isCodeEditorOpen 
     );
 };
 
+const CodeEditor = ({
+    code,
+    setCode,
+    theme,
+    onThemeToggle,
+    language = 'html'
+}: {
+    code: string,
+    setCode: (code: string) => void,
+    theme: 'light' | 'dark',
+    onThemeToggle: () => void,
+    language?: string
+}) => {
+    const { toast } = useToast();
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code);
+        toast({
+            title: 'Copied!',
+            description: 'The code has been copied to your clipboard.',
+        });
+    };
+
+    const syntaxTheme = theme === 'dark' ? vscDarkPlus : vsLight;
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Live Code Editor</CardTitle>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={onThemeToggle}>
+                        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleCopy}>
+                        <Copy className="h-5 w-5" />
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="p-0 relative">
+                <SyntaxHighlighter
+                    language={language}
+                    style={syntaxTheme}
+                    showLineNumbers
+                    wrapLines={true}
+                    customStyle={{
+                        margin: 0,
+                        borderRadius: '0 0 var(--radius) var(--radius)',
+                        height: '400px',
+                    }}
+                    codeTagProps={{
+                         style: {
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.875rem'
+                        }
+                    }}
+                >
+                    {code}
+                </SyntaxHighlighter>
+                 <Textarea
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="absolute inset-0 w-full h-full border-none rounded-b-lg resize-y bg-transparent text-transparent caret-white p-4 font-mono text-sm leading-relaxed"
+                    placeholder="HTML code..."
+                    style={{fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: '1.5rem'}}
+                />
+            </CardContent>
+        </Card>
+    )
+};
+
 
 export default function ArtisanPage() {
     const [profile, setProfile] = useState<Profile>(null);
@@ -390,6 +460,7 @@ export default function ArtisanPage() {
 
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
+    const [editableHtml, setEditableHtml] = useState<string | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
     const [dimension, setDimension] = useState<keyof typeof dimensionMap>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
@@ -401,6 +472,8 @@ export default function ArtisanPage() {
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
 
     const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+    const [activeAccordion, setActiveAccordion] = useState<string[]>(['creative-controls']);
+    const [editorTheme, setEditorTheme] = useState<'light' | 'dark'>('dark');
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
@@ -410,6 +483,7 @@ export default function ArtisanPage() {
             setCreativePrompt('');
             setEditableContent(null);
             setCreative(null);
+            setEditableHtml(null);
             setSelectedOfferingId(null);
             return;
         }
@@ -431,6 +505,7 @@ export default function ArtisanPage() {
              setEditableContent(null);
         }
         setCreative(null);
+        setEditableHtml(null);
     }, []);
 
     useEffect(() => {
@@ -470,9 +545,28 @@ export default function ArtisanPage() {
         }
          if (selectedCreativeType === 'landing_page') {
             setDimension('9:16');
-            setIsCodeEditorOpen(false);
+            handleCodeEditorToggle(false);
         }
     }, [selectedCreativeType, dimension, toast]);
+
+    useEffect(() => {
+        // When creative content (especially landing page HTML) is generated,
+        // update the editableHtml state as well.
+        if (creative?.landingPageHtml) {
+            setEditableHtml(creative.landingPageHtml);
+        }
+    }, [creative?.landingPageHtml]);
+    
+    const handleCodeEditorToggle = (forceState?: boolean) => {
+        const newState = forceState ?? !isCodeEditorOpen;
+        setIsCodeEditorOpen(newState);
+        if (newState) {
+            setActiveAccordion(prev => [...new Set([...prev, 'code-editor'])]);
+        } else {
+            setActiveAccordion(prev => prev.filter(item => item !== 'code-editor'));
+        }
+    };
+
 
     const handleGenerate = async () => {
         if (!selectedOfferingId) {
@@ -482,6 +576,7 @@ export default function ArtisanPage() {
 
         setIsLoading(true);
         setCreative(null);
+        setEditableHtml(null);
 
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
@@ -506,7 +601,12 @@ export default function ArtisanPage() {
 
             if (visualBasedSelected) {
                 const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoUrl' in r || 'carouselSlides' in r || 'landingPageHtml' in r)) as GenerateCreativeOutput | undefined;
-                if (creativeResult) setCreative(creativeResult);
+                if (creativeResult) {
+                    setCreative(creativeResult);
+                    if (creativeResult.landingPageHtml) {
+                        setEditableHtml(creativeResult.landingPageHtml);
+                    }
+                }
             }
 
             toast({
@@ -540,19 +640,12 @@ export default function ArtisanPage() {
         });
     };
 
-    const handleLandingPageHtmlChange = (html: string) => {
-        setCreative(prev => {
-            if (!prev) return { ...prev, landingPageHtml: html };
-            return { ...prev, landingPageHtml: html };
-        });
-    };
-
     const handleApprove = () => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
         }
-        if (!editableContent && !creative) {
+        if (!editableContent && !creative && !editableHtml) {
             toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
             return;
         }
@@ -566,7 +659,7 @@ export default function ArtisanPage() {
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
                     videoUrl: creative?.videoUrl || null,
-                    landingPageHtml: creative?.landingPageHtml || null,
+                    landingPageHtml: editableHtml,
                     status: 'approved',
                     sourcePlan: currentQueueItem?.source_plan_item || null,
                 });
@@ -614,8 +707,8 @@ export default function ArtisanPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
-                        <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
-                            <AccordionItem value="item-1" className="border-none">
+                        <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
+                            <AccordionItem value="creative-controls" className="border-none">
                                 <Card>
                                     <AccordionTrigger className="p-6">
                                          <CardHeader className="p-0">
@@ -719,23 +812,17 @@ export default function ArtisanPage() {
                                     </AccordionContent>
                                 </Card>
                             </AccordionItem>
-                        </Accordion>
-                        
-                         {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
-                            <Card className="mt-8">
-                                <CardHeader>
-                                    <CardTitle>Live Code Editor</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Textarea
-                                        value={creative?.landingPageHtml || ''}
-                                        onChange={(e) => handleLandingPageHtmlChange(e.target.value)}
-                                        className="w-full h-96 border rounded-md resize-y bg-zinc-900 text-white font-mono text-xs p-4"
-                                        placeholder="HTML code..."
+                             {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
+                                <AccordionItem value="code-editor" className="border-none">
+                                    <CodeEditor
+                                        code={editableHtml || ''}
+                                        setCode={setEditableHtml}
+                                        theme={editorTheme}
+                                        onThemeToggle={() => setEditorTheme(editorTheme === 'dark' ? 'light' : 'dark')}
                                     />
-                                </CardContent>
-                            </Card>
-                        )}
+                                </AccordionItem>
+                            )}
+                        </Accordion>
                     </aside>
                      <main className="sticky top-24">
                         <PostPreview
@@ -743,14 +830,16 @@ export default function ArtisanPage() {
                             dimension={dimension}
                             isLoading={isLoading}
                             selectedCreativeType={selectedCreativeType}
-                            creative={creative}
+                            creative={{
+                                ...creative,
+                                landingPageHtml: editableHtml ?? creative?.landingPageHtml
+                            }}
                             editableContent={editableContent}
                             secondaryLangName={secondaryLangName}
                             isCodeEditorOpen={isCodeEditorOpen}
-                            onCodeEditorToggle={() => setIsCodeEditorOpen(prev => !prev)}
+                            onCodeEditorToggle={handleCodeEditorToggle}
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
-                            handleLandingPageHtmlChange={handleLandingPageHtmlChange}
                         />
                     </main>
                 </div>
@@ -758,6 +847,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-    
-    
