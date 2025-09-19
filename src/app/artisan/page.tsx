@@ -28,8 +28,6 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs as vsLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 
 type Profile = {
@@ -386,15 +384,13 @@ const CodeEditor = ({
     setCode,
     theme,
     onThemeToggle,
-    onClose,
-    language = 'html'
+    onClose
 }: {
     code: string,
     setCode: (code: string) => void,
     theme: 'light' | 'dark',
     onThemeToggle: () => void,
-    onClose: () => void,
-    language?: string
+    onClose: () => void
 }) => {
     const { toast } = useToast();
 
@@ -406,50 +402,33 @@ const CodeEditor = ({
         });
     };
 
-    const syntaxTheme = theme === 'dark' ? vscDarkPlus : vsLight;
-
     return (
-        <Card>
+        <Card className={cn(theme === 'dark' ? 'bg-zinc-900 border-zinc-700' : 'bg-white')}>
             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Live Code Editor</CardTitle>
+                <CardTitle className={cn(theme === 'dark' ? 'text-zinc-200' : 'text-zinc-800')}>Live Code Editor</CardTitle>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={onThemeToggle}>
+                    <Button variant="ghost" size="icon" onClick={onThemeToggle} className={cn(theme === 'dark' ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black')}>
                         {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleCopy}>
+                    <Button variant="ghost" size="icon" onClick={handleCopy} className={cn(theme === 'dark' ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black')}>
                         <Copy className="h-5 w-5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={onClose}>
+                    <Button variant="ghost" size="icon" onClick={onClose} className={cn(theme === 'dark' ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-black')}>
                         <X className="h-5 w-5" />
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 relative h-[400px] overflow-y-auto">
-                <SyntaxHighlighter
-                    language={language}
-                    style={syntaxTheme}
-                    showLineNumbers
-                    wrapLines={true}
-                    customStyle={{
-                        margin: 0,
-                        height: '100%',
-                        borderRadius: '0 0 var(--radius) var(--radius)',
-                    }}
-                    codeTagProps={{
-                         style: {
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.875rem'
-                        }
-                    }}
-                >
-                    {code}
-                </SyntaxHighlighter>
+            <CardContent>
                  <Textarea
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
-                    className="absolute inset-0 w-full h-full border-none rounded-b-lg resize-y bg-transparent text-transparent caret-white p-4 font-mono text-sm leading-relaxed"
+                    className={cn(
+                        'w-full h-[400px] border rounded-md resize-y p-4 font-mono text-sm leading-relaxed',
+                        theme === 'dark' 
+                            ? 'bg-zinc-800 text-zinc-100 border-zinc-700 focus-visible:ring-primary' 
+                            : 'bg-gray-50 text-gray-900 border-gray-300 focus-visible:ring-primary'
+                    )}
                     placeholder="HTML code..."
-                    style={{fontFamily: 'var(--font-mono)', fontSize: '0.875rem', lineHeight: '1.5rem'}}
                 />
             </CardContent>
         </Card>
@@ -857,5 +836,7 @@ export default function ArtisanPage() {
     );
 }
 
+
+    
 
     
