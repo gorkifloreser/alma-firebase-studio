@@ -103,20 +103,18 @@ const PostPreview = ({
                 <Carousel setApi={setApi} className="w-full h-full">
                     <CarouselContent>
                         {creative.carouselSlides.map((slide, index) => (
-                            <CarouselItem key={index}>
-                                <div className="relative w-full h-full">
-                                    {slide.imageUrl ? (
-                                        <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                                            <ImageIcon className="w-24 h-24 text-zinc-600" />
-                                        </div>
-                                    )}
-                                </div>
+                            <CarouselItem key={index} className={cn("relative", aspectRatioClass)}>
+                                {slide.imageUrl ? (
+                                    <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                        <ImageIcon className="w-24 h-24 text-zinc-600" />
+                                    </div>
+                                )}
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    {creative.carouselSlides.length > 1 && (
+                    {isStory && creative.carouselSlides.length > 1 && (
                         <>
                             <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
                             <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
@@ -146,18 +144,18 @@ const PostPreview = ({
     if (isStory) {
         return (
             <div className={cn("relative w-full rounded-2xl overflow-hidden shadow-lg", aspectRatioClass)}>
-                <div className="absolute inset-0 bg-black text-white">
+                 <div className="absolute inset-0 bg-black text-white">
                     {renderVisualContent()}
                 </div>
-
+                
                 {/* Content Overlay */}
-                <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/50 via-transparent to-black/50">
+                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
                     {/* Header */}
                     <div className="flex-shrink-0">
                          <div className="flex items-center gap-1 mb-2">
                              {[...Array(progressCount)].map((_, i) => (
                                  <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full">
-                                    <div className={cn("h-full rounded-full transition-all duration-500", i === current ? "bg-white w-full" : "bg-transparent w-0")}></div>
+                                    <div className={cn("h-full rounded-full bg-white transition-all duration-500", i === current ? "w-full" : "w-0")}></div>
                                 </div>
                              ))}
                         </div>
@@ -168,8 +166,8 @@ const PostPreview = ({
                             </Avatar>
                             <span className="text-xs font-bold">{postUserHandle}</span>
                             <span className="text-xs text-white/70">1h</span>
-                             <MoreHorizontal className="ml-auto h-5 w-5" />
-                            <X className="h-5 w-5" />
+                             <MoreHorizontal className="ml-auto h-5 w-5 pointer-events-auto cursor-pointer" />
+                            <X className="h-5 w-5 pointer-events-auto cursor-pointer" />
                         </div>
                     </div>
                     
@@ -184,13 +182,13 @@ const PostPreview = ({
                                     handleContentChange('primary', e.target.value)
                                 }
                             }}
-                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]"
+                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
                             placeholder="Your story text..."
                         />
                     </div>
                     
                     {/* Footer */}
-                     <div className="flex-shrink-0 flex items-center gap-2">
+                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto">
                         <input
                             type="text"
                             placeholder="Send message"
