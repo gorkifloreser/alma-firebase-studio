@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
@@ -64,6 +63,8 @@ const PostPreview = ({
     creative,
     editableContent,
     secondaryLangName,
+    isCodeEditorOpen,
+    onCodeEditorToggle,
     handleContentChange,
     handleCarouselSlideChange,
     handleLandingPageHtmlChange,
@@ -75,6 +76,8 @@ const PostPreview = ({
     creative: GenerateCreativeOutput | null,
     editableContent: GenerateContentOutput['content'] | null,
     secondaryLangName: string | null,
+    isCodeEditorOpen: boolean,
+    onCodeEditorToggle: () => void,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
     handleLandingPageHtmlChange: (html: string) => void,
@@ -176,10 +179,11 @@ const PostPreview = ({
     
     if (selectedCreativeType === 'landing_page') {
         return (
-            <div className="w-full max-w-md mx-auto">
+             <div className="w-full max-w-md mx-auto">
                  <LandingPagePreview
                     htmlContent={creative?.landingPageHtml}
-                    onHtmlChange={handleLandingPageHtmlChange}
+                    onCodeEditorToggle={onCodeEditorToggle}
+                    isCodeEditorOpen={isCodeEditorOpen}
                 />
             </div>
         );
@@ -312,34 +316,24 @@ const PostPreview = ({
     );
 }
 
-const LandingPagePreview = ({ htmlContent, onHtmlChange }: { htmlContent?: string | null, onHtmlChange: (html: string) => void }) => {
+const LandingPagePreview = ({ htmlContent, onCodeEditorToggle, isCodeEditorOpen }: { htmlContent?: string | null, onCodeEditorToggle: () => void, isCodeEditorOpen: boolean }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [isSelectMode, setIsSelectMode] = useState(false);
-    const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
-    const [editableHtml, setEditableHtml] = useState(htmlContent || '');
-
-    useEffect(() => {
-        setEditableHtml(htmlContent || '');
-    }, [htmlContent]);
 
     const goBack = () => iframeRef.current?.contentWindow?.history.back();
     const goForward = () => iframeRef.current?.contentWindow?.history.forward();
     
     const openInNewTab = () => {
         if (iframeRef.current?.srcdoc) {
-            const newWindow = window.open();
-            newWindow?.document.write(iframeRef.current.srcdoc);
-            newWindow?.document.close();
+            const blob = new Blob([iframeRef.current.srcdoc], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            URL.revokeObjectURL(url);
         }
     };
-    
-    const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setEditableHtml(e.target.value);
-        onHtmlChange(e.target.value);
-    }
 
     return (
-        <div className="w-full bg-background shadow-2xl overflow-hidden border border-border rounded-2xl flex flex-col">
+        <div className="w-full bg-zinc-900 shadow-2xl overflow-hidden border border-zinc-700 rounded-2xl flex flex-col">
             {/* Header */}
             <div className="flex-shrink-0 bg-zinc-800 p-2">
                 <div className="w-full h-8 bg-zinc-700 rounded-md flex items-center px-2 text-sm text-zinc-400 gap-2">
@@ -356,7 +350,7 @@ const LandingPagePreview = ({ htmlContent, onHtmlChange }: { htmlContent?: strin
                         <MousePointerClick size={16} />
                     </button>
                     <button
-                        onClick={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
+                        onClick={onCodeEditorToggle}
                         className={cn("hover:text-white", isCodeEditorOpen && "text-blue-400")}
                         title="Edit Code"
                     >
@@ -384,18 +378,6 @@ const LandingPagePreview = ({ htmlContent, onHtmlChange }: { htmlContent?: strin
                     </div>
                 )}
             </div>
-
-            {isCodeEditorOpen && (
-                 <div className="relative h-64 bg-[#1e1e1e]">
-                    <Textarea
-                        value={editableHtml}
-                        onChange={handleEditorChange}
-                        className="w-full h-full border-0 rounded-none resize-none bg-transparent text-white font-mono text-xs p-4"
-                        placeholder="HTML code..."
-                        style={{ tabSize: 4 }}
-                    />
-                </div>
-            )}
         </div>
     );
 };
@@ -419,9 +401,12 @@ export default function ArtisanPage() {
 
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
 
+    const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
         setSelectedQueueItemId(queueItemId);
+        setIsCodeEditorOpen(false); // Close editor on item change
         if (queueItemId === 'custom') {
             setCreativePrompt('');
             setEditableContent(null);
@@ -486,6 +471,7 @@ export default function ArtisanPage() {
         }
          if (selectedCreativeType === 'landing_page') {
             setDimension('9:16');
+            setIsCodeEditorOpen(false);
         }
     }, [selectedCreativeType, dimension, toast]);
 
@@ -557,7 +543,7 @@ export default function ArtisanPage() {
 
     const handleLandingPageHtmlChange = (html: string) => {
         setCreative(prev => {
-            if (!prev) return { landingPageHtml: html };
+            if (!prev) return { ...prev, landingPageHtml: html };
             return { ...prev, landingPageHtml: html };
         });
     };
@@ -627,7 +613,7 @@ export default function ArtisanPage() {
                     <p className="text-muted-foreground">The workshop for generating all your creative content from your media plan.</p>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Card>
                              <CardHeader>
@@ -727,8 +713,25 @@ export default function ArtisanPage() {
                                 </Button>
                             </CardFooter>
                         </Card>
+                        
+                         {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
+                            <Card className="mt-8">
+                                <CardHeader>
+                                    <CardTitle>Live Code Editor</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Textarea
+                                        value={creative?.landingPageHtml || ''}
+                                        onChange={(e) => handleLandingPageHtmlChange(e.target.value)}
+                                        className="w-full h-96 border rounded-md resize-y bg-zinc-900 text-white font-mono text-xs p-4"
+                                        placeholder="HTML code..."
+                                        style={{ tabSize: 4 }}
+                                    />
+                                </CardContent>
+                            </Card>
+                        )}
                     </aside>
-                     <main className="flex items-start justify-center">
+                     <main className="sticky top-24">
                         <PostPreview
                             profile={profile}
                             dimension={dimension}
@@ -737,6 +740,8 @@ export default function ArtisanPage() {
                             creative={creative}
                             editableContent={editableContent}
                             secondaryLangName={secondaryLangName}
+                            isCodeEditorOpen={isCodeEditorOpen}
+                            onCodeEditorToggle={() => setIsCodeEditorOpen(prev => !prev)}
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
                             handleLandingPageHtmlChange={handleLandingPageHtmlChange}
@@ -747,3 +752,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
+    
