@@ -424,7 +424,7 @@ const CodeEditor = ({
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="p-0 relative">
+            <CardContent className="p-0 relative h-[400px] overflow-y-auto">
                 <SyntaxHighlighter
                     language={language}
                     style={syntaxTheme}
@@ -432,8 +432,8 @@ const CodeEditor = ({
                     wrapLines={true}
                     customStyle={{
                         margin: 0,
+                        height: '100%',
                         borderRadius: '0 0 var(--radius) var(--radius)',
-                        height: '400px',
                     }}
                     codeTagProps={{
                          style: {
@@ -857,3 +857,5 @@ export default function ArtisanPage() {
     );
 }
 
+
+    
