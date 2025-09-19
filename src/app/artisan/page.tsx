@@ -14,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -28,6 +28,8 @@ import { Separator } from '@/components/ui/separator';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 
 type Profile = {
@@ -64,6 +66,7 @@ const PostPreview = ({
     secondaryLangName,
     handleContentChange,
     handleCarouselSlideChange,
+    handleLandingPageHtmlChange,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -74,6 +77,7 @@ const PostPreview = ({
     secondaryLangName: string | null,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
+    handleLandingPageHtmlChange: (html: string) => void,
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -171,7 +175,14 @@ const PostPreview = ({
     };
     
     if (selectedCreativeType === 'landing_page') {
-        return <LandingPagePreview htmlContent={creative?.landingPageHtml} />;
+        return (
+            <div className="w-full max-w-md mx-auto">
+                 <LandingPagePreview
+                    htmlContent={creative?.landingPageHtml}
+                    onHtmlChange={handleLandingPageHtmlChange}
+                />
+            </div>
+        );
     }
 
 
@@ -301,9 +312,15 @@ const PostPreview = ({
     );
 }
 
-const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) => {
+const LandingPagePreview = ({ htmlContent, onHtmlChange }: { htmlContent?: string | null, onHtmlChange: (html: string) => void }) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [isSelectMode, setIsSelectMode] = useState(false);
+    const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+    const [editableHtml, setEditableHtml] = useState(htmlContent || '');
+
+    useEffect(() => {
+        setEditableHtml(htmlContent || '');
+    }, [htmlContent]);
 
     const goBack = () => iframeRef.current?.contentWindow?.history.back();
     const goForward = () => iframeRef.current?.contentWindow?.history.forward();
@@ -315,9 +332,14 @@ const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) =>
             newWindow?.document.close();
         }
     };
+    
+    const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setEditableHtml(e.target.value);
+        onHtmlChange(e.target.value);
+    }
 
     return (
-        <div className="w-full max-w-md mx-auto aspect-[9/16] bg-background shadow-2xl overflow-hidden border border-border rounded-2xl flex flex-col">
+        <div className="w-full bg-background shadow-2xl overflow-hidden border border-border rounded-2xl flex flex-col">
             {/* Header */}
             <div className="flex-shrink-0 bg-zinc-800 p-2">
                 <div className="w-full h-8 bg-zinc-700 rounded-md flex items-center px-2 text-sm text-zinc-400 gap-2">
@@ -333,6 +355,13 @@ const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) =>
                     >
                         <MousePointerClick size={16} />
                     </button>
+                    <button
+                        onClick={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
+                        className={cn("hover:text-white", isCodeEditorOpen && "text-blue-400")}
+                        title="Edit Code"
+                    >
+                        <Code size={16} />
+                    </button>
                     <button onClick={openInNewTab} className="hover:text-white" title="Open in new tab">
                         <ExternalLink size={16} />
                     </button>
@@ -340,7 +369,7 @@ const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) =>
             </div>
 
             {/* Content */}
-            <div className="flex-1 bg-white dark:bg-black relative">
+            <div className="flex-1 bg-white dark:bg-black relative aspect-[9/16]">
                 {htmlContent ? (
                      <iframe
                         ref={iframeRef}
@@ -355,6 +384,18 @@ const LandingPagePreview = ({ htmlContent }: { htmlContent?: string | null }) =>
                     </div>
                 )}
             </div>
+
+            {isCodeEditorOpen && (
+                 <div className="relative h-64 bg-[#1e1e1e]">
+                    <Textarea
+                        value={editableHtml}
+                        onChange={handleEditorChange}
+                        className="w-full h-full border-0 rounded-none resize-none bg-transparent text-white font-mono text-xs p-4"
+                        placeholder="HTML code..."
+                        style={{ tabSize: 4 }}
+                    />
+                </div>
+            )}
         </div>
     );
 };
@@ -511,6 +552,13 @@ export default function ArtisanPage() {
             const newSlides = [...prev.carouselSlides];
             newSlides[index] = { ...newSlides[index], body: newText };
             return { ...prev, carouselSlides: newSlides };
+        });
+    };
+
+    const handleLandingPageHtmlChange = (html: string) => {
+        setCreative(prev => {
+            if (!prev) return { landingPageHtml: html };
+            return { ...prev, landingPageHtml: html };
         });
     };
 
@@ -681,19 +729,18 @@ export default function ArtisanPage() {
                         </Card>
                     </aside>
                      <main className="flex items-start justify-center">
-                        <div className="w-full max-w-md mx-auto">
-                             <PostPreview
-                                profile={profile}
-                                dimension={dimension}
-                                isLoading={isLoading}
-                                selectedCreativeType={selectedCreativeType}
-                                creative={creative}
-                                editableContent={editableContent}
-                                secondaryLangName={secondaryLangName}
-                                handleContentChange={handleContentChange}
-                                handleCarouselSlideChange={handleCarouselSlideChange}
-                            />
-                        </div>
+                        <PostPreview
+                            profile={profile}
+                            dimension={dimension}
+                            isLoading={isLoading}
+                            selectedCreativeType={selectedCreativeType}
+                            creative={creative}
+                            editableContent={editableContent}
+                            secondaryLangName={secondaryLangName}
+                            handleContentChange={handleContentChange}
+                            handleCarouselSlideChange={handleCarouselSlideChange}
+                            handleLandingPageHtmlChange={handleLandingPageHtmlChange}
+                        />
                     </main>
                 </div>
             </div>
