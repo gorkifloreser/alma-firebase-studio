@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -85,9 +84,13 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   if (!user) throw new Error('User not authenticated');
 
   const payload = {
-    ...offeringData,
+    title: offeringData.title,
+    description: offeringData.description,
+    type: offeringData.type,
+    contextual_notes: offeringData.contextual_notes,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
+    event_date: offeringData.event_date,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
     user_id: user.id,
   };
@@ -129,7 +132,6 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // Surgically construct the payload to prevent sending invalid fields like 'offering_media'
     const payload = {
       title: offeringData.title,
       description: offeringData.description,
@@ -467,4 +469,3 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
     return genImageDescFlow(input);
 }
-
