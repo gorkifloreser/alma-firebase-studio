@@ -61,28 +61,8 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
             *,
             offerings (id, title),
             media_plans!funnel_id (
-                id,
-                funnel_id,
-                created_at,
-                title,
-                campaign_start_date,
-                campaign_end_date,
-                media_plan_items!media_plan_id (
-                    id,
-                    media_plan_id,
-                    user_id,
-                    offering_id,
-                    channel,
-                    format,
-                    copy,
-                    hashtags,
-                    creative_prompt,
-                    stage_name,
-                    objective,
-                    concept,
-                    suggested_post_at,
-                    created_at
-                )
+                *,
+                media_plan_items!media_plan_id (*)
             )
         `)
         .eq('user_id', user.id);
@@ -112,28 +92,8 @@ export async function getFunnel(funnelId: string) {
             *,
             offerings (id, title),
             media_plans!funnel_id (
-                id,
-                funnel_id,
-                created_at,
-                title,
-                campaign_start_date,
-                campaign_end_date,
-                media_plan_items!media_plan_id (
-                    id,
-                    media_plan_id,
-                    user_id,
-                    offering_id,
-                    channel,
-                    format,
-                    copy,
-                    hashtags,
-                    creative_prompt,
-                    stage_name,
-                    objective,
-                    concept,
-                    suggested_post_at,
-                    created_at
-                )
+                *,
+                media_plan_items!media_plan_id (*)
             )
         `)
         .eq('id', funnelId)
@@ -609,4 +569,5 @@ export async function getUserChannels(): Promise<Account[]> {
 }
 
     
+
 
