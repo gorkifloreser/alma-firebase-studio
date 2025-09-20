@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,6 +12,7 @@ import { generateImageDescription } from '../actions';
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1920; // Max width/height for resizing
 
 interface FileWithPreview extends File {
   preview: string;
@@ -36,6 +36,61 @@ interface ImageUploadProps {
     onRemoveExistingMedia?: (mediaId: string) => void;
     isSaving: boolean;
 }
+
+// --- Image Resizing Logic ---
+const resizeImage = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = document.createElement('img');
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > MAX_IMAGE_DIMENSION) {
+            height *= MAX_IMAGE_DIMENSION / width;
+            width = MAX_IMAGE_DIMENSION;
+          }
+        } else {
+          if (height > MAX_IMAGE_DIMENSION) {
+            width *= MAX_IMAGE_DIMENSION / height;
+            height = MAX_IMAGE_DIMENSION;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Failed to get canvas context'));
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              return reject(new Error('Canvas to Blob conversion failed'));
+            }
+            const resizedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now(),
+            });
+            resolve(resizedFile);
+          },
+          file.type,
+          0.9 // 90% quality
+        );
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+};
+
 
 export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
   const [newFiles, setNewFiles] = useState<FileWithDescription[]>([]);
@@ -83,29 +138,43 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
     };
   }, [newFiles, onFilesChange]);
 
-  const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[], fileRejections: any[]) => {
     if (fileRejections.length > 0) {
       fileRejections.forEach(({ file, errors }) => {
         errors.forEach((error: any) => {
-          if (error.code === 'file-too-large') {
-            toast({
-              variant: 'destructive',
-              title: 'File too large',
-              description: `"${file.name}" is larger than ${MAX_FILE_SIZE_MB}MB.`,
-            });
-          } else {
              toast({
               variant: 'destructive',
               title: 'File error',
-              description: `Could not upload "${file.name}": ${error.message}`,
+              description: `Could not accept "${file.name}": ${error.message}`,
             });
-          }
         });
       });
-      return;
+    }
+    
+    const processedFiles: File[] = [];
+    for (const file of acceptedFiles) {
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            toast({
+                title: 'Resizing large image...',
+                description: `"${file.name}" is being optimized for upload.`
+            });
+            try {
+                const resizedFile = await resizeImage(file);
+                processedFiles.push(resizedFile);
+            } catch (error) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Resize failed',
+                    description: `Could not resize "${file.name}".`,
+                });
+            }
+        } else {
+            processedFiles.push(file);
+        }
     }
 
-    const filesWithPreviewAndDesc = acceptedFiles.map(file => ({
+
+    const filesWithPreviewAndDesc = processedFiles.map(file => ({
         file: Object.assign(file, { preview: URL.createObjectURL(file) }),
         description: '',
         isGeneratingDescription: false
@@ -132,7 +201,9 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
   const handleDescriptionChange = (index: number, description: string) => {
     setNewFiles(prev => {
         const newFilesList = [...prev];
-        newFilesList[index] = { ...newFilesList[index], description: description };
+        if (newFilesList[index]) {
+            newFilesList[index] = { ...newFilesList[index], description: description };
+        }
         return newFilesList;
     });
   };
@@ -150,9 +221,8 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
       'image/png': [],
       'image/gif': [],
       'image/webp': [],
-      'image/svg+xml': [],
     },
-    maxSize: MAX_FILE_SIZE_BYTES,
+    maxSize: 1024 * 1024 * 200, // Set a high local limit, we'll handle resizing
     disabled: isSaving,
   });
 
@@ -172,7 +242,7 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
               ? 'Drop the files here ...'
               : "Drag 'n' drop some files here, or click to select files"}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Images only, up to {MAX_FILE_SIZE_MB}MB</p>
+          <p className="text-xs text-muted-foreground mt-1">Images up to {MAX_FILE_SIZE_MB}MB (larger images will be resized)</p>
         </div>
       </div>
 
