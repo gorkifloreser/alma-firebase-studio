@@ -20,9 +20,9 @@ const PlanItemSchema = z.object({
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
   creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
-  stageName: z.string().optional().describe("The strategy stage this item belongs to (e.g., 'Awareness', 'Consideration')."),
-  objective: z.string().optional().describe("The specific purpose or objective of this content piece."),
-  concept: z.string().optional().describe("The core concept or idea for this content piece."),
+  stageName: z.string().describe("The strategy stage this item belongs to (e.g., 'Awareness', 'Consideration')."),
+  objective: z.string().describe("The specific purpose or objective of this individual content piece. This should be a new, specific goal for the copy written."),
+  concept: z.string().describe("The core concept or idea for this content piece. This should be a new, specific idea for the content generated."),
   suggested_post_at: z.string().optional().describe("A suggested date and time for posting this content in ISO 8601 format (e.g., '2025-10-26T14:30:00Z'). Base this on the campaign dates and channel best practices."),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
@@ -78,34 +78,20 @@ const generateChannelPlanPrompt = ai.definePrompt({
 **Strategy for Offering: "{{offering.title.primary}}" (Offering ID: {{offering.id}})**
 - Goal: {{strategy.goal}}
 - Funnel Model: **{{strategy.strategy_brief.funnelType}}**
-  - Core Principles: **{{strategy.strategy_brief.funnelPrinciples}}**
-
-**Blueprint Stages:**
+- Blueprint Stages:
 {{#each strategy.strategy_brief.strategy}}
-- **Stage: {{this.stageName}}**
-  - Objective: {{this.objective}}
-  - Key Message: {{this.keyMessage}}
-  - Conceptual Steps:
-    {{#each this.conceptualSteps}}
-    - Concept: {{this.concept}} (Objective: {{this.objective}})
-    {{/each}}
+  - **Stage: {{this.stageName}}** (Objective: {{this.objective}})
 {{/each}}
 ---
 **Brand Identity (The "Who"):**
 - Brand Name: {{brandHeart.brand_name}}
 - Brand Brief: {{brandHeart.brand_brief.primary}}
-- Mission: {{brandHeart.mission.primary}}
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
-- Values: {{brandHeart.values.primary}}
-- Target Audience: Conscious creators, entrepreneurs, artists, healers.
-
+---
 **Offering Details (The "What"):**
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
-- Type: {{offering.type}}
-{{#if offering.contextual_notes}}
 - Contextual Notes: {{offering.contextual_notes}}
-{{/if}}
 ---
 **Campaign Timing:**
 - Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
@@ -113,25 +99,23 @@ const generateChannelPlanPrompt = ai.definePrompt({
 You must create a content sequence that is appropriately paced for this duration.
 ---
 **CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
-You MUST adhere to the following best practices for this channel:
 "{{bestPractices}}"
 ---
 
 **Your Task:**
 
-Your job is to generate a list of concrete content packages for the **'{{channel}}' channel ONLY**.
+Generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
 
-For **EACH conceptual step** in the blueprint, you must generate exactly ONE complete content package. Each package must contain:
-1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
-2.  **channel**: The specific channel this content is for ('{{channel}}').
-3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post. CRITICAL: The copy MUST be written in the brand's specific 'Tone of Voice': **'{{brandHeart.tone_of_voice.primary}}'**. It must also be aligned with the funnel's Core Principles. Do NOT use generic marketing language. Embody this voice and be directly inspired by the Brand's Mission and Values. The copy must also achieve the objective of the conceptual step and strictly follow the channel-specific instructions provided above.
-5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
-6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
+1.  **offeringId**: '{{offering.id}}'.
+2.  **channel**: '{{channel}}'.
+3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
+4.  **copy**: Write compelling, direct-response ad copy for the post, embodying the brand's '{{brandHeart.tone_of_voice.primary}}' tone.
+5.  **hashtags**: A space-separated list of 5-10 relevant hashtags.
+6.  **creativePrompt**: A detailed, visually rich prompt for an AI image/video generator.
 7.  **stageName**: The name of the blueprint stage this item belongs to.
-8.  **objective**: The specific purpose of this individual piece of content, taken from the conceptual step.
-9.  **concept**: The core idea for this content piece, taken from the conceptual step.
-10. **suggested_post_at**: Based on the campaign dates and channel best practices, suggest an ideal date and time for this specific post. Return it as a full ISO 8601 string (e.g., '2025-10-26T14:30:00Z').
+8.  **objective**: **Generate a NEW, specific goal for THIS content piece.** Example: "To build social proof by highlighting a customer transformation."
+9.  **concept**: **Generate a NEW, specific concept for THIS content piece.** Example: "Feature a powerful customer quote as the hero image with copy that expands on their story."
+10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -146,14 +130,12 @@ const regeneratePlanItemPrompt = ai.definePrompt({
             offering: z.any(),
             channel: z.string(),
             stageName: z.string().optional(),
-            objective: z.string().optional(),
-            concept: z.string().optional(),
             validFormats: z.array(z.string()),
             bestPractices: z.string().optional(),
         })
     },
     output: { schema: PlanItemSchema },
-    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided brand identity and a specific conceptual step.
+    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided brand identity and a specific strategic stage.
 
 **Brand Identity (The "Who"):**
 - Brand Name: {{brandHeart.brand_name}}
@@ -165,26 +147,22 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 - Description: {{offering.description.primary}}
 
 **CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
-You MUST adhere to the following best practices for this channel:
 "{{bestPractices}}"
 
 **Your Specific Task:**
 
-Your job is to generate ONE concrete content package for the **'{{channel}}' channel**, based ONLY on this conceptual step:
-- **Stage**: {{stageName}}
-- **Concept**: {{concept}}
-- **Objective**: {{objective}}
+Generate ONE NEW, DIFFERENT content package for the **'{{channel}}' channel**, for the **'{{stageName}}'** stage of the campaign.
 
 This content package MUST contain:
-1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
-2.  **channel**: The specific channel this content is for ('{{channel}}').
-3.  **format**: Suggest a NEW, DIFFERENT specific visual format from your previous attempt. **You MUST choose one from this list**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy that embodies the brand's tone of voice, achieves the conceptual step's objective, and strictly follows the channel-specific instructions.
+1.  **offeringId**: '{{offering.id}}'.
+2.  **channel**: '{{channel}}'.
+3.  **format**: Suggest a NEW, DIFFERENT visual format from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
+4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
-6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator. The prompt should be aligned with the brand's aesthetic.
-7.  **stageName**: The stage name provided in the input.
-8.  **objective**: The objective provided in the input.
-9.  **concept**: The concept provided in the input.
+6.  **creativePrompt**: A NEW, DIFFERENT, detailed prompt for an AI image/video generator.
+7.  **stageName**: '{{stageName}}'.
+8.  **objective**: **Generate a NEW, specific goal for this content piece.**
+9.  **concept**: **Generate a NEW, specific concept for this content piece.**
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });
@@ -291,7 +269,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
         inputSchema: RegeneratePlanItemInputSchema,
         outputSchema: PlanItemSchema,
     },
-    async ({ funnelId, channel, stageName, objective, concept }) => {
+    async ({ funnelId, channel, stageName }) => {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated.');
@@ -328,8 +306,6 @@ const regeneratePlanItemFlow = ai.defineFlow(
             offering: strategy.offerings,
             channel,
             stageName,
-            objective,
-            concept,
             validFormats,
             bestPractices,
         });
@@ -350,5 +326,7 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
+
+    
 
     
