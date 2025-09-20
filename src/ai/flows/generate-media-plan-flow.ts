@@ -56,10 +56,11 @@ const generateChannelPlanPrompt = ai.definePrompt({
           strategy: z.any(),
           channel: z.string(),
           validFormats: z.array(z.string()),
+          bestPractices: z.string().optional(),
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint and brand identity.
+  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint, brand identity, and channel-specific best practices.
 
 **The Strategy Blueprint to Execute:**
 ---
@@ -93,6 +94,10 @@ const generateChannelPlanPrompt = ai.definePrompt({
 - Contextual Notes: {{offering.contextual_notes}}
 {{/if}}
 ---
+**CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
+You MUST adhere to the following best practices for this channel:
+"{{bestPractices}}"
+---
 
 **Your Task:**
 
@@ -102,7 +107,7 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post. It must embody the brand's unique Tone of Voice and be directly inspired by the Brand's Mission and Values. It must also achieve the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
+4.  **copy**: Write compelling, direct-response ad copy for the post. It must embody the brand's unique Tone of Voice and be directly inspired by the Brand's Mission and Values. It must also achieve the objective of the conceptual step and strictly follow the channel-specific instructions provided above.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
 7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
@@ -121,6 +126,7 @@ const regeneratePlanItemPrompt = ai.definePrompt({
             channel: z.string(),
             conceptualStep: z.any(),
             validFormats: z.array(z.string()),
+            bestPractices: z.string().optional(),
         })
     },
     output: { schema: PlanItemSchema },
@@ -135,6 +141,10 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
 
+**CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
+You MUST adhere to the following best practices for this channel:
+"{{bestPractices}}"
+
 **Your Specific Task:**
 
 Your job is to generate ONE concrete content package for the **'{{channel}}' channel**, based ONLY on this conceptual step:
@@ -146,7 +156,7 @@ This content package MUST contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: Suggest a NEW, DIFFERENT specific visual format from your previous attempt. **You MUST choose one from this list**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy that embodies the brand's tone of voice and achieves the conceptual step's objective.
+4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy that embodies the brand's tone of voice, achieves the conceptual step's objective, and strictly follows the channel-specific instructions.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
 6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator. The prompt should be aligned with the brand's aesthetic.
 7.  **conceptualStep**: Include the original conceptual step object from the input. It MUST include the 'stageName', 'concept', and 'objective' fields.
@@ -186,23 +196,24 @@ const generateMediaPlanFlow = ai.defineFlow(
       throw new Error('User not authenticated.');
     }
 
+    // Fetch all required data in parallel
     const [
         { data: brandHeart, error: brandHeartError },
         { data: profile, error: profileError },
         { data: strategy, error: strategyError },
+        { data: channelSettings, error: channelSettingsError },
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('profiles').select('primary_language').eq('id', user.id).single(),
-        supabase.from('funnels').select(`
-            *,
-            offerings (*)
-        `).eq('id', funnelId).eq('user_id', user.id).single(),
+        supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
+        supabase.from('user_channel_settings').select('channel_name, best_practices').eq('user_id', user.id),
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found. Please define your brand heart first.');
     if (profileError || !profile) throw new Error('User profile not found.');
     if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
     if (!strategy.offerings) throw new Error('The selected strategy is not linked to a valid offering.');
+    if (channelSettingsError) throw new Error('Could not fetch channel settings.');
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
     const channels = strategyBrief?.channels || [];
@@ -211,6 +222,8 @@ const generateMediaPlanFlow = ai.defineFlow(
     if (channels.length === 0) {
       throw new Error('The selected strategy has no channels defined.');
     }
+
+    const channelSettingsMap = new Map(channelSettings.map(s => [s.channel_name, s.best_practices]));
 
     // Add stageName to each conceptualStep for easier grouping later
     const strategyWithStageNames = {
@@ -227,7 +240,6 @@ const generateMediaPlanFlow = ai.defineFlow(
         }
     };
 
-
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
@@ -235,6 +247,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     // Create a parallel generation task for each channel
     const channelPromises = channels.map(channel => {
         const validFormats = getFormatsForChannel(channel);
+        const bestPractices = channelSettingsMap.get(channel) || 'No specific best practices provided.';
         return generateChannelPlanPrompt({
             primaryLanguage,
             brandHeart,
@@ -242,6 +255,7 @@ const generateMediaPlanFlow = ai.defineFlow(
             strategy: strategyWithStageNames,
             channel,
             validFormats,
+            bestPractices,
         }).then(result => result.output?.plan || []) // Return the plan array or an empty array on failure
     });
 
@@ -274,22 +288,27 @@ const regeneratePlanItemFlow = ai.defineFlow(
             { data: brandHeart, error: brandHeartError },
             { data: profile, error: profileError },
             { data: strategy, error: strategyError },
+            { data: channelSetting, error: channelSettingError },
         ] = await Promise.all([
             supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
             supabase.from('profiles').select('primary_language').eq('id', user.id).single(),
             supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
+            supabase.from('user_channel_settings').select('best_practices').eq('user_id', user.id).eq('channel_name', channel).single(),
         ]);
 
         if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
         if (profileError || !profile) throw new Error('User profile not found.');
         if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
         if (!strategy.offerings) throw new Error('Strategy not linked to a valid offering.');
+        if (channelSettingError) console.warn(`No best practices found for channel: ${channel}`);
+
 
         const languages = await import('@/lib/languages');
         const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
         const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
         
         const validFormats = getFormatsForChannel(channel);
+        const bestPractices = channelSetting?.best_practices || 'No specific best practices provided.';
 
         const { output } = await regeneratePlanItemPrompt({
             primaryLanguage,
@@ -298,6 +317,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
             channel,
             conceptualStep,
             validFormats,
+            bestPractices,
         });
 
         if (!output) {

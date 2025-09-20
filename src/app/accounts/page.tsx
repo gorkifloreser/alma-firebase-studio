@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
-import { getUserChannels, updateUserChannels } from './actions';
+import { getUserChannels, updateUserChannels, updateChannelBestPractices } from './actions';
 import { AccountsClientPage } from './_components/AccountsClientPage';
 
 export default async function AccountsPage() {
@@ -19,8 +19,9 @@ export default async function AccountsPage() {
         <DashboardLayout>
             <Toaster />
             <AccountsClientPage
-                initialChannels={initialUserChannels}
+                initialUserChannels={initialUserChannels}
                 updateUserChannelsAction={updateUserChannels}
+                updateChannelBestPracticesAction={updateChannelBestPractices}
             />
         </DashboardLayout>
     );
