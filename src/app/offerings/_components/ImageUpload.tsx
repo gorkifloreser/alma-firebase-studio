@@ -4,11 +4,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, X, Loader2 } from 'lucide-react';
+import { UploadCloud, X, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
+import { generateImageDescription } from '../actions';
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -20,6 +21,7 @@ interface FileWithPreview extends File {
 interface FileWithDescription {
     file: FileWithPreview;
     description: string;
+    isGeneratingDescription?: boolean;
 }
 
 interface ExistingMedia {
@@ -38,6 +40,40 @@ interface ImageUploadProps {
 export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
   const [newFiles, setNewFiles] = useState<FileWithDescription[]>([]);
   const { toast } = useToast();
+
+  const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAutoDescription = async (index: number, file: File) => {
+     setNewFiles(prev => {
+        const updated = [...prev];
+        if (updated[index]) updated[index].isGeneratingDescription = true;
+        return updated;
+    });
+    try {
+        const imageDataUri = await fileToDataUri(file);
+        const result = await generateImageDescription({ imageDataUri });
+        handleDescriptionChange(index, result.description);
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Auto-description failed',
+            description: error.message
+        });
+    } finally {
+        setNewFiles(prev => {
+            const updated = [...prev];
+            if (updated[index]) updated[index].isGeneratingDescription = false;
+            return updated;
+        });
+    }
+  };
 
   useEffect(() => {
     onFilesChange(newFiles.map(item => ({ file: item.file, description: item.description })));
@@ -71,12 +107,18 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
 
     const filesWithPreviewAndDesc = acceptedFiles.map(file => ({
         file: Object.assign(file, { preview: URL.createObjectURL(file) }),
-        description: ''
+        description: '',
+        isGeneratingDescription: false
     }));
 
+    const currentFileCount = newFiles.length;
     setNewFiles(prev => [...prev, ...filesWithPreviewAndDesc]);
+    
+    filesWithPreviewAndDesc.forEach((item, index) => {
+        handleAutoDescription(currentFileCount + index, item.file);
+    });
 
-  }, [toast]);
+  }, [toast, newFiles.length]);
 
   const removeNewFile = (index: number) => {
     setNewFiles(prev => {
@@ -194,13 +236,20 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
                    </div>
                 )}
               </div>
-              <Textarea
-                placeholder="Describe this image for the AI..."
-                value={item.description}
-                onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                className="text-xs h-20 resize-none"
-                disabled={isSaving}
-              />
+              <div className="relative">
+                <Textarea
+                    placeholder="Generating description..."
+                    value={item.description}
+                    onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                    className="text-xs h-20 resize-none pr-10"
+                    disabled={isSaving || item.isGeneratingDescription}
+                />
+                {item.isGeneratingDescription && (
+                    <div className="absolute top-2 right-2">
+                        <Sparkles className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

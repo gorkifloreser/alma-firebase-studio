@@ -8,6 +8,7 @@ import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/trans
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
+import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionInput, GenerateImageDescriptionOutput } from '@/ai/flows/generate-image-description-flow';
 
 export type OfferingMedia = {
     id: string;
@@ -427,4 +428,13 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
  */
 export async function generateOfferingDraft(input: GenerateOfferingDraftInput): Promise<OfferingDraft> {
     return genOfferingDraftFlow(input);
+}
+
+/**
+ * Invokes the Genkit flow to generate an image description.
+ * @param {GenerateImageDescriptionInput} input The image data URI.
+ * @returns {Promise<GenerateImageDescriptionOutput>} The AI-generated description.
+ */
+export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
+    return genImageDescFlow(input);
 }
