@@ -10,7 +10,7 @@ export function Avatar({
   url,
   isUploading,
   onFileSelect,
-  accept = "image/*",
+  accept = "image/png, image/jpeg, image/gif",
 }: {
   url: string | null | undefined
   isUploading: boolean
