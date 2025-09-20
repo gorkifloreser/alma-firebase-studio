@@ -14,7 +14,11 @@ export type { PlanItem };
 
 export type MediaPlan = {
     id: string;
+    funnel_id: string;
     plan_items: PlanItem[] | null;
+    created_at: string;
+    campaign_start_date: string | null;
+    campaign_end_date: string | null;
 };
 
 export type Funnel = {
@@ -27,12 +31,11 @@ export type Funnel = {
     preset_id: number;
     goal: string | null;
     strategy_brief: GenerateFunnelOutput | null;
-    media_plan_id: string | null;
     offerings: {
         id: string;
         title: { primary: string | null };
     } | null;
-    media_plans: MediaPlan | null;
+    media_plans: MediaPlan[] | null;
 }
 
 export type FunnelPreset = {
@@ -55,7 +58,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans:media_plan_id (id, plan_items)
+            media_plans (*)
         `)
         .eq('user_id', user.id);
 
@@ -338,19 +341,20 @@ export async function getLandingPage(funnelId: string): Promise<Data | null> {
     return data.landing_page_content as Data;
 }
 
-export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Promise<{ message: string }> {
+export async function saveMediaPlan(funnelId: string, planItems: PlanItem[], startDate: string | null, endDate: string | null): Promise<MediaPlan> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // 1. Upsert the media plan
     const { data: mediaPlan, error: mediaPlanError } = await supabase
         .from('media_plans')
-        .upsert({
+        .insert({
             funnel_id: funnelId,
             user_id: user.id,
             plan_items: planItems,
-        }, { onConflict: 'funnel_id' })
+            campaign_start_date: startDate,
+            campaign_end_date: endDate,
+        })
         .select()
         .single();
 
@@ -359,21 +363,8 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[]): Pr
         throw new Error("Could not save the media plan.");
     }
     
-    // 2. Link the media plan to the funnel
-    const { error: funnelLinkError } = await supabase
-        .from('funnels')
-        .update({ media_plan_id: mediaPlan.id })
-        .eq('id', funnelId)
-        .eq('user_id', user.id);
-
-    if (funnelLinkError) {
-        console.error("Error linking media plan to funnel:", funnelLinkError);
-        // Optionally, you might want to delete the just-created media plan here
-        throw new Error("Could not link media plan to the strategy.");
-    }
-    
     revalidatePath('/funnels');
-    return { message: "Media plan saved successfully." };
+    return mediaPlan;
 }
 
 export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): Promise<{ message: string }> {
