@@ -156,7 +156,7 @@ export function FunnelsClientPage({
         });
     };
 
-    const handlePlanSaved = () => {
+    const handleDataRefresh = () => {
         fetchFunnelsAndPresets();
     }
 
@@ -360,7 +360,7 @@ export function FunnelsClientPage({
                     isOpen={isOrchestrateDialogOpen}
                     onOpenChange={setIsOrchestrateDialogOpen}
                     funnel={funnelToOrchestrate}
-                    onPlanSaved={handlePlanSaved}
+                    onRefresh={handleDataRefresh}
                 />
             )}
             <CustomizePresetDialog
