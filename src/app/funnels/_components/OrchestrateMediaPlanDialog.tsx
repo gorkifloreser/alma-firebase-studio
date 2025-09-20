@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -124,10 +123,10 @@ export function OrchestrateMediaPlanDialog({
     }, [isOpen, funnel, dateRange?.from]);
 
     useEffect(() => {
-        if (dateRange?.from) {
+        if (dateRange?.from && view === 'generate') {
             setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
         }
-    }, [dateRange]);
+    }, [dateRange, view]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -193,7 +192,7 @@ export function OrchestrateMediaPlanDialog({
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(({id, ...rest}) => rest);
-                const newPlan = await saveMediaPlan({
+                const savedPlan = await saveMediaPlan({
                     id: planIdToEdit, // if null, it's a new plan
                     funnelId: funnel.id, 
                     title: planTitle, 
@@ -202,7 +201,7 @@ export function OrchestrateMediaPlanDialog({
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
-                setPlanIdToEdit(newPlan.id);
+                setPlanIdToEdit(savedPlan.id);
                 // Refresh parent state silently
                 onPlanSaved();
             } catch (error: any) {
@@ -218,6 +217,7 @@ export function OrchestrateMediaPlanDialog({
                 toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
                 // To refresh the list, we call the parent's save handler which refetches everything
                 onPlanSaved(); 
+                setView('list'); // Go back to the list view after deletion
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -617,3 +617,4 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
