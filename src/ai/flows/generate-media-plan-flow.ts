@@ -20,7 +20,9 @@ const PlanItemSchema = z.object({
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
   creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
-  conceptualStep: z.any().optional().describe("The original conceptual step from the blueprint that this item is based on."),
+  stageName: z.string().optional().describe("The strategy stage this item belongs to (e.g., 'Awareness', 'Consideration')."),
+  objective: z.string().optional().describe("The specific purpose or objective of this content piece."),
+  concept: z.string().optional().describe("The core concept or idea for this content piece."),
   suggested_post_at: z.string().optional().describe("A suggested date and time for posting this content in ISO 8601 format (e.g., '2025-10-26T14:30:00Z'). Base this on the campaign dates and channel best practices."),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
@@ -46,7 +48,9 @@ export type GenerateMediaPlanInput = z.infer<typeof GenerateMediaPlanInputSchema
 const RegeneratePlanItemInputSchema = z.object({
     funnelId: z.string(),
     channel: z.string(),
-    conceptualStep: z.any(),
+    stageName: z.string().optional(),
+    objective: z.string().optional(),
+    concept: z.string().optional(),
 });
 export type RegeneratePlanItemInput = z.infer<typeof RegeneratePlanItemInputSchema>;
 
@@ -124,8 +128,10 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 4.  **copy**: Write compelling, direct-response ad copy for the post. CRITICAL: The copy MUST be written in the brand's specific 'Tone of Voice': **'{{brandHeart.tone_of_voice.primary}}'**. It must also be aligned with the funnel's Core Principles. Do NOT use generic marketing language. Embody this voice and be directly inspired by the Brand's Mission and Values. The copy must also achieve the objective of the conceptual step and strictly follow the channel-specific instructions provided above.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
-7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
-8.  **suggested_post_at**: Based on the campaign dates and channel best practices, suggest an ideal date and time for this specific post. Return it as a full ISO 8601 string (e.g., '2025-10-26T14:30:00Z').
+7.  **stageName**: The name of the blueprint stage this item belongs to.
+8.  **objective**: The specific purpose of this individual piece of content, taken from the conceptual step.
+9.  **concept**: The core idea for this content piece, taken from the conceptual step.
+10. **suggested_post_at**: Based on the campaign dates and channel best practices, suggest an ideal date and time for this specific post. Return it as a full ISO 8601 string (e.g., '2025-10-26T14:30:00Z').
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -139,7 +145,9 @@ const regeneratePlanItemPrompt = ai.definePrompt({
             brandHeart: z.any(),
             offering: z.any(),
             channel: z.string(),
-            conceptualStep: z.any(),
+            stageName: z.string().optional(),
+            objective: z.string().optional(),
+            concept: z.string().optional(),
             validFormats: z.array(z.string()),
             bestPractices: z.string().optional(),
         })
@@ -163,9 +171,9 @@ You MUST adhere to the following best practices for this channel:
 **Your Specific Task:**
 
 Your job is to generate ONE concrete content package for the **'{{channel}}' channel**, based ONLY on this conceptual step:
-- **Concept**: {{conceptualStep.concept}}
-- **Objective**: {{conceptualStep.objective}}
-- **Stage Name**: {{conceptualStep.stageName}}
+- **Stage**: {{stageName}}
+- **Concept**: {{concept}}
+- **Objective**: {{objective}}
 
 This content package MUST contain:
 1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
@@ -174,7 +182,9 @@ This content package MUST contain:
 4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy that embodies the brand's tone of voice, achieves the conceptual step's objective, and strictly follows the channel-specific instructions.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
 6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator. The prompt should be aligned with the brand's aesthetic.
-7.  **conceptualStep**: Include the original conceptual step object from the input. It MUST include the 'stageName', 'concept', and 'objective' fields.
+7.  **stageName**: The stage name provided in the input.
+8.  **objective**: The objective provided in the input.
+9.  **concept**: The concept provided in the input.
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });
@@ -240,21 +250,6 @@ const generateMediaPlanFlow = ai.defineFlow(
 
     const channelSettingsMap = new Map(channelSettings.map(s => [s.channel_name, s.best_practices]));
 
-    // Add stageName to each conceptualStep for easier grouping later
-    const strategyWithStageNames = {
-        ...strategy,
-        strategy_brief: {
-            ...strategyBrief,
-            strategy: strategyBrief.strategy.map(stage => ({
-                ...stage,
-                conceptualSteps: stage.conceptualSteps.map(step => ({
-                    ...step,
-                    stageName: stage.stageName
-                }))
-            }))
-        }
-    };
-
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
@@ -267,7 +262,7 @@ const generateMediaPlanFlow = ai.defineFlow(
             primaryLanguage,
             brandHeart,
             offering,
-            strategy: strategyWithStageNames,
+            strategy,
             channel,
             validFormats,
             bestPractices,
@@ -296,7 +291,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
         inputSchema: RegeneratePlanItemInputSchema,
         outputSchema: PlanItemSchema,
     },
-    async ({ funnelId, channel, conceptualStep }) => {
+    async ({ funnelId, channel, stageName, objective, concept }) => {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated.');
@@ -332,7 +327,9 @@ const regeneratePlanItemFlow = ai.defineFlow(
             brandHeart,
             offering: strategy.offerings,
             channel,
-            conceptualStep,
+            stageName,
+            objective,
+            concept,
             validFormats,
             bestPractices,
         });

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -242,10 +243,15 @@ export function OrchestrateMediaPlanDialog({
     };
     
     const handleRegenerateItem = async (itemToRegen: PlanItemWithId) => {
-        if (!itemToRegen.conceptualStep) return;
         setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
         try {
-            const newItem = await regeneratePlanItem({ funnelId: funnel.id, channel: itemToRegen.channel, conceptualStep: itemToRegen.conceptualStep });
+            const newItem = await regeneratePlanItem({ 
+                funnelId: funnel.id, 
+                channel: itemToRegen.channel, 
+                stageName: itemToRegen.stageName,
+                objective: itemToRegen.objective,
+                concept: itemToRegen.concept,
+            });
             const validFormats = getFormatsForChannel(newItem.channel);
             const formatIsValid = validFormats.includes(newItem.format);
             
@@ -253,10 +259,6 @@ export function OrchestrateMediaPlanDialog({
                 if (item.id === itemToRegen.id) {
                     return {
                         ...newItem,
-                        conceptualStep: {
-                            ...itemToRegen.conceptualStep,
-                            ...(newItem.conceptualStep || {}),
-                        },
                         id: itemToRegen.id,
                         format: formatIsValid ? newItem.format : (validFormats[0] || 'Blog Post'),
                     };
@@ -319,26 +321,8 @@ export function OrchestrateMediaPlanDialog({
         });
     }
 
-    const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt' | 'suggested_post_at', value: string) => {
+    const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
         setCurrentPlan(prev => prev!.map(item => item.id === itemId ? { ...item, [field]: value } : item));
-    };
-
-    const handleStageNameChange = (itemId: string, value: string) => {
-        setCurrentPlan(prev => prev!.map(item => {
-            if (item.id === itemId && item.conceptualStep) {
-                return { ...item, conceptualStep: { ...item.conceptualStep, stageName: value } };
-            }
-            return item;
-        }));
-    };
-
-    const handleObjectiveChange = (itemId: string, value: string) => {
-        setCurrentPlan(prev => prev!.map(item => {
-            if (item.id === itemId && item.conceptualStep) {
-                return { ...item, conceptualStep: { ...item.conceptualStep, objective: value } };
-            }
-            return item;
-        }));
     };
 
     const handleRemoveItem = (itemId: string) => {
@@ -354,7 +338,9 @@ export function OrchestrateMediaPlanDialog({
             copy: '',
             hashtags: '',
             creativePrompt: '',
-            conceptualStep: { step: 99, objective: 'Your new objective here', concept: 'Your new concept here' },
+            stageName: 'New Stage',
+            objective: 'Your new objective here',
+            concept: 'Your new concept here',
         };
         setCurrentPlan(prev => [...(prev || []), newItem]);
     };
@@ -570,8 +556,9 @@ export function OrchestrateMediaPlanDialog({
                                             </div>
                                         )}
                                         <div className={cn("space-y-4", isEdit && isSelectionMode && "pl-8")}>
-                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.conceptualStep?.stageName || 'Uncategorized'} onChange={(e) => handleStageNameChange(item.id, e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
-                                            <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.conceptualStep?.objective || ''} onChange={(e) => handleObjectiveChange(item.id, e.target.value)} placeholder="e.g., Build social proof" readOnly={!isEdit}/></div>
+                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.stageName || 'Uncategorized'} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
+                                            <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" readOnly={!isEdit}/></div>
+                                            <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={!isEdit}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                             <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} readOnly={!isEdit}/></div>

@@ -410,7 +410,9 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             copy: item.copy,
             hashtags: item.hashtags,
             creative_prompt: item.creativePrompt,
-            conceptual_step: item.conceptualStep,
+            stage_name: item.stageName,
+            objective: item.objective,
+            concept: item.concept,
             suggested_post_at: item.suggested_post_at,
         }));
 
