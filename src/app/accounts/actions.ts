@@ -8,7 +8,7 @@ import type { Account } from './_components/AccountsClientPage';
 const defaultBestPractices: Record<string, string> = {
     instagram: "Call to Action: Use 'Link in bio!' for external links. Visually-driven content is key. Use relevant hashtags. Carousels are effective for storytelling.",
     facebook: "Call to Action: Directly include URLs in the post. Avoid using 'Link in bio'. Longer text descriptions are acceptable. Pose questions to encourage engagement.",
-    whatsapp: "Tone: Personal and conversational. Use emojis. Keep messages short and to the point. Ideal for direct customer interaction and quick updates.",
+    whatsapp: "Tone: Personal and conversational. Use emojis. Keep messages short and to the point. Do NOT use hashtags. Instead, naturally weave important keywords into the message body. Ideal for direct customer interaction and quick updates.",
     telegram: "Tone: Slightly more formal than WhatsApp but still direct. Good for announcements and community building. Can handle longer messages and rich media.",
     webmail: "Format: Structure as a newsletter or promotional email. Use clear subject lines. Have a distinct introduction, body, and conclusion with a clear call to action.",
     website: "Format: Structure as a blog post. Optimize for SEO with relevant keywords. Should be informative and provide value. Longer form content is expected.",
