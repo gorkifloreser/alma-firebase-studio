@@ -97,6 +97,12 @@ export function OrchestrateMediaPlanDialog({
     
     const { toast } = useToast();
 
+    const refreshFunnelData = () => {
+        // This function will be passed to the parent to trigger a refresh.
+        // It's a bit of a workaround for not having a direct way to refetch server data.
+        onRefresh();
+    };
+
     useEffect(() => {
         setFunnel(initialFunnel);
         if (isOpen) {
@@ -126,21 +132,27 @@ export function OrchestrateMediaPlanDialog({
         }
     }, [dateRange, view]);
 
+    const planItemsForCurrentView = useMemo(() => {
+        return view === 'edit' ? currentPlan : planToView?.media_plan_items || [];
+    }, [view, currentPlan, planToView]);
+
     const groupedByChannel = useMemo(() => {
-        const planItems = currentPlan || planToView?.media_plan_items || [];
-        if (!planItems) return {};
-        return planItems.reduce((acc, item) => {
+        if (!planItemsForCurrentView) return {};
+        return planItemsForCurrentView.reduce((acc, item) => {
             const channelKey = item.channel || 'General';
             if (!acc[channelKey]) acc[channelKey] = [];
             acc[channelKey].push(item as PlanItemWithId);
             return acc;
         }, {} as Record<string, PlanItemWithId[]>);
-    }, [currentPlan, planToView]);
+    }, [planItemsForCurrentView]);
+
     const channelsForTabs = Object.keys(groupedByChannel);
     
     useEffect(() => {
         if(channelsForTabs.length > 0 && !channelsForTabs.includes(activeTab)) {
             setActiveTab(channelsForTabs[0] || '');
+        } else if (channelsForTabs.length === 0) {
+            setActiveTab('');
         }
     }, [channelsForTabs, activeTab]);
 
@@ -201,7 +213,7 @@ export function OrchestrateMediaPlanDialog({
                 });
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
-                onRefresh();
+                refreshFunnelData(); // Refresh parent data
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -218,6 +230,7 @@ export function OrchestrateMediaPlanDialog({
                     media_plans: prevFunnel.media_plans?.filter(p => p.id !== planId) || null,
                 }));
                 setView('list');
+                refreshFunnelData();
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -418,7 +431,7 @@ export function OrchestrateMediaPlanDialog({
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                             </Button>
-                            <AlertDialog>
+                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" size="sm">
                                         <Trash2 className="mr-2 h-4 w-4" />
@@ -520,14 +533,14 @@ export function OrchestrateMediaPlanDialog({
     );
     
     const renderSharedPlanView = (isEdit: boolean) => {
-         const planItems = isEdit ? currentPlan : planToView?.media_plan_items;
-         if (!planItems) return isGenerating ? <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div> : <p>Something went wrong.</p>
+         if (isGenerating) return <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+         if (!planItemsForCurrentView) return <p>Something went wrong.</p>;
 
          return (
              <div className="max-h-[60vh] flex flex-col overflow-hidden py-4">
                 <div className="flex justify-between items-center mb-4">
                     <Button variant="ghost" onClick={() => setView('list')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
-                    {isEdit && planItems.length > 0 && (
+                    {isEdit && planItemsForCurrentView.length > 0 && (
                         <Button variant="outline" size="sm" onClick={handleToggleSelectionMode}>
                             {isSelectionMode ? <><X className="mr-2 h-4 w-4"/>Cancel</> : <><Rows className="mr-2 h-4 w-4"/>Bulk Select</>}
                         </Button>
@@ -610,7 +623,7 @@ export function OrchestrateMediaPlanDialog({
                 {view === 'view' && renderSharedPlanView(false)}
 
                 <DialogFooter className="mt-4 pt-4 border-t">
-                    {view === 'view' && (
+                     {view === 'view' && (
                         <Button onClick={() => {
                              validateAndSetPlanItems((planToView?.media_plan_items as PlanItem[]) || []);
                              setPlanTitle(planToView?.title || '');
@@ -642,3 +655,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
