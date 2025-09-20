@@ -484,14 +484,14 @@ export default function ArtisanPage() {
             setSelectedOfferingId(null);
             return;
         }
-
+        
         const item = items.find(q => q.id === queueItemId);
-        if (item) {
-            setCreativePrompt(item.source_plan_item.creativePrompt || '');
-            setEditableContent({ primary: item.source_plan_item.copy || '', secondary: null });
-            setSelectedOfferingId(item.source_plan_item.offeringId);
+        if (item && item.media_plan_items) {
+            setCreativePrompt(item.media_plan_items.creativePrompt || '');
+            setEditableContent({ primary: item.media_plan_items.copy || '', secondary: null });
+            setSelectedOfferingId(item.media_plan_items.offeringId);
 
-            const format = item.source_plan_item.format.toLowerCase();
+            const format = item.media_plan_items.format.toLowerCase();
             if (format.includes('video')) setSelectedCreativeType('video');
             else if (format.includes('carousel')) setSelectedCreativeType('carousel');
             else if (format.includes('image')) setSelectedCreativeType('image');
@@ -666,7 +666,7 @@ export default function ArtisanPage() {
                     videoUrl: creative?.videoUrl || null,
                     landingPageHtml: editableHtml,
                     status: 'approved',
-                    sourcePlan: currentQueueItem?.source_plan_item || null,
+                    mediaPlanItemId: currentQueueItem?.media_plan_items?.id,
                 });
                 if (currentQueueItem) {
                     await updateQueueItemStatus(currentQueueItem.id, 'completed');
@@ -734,7 +734,7 @@ export default function ArtisanPage() {
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                                         queueItems.length > 0 ? (
                                                             queueItems.map(item => (
-                                                                <SelectItem key={item.id} value={item.id}>{item.source_plan_item.conceptualStep.concept}</SelectItem>
+                                                                <SelectItem key={item.id} value={item.id}>{item.media_plan_items?.concept}</SelectItem>
                                                             ))
                                                         ) : (
                                                             <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
@@ -859,3 +859,4 @@ export default function ArtisanPage() {
     
 
     
+

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -121,7 +122,7 @@ export function OrchestrateMediaPlanDialog({
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, initialFunnel, currentPlan, planIdToEdit, dateRange?.from]);
+    }, [isOpen, initialFunnel, dateRange?.from, planIdToEdit, currentPlan]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -248,14 +249,13 @@ export function OrchestrateMediaPlanDialog({
 
     const handleAddToQueue = (item: PlanItemWithId) => {
         setIsAddingToQueue(prev => ({ ...prev, [item.id]: true }));
-        const { id, ...planItem } = item;
-        addToArtisanQueue(funnel.id, planItem)
+        addToArtisanQueue(funnel.id, item.id)
             .then(() => {
                 toast({
                     title: 'Added to Queue!',
                     description: 'This item is now ready for generation in the AI Artisan workshop.'
                 });
-                setQueuedItemIds(prev => new Set(prev).add(id));
+                setQueuedItemIds(prev => new Set(prev).add(item.id));
             })
             .catch((error: any) => {
                 toast({
@@ -271,19 +271,18 @@ export function OrchestrateMediaPlanDialog({
 
     const handleBulkAddToQueue = () => {
         if (!currentPlan) return;
-        const itemsToAdd = currentPlan.filter(item => selectedItemIds.has(item.id) && !queuedItemIds.has(item.id));
+        const itemsToAdd = Array.from(selectedItemIds).filter(id => !queuedItemIds.has(id));
         if (itemsToAdd.length === 0) {
             toast({ title: 'No new items to add', description: 'All selected items are already in the queue.' });
             return;
         }
 
-        const itemsPayload = itemsToAdd.map(({ id, ...rest }) => rest);
         startSaving(async () => {
             try {
-                const { count } = await addMultipleToArtisanQueue(funnel.id, itemsPayload);
+                const { count } = await addMultipleToArtisanQueue(funnel.id, itemsToAdd);
                 toast({ title: 'Success!', description: `${count} item(s) added to the Artisan Queue.` });
                 const newQueuedIds = new Set(queuedItemIds);
-                itemsToAdd.forEach(item => newQueuedIds.add(item.id));
+                itemsToAdd.forEach(id => newQueuedIds.add(id));
                 setQueuedItemIds(newQueuedIds);
                 setSelectedItemIds(new Set());
                 setIsSelectionMode(false);
@@ -390,8 +389,8 @@ export function OrchestrateMediaPlanDialog({
                                 const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
                                   ...item,
                                   id: item.id || crypto.randomUUID(),
-                                  stageName: item.stage_name || '',        // map backend field
-                                    creativePrompt: item.creative_prompt || '', // map backend field
+                                  stageName: item.stage_name || '',
+                                  creativePrompt: item.creative_prompt || '',
                                 }));
                                 console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
                                 console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));

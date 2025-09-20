@@ -1,28 +1,18 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 
 export type QueueItem = {
     id: string;
     created_at: string;
     status: 'pending' | 'completed' | 'failed';
-    source_plan_item: {
-        copy: string;
-        format: string;
-        channel: string;
-        hashtags: string;
-        offeringId: string;
-        conceptualStep: {
-            concept: string;
-            objective: string;
-            stageName: string;
-        };
-        creativePrompt: string;
-    }
+    media_plan_items: PlanItem;
 }
 
 /**
@@ -36,7 +26,14 @@ export async function getQueueItems(): Promise<QueueItem[]> {
 
     const { data, error } = await supabase
         .from('content_generation_queue')
-        .select('*')
+        .select(`
+            id,
+            created_at,
+            status,
+            media_plan_items (
+                *
+            )
+        `)
         .eq('user_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: true });
@@ -45,7 +42,16 @@ export async function getQueueItems(): Promise<QueueItem[]> {
         console.error("Error fetching queue items:", error);
         throw new Error("Could not fetch the content generation queue.");
     }
-    return data;
+    
+    // The result from Supabase gives media_plan_items as an object, not an array.
+    // We need to reshape it to match the QueueItem type.
+    const reshapedData = data.map(item => ({
+        ...item,
+        // Replace the media_plan_items object with its content, which represents the source_plan_item
+        source_plan_item: item.media_plan_items
+    }));
+
+    return reshapedData as unknown as QueueItem[];
 }
 
 /**
@@ -82,14 +88,7 @@ type SaveContentInput = {
     videoUrl: string | null;
     landingPageHtml: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
-    sourcePlan?: {
-        channel: string;
-        format: string;
-        copy: string;
-        hashtags: string;
-        creativePrompt: string;
-    } | null;
-    mediaPlanItemId?: string; 
+    mediaPlanItemId?: string | null;
 };
 
 /**
@@ -102,7 +101,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, sourcePlan, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, mediaPlanItemId } = input;
 
     const payload: any = {
         user_id: user.id,
@@ -113,13 +112,8 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         video_url: videoUrl,
         landing_page_html: landingPageHtml,
         status: status,
-        source_plan: sourcePlan,
+        media_plan_item_id: mediaPlanItemId || null,
     };
-
-    if (sourcePlan?.creativePrompt) { 
-      payload.media_plan_item_id = sourcePlan.creativePrompt.slice(0, 36);
-    }
-
 
     const { error } = await supabase.from('content').insert(payload);
 

@@ -487,19 +487,41 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     return { message: "Media plan deleted successfully." };
 }
 
-export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): Promise<{ message: string }> {
+export async function addToArtisanQueue(funnelId: string, mediaPlanItemId: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase
+    // Check if the item is already in the queue for this user
+    const { data: existing, error: existingError } = await supabase
+        .from('content_generation_queue')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('media_plan_item_id', mediaPlanItemId)
+        .single();
+
+    if (existing) {
+        return { message: 'This item is already in the queue.' };
+    }
+
+    const { data: planItem, error: planItemError } = await supabase
+        .from('media_plan_items')
+        .select('offering_id')
+        .eq('id', mediaPlanItemId)
+        .single();
+
+    if (planItemError || !planItem) {
+        throw new Error('Could not find the specified media plan item.');
+    }
+
+    const { error } = await supabase
         .from('content_generation_queue')
         .insert({
             user_id: user.id,
             funnel_id: funnelId,
-            offering_id: planItem.offeringId,
+            offering_id: planItem.offering_id,
+            media_plan_item_id: mediaPlanItemId,
             status: 'pending',
-            source_plan_item: planItem
         });
 
     if (error) {
@@ -510,23 +532,32 @@ export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): P
     return { message: 'Item added to Artisan Queue successfully.' };
 }
 
-export async function addMultipleToArtisanQueue(funnelId: string, planItems: PlanItem[]): Promise<{ count: number }> {
+export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    if (planItems.length === 0) return { count: 0 };
+    if (mediaPlanItemIds.length === 0) return { count: 0 };
+    
+    // Fetch offering_ids for all items
+    const { data: itemsData, error: itemsError } = await supabase
+        .from('media_plan_items')
+        .select('id, offering_id')
+        .in('id', mediaPlanItemIds);
 
-    const recordsToInsert = planItems.map(item => ({
+    if (itemsError) throw itemsError;
+    const offeringIdMap = new Map(itemsData.map(item => [item.id, item.offering_id]));
+
+    const recordsToInsert = mediaPlanItemIds.map(itemId => ({
         user_id: user.id,
         funnel_id: funnelId,
-        offering_id: item.offeringId,
+        offering_id: offeringIdMap.get(itemId),
+        media_plan_item_id: itemId,
         status: 'pending' as const,
-        source_plan_item: item,
     }));
 
     const { count, error } = await supabase
         .from('content_generation_queue')
-        .insert(recordsToInsert);
+        .insert(recordsToInsert, { onConflict: 'media_plan_item_id, user_id' }); // Prevent duplicates
 
     if (error) {
         console.error('Error bulk adding to artisan queue:', error);
@@ -569,5 +600,6 @@ export async function getUserChannels(): Promise<Account[]> {
 }
 
     
+
 
 
