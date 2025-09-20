@@ -26,7 +26,7 @@ interface FileWithDescription {
 
 interface ExistingMedia {
     id: string;
-    url: string;
+    media_url: string;
     description?: string | null;
 }
 
@@ -252,7 +252,7 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
             <div key={media.id} className="space-y-2">
               <div className="relative group aspect-square">
                 <Image
-                  src={media.url}
+                  src={media.media_url}
                   alt="Existing media"
                   fill
                   className="object-cover rounded-md"
