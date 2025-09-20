@@ -247,8 +247,14 @@ export function CreateOfferingDialog({
                 let savedOffering: OfferingWithMedia;
                 
                 const payload = {
-                    ...offering,
+                    title: offering.title,
+                    description: offering.description,
+                    type: offering.type,
+                    contextual_notes: offering.contextual_notes,
+                    price: offering.price,
+                    currency: offering.currency,
                     event_date: offering.event_date?.toISOString() ?? null,
+                    duration: offering.duration,
                 };
 
                 if (isEditMode && offeringToEdit) {
@@ -256,14 +262,18 @@ export function CreateOfferingDialog({
                 } else {
                     savedOffering = await createOffering(payload);
                 }
-
+                
                 if (newMediaFiles.length > 0) {
-                    const formData = new FormData();
-                    newMediaFiles.forEach(item => {
-                        formData.append('files', item.file);
-                        formData.append('descriptions', item.description);
-                    });
-                    await uploadOfferingMedia(savedOffering.id, formData);
+                    const batchSize = 3;
+                    for (let i = 0; i < newMediaFiles.length; i += batchSize) {
+                        const batch = newMediaFiles.slice(i, i + batchSize);
+                        const formData = new FormData();
+                        batch.forEach(item => {
+                            formData.append('files', item.file);
+                            formData.append('descriptions', item.description);
+                        });
+                        await uploadOfferingMedia(savedOffering.id, formData);
+                    }
                 }
 
                 onOfferingSaved();

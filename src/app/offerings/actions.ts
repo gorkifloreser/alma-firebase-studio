@@ -79,7 +79,7 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
  * @returns {Promise<OfferingWithMedia>} A promise that resolves to the newly created offering.
  * @throws {Error} If the user is not authenticated or if the database operation fails.
  */
-export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<OfferingWithMedia> {
+export async function createOffering(offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<OfferingWithMedia> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
@@ -444,3 +444,4 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
     return genImageDescFlow(input);
 }
+
