@@ -12,13 +12,30 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels } from '../actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan } from '../actions';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,9 +82,11 @@ export function OrchestrateMediaPlanDialog({
 }: OrchestrateMediaPlanDialogProps) {
     const [view, setView] = useState<ViewState>('list');
     const [currentPlan, setCurrentPlan] = useState<PlanItemWithId[] | null>(null);
+    const [planIdToEdit, setPlanIdToEdit] = useState<string | null>(null);
     const [planTitle, setPlanTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
+    const [isDeleting, startDeleting] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
     const [isAddingToQueue, setIsAddingToQueue] = useState<RegeneratingState>({});
     const [queuedItemIds, setQueuedItemIds] = useState<Set<string>>(new Set());
@@ -87,6 +106,7 @@ export function OrchestrateMediaPlanDialog({
         if (isOpen) {
             setView(funnel.media_plans && funnel.media_plans.length > 0 ? 'list' : 'generate');
             setCurrentPlan(null);
+            setPlanIdToEdit(null);
             setQueuedItemIds(new Set());
             setIsSelectionMode(false);
             setSelectedItemIds(new Set());
@@ -150,6 +170,7 @@ export function OrchestrateMediaPlanDialog({
                 });
                 validateAndSetPlanItems(result.plan);
                 setView('edit');
+                setPlanIdToEdit(null); // This is a new plan
                 toast({
                     title: 'Media Plan Generated!',
                     description: 'Review and edit the suggested content ideas below.'
@@ -172,10 +193,34 @@ export function OrchestrateMediaPlanDialog({
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(({id, ...rest}) => rest);
-                const newPlan = await saveMediaPlan(funnel.id, planTitle, planToSave, dateRange?.from?.toISOString() ?? null, dateRange?.to?.toISOString() ?? null);
+                const newPlan = await saveMediaPlan({
+                    id: planIdToEdit, // if null, it's a new plan
+                    funnelId: funnel.id, 
+                    title: planTitle, 
+                    planItems: planToSave, 
+                    startDate: dateRange?.from?.toISOString() ?? null, 
+                    endDate: dateRange?.to?.toISOString() ?? null
+                });
                 onPlanSaved(newPlan);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+            }
+        });
+    };
+
+    const handleDeletePlan = (planId: string) => {
+        startDeleting(async () => {
+            try {
+                await deleteMediaPlan(planId);
+                toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
+                // To refresh the list, we call the parent's save handler which refetches everything
+                onPlanSaved({} as MediaPlan); 
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Deletion Failed',
+                    description: error.message,
+                });
             }
         });
     };
@@ -252,7 +297,7 @@ export function OrchestrateMediaPlanDialog({
                 setQueuedItemIds(newQueuedIds);
                 setSelectedItemIds(new Set());
                 setIsSelectionMode(false);
-            } catch (error: any) {
+            } catch (error: any) => {
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -344,15 +389,53 @@ export function OrchestrateMediaPlanDialog({
             <h3 className="text-lg font-semibold">Previous Media Plans</h3>
             {funnel.media_plans && funnel.media_plans.length > 0 ? (
                 funnel.media_plans.map(plan => (
-                    <Card key={plan.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
-                        validateAndSetPlanItems(plan.media_plan_items || []);
-                        setPlanTitle(plan.title);
-                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                        setView('edit');
-                    }}>
-                        <CardHeader>
-                            <CardTitle>{plan.title}</CardTitle>
-                            <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
+                    <Card key={plan.id}>
+                        <CardHeader className="flex flex-row items-start justify-between">
+                            <div>
+                                <CardTitle>{plan.title}</CardTitle>
+                                <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
+                            </div>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => {
+                                        validateAndSetPlanItems(plan.media_plan_items || []);
+                                        setPlanTitle(plan.title);
+                                        setPlanIdToEdit(plan.id);
+                                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                        setView('edit');
+                                    }}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        <span>Edit</span>
+                                    </DropdownMenuItem>
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Delete</span>
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete the media plan titled "{plan.title}".
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </CardHeader>
                     </Card>
                 ))
@@ -445,7 +528,7 @@ export function OrchestrateMediaPlanDialog({
                 </div>
                  {isSelectionMode && (
                     <div className="flex items-center space-x-2 pb-2">
-                        <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={handleSelectAll} />
+                        <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={(checked) => handleSelectAll(!!checked)} />
                         <Label htmlFor="select-all">Select all on this tab</Label>
                     </div>
                 )}

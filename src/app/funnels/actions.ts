@@ -60,7 +60,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans!funnel_id (
+            media_plans:media_plans!funnel_id (
                 *,
                 media_plan_items (*)
             )
@@ -346,33 +346,63 @@ export async function getLandingPage(funnelId: string): Promise<Data | null> {
     return data.landing_page_content as Data;
 }
 
-export async function saveMediaPlan(funnelId: string, title: string, planItems: PlanItem[], startDate: string | null, endDate: string | null): Promise<MediaPlan> {
+type SaveMediaPlanParams = {
+    id: string | null; // ID of the media plan to update, or null for new
+    funnelId: string;
+    title: string;
+    planItems: PlanItem[];
+    startDate: string | null;
+    endDate: string | null;
+};
+
+export async function saveMediaPlan({ id, funnelId, title, planItems, startDate, endDate }: SaveMediaPlanParams): Promise<MediaPlan> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // 1. Create the parent media_plan record
-    const { data: mediaPlan, error: mediaPlanError } = await supabase
-        .from('media_plans')
-        .insert({
-            funnel_id: funnelId,
-            user_id: user.id,
-            title: title,
-            campaign_start_date: startDate,
-            campaign_end_date: endDate,
-        })
-        .select()
-        .single();
+    let mediaPlanId = id;
 
-    if (mediaPlanError || !mediaPlan) {
-        console.error("Error saving media plan:", mediaPlanError);
-        throw new Error(`Could not save the media plan: ${mediaPlanError.message}`);
+    // 1. Create or Update the parent media_plan record
+    if (mediaPlanId) { // Update existing plan
+        const { data: updatedPlan, error: updateError } = await supabase
+            .from('media_plans')
+            .update({
+                title: title,
+                campaign_start_date: startDate,
+                campaign_end_date: endDate,
+            })
+            .eq('id', mediaPlanId)
+            .eq('user_id', user.id)
+            .select()
+            .single();
+        if (updateError) throw new Error(`Could not update media plan: ${updateError.message}`);
+        
+        // Delete old items before inserting new ones
+        const { error: deleteError } = await supabase.from('media_plan_items').delete().eq('media_plan_id', mediaPlanId);
+        if (deleteError) throw new Error(`Could not clear old plan items: ${deleteError.message}`);
+
+    } else { // Create new plan
+        const { data: newPlan, error: insertError } = await supabase
+            .from('media_plans')
+            .insert({
+                funnel_id: funnelId,
+                user_id: user.id,
+                title: title,
+                campaign_start_date: startDate,
+                campaign_end_date: endDate,
+            })
+            .select()
+            .single();
+        if (insertError || !newPlan) throw new Error(`Could not save media plan: ${insertError.message}`);
+        mediaPlanId = newPlan.id;
     }
     
+    if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
+
     // 2. Prepare and insert the individual items
     if (planItems && planItems.length > 0) {
         const itemsToInsert = planItems.map(item => ({
-            media_plan_id: mediaPlan.id,
+            media_plan_id: mediaPlanId,
             user_id: user.id,
             offering_id: item.offeringId,
             channel: item.channel,
@@ -389,21 +419,20 @@ export async function saveMediaPlan(funnelId: string, title: string, planItems: 
             .insert(itemsToInsert);
         
         if (itemsError) {
-            // If items fail to save, we should ideally roll back the media_plan insert.
-            // For now, we'll delete it and throw an error.
+            // NOTE: In a real production app, you might want to wrap this in a transaction.
+            // If item insertion fails, the parent plan is still created.
             console.error("Error saving media plan items:", itemsError);
-            await supabase.from('media_plans').delete().eq('id', mediaPlan.id);
             throw new Error("Could not save the media plan items.");
         }
     }
 
     revalidatePath('/funnels');
     
-    // Fetch the newly created plan with its items to return
+    // Fetch the newly created/updated plan with its items to return
     const { data: newPlanWithItems, error: newPlanError } = await supabase
         .from('media_plans')
         .select('*, media_plan_items (*)')
-        .eq('id', mediaPlan.id)
+        .eq('id', mediaPlanId)
         .single();
 
     if (newPlanError || !newPlanWithItems) {
@@ -411,6 +440,26 @@ export async function saveMediaPlan(funnelId: string, title: string, planItems: 
     }
 
     return newPlanWithItems as MediaPlan;
+}
+
+export async function deleteMediaPlan(planId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { error } = await supabase
+        .from('media_plans')
+        .delete()
+        .eq('id', planId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error deleting media plan:', error);
+        throw new Error(`Could not delete media plan: ${error.message}`);
+    }
+
+    revalidatePath('/funnels');
+    return { message: "Media plan deleted successfully." };
 }
 
 export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): Promise<{ message: string }> {
