@@ -408,12 +408,21 @@ export function OrchestrateMediaPlanDialog({
                                 View
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
+                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
+                                const itemsWithClientIds = (plan.media_plan_items || []).map(item => ({
+                                  ...item,
+                                  id: (item as any).id || crypto.randomUUID()
+                                }));
+                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));
+
                                 setPlanToView(plan);
-                                setCurrentPlan((plan.media_plan_items as PlanItemWithId[]) || []);
+                                setCurrentPlan(itemsWithClientIds);
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('edit');
+                                console.log('[OrchestrateMediaPlanDialog] View set to "edit".');
                             }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
