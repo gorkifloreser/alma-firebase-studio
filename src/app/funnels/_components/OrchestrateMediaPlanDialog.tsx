@@ -397,7 +397,7 @@ export function OrchestrateMediaPlanDialog({
                             setView('view');
                         }}>
                              <CardTitle>{plan.title}</CardTitle>
-                             <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
+                             <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
                              <Button variant="outline" size="sm" onClick={() => {
@@ -545,7 +545,7 @@ export function OrchestrateMediaPlanDialog({
                             <TabsContent key={c} value={c} className="mt-0">
                                 <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
                                     const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
-                                    const timeValue = isValid(postDate) ? format(postDate as Date, "HH:mm") : "";
+                                    const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
                                     return (
                                     <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isEdit && isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
                                         {isEdit && isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
@@ -570,11 +570,11 @@ export function OrchestrateMediaPlanDialog({
                                                         <PopoverTrigger asChild>
                                                         <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")} disabled={!isEdit}>
                                                             <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {postDate ? format(postDate, "PPP") : <span>Pick a date</span>}
+                                                            {postDate && isValid(postDate) ? format(postDate, "PPP") : <span>Pick a date</span>}
                                                         </Button>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-auto p-0">
-                                                        <Calendar mode="single" selected={postDate || undefined} onSelect={(date) => { const newDate = date ? setHours(setMinutes(date, postDate?.getMinutes() || 0), postDate?.getHours() || 0) : null; handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || '');}} initialFocus />
+                                                        <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => { const newDate = date ? setHours(setMinutes(date, postDate?.getMinutes() || 0), postDate?.getHours() || 0) : null; handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || '');}} initialFocus />
                                                         </PopoverContent>
                                                     </Popover>
                                                     <Input type="time" value={timeValue} onChange={(e) => { const [hours, minutes] = e.target.value.split(':').map(Number); const newDate = postDate ? setHours(setMinutes(postDate, minutes), hours) : null; handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || ''); }} className="w-[120px]" readOnly={!isEdit}/>
