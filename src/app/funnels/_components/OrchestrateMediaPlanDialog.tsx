@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -129,7 +128,9 @@ export function OrchestrateMediaPlanDialog({
 
     const planItemsForCurrentView = useMemo(() => {
         if (view === 'edit') return currentPlan;
-        if (view === 'view') return planToView?.media_plan_items || [];
+        if (view === 'view' && planToView) {
+            return (planToView.media_plan_items || []).map(item => ({...item, id: (item as any).id || crypto.randomUUID()}));
+        }
         return [];
     }, [view, currentPlan, planToView]);
 
@@ -250,8 +251,6 @@ export function OrchestrateMediaPlanDialog({
                 funnelId: funnel.id, 
                 channel: itemToRegen.channel, 
                 stageName: itemToRegen.stage_name,
-                objective: itemToRegen.objective,
-                concept: itemToRegen.concept,
             });
             const validFormats = getFormatsForChannel(newItem.channel);
             const formatIsValid = validFormats.includes(newItem.format);
@@ -644,3 +643,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
