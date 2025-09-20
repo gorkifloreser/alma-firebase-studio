@@ -67,7 +67,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
                 title,
                 campaign_start_date,
                 campaign_end_date,
-                media_plan_items!media_plan_id (
+                media_plan_items (
                     id,
                     media_plan_id,
                     user_id,
@@ -118,7 +118,7 @@ export async function getFunnel(funnelId: string) {
                 title,
                 campaign_start_date,
                 campaign_end_date,
-                media_plan_items!media_plan_id (
+                media_plan_items (
                     id,
                     media_plan_id,
                     user_id,
@@ -417,7 +417,7 @@ type SaveMediaPlanParams = {
     id: string | null; // ID of the media plan to update, or null for new
     funnelId: string;
     title: string;
-    planItems: PlanItem[];
+    planItems: (PlanItem & { id: string })[];
     startDate: string | null;
     endDate: string | null;
 };
@@ -443,10 +443,6 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             .select()
             .single();
         if (updateError) throw new Error(`Could not update media plan: ${updateError.message}`);
-        
-        // Delete old items before inserting new ones
-        const { error: deleteError } = await supabase.from('media_plan_items').delete().eq('media_plan_id', mediaPlanId);
-        if (deleteError) throw new Error(`Could not clear old plan items: ${deleteError.message}`);
 
     } else { // Create new plan
         const { data: newPlan, error: insertError } = await supabase
@@ -466,9 +462,10 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    // 2. Prepare and insert the individual items
+    // 2. Prepare and upsert the individual items
     if (planItems && planItems.length > 0) {
-        const itemsToInsert = planItems.map(item => ({
+        const itemsToUpsert = planItems.map(item => ({
+            id: item.id.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
             media_plan_id: mediaPlanId,
             user_id: user.id,
             offering_id: item.offeringId,
@@ -476,7 +473,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             format: item.format,
             copy: item.copy,
             hashtags: item.hashtags,
-            creative_prompt: item.creativePrompt,
+            creative_prompt: item.creative_prompt,
             suggested_post_at: item.suggested_post_at,
             stage_name: item.stage_name,
             objective: item.objective,
@@ -485,13 +482,12 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
         const { error: itemsError } = await supabase
             .from('media_plan_items')
-            .insert(itemsToInsert);
+            .upsert(itemsToUpsert, { onConflict: 'id' });
         
         if (itemsError) {
             // NOTE: In a real production app, you might want to wrap this in a transaction.
-            // If item insertion fails, the parent plan is still created.
             console.error("Error saving media plan items:", itemsError);
-            throw new Error("Could not save the media plan items.");
+            throw new Error(`Could not save the media plan items. DB Error: ${itemsError.message}`);
         }
     }
 

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -128,7 +127,7 @@ export function OrchestrateMediaPlanDialog({
     }, [dateRange, view]);
 
     const planItemsForCurrentView = useMemo(() => {
-        if (view === 'edit') return currentPlan;
+        if (view === 'edit' && currentPlan) return currentPlan;
         if (view === 'view' && planToView) {
             return (planToView.media_plan_items || []).map(item => ({...item, id: (item as any).id || crypto.randomUUID()}));
         }
@@ -156,19 +155,6 @@ export function OrchestrateMediaPlanDialog({
         }
     }, [channelsForTabs, activeTab]);
 
-    const validateAndSetPlanItems = (items: PlanItem[]) => {
-        const validatedItems = items.map(item => {
-            const validFormats = getFormatsForChannel(item.channel);
-            const formatIsValid = validFormats.includes(item.format);
-            return {
-                ...item,
-                format: formatIsValid ? item.format : (validFormats[0] || 'Blog Post'),
-                id: (item as any).id || crypto.randomUUID(),
-            };
-        });
-        setCurrentPlan(validatedItems);
-    };
-
     const handleGeneratePlan = () => {
         startGenerating(async () => {
             try {
@@ -178,7 +164,11 @@ export function OrchestrateMediaPlanDialog({
                     endDate: dateRange?.to?.toISOString(),
                     channels: selectedChannels,
                 });
-                validateAndSetPlanItems(result.plan);
+                const validatedItems = result.plan.map(item => ({
+                    ...item,
+                    id: crypto.randomUUID(), // Assign temporary IDs for new items
+                }));
+                setCurrentPlan(validatedItems);
                 setView('edit');
                 setPlanIdToEdit(null); // This is a new plan
                 toast({
@@ -202,15 +192,17 @@ export function OrchestrateMediaPlanDialog({
         }
         startSaving(async () => {
             try {
-                const planToSave = currentPlan.map(({id, ...rest}) => rest);
+                const planToSave = currentPlan;
+                
                 const savedPlan = await saveMediaPlan({
-                    id: planIdToEdit,
-                    funnelId: funnel.id, 
-                    title: planTitle, 
-                    planItems: planToSave, 
-                    startDate: dateRange?.from?.toISOString() ?? null, 
+                    id: planIdToEdit, // This can be null for a new plan
+                    funnelId: funnel.id,
+                    title: planTitle,
+                    planItems: planToSave,
+                    startDate: dateRange?.from?.toISOString() ?? null,
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
+
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
@@ -252,8 +244,6 @@ export function OrchestrateMediaPlanDialog({
                 funnelId: funnel.id, 
                 channel: itemToRegen.channel, 
                 stageName: itemToRegen.stage_name,
-                concept: itemToRegen.concept,
-                objective: itemToRegen.objective
             });
             
             setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id } : item));
@@ -313,7 +303,25 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
-        setCurrentPlan(prev => prev!.map(item => item.id === itemId ? { ...item, [field]: value } : item));
+        setCurrentPlan(prev => prev!.map(item => {
+            if (item.id === itemId) {
+                // Special handling for suggested_post_at for date and time changes
+                if (field === 'suggested_post_at') {
+                    const existingDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : new Date();
+                    let newDate;
+                    // Check if value is a full date string or just a time
+                    if (value.includes('T')) { // full ISO string from calendar
+                         newDate = parseISO(value);
+                    } else { // time string from input
+                        const [hours, minutes] = value.split(':').map(Number);
+                        newDate = setHours(setMinutes(existingDate, minutes), hours);
+                    }
+                    return { ...item, suggested_post_at: newDate.toISOString() };
+                }
+                return { ...item, [field]: value };
+            }
+            return item;
+        }));
     };
 
     const handleRemoveItem = (itemId: string) => {
@@ -328,7 +336,7 @@ export function OrchestrateMediaPlanDialog({
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
-            creativePrompt: '',
+            creative_prompt: '',
             stage_name: 'New Stage',
             objective: 'Your new objective here',
             concept: 'Your new concept here',
@@ -570,10 +578,10 @@ export function OrchestrateMediaPlanDialog({
                                                         </Button>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-auto p-0">
-                                                        <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => { const newDate = date ? setHours(setMinutes(date, postDate?.getMinutes() || 0), postDate?.getHours() || 0) : null; handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || '');}} initialFocus />
+                                                        <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => handleItemChange(item.id, 'suggested_post_at', date?.toISOString() || '')} initialFocus />
                                                         </PopoverContent>
                                                     </Popover>
-                                                    <Input type="time" value={timeValue} onChange={(e) => { const [hours, minutes] = e.target.value.split(':').map(Number); const newDate = postDate ? setHours(setMinutes(postDate, minutes), hours) : null; handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || ''); }} className="w-[120px]" readOnly={!isEdit}/>
+                                                    <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]" readOnly={!isEdit}/>
                                                 </div>
                                             </div>
                                             {isEdit && (<Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
@@ -608,10 +616,9 @@ export function OrchestrateMediaPlanDialog({
                 <DialogFooter className="mt-4 pt-4 border-t">
                      {view === 'view' && (
                         <Button onClick={() => {
-                             setPlanToView(planToView);
-                             setCurrentPlan((planToView?.media_plan_items as PlanItemWithId[]) || []);
-                             setPlanTitle(planToView?.title || '');
                              setPlanIdToEdit(planToView?.id || null);
+                             setCurrentPlan(planToView?.media_plan_items as PlanItemWithId[] || []);
+                             setPlanTitle(planToView?.title || '');
                              setDateRange({ from: planToView?.campaign_start_date ? parseISO(planToView.campaign_start_date) : undefined, to: planToView?.campaign_end_date ? parseISO(planToView.campaign_end_date) : undefined });
                              setView('edit');
                         }}>
