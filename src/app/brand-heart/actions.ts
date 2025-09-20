@@ -16,6 +16,7 @@ type BrandHeartData = {
   created_at?: string;
   updated_at?: string;
   brand_name: string;
+  logo_url: string | null;
   brand_brief: { primary: string | null; secondary: string | null };
   mission: { primary: string | null; secondary: string | null };
   vision: { primary: string | null; secondary: string | null };
@@ -63,9 +64,45 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  const currentBrandHeart = await getBrandHeart();
+  const logoFile = formData.get('logo') as File | null;
+  let newLogoUrl: string | null = currentBrandHeart?.logo_url || null;
+
+  const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME;
+  if (!bucketName) {
+      throw new Error('Storage service is not configured.');
+  }
+
+  if (logoFile && logoFile.size > 0) {
+      const fileExt = logoFile.name.split('.').pop();
+      const filePath = `${user.id}/brand_logos/${user.id}-logo-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, logoFile, {
+            contentType: logoFile.type // Important for SVGs
+          });
+
+      if (uploadError) {
+          throw new Error(`Logo Upload Failed: ${uploadError.message}`);
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      newLogoUrl = publicUrl;
+
+      if (currentBrandHeart?.logo_url && currentBrandHeart.logo_url !== newLogoUrl) {
+          const oldLogoPath = currentBrandHeart.logo_url.split(`/${bucketName}/`).pop();
+          if (oldLogoPath) {
+              await supabase.storage.from(bucketName).remove([oldLogoPath]);
+          }
+      }
+  }
+
+
   const payload = {
     user_id: user.id,
     brand_name: (formData.get('brand_name') as string) || '',
+    logo_url: newLogoUrl,
     brand_brief: {
       primary: (formData.get('brand_brief_primary') as string) || null,
       secondary: (formData.get('brand_brief_secondary') as string) || null,

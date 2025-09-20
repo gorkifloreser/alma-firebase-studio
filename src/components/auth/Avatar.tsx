@@ -10,10 +10,12 @@ export function Avatar({
   url,
   isUploading,
   onFileSelect,
+  accept = "image/*",
 }: {
   url: string | null | undefined
   isUploading: boolean
   onFileSelect: (file: File | null) => void
+  accept?: string
 }) {
   const { toast } = useToast()
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -136,7 +138,7 @@ export function Avatar({
           id="avatar-upload"
           name="avatar-input"
           type="file"
-          accept="image/*"
+          accept={accept}
           className="hidden"
           onChange={handleFileChange}
           disabled={isUploading}
