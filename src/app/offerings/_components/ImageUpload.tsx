@@ -35,7 +35,6 @@ interface ImageUploadProps {
     onFilesChange: (files: { file: File, description: string }[]) => void;
     existingMedia?: ExistingMedia[];
     onRemoveExistingMedia?: (mediaId: string) => void;
-    onExistingMediaDescriptionChange?: (mediaId: string, description: string) => void;
     isSaving: boolean;
 }
 
@@ -94,7 +93,7 @@ const resizeImage = (file: File): Promise<File> => {
 };
 
 
-export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, onExistingMediaDescriptionChange, isSaving }: ImageUploadProps) {
+export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
   const [newFiles, setNewFiles] = useState<FileWithDescription[]>([]);
   const { toast } = useToast();
 
@@ -272,13 +271,9 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
                     </Button>
                 </div>
               </div>
-               <Textarea
-                    placeholder="Existing image description..."
-                    defaultValue={media.description || ''}
-                    onChange={(e) => onExistingMediaDescriptionChange?.(media.id, e.target.value)}
-                    className="text-xs h-20 resize-none"
-                    disabled={isSaving}
-                />
+               <p className="text-xs text-muted-foreground p-2 border rounded-md min-h-[80px]">
+                {media.description || 'No description provided.'}
+               </p>
             </div>
           ))}
           {newFiles.map((item, index) => (

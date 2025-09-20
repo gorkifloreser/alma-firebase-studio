@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft, updateOfferingMediaDescriptions } from '../actions';
+import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft } from '../actions';
 import type { Offering, OfferingMedia } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2 } from 'lucide-react';
 import { languages } from '@/lib/languages';
@@ -252,7 +252,6 @@ export function CreateOfferingDialog({
                 };
 
                 if (isEditMode && offeringToEdit) {
-                    await updateOfferingMediaDescriptions(offering.offering_media);
                     savedOffering = await updateOffering(offeringToEdit.id, payload);
                 } else {
                     savedOffering = await createOffering(payload);
@@ -342,15 +341,6 @@ export function CreateOfferingDialog({
         });
     };
 
-    const handleExistingMediaDescriptionChange = (mediaId: string, description: string) => {
-        setOffering(prev => ({
-            ...prev,
-            offering_media: prev.offering_media.map(media => 
-                media.id === mediaId ? { ...media, description } : media
-            )
-        }));
-    };
-    
     const eventTime = offering.event_date ? format(offering.event_date, 'HH:mm') : '';
 
     return (
@@ -493,7 +483,6 @@ export function CreateOfferingDialog({
                             onFilesChange={setNewMediaFiles}
                             existingMedia={offering.offering_media || []}
                             onRemoveExistingMedia={handleRemoveExistingMedia}
-                            onExistingMediaDescriptionChange={handleExistingMediaDescriptionChange}
                             isSaving={isSaving}
                          />
                          <p className="text-sm text-muted-foreground">

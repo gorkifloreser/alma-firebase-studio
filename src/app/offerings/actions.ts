@@ -83,15 +83,17 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  const { offering_media, ...payloadData } = offeringData as any;
+
   const payload = {
-    title: offeringData.title,
-    description: offeringData.description,
-    type: offeringData.type,
-    contextual_notes: offeringData.contextual_notes,
-    price: offeringData.price || null,
-    currency: offeringData.price ? (offeringData.currency || 'USD') : null,
-    event_date: offeringData.event_date,
-    duration: offeringData.type === 'Event' ? offeringData.duration : null,
+    title: payloadData.title,
+    description: payloadData.description,
+    type: payloadData.type,
+    contextual_notes: payloadData.contextual_notes,
+    price: payloadData.price || null,
+    currency: payloadData.price ? (payloadData.currency || 'USD') : null,
+    event_date: payloadData.event_date,
+    duration: payloadData.type === 'Event' ? payloadData.duration : null,
     user_id: user.id,
   };
 
@@ -132,15 +134,17 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
+    const { offering_media, ...payloadData } = offeringData as any;
+
     const payload = {
-      title: offeringData.title,
-      description: offeringData.description,
-      type: offeringData.type,
-      contextual_notes: offeringData.contextual_notes,
-      price: offeringData.price || null,
-      currency: offeringData.price ? (offeringData.currency || 'USD') : null,
-      event_date: offeringData.event_date,
-      duration: offeringData.type === 'Event' ? offeringData.duration : null,
+      title: payloadData.title,
+      description: payloadData.description,
+      type: payloadData.type,
+      contextual_notes: payloadData.contextual_notes,
+      price: payloadData.price || null,
+      currency: payloadData.price ? (payloadData.currency || 'USD') : null,
+      event_date: payloadData.event_date,
+      duration: payloadData.type === 'Event' ? payloadData.duration : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -319,36 +323,6 @@ export async function deleteOfferingMedia(mediaId: string): Promise<{ message: s
 
     revalidatePath('/offerings');
     return { message: 'Media deleted successfully.' };
-}
-
-/**
- * Updates the descriptions for existing media items.
- * @param {OfferingMedia[]} mediaItems - An array of media items with potentially updated descriptions.
- * @returns {Promise<{ message: string }>} A success message.
- */
-export async function updateOfferingMediaDescriptions(mediaItems: OfferingMedia[]): Promise<{ message: string }> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-    
-    if (!mediaItems || mediaItems.length === 0) {
-        return { message: 'No media descriptions to update.' };
-    }
-
-    const updates = mediaItems.map(item => ({
-        id: item.id,
-        description: item.description,
-    }));
-
-    const { error } = await supabase.from('offering_media').upsert(updates);
-
-    if (error) {
-        console.error('Error updating media descriptions:', error);
-        throw new Error('Could not update media descriptions.');
-    }
-
-    revalidatePath('/offerings');
-    return { message: 'Media descriptions updated.' };
 }
 
 
