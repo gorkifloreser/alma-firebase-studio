@@ -98,10 +98,15 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         setFunnel(initialFunnel);
+
         if (isOpen) {
-            setView(initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate');
-            setCurrentPlan(null);
-            setPlanIdToEdit(null);
+            // Only auto-reset if not editing
+            if (!planIdToEdit && !currentPlan) {
+                setView(initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate');
+                setCurrentPlan(null);
+                setPlanIdToEdit(null);
+            }
+
             setQueuedItemIds(new Set());
             setIsSelectionMode(false);
             setSelectedItemIds(new Set());
@@ -112,17 +117,11 @@ export function OrchestrateMediaPlanDialog({
                 setSelectedChannels(initialFunnel.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
             });
 
-            if (dateRange?.from) {
+            if (dateRange?.from && !planIdToEdit) {
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, initialFunnel, dateRange?.from]);
-
-    useEffect(() => {
-        if (dateRange?.from && view === 'generate' && !planIdToEdit) {
-            setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
-        }
-    }, [dateRange, view, planIdToEdit]);
+    }, [isOpen, initialFunnel, currentPlan, planIdToEdit, dateRange?.from]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -180,7 +179,11 @@ export function OrchestrateMediaPlanDialog({
         }
         startSaving(async () => {
             try {
-                const planToSave = currentPlan;
+                const planToSave = currentPlan.map(item => {
+                    // Create a new object without the temporary 'id' if it's a new item
+                    const { id, ...rest } = item;
+                    return id.startsWith('temp-') ? rest : item;
+                });
                 
                 const savedPlan = await saveMediaPlan({
                     id: planIdToEdit, // This can be null for a new plan
@@ -316,7 +319,7 @@ export function OrchestrateMediaPlanDialog({
 
     const handleAddNewItem = (channel: string) => {
         const newItem: PlanItemWithId = {
-            id: crypto.randomUUID(),
+            id: `temp-${crypto.randomUUID()}`,
             offeringId: funnel.offering_id || '',
             channel: channel,
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
@@ -384,7 +387,7 @@ export function OrchestrateMediaPlanDialog({
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
-                                const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
+                                const itemsWithClientIds = (plan.plan_items || []).map((item: any) => ({
                                   ...item,
                                   id: item.id || crypto.randomUUID()
                                 }));
@@ -395,7 +398,7 @@ export function OrchestrateMediaPlanDialog({
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                setSelectedChannels(plan.media_plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
+                                setSelectedChannels(plan.plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
                                 
                                 console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');
@@ -615,3 +618,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
