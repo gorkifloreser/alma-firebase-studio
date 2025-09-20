@@ -67,7 +67,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
                 title,
                 campaign_start_date,
                 campaign_end_date,
-                media_plan_items (
+                media_plan_items!media_plan_id (
                     id,
                     media_plan_id,
                     user_id,
@@ -118,7 +118,7 @@ export async function getFunnel(funnelId: string) {
                 title,
                 campaign_start_date,
                 campaign_end_date,
-                media_plan_items (
+                media_plan_items!media_plan_id (
                     id,
                     media_plan_id,
                     user_id,
@@ -496,7 +496,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     // Fetch the newly created/updated plan with its items to return
     const { data: newPlanWithItems, error: newPlanError } = await supabase
         .from('media_plans')
-        .select('*, media_plan_items (*)')
+        .select('*, media_plan_items!media_plan_id (*)')
         .eq('id', mediaPlanId)
         .single();
 
