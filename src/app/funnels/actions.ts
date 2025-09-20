@@ -60,7 +60,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans:media_plans!funnel_id (
+            media_plans!funnel_id (
                 *,
                 media_plan_items (*)
             )
