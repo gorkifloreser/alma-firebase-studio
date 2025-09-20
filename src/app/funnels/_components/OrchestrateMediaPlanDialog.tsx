@@ -47,7 +47,7 @@ interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     funnel: Funnel;
-    onPlanSaved: () => void;
+    onPlanSaved: (newFunnelData: Funnel) => void;
 }
 
 type PlanItemWithId = PlanItem & { id: string };
@@ -208,7 +208,11 @@ export function OrchestrateMediaPlanDialog({
                 });
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
-                onPlanSaved();
+                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                if (updatedFunnel) {
+                    onPlanSaved(updatedFunnel);
+                    setFunnel(updatedFunnel);
+                }
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -220,8 +224,12 @@ export function OrchestrateMediaPlanDialog({
             try {
                 await deleteMediaPlan(planId);
                 toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
-                onPlanSaved(); // This will trigger the parent to refresh the funnel data
-                setView('list'); // Go back to the list view
+                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                if (updatedFunnel) {
+                    onPlanSaved(updatedFunnel);
+                    setFunnel(updatedFunnel);
+                }
+                setView('list');
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -305,7 +313,7 @@ export function OrchestrateMediaPlanDialog({
                 setQueuedItemIds(newQueuedIds);
                 setSelectedItemIds(new Set());
                 setIsSelectionMode(false);
-            } catch (error: any) {
+            } catch (error: any) => {
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -546,7 +554,7 @@ export function OrchestrateMediaPlanDialog({
                                             </div>
                                         )}
                                         <div className={cn("space-y-4", isEdit && isSelectionMode && "pl-8")}>
-                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.stageName || 'Uncategorized'} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
+                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.stage_name || 'Uncategorized'} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
                                             <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={!isEdit}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
@@ -631,4 +639,12 @@ export function OrchestrateMediaPlanDialog({
             </DialogContent>
         </Dialog>
     );
+}
+
+// This function needs to exist to get the latest funnel data after an update.
+async function getFunnel(funnelId: string) {
+    const { getFunnels } = await import('../actions');
+    const funnels = await getFunnels();
+    const funnel = funnels.find(f => f.id === funnelId);
+    return { data: funnel };
 }
