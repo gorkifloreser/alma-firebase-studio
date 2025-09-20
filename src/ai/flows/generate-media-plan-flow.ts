@@ -52,17 +52,18 @@ const generateChannelPlanPrompt = ai.definePrompt({
       schema: z.object({
           primaryLanguage: z.string(),
           brandHeart: z.any(),
+          offering: z.any(),
           strategy: z.any(),
           channel: z.string(),
           validFormats: z.array(z.string()),
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint.
+  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint and brand identity.
 
 **The Strategy Blueprint to Execute:**
 ---
-**Strategy for Offering: "{{strategy.offerings.title.primary}}" (Offering ID: {{strategy.offering_id}})**
+**Strategy for Offering: "{{offering.title.primary}}" (Offering ID: {{offering.id}})**
 - Goal: {{strategy.goal}}
 
 **Blueprint Stages:**
@@ -76,10 +77,21 @@ const generateChannelPlanPrompt = ai.definePrompt({
     {{/each}}
 {{/each}}
 ---
-**Brand Identity:**
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+**Brand Identity (The "Who"):**
+- Brand Name: {{brandHeart.brand_name}}
+- Brand Brief: {{brandHeart.brand_brief.primary}}
 - Mission: {{brandHeart.mission.primary}}
+- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- Values: {{brandHeart.values.primary}}
 - Target Audience: Conscious creators, entrepreneurs, artists, healers.
+
+**Offering Details (The "What"):**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+- Type: {{offering.type}}
+{{#if offering.contextual_notes}}
+- Contextual Notes: {{offering.contextual_notes}}
+{{/if}}
 ---
 
 **Your Task:**
@@ -87,12 +99,12 @@ const generateChannelPlanPrompt = ai.definePrompt({
 Your job is to generate a list of concrete content packages for the **'{{channel}}' channel ONLY**.
 
 For **EACH conceptual step** in the blueprint, you must generate exactly ONE complete content package. Each package must contain:
-1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
+1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post. It must align with the brand's tone of voice and the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
-5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post.
-6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
+4.  **copy**: Write compelling, direct-response ad copy for the post. It must embody the brand's unique Tone of Voice and be directly inspired by the Brand's Mission and Values. It must also achieve the objective of the conceptual step. Include a headline, body, and a clear call-to-action.
+5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
+6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
 7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
@@ -105,24 +117,24 @@ const regeneratePlanItemPrompt = ai.definePrompt({
         schema: z.object({
             primaryLanguage: z.string(),
             brandHeart: z.any(),
-            strategy: z.any(),
+            offering: z.any(),
             channel: z.string(),
             conceptualStep: z.any(),
             validFormats: z.array(z.string()),
         })
     },
     output: { schema: PlanItemSchema },
-    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided strategy blueprint and a specific conceptual step.
+    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided brand identity and a specific conceptual step.
 
-**The Strategy Blueprint to Execute:**
----
-**Strategy for Offering: "{{strategy.offerings.title.primary}}" (Offering ID: {{strategy.offering_id}})**
-- Goal: {{strategy.goal}}
----
-**Brand Identity:**
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+**Brand Identity (The "Who"):**
+- Brand Name: {{brandHeart.brand_name}}
 - Mission: {{brandHeart.mission.primary}}
----
+- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+
+**Offering Details (The "What"):**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+
 **Your Specific Task:**
 
 Your job is to generate ONE concrete content package for the **'{{channel}}' channel**, based ONLY on this conceptual step:
@@ -131,12 +143,12 @@ Your job is to generate ONE concrete content package for the **'{{channel}}' cha
 - **Stage Name**: {{conceptualStep.stageName}}
 
 This content package MUST contain:
-1.  **offeringId**: The ID of the offering this content is for ('{{strategy.offering_id}}').
+1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: Suggest a NEW, DIFFERENT specific visual format from your previous attempt. **You MUST choose one from this list**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy. It must align with the brand's tone of voice and the objective of the conceptual step.
+4.  **copy**: Write NEW, DIFFERENT, compelling, direct-response ad copy that embodies the brand's tone of voice and achieves the conceptual step's objective.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
-6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator.
+6.  **creativePrompt**: A NEW, DIFFERENT, detailed, ready-to-use prompt for an AI image/video generator. The prompt should be aligned with the brand's aesthetic.
 7.  **conceptualStep**: Include the original conceptual step object from the input. It MUST include the 'stageName', 'concept', and 'objective' fields.
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
@@ -183,7 +195,7 @@ const generateMediaPlanFlow = ai.defineFlow(
         supabase.from('profiles').select('primary_language').eq('id', user.id).single(),
         supabase.from('funnels').select(`
             *,
-            offerings (id, title)
+            offerings (*)
         `).eq('id', funnelId).eq('user_id', user.id).single(),
     ]);
 
@@ -194,6 +206,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
     const channels = strategyBrief?.channels || [];
+    const offering = strategy.offerings;
 
     if (channels.length === 0) {
       throw new Error('The selected strategy has no channels defined.');
@@ -225,6 +238,7 @@ const generateMediaPlanFlow = ai.defineFlow(
         return generateChannelPlanPrompt({
             primaryLanguage,
             brandHeart,
+            offering,
             strategy: strategyWithStageNames,
             channel,
             validFormats,
@@ -263,12 +277,13 @@ const regeneratePlanItemFlow = ai.defineFlow(
         ] = await Promise.all([
             supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
             supabase.from('profiles').select('primary_language').eq('id', user.id).single(),
-            supabase.from('funnels').select(`*, offerings (id, title)`).eq('id', funnelId).eq('user_id', user.id).single(),
+            supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
         ]);
 
         if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
         if (profileError || !profile) throw new Error('User profile not found.');
         if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
+        if (!strategy.offerings) throw new Error('Strategy not linked to a valid offering.');
 
         const languages = await import('@/lib/languages');
         const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
@@ -279,7 +294,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
         const { output } = await regeneratePlanItemPrompt({
             primaryLanguage,
             brandHeart,
-            strategy,
+            offering: strategy.offerings,
             channel,
             conceptualStep,
             validFormats,
@@ -301,4 +316,3 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
-
