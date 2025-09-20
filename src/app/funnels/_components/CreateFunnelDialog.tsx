@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -85,7 +84,7 @@ export function CreateFunnelDialog({
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     
     // Step 2 State
-    const [generatedContent, setGeneratedContent] = useState<EditableStrategy | null>(null);
+    const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
     const [createdFunnelId, setCreatedFunnelId] = useState<string | null>(null);
 
     // Step 3 State
@@ -431,3 +430,4 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
+

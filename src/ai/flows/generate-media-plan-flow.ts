@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -66,6 +65,8 @@ const generateChannelPlanPrompt = ai.definePrompt({
 ---
 **Strategy for Offering: "{{offering.title.primary}}" (Offering ID: {{offering.id}})**
 - Goal: {{strategy.goal}}
+- Funnel Model: **{{strategy.strategy_brief.funnelType}}**
+  - Core Principles: **{{strategy.strategy_brief.funnelPrinciples}}**
 
 **Blueprint Stages:**
 {{#each strategy.strategy_brief.strategy}}
@@ -107,7 +108,7 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 1.  **offeringId**: The ID of the offering this content is for ('{{offering.id}}').
 2.  **channel**: The specific channel this content is for ('{{channel}}').
 3.  **format**: The specific visual format. **You MUST choose one from this list of valid formats for this channel**: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post. CRITICAL: The copy MUST be written in the brand's specific 'Tone of Voice': **'{{brandHeart.tone_of_voice.primary}}'**. Do NOT use generic marketing language. Embody this voice and be directly inspired by the Brand's Mission and Values. The copy must also achieve the objective of the conceptual step and strictly follow the channel-specific instructions provided above.
+4.  **copy**: Write compelling, direct-response ad copy for the post. CRITICAL: The copy MUST be written in the brand's specific 'Tone of Voice': **'{{brandHeart.tone_of_voice.primary}}'**. It must also be aligned with the funnel's Core Principles. Do NOT use generic marketing language. Embody this voice and be directly inspired by the Brand's Mission and Values. The copy must also achieve the objective of the conceptual step and strictly follow the channel-specific instructions provided above.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
 7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
@@ -336,3 +337,4 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
+
