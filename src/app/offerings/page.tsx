@@ -1,10 +1,11 @@
 
+
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
-import { getOfferings, createOffering, updateOffering, deleteOffering, translateText, uploadOfferingMedia, deleteOfferingMedia } from './actions';
+import { getOfferings, createOffering, updateOffering, deleteOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft } from './actions';
 import { getFunnels } from '@/app/funnels/actions';
 import { OfferingsClientPage } from './_components/OfferingsClientPage';
 
@@ -35,7 +36,8 @@ export default async function OfferingsPage() {
                     deleteOffering,
                     translateText,
                     uploadOfferingMedia,
-                    deleteOfferingMedia
+                    deleteOfferingMedia,
+                    generateOfferingDraft
                 }}
             />
         </DashboardLayout>

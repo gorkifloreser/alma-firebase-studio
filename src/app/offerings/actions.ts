@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
 
 export type OfferingMedia = {
     id: string;
@@ -412,4 +413,13 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     
     revalidatePath('/calendar');
     return { message: 'Content approved and saved successfully.' };
+}
+
+/**
+ * Invokes the Genkit flow to generate an offering draft.
+ * @param {GenerateOfferingDraftInput} input The user's prompt for the new offering.
+ * @returns {Promise<OfferingDraft>} The AI-generated draft.
+ */
+export async function generateOfferingDraft(input: GenerateOfferingDraftInput): Promise<OfferingDraft> {
+    return genOfferingDraftFlow(input);
 }

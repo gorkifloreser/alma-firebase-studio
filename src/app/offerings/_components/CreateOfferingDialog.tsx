@@ -16,9 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia } from '../actions';
+import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft } from '../actions';
 import type { Offering, OfferingMedia } from '../actions';
-import { Sparkles, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2 } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -26,6 +26,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ImageUpload } from './ImageUpload';
+import { Separator } from '@/components/ui/separator';
 
 
 type Profile = {
@@ -126,6 +127,8 @@ export function CreateOfferingDialog({
     offeringToEdit,
 }: CreateOfferingDialogProps) {
     const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const [newMediaFiles, setNewMediaFiles] = useState<File[]>([]);
@@ -135,17 +138,19 @@ export function CreateOfferingDialog({
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     useEffect(() => {
-        if (isEditMode && offeringToEdit) {
-            const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
-            setOffering({
-                ...initialOfferingState,
-                ...offeringToEdit,
-                event_date: date,
-            });
+        if (isOpen) {
+            if (isEditMode && offeringToEdit) {
+                const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
+                setOffering({
+                    ...initialOfferingState,
+                    ...offeringToEdit,
+                    event_date: date,
+                });
+            } else {
+                setOffering(initialOfferingState);
+            }
             setNewMediaFiles([]);
-        } else {
-            setOffering(initialOfferingState);
-            setNewMediaFiles([]);
+            setAiPrompt('');
         }
     }, [offeringToEdit, isEditMode, isOpen]);
 
@@ -301,6 +306,31 @@ export function CreateOfferingDialog({
             setIsTranslating(null);
         }
     };
+
+    const handleGenerateDraft = () => {
+        if (!aiPrompt.trim()) {
+            toast({ variant: 'destructive', title: 'Please provide a prompt for the AI.' });
+            return;
+        }
+        startGenerating(async () => {
+            try {
+                const result = await generateOfferingDraft({ prompt: aiPrompt });
+                setOffering(prev => ({
+                    ...prev,
+                    title: { ...prev.title, primary: result.title },
+                    description: { ...prev.description, primary: result.description },
+                    price: result.price ?? prev.price,
+                }));
+                toast({ title: 'Draft Generated!', description: 'Review the generated content below.'});
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Generation Failed',
+                    description: error.message,
+                });
+            }
+        });
+    };
     
     const eventTime = offering.event_date ? format(offering.event_date, 'HH:mm') : '';
 
@@ -314,6 +344,25 @@ export function CreateOfferingDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-8 py-4 max-h-[80vh] overflow-y-auto pr-6">
+                    {!isEditMode && (
+                         <div className="space-y-4 p-4 bg-secondary/50 rounded-lg">
+                            <Label htmlFor="ai-prompt" className="text-md font-semibold flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> Describe Your Offering Idea</Label>
+                            <Textarea 
+                                id="ai-prompt"
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                placeholder="e.g., 'A 90-minute ceremonial cacao gathering for the new moon, held online.'"
+                                className="bg-background"
+                            />
+                            <Button type="button" onClick={handleGenerateDraft} disabled={isGenerating}>
+                                <Wand2 className="mr-2 h-4 w-4" />
+                                {isGenerating ? 'Generating Draft...' : 'Generate with AI'}
+                            </Button>
+                        </div>
+                    )}
+                     <Separator />
+
+
                     <div className="space-y-2">
                         <Label htmlFor="type" className="text-md font-semibold">Type of Offering</Label>
                          <Select name="type" value={offering.type} onValueChange={(value) => handleFormChange(value, 'type')}>
