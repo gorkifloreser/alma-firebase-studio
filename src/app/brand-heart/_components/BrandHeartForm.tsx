@@ -58,21 +58,31 @@ export function BrandHeartForm({
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        
+
         if (name.includes('_')) {
-            const [field, lang] = name.split('_') as [keyof BrandHeartFields, 'primary' | 'secondary'];
-            setBrandHeart((prev:any) => ({
+            const [field, lang] = name.split('_');
+            setBrandHeart((prev: any) => ({
                 ...prev,
-                [field]: { ...(prev as BrandHeartData)[field], [lang]: value }
+                [field]: { ...prev[field], [lang]: value },
             }));
         } else {
-            setBrandHeart((prev:any) => ({ ...prev, [name]: value }));
+            setBrandHeart((prev: any) => ({ ...prev, [name]: value }));
         }
     };
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const formData = new FormData(event.currentTarget);
+        const formData = new FormData();
+        
+        // Append all text fields from the state to FormData
+        formData.append('brand_name', brandHeart.brand_name || '');
+        Object.keys(brandHeart).forEach(key => {
+            if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
+                formData.append(`${key}_primary`, brandHeart[key].primary || '');
+                formData.append(`${key}_secondary`, brandHeart[key].secondary || '');
+            }
+        });
+
         if (logoFile) {
             formData.append('logo', logoFile);
         }
@@ -174,7 +184,7 @@ export function BrandHeartForm({
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2">
                 <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                <Input id="brand_name" name="brand_name" defaultValue={brandHeart?.brand_name || ''} onChange={handleFormChange} />
+                <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleFormChange} />
             </div>
             <div className="space-y-2">
                  <Label className="text-lg font-semibold">Brand Logo</Label>
