@@ -42,16 +42,8 @@ export async function getQueueItems(): Promise<QueueItem[]> {
         console.error("Error fetching queue items:", error);
         throw new Error("Could not fetch the content generation queue.");
     }
-    
-    // The result from Supabase gives media_plan_items as an object, not an array.
-    // We need to reshape it to match the QueueItem type.
-    const reshapedData = data.map(item => ({
-        ...item,
-        // Replace the media_plan_items object with its content, which represents the source_plan_item
-        source_plan_item: item.media_plan_items
-    }));
 
-    return reshapedData as unknown as QueueItem[];
+    return data as unknown as QueueItem[];
 }
 
 /**

@@ -557,7 +557,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemI
 
     const { count, error } = await supabase
         .from('content_generation_queue')
-        .insert(recordsToInsert, { onConflict: 'media_plan_item_id, user_id' }); // Prevent duplicates
+        .insert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); // Prevent duplicates
 
     if (error) {
         console.error('Error bulk adding to artisan queue:', error);
@@ -598,8 +598,3 @@ export async function getUserChannels(): Promise<Account[]> {
         best_practices: row.best_practices,
     }));
 }
-
-    
-
-
-

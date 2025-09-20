@@ -122,7 +122,7 @@ export function OrchestrateMediaPlanDialog({
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, initialFunnel, dateRange?.from, planIdToEdit, currentPlan]);
+    }, [isOpen, initialFunnel, planIdToEdit, currentPlan]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -619,5 +619,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    
