@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -19,6 +20,7 @@ const PlanItemSchema = z.object({
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
   creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
   conceptualStep: z.any().optional().describe("The original conceptual step from the blueprint that this item is based on."),
+  suggested_post_at: z.string().optional().describe("A suggested date and time for posting this content in ISO 8601 format (e.g., '2025-10-26T14:30:00Z'). Base this on the campaign dates and channel best practices."),
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
@@ -33,6 +35,8 @@ export type GenerateMediaPlanOutput = z.infer<typeof GenerateMediaPlanOutputSche
 
 const GenerateMediaPlanInputSchema = z.object({
   funnelId: z.string(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 export type GenerateMediaPlanInput = z.infer<typeof GenerateMediaPlanInputSchema>;
 
@@ -56,6 +60,8 @@ const generateChannelPlanPrompt = ai.definePrompt({
           channel: z.string(),
           validFormats: z.array(z.string()),
           bestPractices: z.string().optional(),
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
       })
   },
   output: { schema: ChannelPlanSchema },
@@ -95,6 +101,11 @@ const generateChannelPlanPrompt = ai.definePrompt({
 - Contextual Notes: {{offering.contextual_notes}}
 {{/if}}
 ---
+**Campaign Timing:**
+- Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
+- End Date: {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
+You must create a content sequence that is appropriately paced for this duration.
+---
 **CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
 You MUST adhere to the following best practices for this channel:
 "{{bestPractices}}"
@@ -112,6 +123,7 @@ For **EACH conceptual step** in the blueprint, you must generate exactly ONE com
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags for the post, mixing niche and broader terms.
 6.  **creativePrompt**: A detailed, ready-to-use prompt for an AI image/video generator (like Midjourney or DALL-E) to create the visual. The prompt must be descriptive, visually rich, and perfectly aligned with the Brand's aesthetic (soulful, minimalist, calm, creative, authentic) and the copy you just wrote. Example: "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1".
 7.  **conceptualStep**: Include the original conceptual step object from the blueprint that this item is based on. **This is for context and you must include the 'stageName' and 'objective' inside this object**.
+8.  **suggested_post_at**: Based on the campaign dates and channel best practices, suggest an ideal date and time for this specific post. Return it as a full ISO 8601 string (e.g., '2025-10-26T14:30:00Z').
 
 Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -189,7 +201,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     inputSchema: GenerateMediaPlanInputSchema,
     outputSchema: GenerateMediaPlanOutputSchema,
   },
-  async ({ funnelId }) => {
+  async ({ funnelId, startDate, endDate }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -257,6 +269,8 @@ const generateMediaPlanFlow = ai.defineFlow(
             channel,
             validFormats,
             bestPractices,
+            startDate,
+            endDate,
         }).then(result => result.output?.plan || []) // Return the plan array or an empty array on failure
     });
 
@@ -337,4 +351,3 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
-

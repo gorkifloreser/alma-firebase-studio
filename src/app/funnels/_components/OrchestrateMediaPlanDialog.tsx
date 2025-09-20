@@ -18,13 +18,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { useToast } from '@/hooks/use-toast';
 import { Funnel, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue } from '../actions';
 import { getOfferings, Offering } from '@/app/offerings/actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X } from 'lucide-react';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
+
 
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
@@ -64,6 +69,10 @@ export function OrchestrateMediaPlanDialog({
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('');
+    const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+        from: new Date(),
+        to: addDays(new Date(), 6),
+    });
     
     const { toast } = useToast();
 
@@ -116,7 +125,11 @@ export function OrchestrateMediaPlanDialog({
     const handleGeneratePlan = () => {
         startGenerating(async () => {
             try {
-                const result = await generateMediaPlanAction({ funnelId: funnel.id });
+                const result = await generateMediaPlanAction({
+                    funnelId: funnel.id,
+                    startDate: dateRange?.from?.toISOString(),
+                    endDate: dateRange?.to?.toISOString(),
+                });
                 validateAndSetPlanItems(result.plan);
                 toast({
                     title: 'Media Plan Generated!',
@@ -333,6 +346,7 @@ export function OrchestrateMediaPlanDialog({
                                                     <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
                                                     <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
                                                     <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
+                                                    <div className="space-y-1"><Label htmlFor={`post-at-${item.id}`}>Suggested Post Time</Label><Input id={`post-at-${item.id}`} value={item.suggested_post_at || 'Not generated'} disabled /></div>
                                                     <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
                                                         {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
                                                     </Button>
@@ -348,8 +362,48 @@ export function OrchestrateMediaPlanDialog({
                         <div className="text-center text-muted-foreground py-10 flex-1 flex flex-col items-center justify-center">
                             <Stars className="h-12 w-12 mb-4" />
                             <h3 className="font-semibold text-lg">No media plan exists for this strategy yet.</h3>
-                            <p>Click the button below to generate one with AI.</p>
-                            <Button className="mt-6" onClick={handleGeneratePlan} disabled={isGenerating}> Generate Media Plan </Button>
+                             <div className="grid gap-2 text-left my-4">
+                                <Label htmlFor="dates">Campaign Dates</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        id="dates"
+                                        variant={"outline"}
+                                        className={cn(
+                                        "w-[300px] justify-start text-left font-normal",
+                                        !dateRange && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dateRange?.from ? (
+                                        dateRange.to ? (
+                                            <>
+                                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                                            {format(dateRange.to, "LLL dd, y")}
+                                            </>
+                                        ) : (
+                                            format(dateRange.from, "LLL dd, y")
+                                        )
+                                        ) : (
+                                        <span>Pick a date range</span>
+                                        )}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to}>
+                                {isGenerating ? 'Generating...' : 'Generate Media Plan'}
+                            </Button>
                         </div>
                     )}
                 </div>
