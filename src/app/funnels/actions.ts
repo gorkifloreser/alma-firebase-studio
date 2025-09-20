@@ -61,8 +61,28 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
             *,
             offerings (id, title),
             media_plans!funnel_id (
-                *,
-                media_plan_items (*)
+                id,
+                funnel_id,
+                created_at,
+                title,
+                campaign_start_date,
+                campaign_end_date,
+                media_plan_items!media_plan_id (
+                    id,
+                    media_plan_id,
+                    user_id,
+                    offering_id,
+                    channel,
+                    format,
+                    copy,
+                    hashtags,
+                    creative_prompt,
+                    suggested_post_at,
+                    created_at,
+                    stage_name,
+                    objective,
+                    concept
+                )
             )
         `)
         .eq('user_id', user.id);
@@ -410,10 +430,10 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             copy: item.copy,
             hashtags: item.hashtags,
             creative_prompt: item.creativePrompt,
+            suggested_post_at: item.suggested_post_at,
             stage_name: item.stageName,
             objective: item.objective,
             concept: item.concept,
-            suggested_post_at: item.suggested_post_at,
         }));
 
         const { error: itemsError } = await supabase
