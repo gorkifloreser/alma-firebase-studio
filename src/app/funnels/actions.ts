@@ -16,6 +16,7 @@ export type MediaPlan = {
     id: string;
     funnel_id: string;
     created_at: string;
+    title: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
     media_plan_items: PlanItem[] | null;
@@ -344,7 +345,7 @@ export async function getLandingPage(funnelId: string): Promise<Data | null> {
     return data.landing_page_content as Data;
 }
 
-export async function saveMediaPlan(funnelId: string, planItems: PlanItem[], startDate: string | null, endDate: string | null): Promise<MediaPlan> {
+export async function saveMediaPlan(funnelId: string, title: string, planItems: PlanItem[], startDate: string | null, endDate: string | null): Promise<MediaPlan> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -355,6 +356,7 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[], sta
         .insert({
             funnel_id: funnelId,
             user_id: user.id,
+            title: title,
             campaign_start_date: startDate,
             campaign_end_date: endDate,
         })

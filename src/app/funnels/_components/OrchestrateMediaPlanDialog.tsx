@@ -65,6 +65,7 @@ export function OrchestrateMediaPlanDialog({
 }: OrchestrateMediaPlanDialogProps) {
     const [view, setView] = useState<ViewState>('list');
     const [currentPlan, setCurrentPlan] = useState<PlanItemWithId[] | null>(null);
+    const [planTitle, setPlanTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
@@ -87,8 +88,17 @@ export function OrchestrateMediaPlanDialog({
             setQueuedItemIds(new Set());
             setIsSelectionMode(false);
             setSelectedItemIds(new Set());
+            if (dateRange?.from) {
+                setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
+            }
         }
-    }, [isOpen, funnel]);
+    }, [isOpen, funnel, dateRange?.from]);
+
+    useEffect(() => {
+        if (dateRange?.from) {
+            setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
+        }
+    }, [dateRange]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -145,11 +155,14 @@ export function OrchestrateMediaPlanDialog({
     };
 
     const handleSave = () => {
-        if (!currentPlan) return;
+        if (!currentPlan || !planTitle.trim()) {
+            toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please provide a title for the media plan.' });
+            return;
+        }
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(({id, ...rest}) => rest);
-                const newPlan = await saveMediaPlan(funnel.id, planToSave, dateRange?.from?.toISOString() ?? null, dateRange?.to?.toISOString() ?? null);
+                const newPlan = await saveMediaPlan(funnel.id, planTitle, planToSave, dateRange?.from?.toISOString() ?? null, dateRange?.to?.toISOString() ?? null);
                 onPlanSaved(newPlan);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
@@ -315,10 +328,12 @@ export function OrchestrateMediaPlanDialog({
                 funnel.media_plans.map(plan => (
                     <Card key={plan.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
                         validateAndSetPlanItems(plan.media_plan_items || []);
+                        setPlanTitle(plan.title);
+                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
                         setView('edit');
                     }}>
                         <CardHeader>
-                            <CardTitle>Campaign: {plan.campaign_start_date ? format(parseISO(plan.campaign_start_date), 'MMM d, yyyy') : 'Unscheduled'}</CardTitle>
+                            <CardTitle>{plan.title}</CardTitle>
                             <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
                         </CardHeader>
                     </Card>
@@ -330,52 +345,60 @@ export function OrchestrateMediaPlanDialog({
     );
     
     const renderGenerateView = () => (
-        <div className="text-center text-muted-foreground py-10 flex-1 flex flex-col items-center justify-center">
-            {view === 'edit' && <Button variant="ghost" onClick={() => setView('list')} className="absolute top-16 left-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>}
-            <Stars className="h-12 w-12 mb-4" />
-            <h3 className="font-semibold text-lg">No media plan exists for this strategy yet.</h3>
-             <div className="grid gap-2 text-left my-4">
-                <Label htmlFor="dates">Campaign Dates</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        id="dates"
-                        variant={"outline"}
-                        className={cn(
-                        "w-[300px] justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                        dateRange.to ? (
-                            <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
-                            </>
-                        ) : (
-                            format(dateRange.from, "LLL dd, y")
-                        )
-                        ) : (
-                        <span>Pick a date range</span>
-                        )}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
-                    />
-                    </PopoverContent>
-                </Popover>
+        <div className="text-muted-foreground py-10 flex-1 flex flex-col">
+            <Button variant="ghost" onClick={() => setView('list')} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <Stars className="h-12 w-12 mb-4" />
+                <h3 className="font-semibold text-lg text-foreground">Generate a New Media Plan</h3>
+                <div className="grid gap-4 text-left my-6 max-w-md w-full">
+                    <div className="space-y-2">
+                        <Label htmlFor="plan-title">Campaign Title</Label>
+                        <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="dates">Campaign Dates</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="dates"
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dateRange && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {dateRange?.from ? (
+                                dateRange.to ? (
+                                    <>
+                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                    {format(dateRange.to, "LLL dd, y")}
+                                    </>
+                                ) : (
+                                    format(dateRange.from, "LLL dd, y")
+                                )
+                                ) : (
+                                <span>Pick a date range</span>
+                                )}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={dateRange?.from}
+                                selected={dateRange}
+                                onSelect={setDateRange}
+                                numberOfMonths={2}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+                <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim()}>
+                    {isGenerating ? 'Generating...' : 'Generate Media Plan'}
+                </Button>
             </div>
-            <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to}>
-                {isGenerating ? 'Generating...' : 'Generate Media Plan'}
-            </Button>
         </div>
     );
 
