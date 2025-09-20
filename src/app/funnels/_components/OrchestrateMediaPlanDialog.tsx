@@ -314,7 +314,7 @@ export function OrchestrateMediaPlanDialog({
             {funnel.media_plans && funnel.media_plans.length > 0 ? (
                 funnel.media_plans.map(plan => (
                     <Card key={plan.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
-                        validateAndSetPlanItems(plan.plan_items || []);
+                        validateAndSetPlanItems(plan.media_plan_items || []);
                         setView('edit');
                     }}>
                         <CardHeader>

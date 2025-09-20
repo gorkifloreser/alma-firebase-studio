@@ -15,10 +15,10 @@ export type { PlanItem };
 export type MediaPlan = {
     id: string;
     funnel_id: string;
-    plan_items: PlanItem[] | null;
     created_at: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
+    media_plan_items: PlanItem[] | null;
 };
 
 export type Funnel = {
@@ -58,7 +58,10 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans:media_plans!funnel_id (*)
+            media_plans!funnel_id (
+                *,
+                media_plan_items (*)
+            )
         `)
         .eq('user_id', user.id);
 
@@ -346,12 +349,12 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[], sta
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // 1. Create the parent media_plan record
     const { data: mediaPlan, error: mediaPlanError } = await supabase
         .from('media_plans')
         .insert({
             funnel_id: funnelId,
             user_id: user.id,
-            plan_items: planItems,
             campaign_start_date: startDate,
             campaign_end_date: endDate,
         })
@@ -363,8 +366,48 @@ export async function saveMediaPlan(funnelId: string, planItems: PlanItem[], sta
         throw new Error("Could not save the media plan.");
     }
     
+    // 2. Prepare and insert the individual items
+    if (planItems && planItems.length > 0) {
+        const itemsToInsert = planItems.map(item => ({
+            media_plan_id: mediaPlan.id,
+            user_id: user.id,
+            offering_id: item.offeringId,
+            channel: item.channel,
+            format: item.format,
+            copy: item.copy,
+            hashtags: item.hashtags,
+            creative_prompt: item.creativePrompt,
+            conceptual_step: item.conceptualStep,
+            suggested_post_at: item.suggested_post_at,
+        }));
+
+        const { error: itemsError } = await supabase
+            .from('media_plan_items')
+            .insert(itemsToInsert);
+        
+        if (itemsError) {
+            // If items fail to save, we should ideally roll back the media_plan insert.
+            // For now, we'll delete it and throw an error.
+            console.error("Error saving media plan items:", itemsError);
+            await supabase.from('media_plans').delete().eq('id', mediaPlan.id);
+            throw new Error("Could not save the media plan items.");
+        }
+    }
+
     revalidatePath('/funnels');
-    return mediaPlan;
+    
+    // Fetch the newly created plan with its items to return
+    const { data: newPlanWithItems, error: newPlanError } = await supabase
+        .from('media_plans')
+        .select('*, media_plan_items (*)')
+        .eq('id', mediaPlan.id)
+        .single();
+
+    if (newPlanError || !newPlanWithItems) {
+        throw new Error("Failed to fetch the newly created plan.");
+    }
+
+    return newPlanWithItems as MediaPlan;
 }
 
 export async function addToArtisanQueue(funnelId: string, planItem: PlanItem): Promise<{ message: string }> {
