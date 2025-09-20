@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel, Funnel, generateMediaPlan, regeneratePlanItem, saveMediaPlan } from '../actions';
 import { getOfferings, Offering } from '@/app/offerings/actions';
 import { Bot, User, Stars, Sparkles, ArrowLeft, RefreshCw, Trash2, PlusCircle, Wand2 } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GenerateFunnelOutput, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
@@ -128,11 +128,12 @@ export function CreateFunnelDialog({
             }
             
             getUserChannels().then(channels => {
-                setAvailableChannels(channels);
+                const channelNames = channels.map(c => c.id);
+                setAvailableChannels(channelNames);
                 if (funnelToEdit?.strategy_brief?.channels) {
                     setSelectedChannels(funnelToEdit.strategy_brief.channels);
                 } else {
-                    setSelectedChannels(channels); // Default to all selected for new funnels
+                    setSelectedChannels(channelNames); // Default to all selected for new funnels
                 }
             });
         }
@@ -265,6 +266,13 @@ export function CreateFunnelDialog({
     const handleChannelToggle = (channel: string) => { setSelectedChannels(prev => prev.includes(channel) ? prev.filter(c => c !== channel) : [...prev, channel]); }
     const handleBlueprintChange = (stageIndex: number, field: keyof EditableStrategy['strategy'][0], value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
     const handleConceptualStepChange = (stageIndex: number, stepIndex: number, field: keyof ConceptualStep, value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex].conceptualSteps[stepIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy });}
+    
+    const handleAddStage = () => { if (!generatedContent) return; const newStage = { stageName: "New Stage", objective: "", keyMessage: "", conceptualSteps: [], successMetrics: [] }; setGeneratedContent({ ...generatedContent, strategy: [...generatedContent.strategy, newStage] }); }
+    const handleDeleteStage = (stageIndex: number) => { if (!generatedContent) return; const newStrategy = generatedContent.strategy.filter((_, i) => i !== stageIndex); setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
+    const handleAddStep = (stageIndex: number) => { if (!generatedContent) return; const newStep = { step: (generatedContent.strategy[stageIndex].conceptualSteps.length || 0) + 1, concept: "New conceptual idea", objective: "Objective for this idea" }; const newStrategy = [...generatedContent.strategy]; newStrategy[stageIndex].conceptualSteps.push(newStep); setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
+    const handleDeleteStep = (stageIndex: number, stepIndex: number) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; newStrategy[stageIndex].conceptualSteps = newStrategy[stageIndex].conceptualSteps.filter((_, i) => i !== stepIndex); setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
+
+
     const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item)); };
     const handleStageNameChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, stageName: value } } : item)); };
     const handleObjectiveChange = (itemId: string, value: string) => { setPlanItems(prev => prev.map(item => item.id === itemId && item.conceptualStep ? { ...item, conceptualStep: { ...item.conceptualStep, objective: value } } : item)); };
@@ -309,7 +317,25 @@ export function CreateFunnelDialog({
             <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
                 {!generatedContent ? (<div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>) : (
                     <><div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={name} onChange={(e) => setName(e.target.value)} className="text-lg"/></div>
-                    <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (<Card key={sIdx}><CardHeader><Input value={stage.stageName} onChange={(e) => handleBlueprintChange(sIdx, 'stageName', e.target.value)} className="text-xl font-bold border-0 shadow-none focus-visible:ring-1 p-0 h-auto"/></CardHeader><CardContent className="space-y-4"><div className="space-y-1"><Label>Objective</Label><Textarea value={stage.objective} onChange={(e) => handleBlueprintChange(sIdx, 'objective', e.target.value)} /></div><div className="space-y-1"><Label>Key Message</Label><Textarea value={stage.keyMessage} onChange={(e) => handleBlueprintChange(sIdx, 'keyMessage', e.target.value)} /></div><div><Label>Conceptual Steps</Label><div className="space-y-2 mt-1">{stage.conceptualSteps.map((step, stepIdx) => (<div key={step.step} className="p-2 border rounded-md space-y-1"><Input value={step.objective} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'objective', e.target.value)} className="font-semibold text-sm"/><Textarea value={step.concept} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'concept', e.target.value)} rows={2} className="text-sm"/></div>))}</div></div></CardContent></Card>))}</div></>
+                    <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (
+                        <Card key={sIdx} className="relative group/stage">
+                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover/stage:opacity-100 transition-opacity" onClick={() => handleDeleteStage(sIdx)}><Trash2 className="h-4 w-4" /></Button>
+                            <CardHeader><Input value={stage.stageName} onChange={(e) => handleBlueprintChange(sIdx, 'stageName', e.target.value)} className="text-xl font-bold border-0 shadow-none focus-visible:ring-1 p-0 h-auto"/></CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-1"><Label>Objective</Label><Textarea value={stage.objective} onChange={(e) => handleBlueprintChange(sIdx, 'objective', e.target.value)} /></div>
+                                <div className="space-y-1"><Label>Key Message</Label><Textarea value={stage.keyMessage} onChange={(e) => handleBlueprintChange(sIdx, 'keyMessage', e.target.value)} /></div>
+                                <div><Label>Conceptual Ideas</Label><div className="space-y-2 mt-1">{stage.conceptualSteps.map((step, stepIdx) => (
+                                    <div key={step.step} className="p-3 border rounded-md space-y-2 relative group/step">
+                                         <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/step:opacity-100 transition-opacity" onClick={() => handleDeleteStep(sIdx, stepIdx)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                                        <Textarea value={step.concept} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'concept', e.target.value)} rows={2} className="text-sm font-semibold" placeholder="Concept..."/>
+                                        <Textarea value={step.objective} onChange={(e) => handleConceptualStepChange(sIdx, stepIdx, 'objective', e.target.value)} rows={1} className="text-xs" placeholder="Objective..."/>
+                                    </div>))}
+                                    <Button variant="outline" size="sm" className="mt-2" onClick={() => handleAddStep(sIdx)}><PlusCircle className="mr-2 h-4 w-4" /> Add Idea</Button>
+                                </div></div>
+                            </CardContent>
+                        </Card>))}
+                         <Button variant="secondary" className="w-full" onClick={handleAddStage}><PlusCircle className="mr-2 h-4 w-4" /> Add New Stage</Button>
+                    </div></>
                 )}
             </div>
             <DialogFooter>
