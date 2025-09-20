@@ -84,11 +84,8 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { offering_media, ...restOfData } = offeringData as any;
-
   const payload = {
-    ...restOfData,
+    ...offeringData,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -132,7 +129,6 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { offering_media, ...restOfData } = offeringData as any;
 
     const payload = {
