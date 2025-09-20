@@ -13,6 +13,8 @@ const OfferingDraftSchema = z.object({
   title: z.string().describe("A concise and magnetic title for the offering."),
   description: z.string().describe("A compelling and authentic description of the offering, embodying the brand's tone."),
   price: z.number().optional().describe("A suggested price for the offering, as a number."),
+  currency: z.string().optional().describe("The 3-letter currency code (e.g., USD, EUR, MXN) if mentioned in the prompt. Default to USD if a price is mentioned but no currency is specified."),
+  contextual_notes: z.string().optional().describe("Any important contextual notes for the campaign (e.g., 'pre-sale discount', 'for beginners')."),
 });
 export type OfferingDraft = z.infer<typeof OfferingDraftSchema>;
 
@@ -49,6 +51,8 @@ Based on the user's idea and their Brand Heart, generate the following:
 1.  **title**: A concise and magnetic title for the offering. It should be appealing and clear.
 2.  **description**: A compelling and authentic description. Embody the brand's tone of voice. Clearly explain what the offering is, who it's for, and the transformation or value it provides.
 3.  **price**: A suggested price for the offering. Base this on the type of offering (e.g., a digital product might be cheaper than a full-day workshop). Suggest a reasonable, whole number price.
+4.  **currency**: If a currency (e.g., Mexican Pesos, MXN, EUR, USD) is mentioned in the user's idea, provide the standard 3-letter ISO code. If a price is mentioned but no currency, default to 'USD'.
+5.  **contextual_notes**: If the user's idea contains any special context for the campaign (like 'pre-sale', 'for beginners', 'limited spots', 'special discount'), extract and summarize it here.
 
 Return the result in the specified JSON format.`,
 });

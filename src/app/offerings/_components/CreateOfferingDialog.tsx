@@ -320,6 +320,8 @@ export function CreateOfferingDialog({
                     title: { ...prev.title, primary: result.title },
                     description: { ...prev.description, primary: result.description },
                     price: result.price ?? prev.price,
+                    currency: result.currency ?? prev.currency,
+                    contextual_notes: result.contextual_notes ?? prev.contextual_notes,
                 }));
                 toast({ title: 'Draft Generated!', description: 'Review the generated content below.'});
             } catch (error: any) {
@@ -351,7 +353,7 @@ export function CreateOfferingDialog({
                                 id="ai-prompt"
                                 value={aiPrompt}
                                 onChange={(e) => setAiPrompt(e.target.value)}
-                                placeholder="e.g., 'A 90-minute ceremonial cacao gathering for the new moon, held online.'"
+                                placeholder="e.g., 'A 90-minute ceremonial cacao gathering for the new moon, held online, for 500 MXN. This is for people new to ceremonial cacao.'"
                                 className="bg-background"
                             />
                             <Button type="button" onClick={handleGenerateDraft} disabled={isGenerating}>
