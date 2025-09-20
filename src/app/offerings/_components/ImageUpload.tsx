@@ -31,11 +31,17 @@ interface ExistingMedia {
     description?: string | null;
 }
 
+interface OfferingContext {
+    title: string | null;
+    description: string | null;
+}
+
 interface ImageUploadProps {
     onFilesChange: (files: { file: File, description: string }[]) => void;
     existingMedia?: ExistingMedia[];
     onRemoveExistingMedia?: (mediaId: string) => void;
     isSaving: boolean;
+    offeringContext: OfferingContext;
 }
 
 // --- Image Resizing Logic ---
@@ -93,7 +99,7 @@ const resizeImage = (file: File): Promise<File> => {
 };
 
 
-export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
+export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving, offeringContext }: ImageUploadProps) {
   const [newFiles, setNewFiles] = useState<FileWithDescription[]>([]);
   const { toast } = useToast();
 
@@ -114,7 +120,11 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
     });
     try {
         const imageDataUri = await fileToDataUri(file);
-        const result = await generateImageDescription({ imageDataUri });
+        const result = await generateImageDescription({ 
+            imageDataUri,
+            contextTitle: offeringContext.title || '',
+            contextDescription: offeringContext.description || '',
+        });
         handleDescriptionChange(index, result.description);
     } catch (error: any) {
         toast({
@@ -188,7 +198,7 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
         handleAutoDescription(currentFileCount + index, item.file);
     });
 
-  }, [toast, newFiles.length]);
+  }, [toast, newFiles.length, offeringContext]);
 
   const removeNewFile = (index: number) => {
     setNewFiles(prev => {

@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -83,18 +84,18 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { offering_media, ...payloadData } = offeringData as any;
+  const { title, description, type, contextual_notes, price, currency, event_date, duration } = offeringData;
 
   const payload = {
-    title: payloadData.title,
-    description: payloadData.description,
-    type: payloadData.type,
-    contextual_notes: payloadData.contextual_notes,
-    price: payloadData.price || null,
-    currency: payloadData.price ? (payloadData.currency || 'USD') : null,
-    event_date: payloadData.event_date,
-    duration: payloadData.type === 'Event' ? payloadData.duration : null,
     user_id: user.id,
+    title,
+    description,
+    type,
+    contextual_notes,
+    price: price || null,
+    currency: price ? currency || 'USD' : null,
+    event_date,
+    duration: type === 'Event' ? duration : null,
   };
 
   const { data, error } = await supabase
@@ -134,17 +135,17 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { offering_media, ...payloadData } = offeringData as any;
+    const { title, description, type, contextual_notes, price, currency, event_date, duration } = offeringData;
 
     const payload = {
-      title: payloadData.title,
-      description: payloadData.description,
-      type: payloadData.type,
-      contextual_notes: payloadData.contextual_notes,
-      price: payloadData.price || null,
-      currency: payloadData.price ? (payloadData.currency || 'USD') : null,
-      event_date: payloadData.event_date,
-      duration: payloadData.type === 'Event' ? payloadData.duration : null,
+      title,
+      description,
+      type,
+      contextual_notes,
+      price: price || null,
+      currency: price ? currency || 'USD' : null,
+      event_date,
+      duration: type === 'Event' ? duration : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -437,7 +438,7 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 
 /**
  * Invokes the Genkit flow to generate an image description.
- * @param {GenerateImageDescriptionInput} input The image data URI.
+ * @param {GenerateImageDescriptionInput} input The image data URI and optional context.
  * @returns {Promise<GenerateImageDescriptionOutput>} The AI-generated description.
  */
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {

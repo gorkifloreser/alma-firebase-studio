@@ -484,6 +484,7 @@ export function CreateOfferingDialog({
                             existingMedia={offering.offering_media || []}
                             onRemoveExistingMedia={handleRemoveExistingMedia}
                             isSaving={isSaving}
+                            offeringContext={{ title: offering.title.primary, description: offering.description.primary }}
                          />
                          <p className="text-sm text-muted-foreground">
                             Upload images for your offering (Max 50MB per file). Add a description for AI context.
