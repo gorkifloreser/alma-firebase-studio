@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -152,7 +153,7 @@ export function OrchestrateMediaPlanDialog({
             return {
                 ...item,
                 format: formatIsValid ? item.format : (validFormats[0] || 'Blog Post'),
-                id: crypto.randomUUID(),
+                id: (item as any).id || crypto.randomUUID(),
             };
         });
         setCurrentPlan(validatedItems);
@@ -400,7 +401,7 @@ export function OrchestrateMediaPlanDialog({
                                 </div>
                                 <div className="flex items-center gap-2">
                                      <Button variant="outline" size="sm" onClick={() => {
-                                        validateAndSetPlanItems(plan.media_plan_items || []);
+                                        validateAndSetPlanItems((plan.media_plan_items as PlanItem[]) || []);
                                         setPlanTitle(plan.title);
                                         setPlanIdToEdit(plan.id);
                                         setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
