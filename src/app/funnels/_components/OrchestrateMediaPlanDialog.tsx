@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -53,7 +52,7 @@ interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     funnel: Funnel;
-    onPlanSaved: (newPlan: MediaPlan) => void;
+    onPlanSaved: () => void;
 }
 
 type PlanItemWithId = PlanItem & { id: string };
@@ -201,7 +200,10 @@ export function OrchestrateMediaPlanDialog({
                     startDate: dateRange?.from?.toISOString() ?? null, 
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
-                onPlanSaved(newPlan);
+                toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
+                setPlanIdToEdit(newPlan.id);
+                // Refresh parent state silently
+                onPlanSaved();
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -214,7 +216,7 @@ export function OrchestrateMediaPlanDialog({
                 await deleteMediaPlan(planId);
                 toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
                 // To refresh the list, we call the parent's save handler which refetches everything
-                onPlanSaved({} as MediaPlan); 
+                onPlanSaved(); 
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -597,7 +599,7 @@ export function OrchestrateMediaPlanDialog({
                 <DialogFooter className="mt-4 pt-4 border-t">
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving || isGenerating}>Cancel</Button>
                     <Button onClick={handleSave} disabled={isSaving || isGenerating || !currentPlan}>
-                        {isSaving ? 'Saving...' : 'Save Plan & Close'}
+                        {isSaving ? 'Saving...' : 'Save Plan'}
                     </Button>
                 </DialogFooter>
 

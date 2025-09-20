@@ -157,8 +157,6 @@ export function FunnelsClientPage({
     };
 
     const handlePlanSaved = () => {
-        setIsOrchestrateDialogOpen(false);
-        setFunnelToOrchestrate(null);
         fetchFunnelsAndPresets();
     }
 
@@ -213,7 +211,7 @@ export function FunnelsClientPage({
                 ) : (
                     <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset, 'clone')}>
                         <Copy className="mr-2 h-4 w-4" />
-                        Clone & Customize
+                        Clone &amp; Customize
                     </Button>
                 )}
             </CardFooter>
