@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { addDays, format } from 'date-fns';
+import { addDays, format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 
 
 interface OrchestrateMediaPlanDialogProps {
@@ -235,7 +235,7 @@ export function OrchestrateMediaPlanDialog({
         });
     }
 
-    const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt', value: string) => {
+    const handleItemChange = (itemId: string, field: 'format' | 'copy' | 'hashtags' | 'creativePrompt' | 'suggested_post_at', value: string) => {
         setPlanItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     };
 
@@ -333,7 +333,12 @@ export function OrchestrateMediaPlanDialog({
                             <div className="flex-1 overflow-y-auto mt-4 pr-4">
                                 {channelsForTabs.map(c => (
                                     <TabsContent key={c} value={c} className="mt-0">
-                                        <div className="space-y-4">{groupedByChannel[c].map((item) => (
+                                        <div className="space-y-4">{groupedByChannel[c].map((item) => {
+                                            const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
+                                            const formattedDate = isValid(postDate) ? format(postDate as Date, "MMM d, yyyy, h:mm a") : "Not set";
+                                            const timeValue = isValid(postDate) ? format(postDate as Date, "HH:mm") : "";
+
+                                            return (
                                             <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
                                                 {isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
                                                 <div className={cn("absolute top-2 right-2 flex items-center gap-2", isSelectionMode && "hidden")}>
@@ -347,13 +352,55 @@ export function OrchestrateMediaPlanDialog({
                                                     <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)}/></div>
                                                     <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4}/></div>
                                                     <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3}/></div>
-                                                    <div className="space-y-1"><Label htmlFor={`post-at-${item.id}`}>Suggested Post Time</Label><Input id={`post-at-${item.id}`} value={item.suggested_post_at || 'Not generated'} disabled /></div>
+                                                    
+                                                     <div className="space-y-2">
+                                                        <Label>Suggested Post Time</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant={"outline"}
+                                                                    className={cn(
+                                                                    "w-[240px] justify-start text-left font-normal",
+                                                                    !postDate && "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                    {postDate ? format(postDate, "PPP") : <span>Pick a date</span>}
+                                                                </Button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-0">
+                                                                <Calendar
+                                                                    mode="single"
+                                                                    selected={postDate || undefined}
+                                                                    onSelect={(date) => {
+                                                                        const newDate = date ? setHours(setMinutes(date, postDate?.getMinutes() || 0), postDate?.getHours() || 0) : null;
+                                                                        handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || '');
+                                                                    }}
+                                                                    initialFocus
+                                                                />
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                             <Input
+                                                                type="time"
+                                                                value={timeValue}
+                                                                onChange={(e) => {
+                                                                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                                                                    const newDate = postDate ? setHours(setMinutes(postDate, minutes), hours) : null;
+                                                                    handleItemChange(item.id, 'suggested_post_at', newDate?.toISOString() || '');
+                                                                }}
+                                                                className="w-[120px]"
+                                                            />
+                                                        </div>
+                                                    </div>
+
                                                     <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
                                                         {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
                                                     </Button>
                                                 </div>
                                             </div>
-                                        ))}</div>
+                                            )
+                                        })}</div>
                                         <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>
                                     </TabsContent>
                                 ))}
@@ -426,5 +473,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    
