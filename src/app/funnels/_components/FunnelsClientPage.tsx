@@ -210,7 +210,7 @@ export function FunnelsClientPage({
                 ) : (
                     <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeDialog(preset, 'clone')}>
                         <Copy className="mr-2 h-4 w-4" />
-                        Clone &amp; Customize
+                        Clone & Customize
                     </Button>
                 )}
             </CardFooter>
@@ -359,12 +359,9 @@ export function FunnelsClientPage({
                     isOpen={isOrchestrateDialogOpen}
                     onOpenChange={setIsOrchestrateDialogOpen}
                     funnel={funnelToOrchestrate}
-                    onPlanSaved={async () => {
-                        const newFunnels = await handleDataRefresh();
-                        const updatedFunnel = newFunnels.find(f => f.id === funnelToOrchestrate.id);
-                        if (updatedFunnel) {
-                            setFunnelToOrchestrate(updatedFunnel);
-                        }
+                    onPlanSaved={async (newFunnelData) => {
+                        await handleDataRefresh();
+                        setFunnelToOrchestrate(newFunnelData);
                     }}
                 />
             )}

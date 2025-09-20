@@ -77,11 +77,11 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
                     copy,
                     hashtags,
                     creative_prompt,
-                    suggested_post_at,
-                    created_at,
                     stage_name,
                     objective,
-                    concept
+                    concept,
+                    suggested_post_at,
+                    created_at
                 )
             )
         `)
@@ -100,6 +100,53 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
 
     return data as Funnel[];
 }
+
+export async function getFunnel(funnelId: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { data, error } = await supabase
+        .from('funnels')
+        .select(`
+            *,
+            offerings (id, title),
+            media_plans!funnel_id (
+                id,
+                funnel_id,
+                created_at,
+                title,
+                campaign_start_date,
+                campaign_end_date,
+                media_plan_items!media_plan_id (
+                    id,
+                    media_plan_id,
+                    user_id,
+                    offering_id,
+                    channel,
+                    format,
+                    copy,
+                    hashtags,
+                    creative_prompt,
+                    stage_name,
+                    objective,
+                    concept,
+                    suggested_post_at,
+                    created_at
+                )
+            )
+        `)
+        .eq('id', funnelId)
+        .eq('user_id', user.id)
+        .single();
+    
+    if (error) {
+        throw new Error(`Could not fetch funnel: ${error.message}`);
+    }
+
+    return { data: data as Funnel };
+}
+
 
 export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
     try {
@@ -431,7 +478,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             hashtags: item.hashtags,
             creative_prompt: item.creativePrompt,
             suggested_post_at: item.suggested_post_at,
-            stage_name: item.stageName,
+            stage_name: item.stage_name,
             objective: item.objective,
             concept: item.concept,
         }));

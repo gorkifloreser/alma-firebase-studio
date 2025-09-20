@@ -28,7 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan } from '../actions';
+import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel } from '../actions';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
@@ -338,7 +338,7 @@ export function OrchestrateMediaPlanDialog({
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
-            creative_prompt: '',
+            creativePrompt: '',
             stage_name: 'New Stage',
             objective: 'Your new objective here',
             concept: 'Your new concept here',
@@ -558,7 +558,7 @@ export function OrchestrateMediaPlanDialog({
                                             </div>
                                         )}
                                         <div className={cn("space-y-4", isEdit && isSelectionMode && "pl-8")}>
-                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.stage_name || 'Uncategorized'} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
+                                            <div className="space-y-1"><Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label><Input id={`stageName-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} /></div>
                                             <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} readOnly={!isEdit}/></div>
                                             <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={!isEdit}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
@@ -643,12 +643,4 @@ export function OrchestrateMediaPlanDialog({
             </DialogContent>
         </Dialog>
     );
-}
-
-// This function needs to exist to get the latest funnel data after an update.
-async function getFunnel(funnelId: string) {
-    const { getFunnels } = await import('../actions');
-    const funnels = await getFunnels();
-    const funnel = funnels.find(f => f.id === funnelId);
-    return { data: funnel };
 }
