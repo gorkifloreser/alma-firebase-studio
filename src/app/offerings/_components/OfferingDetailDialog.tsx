@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -7,15 +8,28 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import type { Offering, OfferingMedia } from '../actions';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
-import { Calendar, Clock, Tag, Globe, Package, Sparkles } from 'lucide-react';
+import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 type Profile = {
@@ -30,6 +44,9 @@ interface OfferingDetailDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     offering: OfferingWithMedia;
     profile: Profile;
+    onEdit: () => void;
+    onDelete: () => void;
+    isDeleting: boolean;
 }
 
 const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -48,7 +65,7 @@ const DetailItem = ({ icon, label, children }: { icon: React.ElementType, label:
     );
 }
 
-export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile }: OfferingDetailDialogProps) {
+export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, onEdit, onDelete, isDeleting }: OfferingDetailDialogProps) {
     if (!offering) return null;
     
     const {
@@ -69,7 +86,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile }
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[700px]">
-                <DialogHeader className="mb-4">
+                <DialogHeader className="mb-4 pr-12 relative">
                     <DialogTitle className="text-3xl">{title.primary}</DialogTitle>
                     <DialogDescription className="flex items-center gap-2 pt-1">
                         <Badge variant="secondary">{type}</Badge>
@@ -79,9 +96,14 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile }
                             </span>
                         )}
                     </DialogDescription>
+                    <div className="absolute top-0 right-0">
+                         <Button variant="ghost" size="icon" onClick={onEdit}>
+                            <Edit className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </DialogHeader>
 
-                <div className="max-h-[70vh] overflow-y-auto pr-6 space-y-6">
+                <div className="max-h-[65vh] overflow-y-auto pr-6 space-y-6">
                     {offering_media && offering_media.length > 0 && (
                         <Carousel className="w-full">
                             <CarouselContent>
@@ -159,8 +181,31 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile }
                         </>
                     )}
                 </div>
+                 <DialogFooter className="pt-6 justify-center">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" className="w-1/2">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Offering
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete this
+                                    offering and all associated media.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={onDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
-

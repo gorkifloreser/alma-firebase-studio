@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -98,6 +99,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             try {
                 await actions.deleteOffering(offeringId);
                 toast({ title: 'Success!', description: 'Your offering has been deleted.' });
+                setIsDetailDialogOpen(false); // Close detail dialog if open
                 fetchOfferings();
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
@@ -238,9 +240,14 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                     onOpenChange={setIsDetailDialogOpen}
                     offering={offeringToView}
                     profile={profile}
+                    onEdit={() => {
+                        setIsDetailDialogOpen(false);
+                        handleOpenEditDialog(offeringToView);
+                    }}
+                    onDelete={() => handleOfferingDelete(offeringToView.id)}
+                    isDeleting={isDeleting}
                 />
             )}
         </div>
     );
 }
-
