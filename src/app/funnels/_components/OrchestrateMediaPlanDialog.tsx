@@ -47,7 +47,7 @@ interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     funnel: Funnel;
-    onRefresh: () => void;
+    onPlanSaved: () => void;
 }
 
 type PlanItemWithId = PlanItem & { id: string };
@@ -72,7 +72,7 @@ export function OrchestrateMediaPlanDialog({
     isOpen,
     onOpenChange,
     funnel: initialFunnel,
-    onRefresh,
+    onPlanSaved,
 }: OrchestrateMediaPlanDialogProps) {
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
     const [view, setView] = useState<ViewState>('list');
@@ -97,12 +97,6 @@ export function OrchestrateMediaPlanDialog({
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     
     const { toast } = useToast();
-
-    const refreshFunnelData = () => {
-        // This function will be passed to the parent to trigger a refresh.
-        // It's a bit of a workaround for not having a direct way to refetch server data.
-        onRefresh();
-    };
 
     useEffect(() => {
         setFunnel(initialFunnel);
@@ -214,7 +208,7 @@ export function OrchestrateMediaPlanDialog({
                 });
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
-                refreshFunnelData(); // Refresh parent data
+                onPlanSaved();
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -226,12 +220,8 @@ export function OrchestrateMediaPlanDialog({
             try {
                 await deleteMediaPlan(planId);
                 toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
-                setFunnel(prevFunnel => ({
-                    ...prevFunnel,
-                    media_plans: prevFunnel.media_plans?.filter(p => p.id !== planId) || null,
-                }));
-                setView('list');
-                refreshFunnelData();
+                onPlanSaved(); // This will trigger the parent to refresh the funnel data
+                setView('list'); // Go back to the list view
             } catch (error: any) {
                 toast({
                     variant: 'destructive',

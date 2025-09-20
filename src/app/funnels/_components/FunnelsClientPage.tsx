@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -24,7 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { CustomizePresetDialog } from './CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ export function FunnelsClientPage({
     }, [funnelPresets]);
 
 
-    const fetchFunnelsAndPresets = async () => {
+    const handleDataRefresh = async () => {
         try {
             const [funnelsData, presetsData] = await Promise.all([
                 actions.getFunnels(offeringIdFilter),
@@ -79,19 +79,21 @@ export function FunnelsClientPage({
             ]);
             setFunnels(funnelsData);
             setFunnelPresets(presetsData);
+            return funnelsData; // Return the new funnels data
         } catch (error: any) {
             toast({
                 variant: 'destructive',
                 title: 'Error refreshing data',
                 description: error.message,
             });
+            return funnels; // Return old data on error
         }
     };
 
     const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
         setFunnelToEdit(null);
-        fetchFunnelsAndPresets();
+        handleDataRefresh();
         toast({
             title: 'Success!',
             description: 'Your strategy has been saved.',
@@ -103,7 +105,7 @@ export function FunnelsClientPage({
             try {
                 await actions.deleteFunnel(funnelId);
                 toast({ title: 'Success!', description: 'The funnel has been deleted.' });
-                fetchFunnelsAndPresets();
+                handleDataRefresh();
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -137,7 +139,7 @@ export function FunnelsClientPage({
 
     const handlePresetSaved = () => {
         setIsCustomizeDialogOpen(false);
-        fetchFunnelsAndPresets();
+        handleDataRefresh();
     };
     
     const handlePresetDelete = (presetId: number) => {
@@ -145,7 +147,7 @@ export function FunnelsClientPage({
             try {
                 await actions.deleteCustomFunnelPreset(presetId);
                 toast({ title: 'Success!', description: 'The custom template has been deleted.' });
-                fetchFunnelsAndPresets();
+                handleDataRefresh();
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -155,10 +157,6 @@ export function FunnelsClientPage({
             }
         });
     };
-
-    const handleDataRefresh = () => {
-        fetchFunnelsAndPresets();
-    }
 
     const PresetCard = ({ preset, isCustom }: { preset: FunnelPreset, isCustom: boolean }) => (
         <Card className="flex flex-col bg-muted/20">
@@ -360,7 +358,13 @@ export function FunnelsClientPage({
                     isOpen={isOrchestrateDialogOpen}
                     onOpenChange={setIsOrchestrateDialogOpen}
                     funnel={funnelToOrchestrate}
-                    onRefresh={handleDataRefresh}
+                    onPlanSaved={async () => {
+                        const newFunnels = await handleDataRefresh();
+                        const updatedFunnel = newFunnels.find(f => f.id === funnelToOrchestrate.id);
+                        if (updatedFunnel) {
+                            setFunnelToOrchestrate(updatedFunnel);
+                        }
+                    }}
                 />
             )}
             <CustomizePresetDialog
