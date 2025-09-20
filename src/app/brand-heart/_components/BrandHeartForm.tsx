@@ -5,10 +5,10 @@ import React, { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/auth/Avatar';
+import { BilingualFormField } from './BilingualFormField';
 import type { getProfile, getBrandHeart, updateBrandHeart, translateText } from '../actions';
 
 
@@ -16,6 +16,8 @@ type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type BrandHeartData = NonNullable<Awaited<ReturnType<typeof getBrandHeart>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
+
+type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name'>;
 
 interface BrandHeartFormProps {
     profile: Profile | null;
@@ -25,7 +27,7 @@ interface BrandHeartFormProps {
     translateTextAction: TranslateTextAction;
 }
 
-const initialBrandHeartState = {
+const initialBrandHeartState: BrandHeartData = {
     brand_name: '',
     logo_url: null,
     brand_brief: { primary: '', secondary: '' },
@@ -44,32 +46,28 @@ export function BrandHeartForm({
     translateTextAction,
 }: BrandHeartFormProps) {
     
-    const [brandHeart, setBrandHeart] = useState<any>(initialBrandHeart || initialBrandHeartState);
+    const [brandHeart, setBrandHeart] = useState<BrandHeartData>(initialBrandHeart || initialBrandHeartState);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
     
-    type BrandHeartFields = Omit<typeof brandHeart, 'brand_name' | 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url'>;
-
     const handleFileSelect = (file: File | null) => {
         setLogoFile(file);
     };
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        
-        if (name.endsWith('_primary') || name.endsWith('_secondary')) {
-            const lang = name.endsWith('_primary') ? 'primary' : 'secondary';
-            const field = name.replace(`_${lang}`, '');
-            
-            setBrandHeart((prev: any) => ({
-                ...prev,
-                [field]: { ...(prev[field] || {}), [lang]: value },
-            }));
-        } else {
-            setBrandHeart((prev: any) => ({ ...prev, [name]: value }));
-        }
+    const handleFieldChange = (field: keyof BrandHeartFields, language: 'primary' | 'secondary', value: string) => {
+        setBrandHeart(prev => ({
+            ...prev,
+            [field]: {
+                ...(prev[field]),
+                [language]: value
+            }
+        }));
+    };
+    
+    const handleBrandNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setBrandHeart(prev => ({ ...prev, brand_name: e.target.value }));
     };
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -77,14 +75,14 @@ export function BrandHeartForm({
         const formData = new FormData();
         
         formData.append('brand_name', brandHeart.brand_name || '');
-        Object.keys(brandHeart).forEach(key => {
+        (Object.keys(brandHeart) as Array<keyof BrandHeartData>).forEach(key => {
             if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
-                // Ensure the keys are what the server action expects
-                if ('primary' in brandHeart[key]) {
-                    formData.append(`${key}_primary`, brandHeart[key].primary || '');
+                const bilingualValue = brandHeart[key] as { primary: string | null, secondary: string | null };
+                if (bilingualValue.primary) {
+                    formData.append(`${key}_primary`, bilingualValue.primary);
                 }
-                 if ('secondary' in brandHeart[key]) {
-                    formData.append(`${key}_secondary`, brandHeart[key].secondary || '');
+                 if (bilingualValue.secondary) {
+                    formData.append(`${key}_secondary`, bilingualValue.secondary);
                 }
             }
         });
@@ -149,48 +147,11 @@ export function BrandHeartForm({
         }
     };
 
-    const BilingualFormField = ({ id, label }: { id: keyof BrandHeartFields, label: string }) => {
-        const value = (brandHeart as any)[id];
-
-        return (
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <Label htmlFor={`${id}_primary`} className="text-lg font-semibold">{label}</Label>
-                     {profile?.secondary_language && (
-                        <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2" 
-                            onClick={() => handleAutoTranslate(id)}
-                            disabled={isTranslating === id}
-                        >
-                            <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
-                            {isTranslating === id ? 'Translating...' : 'Auto-translate'}
-                        </Button>
-                    )}
-                </div>
-                <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                    <div>
-                         <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
-                        <Textarea id={`${id}_primary`} name={`${id}_primary`} value={value?.primary || ''} onChange={handleFormChange} className="mt-1" rows={5} />
-                    </div>
-                    {profile?.secondary_language && (
-                         <div>
-                            <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
-                            <Textarea id={`${id}_secondary`} name={`${id}_secondary`} value={value?.secondary || ''} onChange={handleFormChange} className="mt-1" rows={5} />
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-    
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2">
                 <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleFormChange} />
+                <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleBrandNameChange} />
             </div>
             <div className="space-y-2">
                  <Label className="text-lg font-semibold">Brand Logo</Label>
@@ -201,11 +162,56 @@ export function BrandHeartForm({
                     accept="image/png, image/jpeg, image/gif, image/svg+xml"
                 />
             </div>
-            <BilingualFormField id="brand_brief" label="Brand Brief" />
-            <BilingualFormField id="mission" label="Mission" />
-            <BilingualFormField id="vision" label="Vision" />
-            <BilingualFormField id="values" label="Values" />
-            <BilingualFormField id="tone_of_voice" label="Tone of Voice" />
+            <BilingualFormField 
+                id="brand_brief" 
+                label="Brand Brief" 
+                value={brandHeart.brand_brief}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
+            <BilingualFormField 
+                id="mission" 
+                label="Mission" 
+                value={brandHeart.mission}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
+            <BilingualFormField 
+                id="vision" 
+                label="Vision" 
+                value={brandHeart.vision}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
+             <BilingualFormField 
+                id="values" 
+                label="Values" 
+                value={brandHeart.values}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
+             <BilingualFormField 
+                id="tone_of_voice" 
+                label="Tone of Voice" 
+                value={brandHeart.tone_of_voice}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
             
             <Button type="submit" disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Brand Heart'}
