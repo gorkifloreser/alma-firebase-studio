@@ -252,21 +252,11 @@ export function OrchestrateMediaPlanDialog({
                 funnelId: funnel.id, 
                 channel: itemToRegen.channel, 
                 stageName: itemToRegen.stage_name,
+                concept: itemToRegen.concept,
+                objective: itemToRegen.objective
             });
-            const validFormats = getFormatsForChannel(newItem.channel);
-            const formatIsValid = validFormats.includes(newItem.format);
             
-            setCurrentPlan(prev => prev!.map(item => {
-                if (item.id === itemToRegen.id) {
-                    return {
-                        ...newItem,
-                        id: itemToRegen.id,
-                        format: formatIsValid ? newItem.format : (validFormats[0] || 'Blog Post'),
-                    };
-                }
-                return item;
-            }));
-
+            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id } : item));
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
@@ -410,7 +400,8 @@ export function OrchestrateMediaPlanDialog({
                                 View
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
-                                validateAndSetPlanItems((plan.media_plan_items as PlanItem[]) || []);
+                                setPlanToView(plan);
+                                setCurrentPlan((plan.media_plan_items as PlanItemWithId[]) || []);
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
@@ -614,7 +605,8 @@ export function OrchestrateMediaPlanDialog({
                 <DialogFooter className="mt-4 pt-4 border-t">
                      {view === 'view' && (
                         <Button onClick={() => {
-                             validateAndSetPlanItems((planToView?.media_plan_items as PlanItem[]) || []);
+                             setPlanToView(planToView);
+                             setCurrentPlan((planToView?.media_plan_items as PlanItemWithId[]) || []);
                              setPlanTitle(planToView?.title || '');
                              setPlanIdToEdit(planToView?.id || null);
                              setDateRange({ from: planToView?.campaign_start_date ? parseISO(planToView.campaign_start_date) : undefined, to: planToView?.campaign_end_date ? parseISO(planToView.campaign_end_date) : undefined });
@@ -644,5 +636,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    
