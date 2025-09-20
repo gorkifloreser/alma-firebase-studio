@@ -52,7 +52,7 @@ interface OrchestrateMediaPlanDialogProps {
 type PlanItemWithId = PlanItem & { id: string };
 type RegeneratingState = { [itemId: string]: boolean };
 
-type ViewState = 'list' | 'generate' | 'edit' | 'view';
+type ViewState = 'list' | 'generate';
 
 const mediaFormatConfig = [
     { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
@@ -76,7 +76,6 @@ export function OrchestrateMediaPlanDialog({
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
     const [view, setView] = useState<ViewState>('list');
     const [currentPlan, setCurrentPlan] = useState<PlanItemWithId[] | null>(null);
-    const [planToView, setPlanToView] = useState<MediaPlan | null>(null);
     const [planIdToEdit, setPlanIdToEdit] = useState<string | null>(null);
     const [planTitle, setPlanTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
@@ -103,7 +102,6 @@ export function OrchestrateMediaPlanDialog({
             setView(initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate');
             setCurrentPlan(null);
             setPlanIdToEdit(null);
-            setPlanToView(null);
             setQueuedItemIds(new Set());
             setIsSelectionMode(false);
             setSelectedItemIds(new Set());
@@ -121,29 +119,20 @@ export function OrchestrateMediaPlanDialog({
     }, [isOpen, initialFunnel, dateRange?.from]);
 
     useEffect(() => {
-        if (dateRange?.from && view === 'generate') {
+        if (dateRange?.from && view === 'generate' && !planIdToEdit) {
             setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
         }
-    }, [dateRange, view]);
-
-    const planItemsForCurrentView = useMemo(() => {
-        if (view === 'edit' && currentPlan) return currentPlan;
-        if (view === 'view' && planToView) {
-            return (planToView.media_plan_items || []).map(item => ({...item, id: (item as any).id || crypto.randomUUID()}));
-        }
-        return [];
-    }, [view, currentPlan, planToView]);
-
+    }, [dateRange, view, planIdToEdit]);
 
     const groupedByChannel = useMemo(() => {
-        if (!planItemsForCurrentView) return {};
-        return planItemsForCurrentView.reduce((acc, item) => {
+        if (!currentPlan) return {};
+        return currentPlan.reduce((acc, item) => {
             const channelKey = item.channel || 'General';
             if (!acc[channelKey]) acc[channelKey] = [];
             acc[channelKey].push(item as PlanItemWithId);
             return acc;
         }, {} as Record<string, PlanItemWithId[]>);
-    }, [planItemsForCurrentView]);
+    }, [currentPlan]);
 
     const channelsForTabs = Object.keys(groupedByChannel);
     
@@ -169,7 +158,6 @@ export function OrchestrateMediaPlanDialog({
                     id: crypto.randomUUID(), // Assign temporary IDs for new items
                 }));
                 setCurrentPlan(validatedItems);
-                setView('edit');
                 setPlanIdToEdit(null); // This is a new plan
                 toast({
                     title: 'Media Plan Generated!',
@@ -390,25 +378,15 @@ export function OrchestrateMediaPlanDialog({
             {funnel.media_plans && funnel.media_plans.length > 0 ? (
                 funnel.media_plans.map(plan => (
                     <Card key={plan.id}>
-                        <CardHeader className="cursor-pointer" onClick={() => {
-                            setPlanToView(plan);
-                            setView('view');
-                        }}>
+                        <CardHeader>
                              <CardTitle>{plan.title}</CardTitle>
                              <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
-                             <Button variant="outline" size="sm" onClick={() => {
-                                setPlanToView(plan);
-                                setView('view');
-                            }}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                            </Button>
                             <Button variant="outline" size="sm" onClick={() => {
-                                const itemsWithClientIds = (plan.media_plan_items || []).map(item => ({
+                                const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
                                   ...item,
-                                  id: (item as any).id || crypto.randomUUID()
+                                  id: item.id || crypto.randomUUID()
                                 }));
                                 console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
                                 console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));
@@ -417,9 +395,11 @@ export function OrchestrateMediaPlanDialog({
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                setSelectedChannels(plan.media_plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
+                                
                                 console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
-                                setView('edit');
-                                console.log('[OrchestrateMediaPlanDialog] View set to "edit".');
+                                setView('generate');
+                                console.log('[OrchestrateMediaPlanDialog] View set to "generate".');
                             }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
@@ -456,155 +436,153 @@ export function OrchestrateMediaPlanDialog({
     );
     
     const renderGenerateView = () => (
-        <div className="text-muted-foreground py-10 flex-1 flex flex-col">
-            <Button variant="ghost" onClick={() => setView('list')} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <Stars className="h-12 w-12 mb-4" />
-                <h3 className="font-semibold text-lg text-foreground">Generate a New Media Plan</h3>
-                <div className="grid gap-6 text-left my-6 max-w-md w-full">
-                    <div className="space-y-2">
-                        <Label htmlFor="plan-title">Campaign Title</Label>
-                        <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="dates">Campaign Dates</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button
-                                id="dates"
-                                variant={"outline"}
-                                className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !dateRange && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {dateRange?.from ? (
-                                dateRange.to ? (
-                                    <>
-                                    {format(dateRange.from, "LLL dd, y")} -{" "}
-                                    {format(dateRange.to, "LLL dd, y")}
-                                    </>
-                                ) : (
-                                    format(dateRange.from, "LLL dd, y")
-                                )
-                                ) : (
-                                <span>Pick a date range</span>
-                                )}
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                initialFocus
-                                mode="range"
-                                defaultMonth={dateRange?.from}
-                                selected={dateRange}
-                                onSelect={setDateRange}
-                                numberOfMonths={2}
-                            />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Select Target Channels</Label>
-                        <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
-                            {availableChannels.map(c => (
-                                <div key={c} className="flex items-center space-x-2">
-                                    <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
-                                    <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
-                                </div>
-                            ))}
-                        </div>
-                         {availableChannels.length === 0 && <p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>}
-                    </div>
-                </div>
-                <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                    {isGenerating ? 'Generating...' : 'Generate Media Plan'}
-                </Button>
+        <div className="max-h-[70vh] flex flex-col">
+            <div className="flex-shrink-0">
+                <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
             </div>
-        </div>
-    );
-    
-    const renderSharedPlanView = (isEdit: boolean) => {
-         if (isGenerating) return <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
-         if (!planItemsForCurrentView) return <p>Something went wrong.</p>;
+            
+            {isGenerating && <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
 
-         return (
-             <div className="max-h-[60vh] flex flex-col overflow-hidden py-4">
-                <div className="flex justify-between items-center mb-4">
-                    <Button variant="ghost" onClick={() => setView('list')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
-                    {isEdit && planItemsForCurrentView.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={handleToggleSelectionMode}>
+            {!isGenerating && !currentPlan && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-lg text-foreground">Generate a New Media Plan</h3>
+                    <div className="grid gap-6 text-left my-6 max-w-md w-full">
+                        <div className="space-y-2">
+                            <Label htmlFor="plan-title">Campaign Title</Label>
+                            <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="dates">Campaign Dates</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="dates"
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !dateRange && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dateRange?.from ? (
+                                    dateRange.to ? (
+                                        <>
+                                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                                        {format(dateRange.to, "LLL dd, y")}
+                                        </>
+                                    ) : (
+                                        format(dateRange.from, "LLL dd, y")
+                                    )
+                                    ) : (
+                                    <span>Pick a date range</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={dateRange?.from}
+                                    selected={dateRange}
+                                    onSelect={setDateRange}
+                                    numberOfMonths={2}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Select Target Channels</Label>
+                            <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
+                                {availableChannels.map(c => (
+                                    <div key={c} className="flex items-center space-x-2">
+                                        <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
+                                        <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                            {availableChannels.length === 0 && <p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>}
+                        </div>
+                    </div>
+                    <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                        {isGenerating ? 'Generating...' : 'Generate Media Plan'}
+                    </Button>
+                </div>
+            )}
+            
+            {currentPlan && (
+                 <div className="flex-1 flex flex-col overflow-hidden py-4">
+                    <div className="flex-shrink-0 flex justify-between items-center mb-4">
+                         <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} className="text-xl font-bold" />
+                         <Button variant="outline" size="sm" onClick={handleToggleSelectionMode}>
                             {isSelectionMode ? <><X className="mr-2 h-4 w-4"/>Cancel</> : <><Rows className="mr-2 h-4 w-4"/>Bulk Select</>}
                         </Button>
-                    )}
-                </div>
-                 {isEdit && isSelectionMode && (
-                    <div className="flex items-center space-x-2 pb-2">
-                        <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={(checked) => handleSelectAll(!!checked)} />
-                        <Label htmlFor="select-all">Select all on this tab</Label>
                     </div>
-                )}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
-                    <div className="flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
-                    <div className="flex-1 overflow-y-auto mt-4 pr-4">
-                        {channelsForTabs.map(c => (
-                            <TabsContent key={c} value={c} className="mt-0">
-                                <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
-                                    const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
-                                    const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
-                                    return (
-                                    <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isEdit && isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
-                                        {isEdit && isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
-                                        {isEdit && (
+                    {isSelectionMode && (
+                        <div className="flex-shrink-0 flex items-center space-x-2 pb-2">
+                            <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={(checked) => handleSelectAll(!!checked)} />
+                            <Label htmlFor="select-all">Select all on this tab</Label>
+                        </div>
+                    )}
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
+                        <div className="flex-shrink-0 flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
+                        <div className="flex-1 overflow-y-auto mt-4 pr-4">
+                            {channelsForTabs.map(c => (
+                                <TabsContent key={c} value={c} className="mt-0">
+                                    <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
+                                        const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
+                                        const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
+                                        return (
+                                        <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
+                                            {isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
                                             <div className={cn("absolute top-2 right-2 flex items-center gap-2", isSelectionMode && "hidden")}>
                                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
                                                 <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
-                                        )}
-                                        <div className={cn("space-y-4", isEdit && isSelectionMode && "pl-8")}>
-                                            <div className="space-y-1">
-                                                <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
-                                                <Input id={`stageName-${item.id}`} value={item.stageName || ''} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" readOnly={!isEdit} />
-                                            </div>
-                                            <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" readOnly={!isEdit}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} readOnly={!isEdit}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={!isEdit}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
-                                            <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} readOnly={!isEdit}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} readOnly={!isEdit}/></div>
-                                            <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3} readOnly={!isEdit}/></div>
-                                            <div className="space-y-2">
-                                                <Label>Suggested Post Time</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                        <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")} disabled={!isEdit}>
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {postDate && isValid(postDate) ? format(postDate, "PPP") : <span>Pick a date</span>}
-                                                        </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0">
-                                                        <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => handleItemChange(item.id, 'suggested_post_at', date?.toISOString() || '')} initialFocus />
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                    <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]" readOnly={!isEdit}/>
+                                            <div className={cn("space-y-4", isSelectionMode && "pl-8")}>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
+                                                    <Input id={`stageName-${item.id}`} value={item.stageName || ''} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" />
                                                 </div>
+                                                <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
+                                                <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
+                                                <div className="space-y-2">
+                                                    <Label>Suggested Post Time</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                            <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {postDate && isValid(postDate) ? format(postDate, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0">
+                                                            <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => handleItemChange(item.id, 'suggested_post_at', date?.toISOString() || '')} initialFocus />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
+                                                    </div>
+                                                </div>
+                                                <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
+                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
+                                                </Button>
                                             </div>
-                                            {isEdit && (<Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
-                                                {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
-                                            </Button>)}
                                         </div>
-                                    </div>
-                                    )
-                                })}</div>
-                                {isEdit && <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>}
-                            </TabsContent>
-                        ))}
-                    </div>
-                </Tabs>
-             </div>
-         );
-    }
+                                        )
+                                    })}</div>
+                                    <div className="flex justify-center mt-6"><Button variant="outline" onClick={() => handleAddNewItem(c)}><PlusCircle className="mr-2 h-4 w-4" />Add New Idea to this Channel</Button></div>
+                                </TabsContent>
+                            ))}
+                        </div>
+                    </Tabs>
+                </div>
+            )}
+        </div>
+    );
     
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -614,32 +592,17 @@ export function OrchestrateMediaPlanDialog({
                      <DialogDescription>Generate, edit, and approve the tactical content pieces for the '{funnel.name}' strategy.</DialogDescription>
                 </DialogHeader>
                 
-                {view === 'list' && renderListView()}
-                {view === 'generate' && renderGenerateView()}
-                {view === 'edit' && renderSharedPlanView(true)}
-                {view === 'view' && renderSharedPlanView(false)}
+                {view === 'list' ? renderListView() : renderGenerateView()}
 
                 <DialogFooter className="mt-4 pt-4 border-t">
-                     {view === 'view' && (
-                        <Button onClick={() => {
-                             setPlanIdToEdit(planToView?.id || null);
-                             setCurrentPlan(planToView?.media_plan_items as PlanItemWithId[] || []);
-                             setPlanTitle(planToView?.title || '');
-                             setDateRange({ from: planToView?.campaign_start_date ? parseISO(planToView.campaign_start_date) : undefined, to: planToView?.campaign_end_date ? parseISO(planToView.campaign_end_date) : undefined });
-                             setView('edit');
-                        }}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit this Plan
-                        </Button>
-                    )}
-                    {view === 'edit' && (
+                    {view === 'generate' && currentPlan && (
                          <Button onClick={handleSave} disabled={isSaving || isGenerating}>
                             {isSaving ? 'Saving...' : 'Save Plan'}
                         </Button>
                     )}
                 </DialogFooter>
 
-                 {view === 'edit' && isSelectionMode && (
+                 {view === 'generate' && currentPlan && isSelectionMode && (
                     <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 flex items-center justify-between animate-in slide-in-from-bottom-12 duration-300">
                         <p className="text-sm font-semibold">{selectedItemIds.size} item(s) selected</p>
                         <Button onClick={handleBulkAddToQueue} disabled={selectedItemIds.size === 0 || isSaving}>
@@ -652,4 +615,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
