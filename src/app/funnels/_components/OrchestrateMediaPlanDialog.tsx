@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
+  AlertDialogTrigger,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
