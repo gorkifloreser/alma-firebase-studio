@@ -299,7 +299,7 @@ export function OrchestrateMediaPlanDialog({
                 setQueuedItemIds(newQueuedIds);
                 setSelectedItemIds(new Set());
                 setIsSelectionMode(false);
-            } catch (error: any) => {
+            } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -400,6 +400,13 @@ export function OrchestrateMediaPlanDialog({
                              <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
+                             <Button variant="outline" size="sm" onClick={() => {
+                                setPlanToView(plan);
+                                setView('view');
+                            }}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => {
                                 validateAndSetPlanItems((plan.media_plan_items as PlanItem[]) || []);
                                 setPlanTitle(plan.title);
