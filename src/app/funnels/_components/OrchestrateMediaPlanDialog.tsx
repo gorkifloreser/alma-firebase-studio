@@ -297,7 +297,7 @@ export function OrchestrateMediaPlanDialog({
                 setQueuedItemIds(newQueuedIds);
                 setSelectedItemIds(new Set());
                 setIsSelectionMode(false);
-            } catch (error: any) => {
+            } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
