@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,6 +8,7 @@ import { UploadCloud, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import { Textarea } from '@/components/ui/textarea';
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -15,26 +17,33 @@ interface FileWithPreview extends File {
   preview: string;
 }
 
+interface FileWithDescription {
+    file: FileWithPreview;
+    description: string;
+}
+
 interface ExistingMedia {
     id: string;
     url: string;
+    description?: string | null;
 }
 
 interface ImageUploadProps {
-    onFilesChange: (files: File[]) => void;
+    onFilesChange: (files: { file: File, description: string }[]) => void;
     existingMedia?: ExistingMedia[];
     onRemoveExistingMedia?: (mediaId: string) => void;
     isSaving: boolean;
 }
 
 export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistingMedia, isSaving }: ImageUploadProps) {
-  const [newFiles, setNewFiles] = useState<FileWithPreview[]>([]);
+  const [newFiles, setNewFiles] = useState<FileWithDescription[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    onFilesChange(newFiles);
+    onFilesChange(newFiles.map(item => ({ file: item.file, description: item.description })));
+    // Cleanup function
     return () => {
-        newFiles.forEach(file => URL.revokeObjectURL(file.preview));
+        newFiles.forEach(item => URL.revokeObjectURL(item.file.preview));
     };
   }, [newFiles, onFilesChange]);
 
@@ -60,19 +69,28 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
       return;
     }
 
-    const filesWithPreview = acceptedFiles.map(file => Object.assign(file, {
-        preview: URL.createObjectURL(file)
+    const filesWithPreviewAndDesc = acceptedFiles.map(file => ({
+        file: Object.assign(file, { preview: URL.createObjectURL(file) }),
+        description: ''
     }));
 
-    setNewFiles(prev => [...prev, ...filesWithPreview]);
+    setNewFiles(prev => [...prev, ...filesWithPreviewAndDesc]);
 
   }, [toast]);
 
   const removeNewFile = (index: number) => {
     setNewFiles(prev => {
         const newFilesList = [...prev];
-        const removedFile = newFilesList.splice(index, 1)[0];
-        URL.revokeObjectURL(removedFile.preview);
+        const removedItem = newFilesList.splice(index, 1)[0];
+        URL.revokeObjectURL(removedItem.file.preview);
+        return newFilesList;
+    });
+  };
+
+  const handleDescriptionChange = (index: number, description: string) => {
+    setNewFiles(prev => {
+        const newFilesList = [...prev];
+        newFilesList[index] = { ...newFilesList[index], description: description };
         return newFilesList;
     });
   };
@@ -90,6 +108,7 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
       'image/png': [],
       'image/gif': [],
       'image/webp': [],
+      'image/svg+xml': [],
     },
     maxSize: MAX_FILE_SIZE_BYTES,
     disabled: isSaving,
@@ -116,55 +135,72 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
       </div>
 
       {(existingMedia.length > 0 || newFiles.length > 0) && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {existingMedia.map((media) => (
-            <div key={media.id} className="relative group aspect-square">
-              <Image
-                src={media.url}
-                alt="Existing media"
-                fill
-                className="object-cover rounded-md"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                 <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleRemoveExisting(media.id)}
-                    disabled={isSaving}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+            <div key={media.id} className="space-y-2">
+              <div className="relative group aspect-square">
+                <Image
+                  src={media.url}
+                  alt="Existing media"
+                  fill
+                  className="object-cover rounded-md"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                   <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleRemoveExisting(media.id)}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                </div>
               </div>
+               <Textarea
+                    placeholder="Existing image description..."
+                    defaultValue={media.description || ''}
+                    className="text-xs h-20 resize-none"
+                    disabled // Descriptions for existing media are read-only for now
+                />
             </div>
           ))}
-          {newFiles.map((file, index) => (
-            <div key={file.name + index} className="relative group aspect-square">
-              <Image
-                src={file.preview}
-                alt={`Preview ${index}`}
-                fill
-                className="object-cover rounded-md"
-                onLoad={() => URL.revokeObjectURL(file.preview)}
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                 <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => removeNewFile(index)}
-                    disabled={isSaving}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+          {newFiles.map((item, index) => (
+            <div key={item.file.name + index} className="space-y-2">
+              <div className="relative group aspect-square">
+                <Image
+                  src={item.file.preview}
+                  alt={`Preview ${index}`}
+                  fill
+                  className="object-cover rounded-md"
+                  onLoad={() => URL.revokeObjectURL(item.file.preview)}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                   <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => removeNewFile(index)}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                </div>
+                {isSaving && (
+                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md">
+                      <Loader2 className="h-6 w-6 text-white animate-spin" />
+                   </div>
+                )}
               </div>
-              {isSaving && (
-                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md">
-                    <Loader2 className="h-6 w-6 text-white animate-spin" />
-                 </div>
-              )}
+              <Textarea
+                placeholder="Describe this image for the AI..."
+                value={item.description}
+                onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                className="text-xs h-20 resize-none"
+                disabled={isSaving}
+              />
             </div>
           ))}
         </div>
@@ -172,5 +208,3 @@ export function ImageUpload({ onFilesChange, existingMedia = [], onRemoveExistin
     </div>
   );
 }
-
-    

@@ -15,6 +15,7 @@ export type OfferingMedia = {
     media_url: string;
     media_type: string | null;
     created_at: string;
+    description: string | null;
 }
 
 export type Offering = {
@@ -56,7 +57,8 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
                 offering_id,
                 media_url,
                 media_type,
-                created_at
+                created_at,
+                description
             )
         `)
         .eq('user_id', user.id)
@@ -82,11 +84,10 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
   if (!user) throw new Error('User not authenticated');
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { offering_media, event_date, updated_at, ...restOfData } = offeringData as any;
+  const { offering_media, ...restOfData } = offeringData as any;
 
   const payload = {
     ...restOfData,
-    event_date: offeringData.type === 'Event' && event_date ? new Date(event_date).toISOString() : null,
     price: offeringData.price || null,
     currency: offeringData.price ? (offeringData.currency || 'USD') : null,
     duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -103,7 +104,8 @@ export async function createOffering(offeringData: Omit<Offering, 'id' | 'user_i
             offering_id,
             media_url,
             media_type,
-            created_at
+            created_at,
+            description
         )
     `)
     .single();
@@ -130,11 +132,10 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     if (!user) throw new Error('User not authenticated');
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { offering_media, event_date, ...restOfData } = offeringData as any;
+    const { offering_media, ...restOfData } = offeringData as any;
 
     const payload = {
         ...restOfData,
-        event_date: offeringData.type === 'Event' && event_date ? new Date(event_date).toISOString() : null,
         price: offeringData.price || null,
         currency: offeringData.price ? (offeringData.currency || 'USD') : null,
         duration: offeringData.type === 'Event' ? offeringData.duration : null,
@@ -153,7 +154,8 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
                 offering_id,
                 media_url,
                 media_type,
-                created_at
+                created_at,
+                description
             )
         `)
         .single();
@@ -212,7 +214,7 @@ export async function deleteOffering(offeringId: string): Promise<{ message: str
 /**
  * Uploads media files for a specific offering.
  * @param {string} offeringId - The ID of the offering to associate the media with.
- * @param {FormData} formData - The form data containing the files to upload.
+ * @param {FormData} formData - The form data containing the files and descriptions.
  * @returns {Promise<{ message: string }>} A success message.
  */
 export async function uploadOfferingMedia(offeringId: string, formData: FormData): Promise<{ message: string }> {
@@ -221,13 +223,15 @@ export async function uploadOfferingMedia(offeringId: string, formData: FormData
     if (!user) throw new Error('User not authenticated');
 
     const files = formData.getAll('files') as File[];
+    const descriptions = formData.getAll('descriptions') as string[];
+
     if (files.length === 0) {
         return { message: 'No new files to upload.'};
     }
 
     const bucketName = 'Alma';
     
-    const uploadPromises = files.map(async (file) => {
+    const uploadPromises = files.map(async (file, index) => {
         const filePath = `${user.id}/offerings/${offeringId}/${file.name}`;
         
         const { error: uploadError } = await supabase.storage
@@ -246,6 +250,7 @@ export async function uploadOfferingMedia(offeringId: string, formData: FormData
             user_id: user.id,
             media_url: publicUrl,
             media_type: file.type,
+            description: descriptions[index] || null,
         };
     });
 

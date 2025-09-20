@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -35,6 +36,11 @@ type Profile = {
 } | null;
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
+
+type FileWithDescription = {
+    file: File;
+    description: string;
+};
 
 type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'event_date'> & {
     event_date: Date | null;
@@ -131,7 +137,7 @@ export function CreateOfferingDialog({
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
-    const [newMediaFiles, setNewMediaFiles] = useState<File[]>([]);
+    const [newMediaFiles, setNewMediaFiles] = useState<FileWithDescription[]>([]);
     const { toast } = useToast();
 
     const isEditMode = offeringToEdit !== null;
@@ -253,8 +259,9 @@ export function CreateOfferingDialog({
 
                 if (newMediaFiles.length > 0) {
                     const formData = new FormData();
-                    newMediaFiles.forEach(file => {
-                        formData.append('files', file);
+                    newMediaFiles.forEach(item => {
+                        formData.append('files', item.file);
+                        formData.append('descriptions', item.description);
                     });
                     await uploadOfferingMedia(savedOffering.id, formData);
                 }
@@ -474,12 +481,12 @@ export function CreateOfferingDialog({
                          <Label className="text-md font-semibold">Offering Media</Label>
                          <ImageUpload
                             onFilesChange={setNewMediaFiles}
-                            existingMedia={offering.offering_media?.map(m => ({ id: m.id, url: m.media_url })) || []}
+                            existingMedia={offering.offering_media || []}
                             onRemoveExistingMedia={handleRemoveExistingMedia}
                             isSaving={isSaving}
                          />
                          <p className="text-sm text-muted-foreground">
-                            Upload images for your offering (Max 50MB per file).
+                            Upload images for your offering (Max 50MB per file). Add a description for AI context.
                         </p>
                     </div>
 
