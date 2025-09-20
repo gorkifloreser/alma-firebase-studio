@@ -456,7 +456,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             })
             .select()
             .single();
-        if (insertError || !newPlan) throw new Error(`Could not save media plan: ${insertError.message}`);
+        if (insertError || !newPlan) throw new Error(`Could not save media plan: ${insertError?.message}`);
         mediaPlanId = newPlan.id;
     }
     
@@ -473,9 +473,9 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             format: item.format,
             copy: item.copy,
             hashtags: item.hashtags,
-            creative_prompt: item.creative_prompt,
+            creative_prompt: item.creativePrompt,
             suggested_post_at: item.suggested_post_at,
-            stage_name: item.stage_name,
+            stage_name: item.stageName,
             objective: item.objective,
             concept: item.concept,
         }));
