@@ -387,9 +387,11 @@ export function OrchestrateMediaPlanDialog({
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
-                                const itemsWithClientIds = (plan.plan_items || []).map((item: any) => ({
+                                const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
                                   ...item,
-                                  id: item.id || crypto.randomUUID()
+                                  id: item.id || crypto.randomUUID(),
+                                  stageName: item.stage_name || '',        // map backend field
+                                    creativePrompt: item.creative_prompt || '', // map backend field
                                 }));
                                 console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
                                 console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));
@@ -398,7 +400,7 @@ export function OrchestrateMediaPlanDialog({
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                setSelectedChannels(plan.plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
+                                setSelectedChannels(plan.media_plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
                                 
                                 console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');
