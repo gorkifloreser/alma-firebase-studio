@@ -129,14 +129,17 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { offering_media, ...restOfData } = offeringData as any;
-
+    // Surgically construct the payload to prevent sending invalid fields like 'offering_media'
     const payload = {
-        ...restOfData,
-        price: offeringData.price || null,
-        currency: offeringData.price ? (offeringData.currency || 'USD') : null,
-        duration: offeringData.type === 'Event' ? offeringData.duration : null,
-        updated_at: new Date().toISOString(),
+      title: offeringData.title,
+      description: offeringData.description,
+      type: offeringData.type,
+      contextual_notes: offeringData.contextual_notes,
+      price: offeringData.price || null,
+      currency: offeringData.price ? (offeringData.currency || 'USD') : null,
+      event_date: offeringData.event_date,
+      duration: offeringData.type === 'Event' ? offeringData.duration : null,
+      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -434,3 +437,4 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
     return genImageDescFlow(input);
 }
+
