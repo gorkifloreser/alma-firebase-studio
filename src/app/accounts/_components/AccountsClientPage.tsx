@@ -21,18 +21,18 @@ export interface Account {
     name: string;
     description: string;
     icon: string;
-    category: 'meta' | 'email' | 'future';
+    category: 'social' | 'messaging' | 'owned' | 'future';
     status: AccountStatus;
     best_practices: string | null;
 }
 
 const initialAccounts: Omit<Account, 'best_practices'>[] = [
-    { id: 'instagram', name: 'Instagram', description: 'Enable Instagram for post generation and analytics.', icon: '/instagram.svg', category: 'meta', status: 'available' },
-    { id: 'facebook', name: 'Facebook', description: 'Enable Facebook for content scheduling and insights.', icon: '/facebook.svg', category: 'meta', status: 'available' },
-    { id: 'whatsapp', name: 'WhatsApp', description: 'Enable WhatsApp to engage with customers.', icon: '/whatsapp.svg', category: 'meta', status: 'available' },
-    { id: 'telegram', name: 'Telegram', description: 'Enable Telegram for messaging and automations.', icon: '/telegram.svg', category: 'meta', status: 'available' },
-    { id: 'webmail', name: 'Webmail', description: 'Enable email to send newsletters and sequences.', icon: '/mail.svg', category: 'email', status: 'available' },
-    { id: 'website', name: 'Website/Blog', description: 'Enable for landing pages and SEO content.', icon: '/globe.svg', category: 'email', status: 'available' },
+    { id: 'instagram', name: 'Instagram', description: 'Enable Instagram for post generation and analytics.', icon: '/instagram.svg', category: 'social', status: 'available' },
+    { id: 'facebook', name: 'Facebook', description: 'Enable Facebook for content scheduling and insights.', icon: '/facebook.svg', category: 'social', status: 'available' },
+    { id: 'whatsapp', name: 'WhatsApp', description: 'Enable WhatsApp to engage with customers.', icon: '/whatsapp.svg', category: 'messaging', status: 'available' },
+    { id: 'telegram', name: 'Telegram', description: 'Enable Telegram for messaging and automations.', icon: '/telegram.svg', category: 'messaging', status: 'available' },
+    { id: 'webmail', name: 'Webmail', description: 'Enable email to send newsletters and sequences.', icon: '/mail.svg', category: 'owned', status: 'available' },
+    { id: 'website', name: 'Website/Blog', description: 'Enable for landing pages and SEO content.', icon: '/globe.svg', category: 'owned', status: 'available' },
     { id: 'tiktok', name: 'TikTok', description: 'Plan and analyze your TikTok content strategy.', icon: '/tiktok.svg', category: 'future', status: 'coming_soon' },
     { id: 'linkedin', name: 'LinkedIn', description: 'Manage your professional presence and content on LinkedIn.', icon: '/linkedin.svg', category: 'future', status: 'coming_soon' }
 ];
@@ -181,27 +181,35 @@ export function AccountsClientPage({ initialUserChannels, updateUserChannelsActi
         </Card>
     );
 
-    const metaAccounts = accountsWithData.filter(a => a.category === 'meta');
-    const emailAccounts = accountsWithData.filter(a => a.category === 'email');
+    const socialAccounts = accountsWithData.filter(a => a.category === 'social');
+    const messagingAccounts = accountsWithData.filter(a => a.category === 'messaging');
+    const ownedAccounts = accountsWithData.filter(a => a.category === 'owned');
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header>
-                <h1 className="text-3xl font-bold">Accounts & Integrations</h1>
+                <h1 className="text-3xl font-bold">Accounts &amp; Integrations</h1>
                 <p className="text-muted-foreground">Select your active marketing channels and customize their AI instructions.</p>
             </header>
             <div className="space-y-8">
                 <section>
-                    <h2 className="text-2xl font-semibold mb-4">Social & Messaging</h2>
+                    <h2 className="text-2xl font-semibold mb-4">Social</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {metaAccounts.map(renderCard)}
+                        {socialAccounts.map(renderCard)}
                     </div>
                 </section>
                 <Separator />
                 <section>
+                    <h2 className="text-2xl font-semibold mb-4">Messaging</h2>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {messagingAccounts.map(renderCard)}
+                    </div>
+                </section>
+                 <Separator />
+                <section>
                     <h2 className="text-2xl font-semibold mb-4">Owned Media</h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {emailAccounts.map(renderCard)}
+                        {ownedAccounts.map(renderCard)}
                     </div>
                 </section>
             </div>

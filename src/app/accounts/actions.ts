@@ -42,7 +42,7 @@ export async function getUserChannels(): Promise<Account[]> {
         name: row.channel_name,
         description: '',
         icon: '',
-        category: 'meta', // These fields are just for the UI and not stored in DB
+        category: 'social', // This field is just for the UI and not stored in DB, so a default is fine
         status: 'available',
         best_practices: row.best_practices,
     }));
@@ -124,7 +124,7 @@ export async function updateChannelBestPractices(channelName: string, bestPracti
         name: data.channel_name,
         description: '',
         icon: '',
-        category: 'meta',
+        category: 'social',
         status: 'available',
         best_practices: data.best_practices,
     };
