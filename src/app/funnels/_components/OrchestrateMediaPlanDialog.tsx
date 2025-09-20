@@ -305,14 +305,12 @@ export function OrchestrateMediaPlanDialog({
     const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
         setCurrentPlan(prev => prev!.map(item => {
             if (item.id === itemId) {
-                // Special handling for suggested_post_at for date and time changes
                 if (field === 'suggested_post_at') {
                     const existingDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : new Date();
                     let newDate;
-                    // Check if value is a full date string or just a time
-                    if (value.includes('T')) { // full ISO string from calendar
+                    if (value.includes('T')) {
                          newDate = parseISO(value);
-                    } else { // time string from input
+                    } else {
                         const [hours, minutes] = value.split(':').map(Number);
                         newDate = setHours(setMinutes(existingDate, minutes), hours);
                     }
@@ -408,14 +406,13 @@ export function OrchestrateMediaPlanDialog({
                                 View
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
-                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
                                 const itemsWithClientIds = (plan.media_plan_items || []).map(item => ({
                                   ...item,
                                   id: (item as any).id || crypto.randomUUID()
                                 }));
+                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
                                 console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));
 
-                                setPlanToView(plan);
                                 setCurrentPlan(itemsWithClientIds);
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
@@ -655,3 +652,4 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
