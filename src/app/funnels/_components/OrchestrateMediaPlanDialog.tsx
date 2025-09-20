@@ -46,7 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 
 
 interface OrchestrateMediaPlanDialogProps {
@@ -390,19 +390,14 @@ export function OrchestrateMediaPlanDialog({
             {funnel.media_plans && funnel.media_plans.length > 0 ? (
                 funnel.media_plans.map(plan => (
                     <Card key={plan.id}>
-                        <CardHeader className="flex flex-row items-start justify-between">
-                            <div>
-                                <CardTitle>{plan.title}</CardTitle>
-                                <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
-                            </div>
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => {
+                        <CardHeader>
+                            <div className="flex flex-row items-start justify-between">
+                                <div>
+                                    <CardTitle>{plan.title}</CardTitle>
+                                    <CardDescription>Created on {format(parseISO(plan.created_at), 'PPP')}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <Button variant="outline" size="sm" onClick={() => {
                                         validateAndSetPlanItems(plan.media_plan_items || []);
                                         setPlanTitle(plan.title);
                                         setPlanIdToEdit(plan.id);
@@ -410,14 +405,14 @@ export function OrchestrateMediaPlanDialog({
                                         setView('edit');
                                     }}>
                                         <Edit className="mr-2 h-4 w-4" />
-                                        <span>Edit</span>
-                                    </DropdownMenuItem>
-                                     <AlertDialog>
+                                        Edit
+                                    </Button>
+                                    <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                            <Button variant="destructive" size="sm">
                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Delete</span>
-                                            </DropdownMenuItem>
+                                                Delete
+                                            </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
@@ -434,8 +429,8 @@ export function OrchestrateMediaPlanDialog({
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                </div>
+                            </div>
                         </CardHeader>
                     </Card>
                 ))
