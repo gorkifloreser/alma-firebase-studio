@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue } from '../actions';
+import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels } from '../actions';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
@@ -78,6 +78,8 @@ export function OrchestrateMediaPlanDialog({
         from: new Date(),
         to: addDays(new Date(), 6),
     });
+    const [availableChannels, setAvailableChannels] = useState<string[]>([]);
+    const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     
     const { toast } = useToast();
 
@@ -88,6 +90,13 @@ export function OrchestrateMediaPlanDialog({
             setQueuedItemIds(new Set());
             setIsSelectionMode(false);
             setSelectedItemIds(new Set());
+
+            getUserChannels().then(channels => {
+                const channelNames = channels.map(c => c.id);
+                setAvailableChannels(channelNames);
+                setSelectedChannels(funnel.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
+            });
+
             if (dateRange?.from) {
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
@@ -137,6 +146,7 @@ export function OrchestrateMediaPlanDialog({
                     funnelId: funnel.id,
                     startDate: dateRange?.from?.toISOString(),
                     endDate: dateRange?.to?.toISOString(),
+                    channels: selectedChannels,
                 });
                 validateAndSetPlanItems(result.plan);
                 setView('edit');
@@ -305,6 +315,14 @@ export function OrchestrateMediaPlanDialog({
         });
     }
 
+    const handleChannelToggle = (channel: string) => {
+        setSelectedChannels(prev =>
+            prev.includes(channel)
+                ? prev.filter(c => c !== channel)
+                : [...prev, channel]
+        );
+    }
+
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
             const currentTabItemIds = (groupedByChannel[activeTab] || []).map(item => item.id);
@@ -350,7 +368,7 @@ export function OrchestrateMediaPlanDialog({
             <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <Stars className="h-12 w-12 mb-4" />
                 <h3 className="font-semibold text-lg text-foreground">Generate a New Media Plan</h3>
-                <div className="grid gap-4 text-left my-6 max-w-md w-full">
+                <div className="grid gap-6 text-left my-6 max-w-md w-full">
                     <div className="space-y-2">
                         <Label htmlFor="plan-title">Campaign Title</Label>
                         <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
@@ -394,8 +412,20 @@ export function OrchestrateMediaPlanDialog({
                             </PopoverContent>
                         </Popover>
                     </div>
+                    <div className="space-y-2">
+                        <Label>Select Target Channels</Label>
+                        <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
+                            {availableChannels.map(c => (
+                                <div key={c} className="flex items-center space-x-2">
+                                    <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
+                                    <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
+                                </div>
+                            ))}
+                        </div>
+                         {availableChannels.length === 0 && <p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>}
+                    </div>
                 </div>
-                <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim()}>
+                <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
                     {isGenerating ? 'Generating...' : 'Generate Media Plan'}
                 </Button>
             </div>

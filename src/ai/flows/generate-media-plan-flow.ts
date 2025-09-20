@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -37,6 +38,7 @@ const GenerateMediaPlanInputSchema = z.object({
   funnelId: z.string(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  channels: z.array(z.string()).optional(),
 });
 export type GenerateMediaPlanInput = z.infer<typeof GenerateMediaPlanInputSchema>;
 
@@ -201,7 +203,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     inputSchema: GenerateMediaPlanInputSchema,
     outputSchema: GenerateMediaPlanOutputSchema,
   },
-  async ({ funnelId, startDate, endDate }) => {
+  async ({ funnelId, startDate, endDate, channels: requestedChannels }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -229,11 +231,11 @@ const generateMediaPlanFlow = ai.defineFlow(
     if (channelSettingsError) throw new Error('Could not fetch channel settings.');
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
-    const channels = strategyBrief?.channels || [];
+    const channels = requestedChannels || strategyBrief?.channels || [];
     const offering = strategy.offerings;
 
     if (channels.length === 0) {
-      throw new Error('The selected strategy has no channels defined.');
+      throw new Error('No channels were selected for this media plan.');
     }
 
     const channelSettingsMap = new Map(channelSettings.map(s => [s.channel_name, s.best_practices]));

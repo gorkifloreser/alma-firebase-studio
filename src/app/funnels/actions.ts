@@ -9,6 +9,7 @@ import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type 
 import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
 import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { saveContent as saveContentAction } from '@/app/offerings/actions';
+import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
 export type { PlanItem };
 
@@ -59,7 +60,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans!funnel_id (
+            media_plans:media_plans!funnel_id (
                 *,
                 media_plan_items (*)
             )
@@ -74,7 +75,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
 
     if (error) {
         console.error('Error fetching funnels:', error.message);
-        throw new Error('Could not fetch funnels.');
+        throw new Error(`Could not fetch funnels: "${error.message}"`);
     }
 
     return data as Funnel[];
@@ -365,7 +366,7 @@ export async function saveMediaPlan(funnelId: string, title: string, planItems: 
 
     if (mediaPlanError || !mediaPlan) {
         console.error("Error saving media plan:", mediaPlanError);
-        throw new Error("Could not save the media plan.");
+        throw new Error(`Could not save the media plan: ${mediaPlanError.message}`);
     }
     
     // 2. Prepare and insert the individual items
@@ -459,4 +460,36 @@ export async function addMultipleToArtisanQueue(funnelId: string, planItems: Pla
     }
 
     return { count: count || 0 };
+}
+
+
+/**
+ * Fetches the list of enabled channels for the current user.
+ * @returns {Promise<Account[]>} A promise that resolves to an array of channel objects.
+ */
+export async function getUserChannels(): Promise<Account[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { data, error } = await supabase
+        .from('user_channel_settings')
+        .select('channel_name, best_practices')
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error("Error fetching user channels:", error);
+        throw new Error("Could not fetch user channels.");
+    }
+    
+    // The component expects the `id` field, so we map `channel_name` to `id`.
+    return data.map(row => ({
+        id: row.channel_name,
+        name: row.channel_name,
+        description: '',
+        icon: '',
+        category: 'social', // This field is just for the UI and not stored in DB, so a default is fine
+        status: 'available',
+        best_practices: row.best_practices,
+    }));
 }
