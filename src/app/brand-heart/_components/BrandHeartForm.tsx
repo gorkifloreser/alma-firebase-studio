@@ -58,12 +58,14 @@ export function BrandHeartForm({
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-
-        if (name.includes('_')) {
-            const [field, lang] = name.split('_');
+        
+        if (name.endsWith('_primary') || name.endsWith('_secondary')) {
+            const lang = name.endsWith('_primary') ? 'primary' : 'secondary';
+            const field = name.replace(`_${lang}`, '');
+            
             setBrandHeart((prev: any) => ({
                 ...prev,
-                [field]: { ...prev[field], [lang]: value },
+                [field]: { ...(prev[field] || {}), [lang]: value },
             }));
         } else {
             setBrandHeart((prev: any) => ({ ...prev, [name]: value }));
@@ -74,12 +76,16 @@ export function BrandHeartForm({
         event.preventDefault();
         const formData = new FormData();
         
-        // Append all text fields from the state to FormData
         formData.append('brand_name', brandHeart.brand_name || '');
         Object.keys(brandHeart).forEach(key => {
             if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
-                formData.append(`${key}_primary`, brandHeart[key].primary || '');
-                formData.append(`${key}_secondary`, brandHeart[key].secondary || '');
+                // Ensure the keys are what the server action expects
+                if ('primary' in brandHeart[key]) {
+                    formData.append(`${key}_primary`, brandHeart[key].primary || '');
+                }
+                 if ('secondary' in brandHeart[key]) {
+                    formData.append(`${key}_secondary`, brandHeart[key].secondary || '');
+                }
             }
         });
 
