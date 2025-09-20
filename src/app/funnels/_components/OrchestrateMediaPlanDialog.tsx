@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -270,7 +269,7 @@ export function OrchestrateMediaPlanDialog({
             copy: '',
             hashtags: '',
             creativePrompt: '',
-            conceptualStep: { objective: 'Your new objective here', stageName: 'Uncategorized' },
+            conceptualStep: { step: 99, objective: 'Your new objective here', concept: 'Your new concept here' },
         };
         setPlanItems(prev => [...prev, newItem]);
     };

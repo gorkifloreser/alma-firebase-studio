@@ -30,7 +30,6 @@ import { CustomizePresetDialog } from './CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
-import { EditStrategyDialog } from './EditStrategyDialog';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
 
 
@@ -56,7 +55,6 @@ export function FunnelsClientPage({
     const [funnelPresets, setFunnelPresets] = useState(initialFunnelPresets);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isOrchestrateDialogOpen, setIsOrchestrateDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
     const [funnelToOrchestrate, setFunnelToOrchestrate] = useState<Funnel | null>(null);
     const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
@@ -92,10 +90,7 @@ export function FunnelsClientPage({
 
     const handleFunnelSaved = () => {
         setIsCreateDialogOpen(false);
-        setIsEditDialogOpen(false);
-        setIsOrchestrateDialogOpen(false);
         setFunnelToEdit(null);
-        setFunnelToOrchestrate(null);
         fetchFunnelsAndPresets();
         toast({
             title: 'Success!',
@@ -126,7 +121,7 @@ export function FunnelsClientPage({
 
     const handleOpenEditDialog = (funnel: Funnel) => {
         setFunnelToEdit(funnel);
-        setIsEditDialogOpen(true);
+        setIsCreateDialogOpen(true);
     };
 
      const handleOpenOrchestrateDialog = (funnel: Funnel) => {
@@ -160,6 +155,12 @@ export function FunnelsClientPage({
             }
         });
     };
+
+    const handlePlanSaved = () => {
+        setIsOrchestrateDialogOpen(false);
+        setFunnelToOrchestrate(null);
+        fetchFunnelsAndPresets();
+    }
 
     const PresetCard = ({ preset, isCustom }: { preset: FunnelPreset, isCustom: boolean }) => (
         <Card className="flex flex-col bg-muted/20">
@@ -237,8 +238,8 @@ export function FunnelsClientPage({
             <Tabs defaultValue="my-strategies" className="w-full">
                 <div className="flex justify-center">
                     <TabsList>
-                        <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
                         <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
+                        <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
                     </TabsList>
                 </div>
                 <TabsContent value="templates" className="mt-6">
@@ -284,7 +285,7 @@ export function FunnelsClientPage({
                                         <CardFooter className="mt-auto pt-4 flex justify-between">
                                             <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
                                                 <Wand2 className="mr-2 h-4 w-4" />
-                                                Orchestrate Media
+                                                Orchestrate
                                             </Button>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -346,32 +347,22 @@ export function FunnelsClientPage({
                     )}
                 </TabsContent>
             </Tabs>
-            {isCreateDialogOpen && (
-                <CreateFunnelDialog
-                    isOpen={isCreateDialogOpen}
-                    onOpenChange={(open) => {
-                        if (!open) setFunnelToEdit(null);
-                        setIsCreateDialogOpen(open);
-                    }}
-                    funnelPresets={funnelPresets}
-                    onFunnelSaved={handleFunnelSaved}
-                    funnelToEdit={null}
-                />
-            )}
+            <CreateFunnelDialog
+                isOpen={isCreateDialogOpen}
+                onOpenChange={(open) => {
+                    if (!open) setFunnelToEdit(null);
+                    setIsCreateDialogOpen(open);
+                }}
+                funnelPresets={funnelPresets}
+                onFunnelSaved={handleFunnelSaved}
+                funnelToEdit={funnelToEdit}
+            />
              {isOrchestrateDialogOpen && funnelToOrchestrate && (
                 <OrchestrateMediaPlanDialog
                     isOpen={isOrchestrateDialogOpen}
                     onOpenChange={setIsOrchestrateDialogOpen}
                     funnel={funnelToOrchestrate}
-                    onPlanSaved={handleFunnelSaved}
-                />
-            )}
-            {isEditDialogOpen && funnelToEdit && (
-                <EditStrategyDialog
-                    isOpen={isEditDialogOpen}
-                    onOpenChange={setIsEditDialogOpen}
-                    funnel={funnelToEdit}
-                    onFunnelUpdated={handleFunnelSaved}
+                    onPlanSaved={handlePlanSaved}
                 />
             )}
             <CustomizePresetDialog
@@ -384,4 +375,3 @@ export function FunnelsClientPage({
         </div>
     );
 }
-
