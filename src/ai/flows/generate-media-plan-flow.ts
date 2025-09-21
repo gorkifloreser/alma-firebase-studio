@@ -90,12 +90,16 @@ const generateChannelPlanPrompt = ai.definePrompt({
 ---
 **Brand Identity (The "Who"):**
 - Brand Name: {{brandHeart.brand_name}}
-- Brand Brief: {{#if (eq campaignLanguage primaryLanguage)}}{{brandHeart.brand_brief.primary}}{{else}}{{brandHeart.brand_brief.secondary}}{{/if}}
-- Tone of Voice: {{#if (eq campaignLanguage primaryLanguage)}}{{brandHeart.tone_of_voice.primary}}{{else}}{{brandHeart.tone_of_voice.secondary}}{{/if}}
+- Brand Brief (Primary: {{primaryLanguage}}): {{brandHeart.brand_brief.primary}}
+{{#if brandHeart.brand_brief.secondary}}- Brand Brief (Secondary: {{secondaryLanguage}}): {{brandHeart.brand_brief.secondary}}{{/if}}
+- Tone of Voice (Primary: {{primaryLanguage}}): {{brandHeart.tone_of_voice.primary}}
+{{#if brandHeart.tone_of_voice.secondary}}- Tone of Voice (Secondary: {{secondaryLanguage}}): {{brandHeart.tone_of_voice.secondary}}{{/if}}
 ---
 **Offering Details (The "What"):**
-- Title: {{#if (eq campaignLanguage primaryLanguage)}}{{offering.title.primary}}{{else}}{{offering.title.secondary}}{{/if}}
-- Description: {{#if (eq campaignLanguage primaryLanguage)}}{{offering.description.primary}}{{else}}{{offering.description.secondary}}{{/if}}
+- Title (Primary: {{primaryLanguage}}): {{offering.title.primary}}
+{{#if offering.title.secondary}}- Title (Secondary: {{secondaryLanguage}}): {{offering.title.secondary}}{{/if}}
+- Description (Primary: {{primaryLanguage}}): {{offering.description.primary}}
+{{#if offering.description.secondary}}- Description (Secondary: {{secondaryLanguage}}): {{offering.description.secondary}}{{/if}}
 - Contextual Notes: {{offering.contextual_notes}}
 ---
 **Campaign Timing:**
@@ -109,7 +113,7 @@ You must create a content sequence that is appropriately paced for this duration
 
 **Your Task:**
 
-Generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
+Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
 
 1.  **offeringId**: '{{offering.id}}'.
 2.  **channel**: '{{channel}}'.
