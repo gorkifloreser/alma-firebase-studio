@@ -50,7 +50,10 @@ interface OrchestrateMediaPlanDialogProps {
     onPlanSaved: (newFunnelData: Funnel) => void;
 }
 
-type PlanItemWithId = PlanItem & { id: string };
+type PlanItemWithId = PlanItem & {
+    id: string;
+    content_generation_queue: { id: string }[];
+};
 type RegeneratingState = { [itemId: string]: boolean };
 
 type ViewState = 'list' | 'generate';
@@ -158,6 +161,7 @@ export function OrchestrateMediaPlanDialog({
                 const validatedItems = result.plan.map(item => ({
                     ...item,
                     id: crypto.randomUUID(), // Assign temporary IDs for new items
+                    content_generation_queue: [],
                 }));
                 setCurrentPlan(validatedItems);
                 setPlanIdToEdit(null); // This is a new plan
@@ -183,15 +187,15 @@ export function OrchestrateMediaPlanDialog({
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    const { id, ...rest } = item;
-                    return id.startsWith('temp-') ? rest : item;
+                    const { id, content_generation_queue, ...rest } = item;
+                    return id.startsWith('temp-') ? rest : { ...rest, id };
                 });
                 
                 const savedPlan = await saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
-                    planItems: planToSave,
+                    planItems: planToSave as any,
                     startDate: dateRange?.from?.toISOString() ?? null,
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
@@ -239,7 +243,7 @@ export function OrchestrateMediaPlanDialog({
                 stageName: itemToRegen.stageName,
             });
             
-            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...newItem, id: itemToRegen.id } : item));
+            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem } : item));
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
@@ -343,6 +347,7 @@ export function OrchestrateMediaPlanDialog({
             objective: 'Your new objective here',
             concept: 'Your new concept here',
             suggested_post_at: new Date().toISOString(),
+            content_generation_queue: [],
         };
         setCurrentPlan(prev => [...(prev || []), newItem]);
     };
@@ -387,6 +392,16 @@ export function OrchestrateMediaPlanDialog({
                                 
                                 const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
                                 setSelectedChannels(channelsInPlan);
+
+                                // Pre-populate the queuedItemIds
+                                const initialQueuedIds = new Set<string>();
+                                plan.media_plan_items?.forEach(item => {
+                                    if (item.content_generation_queue && item.content_generation_queue.length > 0) {
+                                        initialQueuedIds.add(item.id);
+                                    }
+                                });
+                                setQueuedItemIds(initialQueuedIds);
+
 
                                 console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');

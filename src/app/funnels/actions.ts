@@ -20,7 +20,7 @@ export type MediaPlan = {
     title: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
-    media_plan_items: PlanItem[] | null;
+    media_plan_items: (PlanItem & { content_generation_queue: { id: string }[] })[] | null;
 };
 
 export type Funnel = {
@@ -62,7 +62,10 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
             offerings (id, title),
             media_plans!funnel_id (
                 *,
-                media_plan_items!media_plan_id (*)
+                media_plan_items!media_plan_id (
+                    *,
+                    content_generation_queue!media_plan_item_id (id)
+                )
             )
         `)
         .eq('user_id', user.id);
@@ -93,7 +96,10 @@ export async function getFunnel(funnelId: string) {
             offerings (id, title),
             media_plans!funnel_id (
                 *,
-                media_plan_items!media_plan_id (*)
+                media_plan_items!media_plan_id (
+                    *,
+                    content_generation_queue!media_plan_item_id (id)
+                )
             )
         `)
         .eq('id', funnelId)
