@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useCallback } from 'react';
@@ -172,8 +173,9 @@ export function CreateOfferingDialog({
                 }
                 return { ...prev, event_date: newDate };
             }
-            if (name === 'event_time') {
-                const timeValue = e as string;
+             if (name === 'event_time') {
+                const target = e as React.ChangeEvent<HTMLInputElement>;
+                const timeValue = target.value;
                 if (!timeValue) return { ...prev };
                 const [hours, minutes] = timeValue.split(':').map(Number);
                 const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
