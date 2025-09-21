@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel } from '../actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye } from 'lucide-react';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,8 +85,6 @@ export function OrchestrateMediaPlanDialog({
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
     const [isAddingToQueue, setIsAddingToQueue] = useState<RegeneratingState>({});
     const [queuedItemIds, setQueuedItemIds] = useState<Set<string>>(new Set());
-    const [isSelectionMode, setIsSelectionMode] = useState(false);
-    const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('');
     const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
         from: new Date(),
@@ -109,9 +107,7 @@ export function OrchestrateMediaPlanDialog({
             }
 
             setQueuedItemIds(new Set());
-            setIsSelectionMode(false);
-            setSelectedItemIds(new Set());
-
+            
             getUserChannels().then(channels => {
                 const channelNames = channels.map(c => c.id);
                 setAvailableChannels(channelNames);
@@ -181,13 +177,12 @@ export function OrchestrateMediaPlanDialog({
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    // Create a new object without the temporary 'id' if it's a new item
                     const { id, ...rest } = item;
                     return id.startsWith('temp-') ? rest : item;
                 });
                 
                 const savedPlan = await saveMediaPlan({
-                    id: planIdToEdit, // This can be null for a new plan
+                    id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
                     planItems: planToSave,
@@ -269,28 +264,29 @@ export function OrchestrateMediaPlanDialog({
             });
     }
 
-    const handleBulkAddToQueue = () => {
-        if (!currentPlan) return;
-        const itemsToAdd = Array.from(selectedItemIds).filter(id => !queuedItemIds.has(id));
-        if (itemsToAdd.length === 0) {
-            toast({ title: 'No new items to add', description: 'All selected items are already in the queue.' });
+    const handleBulkApproveChannel = () => {
+        if (!currentPlan || !activeTab) return;
+        const itemsForChannel = groupedByChannel[activeTab] || [];
+        const itemIds = itemsForChannel.map(item => item.id);
+        
+        if (itemIds.length === 0) {
+            toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
             return;
         }
 
         startSaving(async () => {
             try {
-                const { count } = await addMultipleToArtisanQueue(funnel.id, itemsToAdd);
-                toast({ title: 'Success!', description: `${count} item(s) added to the Artisan Queue.` });
+                const { count } = await addMultipleToArtisanQueue(funnel.id, itemIds);
+                toast({ title: 'Success!', description: `${count} item(s) for ${activeTab} have been added to the Artisan Queue.` });
                 const newQueuedIds = new Set(queuedItemIds);
-                itemsToAdd.forEach(id => newQueuedIds.add(id));
+                itemIds.forEach(id => newQueuedIds.add(id));
                 setQueuedItemIds(newQueuedIds);
-                setSelectedItemIds(new Set());
-                setIsSelectionMode(false);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
     }
+
 
     const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
         setCurrentPlan(prev => prev!.map(item => {
@@ -333,23 +329,6 @@ export function OrchestrateMediaPlanDialog({
         setCurrentPlan(prev => [...(prev || []), newItem]);
     };
     
-    const handleToggleSelectionMode = () => {
-        setIsSelectionMode(prev => !prev);
-        setSelectedItemIds(new Set());
-    }
-
-    const handleItemSelection = (itemId: string, checked: boolean) => {
-        setSelectedItemIds(prev => {
-            const newSet = new Set(prev);
-            if (checked) {
-                newSet.add(itemId);
-            } else {
-                newSet.delete(itemId);
-            }
-            return newSet;
-        });
-    }
-
     const handleChannelToggle = (channel: string) => {
         setSelectedChannels(prev =>
             prev.includes(channel)
@@ -357,18 +336,6 @@ export function OrchestrateMediaPlanDialog({
                 : [...prev, channel]
         );
     }
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            const currentTabItemIds = (groupedByChannel[activeTab] || []).map(item => item.id);
-            setSelectedItemIds(new Set(currentTabItemIds));
-        } else {
-            setSelectedItemIds(new Set());
-        }
-    }
-
-    const currentTabItems = groupedByChannel[activeTab] || [];
-    const isAllSelected = currentTabItems.length > 0 && currentTabItems.every(item => selectedItemIds.has(item.id));
 
     const renderListView = () => (
         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
@@ -386,20 +353,20 @@ export function OrchestrateMediaPlanDialog({
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
+                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', plan);
                                 const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
                                   ...item,
                                   id: item.id || crypto.randomUUID(),
                                   stageName: item.stage_name || '',
                                   creativePrompt: item.creative_prompt || '',
                                 }));
-                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', JSON.stringify(plan, null, 2));
-                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', JSON.stringify(itemsWithClientIds, null, 2));
-
+                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', itemsWithClientIds);
+                                
                                 setCurrentPlan(itemsWithClientIds);
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                setSelectedChannels(plan.media_plan_items?.map(i => i.channel).filter((v, i, a) => a.indexOf(v) === i) || []);
+                                setSelectedChannels(plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || []);
                                 
                                 console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');
@@ -518,16 +485,7 @@ export function OrchestrateMediaPlanDialog({
                  <div className="flex-1 flex flex-col overflow-hidden py-4">
                     <div className="flex-shrink-0 flex justify-between items-center mb-4">
                          <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} className="text-xl font-bold" />
-                         <Button variant="outline" size="sm" onClick={handleToggleSelectionMode}>
-                            {isSelectionMode ? <><X className="mr-2 h-4 w-4"/>Cancel</> : <><Rows className="mr-2 h-4 w-4"/>Bulk Select</>}
-                        </Button>
                     </div>
-                    {isSelectionMode && (
-                        <div className="flex-shrink-0 flex items-center space-x-2 pb-2">
-                            <Checkbox id="select-all" checked={isAllSelected} onCheckedChange={(checked) => handleSelectAll(!!checked)} />
-                            <Label htmlFor="select-all">Select all on this tab</Label>
-                        </div>
-                    )}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
                         <div className="flex-shrink-0 flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
                         <div className="flex-1 overflow-y-auto mt-4 pr-4">
@@ -537,13 +495,12 @@ export function OrchestrateMediaPlanDialog({
                                         const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
                                         const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
                                         return (
-                                        <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isSelectionMode && "pr-12", selectedItemIds.has(item.id) && "ring-2 ring-primary border-primary")}>
-                                            {isSelectionMode && <Checkbox checked={selectedItemIds.has(item.id)} onCheckedChange={(checked) => handleItemSelection(item.id, !!checked)} className="absolute top-4 left-4 h-5 w-5"/>}
-                                            <div className={cn("absolute top-2 right-2 flex items-center gap-2", isSelectionMode && "hidden")}>
+                                        <div key={item.id} className="p-4 border rounded-lg space-y-4 relative transition-all">
+                                            <div className="absolute top-2 right-2 flex items-center gap-2">
                                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
                                                 <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
-                                            <div className={cn("space-y-4", isSelectionMode && "pl-8")}>
+                                            <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
                                                     <Input id={`stageName-${item.id}`} value={item.stageName || ''} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" />
@@ -571,7 +528,7 @@ export function OrchestrateMediaPlanDialog({
                                                         <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)} className={cn(isSelectionMode && "hidden")}>
+                                                <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)}>
                                                     {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
                                                 </Button>
                                             </div>
@@ -600,21 +557,21 @@ export function OrchestrateMediaPlanDialog({
 
                 <DialogFooter className="mt-4 pt-4 border-t">
                     {view === 'generate' && currentPlan && (
-                         <Button onClick={handleSave} disabled={isSaving || isGenerating}>
-                            {isSaving ? 'Saving...' : 'Save Plan'}
-                        </Button>
+                        <>
+                            <Button onClick={handleSave} disabled={isSaving || isGenerating}>
+                                {isSaving ? 'Saving...' : 'Save Plan'}
+                            </Button>
+                            <Button
+                                onClick={handleBulkApproveChannel}
+                                disabled={isSaving || isGenerating || !activeTab}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <Check className="mr-2 h-4 w-4" />
+                                Approve '{activeTab}' Plan
+                            </Button>
+                        </>
                     )}
                 </DialogFooter>
-
-                 {view === 'generate' && currentPlan && isSelectionMode && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 flex items-center justify-between animate-in slide-in-from-bottom-12 duration-300">
-                        <p className="text-sm font-semibold">{selectedItemIds.size} item(s) selected</p>
-                        <Button onClick={handleBulkAddToQueue} disabled={selectedItemIds.size === 0 || isSaving}>
-                            <ListPlus className="mr-2 h-4 w-4" />
-                            Add to Queue
-                        </Button>
-                    </div>
-                )}
             </DialogContent>
         </Dialog>
     );
