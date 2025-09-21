@@ -166,7 +166,7 @@ export function CreateFunnelDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-7xl">
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="text-primary"/>
@@ -177,25 +177,25 @@ export function CreateFunnelDialog({
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className={cn("grid grid-cols-1 gap-12", generatedContent ? "lg:grid-cols-2" : "grid-cols-1")}>
-                    <div className="space-y-8 py-4 max-h-[70vh] overflow-y-auto pr-6">
-                        <Accordion type="single" collapsible defaultValue="item-1">
-                            <AccordionItem value="item-1">
-                                <AccordionTrigger><Label className="text-lg font-semibold cursor-pointer">1. Choose a Strategy Template</Label></AccordionTrigger>
-                                <AccordionContent className="pt-4">
-                                    {customPresets.length > 0 && (<div className="mt-4"><h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4"/> Your Custom Templates</h4><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{customPresets.map(p => (<Card key={p.id} className={cn("cursor-pointer transition-all", selectedPresetId === p.id && "ring-2 ring-primary")} onClick={() => setSelectedPresetId(p.id)}><CardContent className="p-4"><h3 className="font-bold">{p.title}</h3><p className="text-xs text-primary font-semibold mt-1">Best for: {p.best_for}</p></CardContent></Card>))}</div></div>)}
-                                    <div className="mt-6"><h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><Stars className="h-4 w-4"/> Global Templates</h4><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{globalPresets.map(p => (<Card key={p.id} className={cn("cursor-pointer transition-all", selectedPresetId === p.id && "ring-2 ring-primary")} onClick={() => setSelectedPresetId(p.id)}><CardContent className="p-4"><h3 className="font-bold">{p.title}</h3><p className="text-xs text-primary font-semibold mt-1">Best for: {p.best_for}</p></CardContent></Card>))}</div></div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                        <div className="space-y-4"><Label htmlFor="offering-select" className="text-lg font-semibold">2. Choose an Offering</Label><Select onValueChange={setSelectedOfferingId} value={selectedOfferingId || undefined}><SelectTrigger id="offering-select" className="text-base py-6"><SelectValue placeholder="Select an offering to promote..." /></SelectTrigger><SelectContent>{offerings.map(o => (<SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>))}</SelectContent></Select></div>
-                        <div className="space-y-4"><Label htmlFor="goal" className="text-lg font-semibold">3. Define Your Goal</Label><Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g., Get 50 signups for my webinar" className="text-base py-6"/></div>
-                        <div className="space-y-4"><Label className="text-lg font-semibold">4. Select Target Channels</Label><div className="grid grid-cols-2 gap-4 p-4 border rounded-md">{availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}</div>{availableChannels.length === 0 && (<p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>)}</div>
-                        {!generatedContent && <Button onClick={handleGenerateBlueprint} disabled={!canGenerate || isGenerating} className="w-full">{isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Blueprint</>}</Button>}
-                    </div>
-
-                    {generatedContent && (
-                        <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-6">
+                <div className="py-4 max-h-[70vh] overflow-y-auto pr-6">
+                   {!generatedContent ? (
+                        <div className="space-y-8">
+                            <Accordion type="single" collapsible defaultValue="item-1">
+                                <AccordionItem value="item-1">
+                                    <AccordionTrigger><Label className="text-lg font-semibold cursor-pointer">1. Choose a Strategy Template</Label></AccordionTrigger>
+                                    <AccordionContent className="pt-4">
+                                        {customPresets.length > 0 && (<div className="mt-4"><h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><User className="h-4 w-4"/> Your Custom Templates</h4><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{customPresets.map(p => (<Card key={p.id} className={cn("cursor-pointer transition-all", selectedPresetId === p.id && "ring-2 ring-primary")} onClick={() => setSelectedPresetId(p.id)}><CardContent className="p-4"><h3 className="font-bold">{p.title}</h3><p className="text-xs text-primary font-semibold mt-1">Best for: {p.best_for}</p></CardContent></Card>))}</div></div>)}
+                                        <div className="mt-6"><h4 className="text-md font-semibold mb-2 flex items-center gap-2 text-muted-foreground"><Stars className="h-4 w-4"/> Global Templates</h4><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{globalPresets.map(p => (<Card key={p.id} className={cn("cursor-pointer transition-all", selectedPresetId === p.id && "ring-2 ring-primary")} onClick={() => setSelectedPresetId(p.id)}><CardContent className="p-4"><h3 className="font-bold">{p.title}</h3><p className="text-xs text-primary font-semibold mt-1">Best for: {p.best_for}</p></CardContent></Card>))}</div></div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                            <div className="space-y-4"><Label htmlFor="offering-select" className="text-lg font-semibold">2. Choose an Offering</Label><Select onValueChange={setSelectedOfferingId} value={selectedOfferingId || undefined}><SelectTrigger id="offering-select" className="text-base py-6"><SelectValue placeholder="Select an offering to promote..." /></SelectTrigger><SelectContent>{offerings.map(o => (<SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>))}</SelectContent></Select></div>
+                            <div className="space-y-4"><Label htmlFor="goal" className="text-lg font-semibold">3. Define Your Goal</Label><Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g., Get 50 signups for my webinar" className="text-base py-6"/></div>
+                            <div className="space-y-4"><Label className="text-lg font-semibold">4. Select Target Channels</Label><div className="grid grid-cols-2 gap-4 p-4 border rounded-md">{availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}</div>{availableChannels.length === 0 && (<p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>)}</div>
+                            <Button onClick={handleGenerateBlueprint} disabled={!canGenerate || isGenerating} className="w-full">{isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Blueprint</>}</Button>
+                        </div>
+                   ) : (
+                        <div className="space-y-6">
                             <h3 className="text-xl font-semibold border-b pb-2">Edit Blueprint</h3>
                             <div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={name} onChange={(e) => setName(e.target.value)} className="text-lg"/></div>
                             <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (
@@ -218,7 +218,7 @@ export function CreateFunnelDialog({
                                 <Button variant="secondary" className="w-full" onClick={handleAddStage}><PlusCircle className="mr-2 h-4 w-4" /> Add New Stage</Button>
                             </div>
                         </div>
-                    )}
+                   )}
                 </div>
 
                 <DialogFooter>
