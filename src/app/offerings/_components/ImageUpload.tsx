@@ -134,7 +134,6 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
         formData.append('file', processedFile);
         formData.append('description', description);
         
-        // This action needs to be created to handle single file uploads
         const newMedia = await uploadSingleOfferingMedia(offeringId!, formData); 
         
         setQueue(prev => prev.filter(item => item.id !== itemId)); // Remove from queue on success
