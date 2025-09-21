@@ -32,6 +32,7 @@ export type Offering = {
     currency: string | null;
     event_date: string | null; // ISO 8601 string
     duration: string | null;
+    frequency: string | null;
 };
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -84,7 +85,7 @@ export async function createOffering(offeringData: Partial<Omit<Offering, 'id' |
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { title, description, type, contextual_notes, price, currency, event_date, duration } = offeringData;
+  const { title, description, type, contextual_notes, price, currency, event_date, duration, frequency } = offeringData;
 
   const payload = {
     user_id: user.id,
@@ -96,6 +97,7 @@ export async function createOffering(offeringData: Partial<Omit<Offering, 'id' |
     currency: price ? currency || 'USD' : null,
     event_date,
     duration: type === 'Event' ? duration : null,
+    frequency: type === 'Event' ? frequency : null,
   };
 
   const { data, error } = await supabase
@@ -135,7 +137,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, price, currency, event_date, duration } = offeringData;
+    const { title, description, type, contextual_notes, price, currency, event_date, duration, frequency } = offeringData;
 
     const payload = {
       title,
@@ -146,6 +148,7 @@ export async function updateOffering(offeringId: string, offeringData: Partial<O
       currency: price ? currency || 'USD' : null,
       event_date,
       duration: type === 'Event' ? duration : null,
+      frequency: type === 'Event' ? frequency : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -444,4 +447,3 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
     return genImageDescFlow(input);
 }
-

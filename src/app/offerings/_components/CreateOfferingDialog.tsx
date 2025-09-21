@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft } from '../actions';
 import type { Offering, OfferingMedia } from '../actions';
-import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2 } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Repeat } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -56,6 +56,7 @@ const initialOfferingState: OfferingFormData = {
     currency: 'USD',
     event_date: null,
     duration: null,
+    frequency: 'One-time',
     offering_media: [],
 };
 
@@ -183,7 +184,7 @@ export function CreateOfferingDialog({
             }
 
             if (typeof e === 'string' && name) {
-                return { ...prev, [name]: e as Offering['type'] | Offering['currency'] };
+                return { ...prev, [name]: e as Offering['type'] | Offering['currency'] | Offering['frequency'] };
             }
             
             if (typeof e !== 'string' && e && 'target' in e) {
@@ -255,6 +256,7 @@ export function CreateOfferingDialog({
                     currency: offering.currency,
                     event_date: offering.event_date?.toISOString() ?? null,
                     duration: offering.duration,
+                    frequency: offering.frequency,
                 };
 
                 if (isEditMode && offeringToEdit) {
@@ -480,9 +482,26 @@ export function CreateOfferingDialog({
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                 <Label htmlFor="duration">Duration</Label>
-                                <Input id="duration" name="duration" value={offering.duration || ''} onChange={handleFormChange} placeholder="e.g., 2 hours, 3 days" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="duration">Duration</Label>
+                                    <Input id="duration" name="duration" value={offering.duration || ''} onChange={handleFormChange} placeholder="e.g., 2 hours, 3 days" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="frequency">Frequency</Label>
+                                    <Select name="frequency" value={offering.frequency || 'One-time'} onValueChange={(value) => handleFormChange(value, 'frequency')}>
+                                        <SelectTrigger id="frequency">
+                                            <SelectValue placeholder="Select frequency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="One-time">One-time</SelectItem>
+                                            <SelectItem value="Weekly">Weekly</SelectItem>
+                                            <SelectItem value="Bi-weekly">Bi-weekly</SelectItem>
+                                            <SelectItem value="Monthly">Monthly</SelectItem>
+                                            <SelectItem value="Yearly">Yearly</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     )}

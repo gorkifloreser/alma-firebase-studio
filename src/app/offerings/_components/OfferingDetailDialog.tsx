@@ -29,7 +29,7 @@ import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
-import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2, Repeat } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 type Profile = {
@@ -76,6 +76,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
         currency,
         event_date,
         duration,
+        frequency,
         contextual_notes,
         offering_media,
     } = offering;
@@ -168,6 +169,11 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                         {type === 'Event' && duration && (
                              <DetailItem icon={Globe} label="Duration">
                                 {duration}
+                            </DetailItem>
+                        )}
+                        {type === 'Event' && frequency && (
+                            <DetailItem icon={Repeat} label="Frequency">
+                                {frequency}
                             </DetailItem>
                         )}
                     </div>
