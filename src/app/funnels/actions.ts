@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -51,6 +50,7 @@ export type FunnelPreset = {
 };
 
 export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
+    console.log('[actions.ts:getFunnels] Fetching funnels. Offering ID filter:', offeringId);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -77,14 +77,21 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-        console.error('Error fetching funnels:', error.message);
+        console.error('[actions.ts:getFunnels] Error fetching funnels:', error.message);
         throw new Error(`Could not fetch funnels: "${error.message}"`);
     }
+    console.log(`[actions.ts:getFunnels] Successfully fetched ${data.length} funnels.`);
+    // Log details of the first funnel's media plan items if it exists, for debugging
+    if (data[0]?.media_plans?.[0]?.media_plan_items) {
+      console.log('[actions.ts:getFunnels] Sample media_plan_item from first funnel:', JSON.stringify(data[0].media_plans[0].media_plan_items[0], null, 2));
+    }
+
 
     return data as Funnel[];
 }
 
 export async function getFunnel(funnelId: string) {
+    console.log(`[actions.ts:getFunnel] Fetching single funnel with ID: ${funnelId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
@@ -107,7 +114,13 @@ export async function getFunnel(funnelId: string) {
         .single();
     
     if (error) {
+        console.error(`[actions.ts:getFunnel] Error fetching funnel ${funnelId}:`, error.message);
         throw new Error(`Could not fetch funnel: ${error.message}`);
+    }
+
+    console.log(`[actions.ts:getFunnel] Successfully fetched funnel ${funnelId}.`);
+     if (data?.media_plans?.[0]?.media_plan_items) {
+      console.log('[actions.ts:getFunnel] Sample media_plan_item from fetched funnel:', JSON.stringify(data.media_plans[0].media_plan_items[0], null, 2));
     }
 
     return { data: data as Funnel };
@@ -595,4 +608,3 @@ export async function getUserChannels(): Promise<Account[]> {
         best_practices: row.best_practices,
     }));
 }
-

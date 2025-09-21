@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -102,9 +101,12 @@ export function OrchestrateMediaPlanDialog({
     useEffect(() => {
         setFunnel(initialFunnel);
         if (isOpen) {
+            console.log('[Dialog Effect] Dialog opened. Initial funnel:', initialFunnel);
             // Only auto-reset if not editing
             if (!planIdToEdit && !currentPlan) {
-                setView(initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate');
+                const newViewState = initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate';
+                console.log('[Dialog Effect] Setting view to:', newViewState);
+                setView(newViewState);
                 setCurrentPlan(null);
                 setPlanIdToEdit(null);
             }
@@ -139,7 +141,9 @@ export function OrchestrateMediaPlanDialog({
         if (!currentPlan || !activeTab) return false;
         const itemsForChannel = groupedByChannel[activeTab] || [];
         if (itemsForChannel.length === 0) return false;
-        return itemsForChannel.every(item => queuedItemIds.has(item.id));
+        const result = itemsForChannel.every(item => queuedItemIds.has(item.id));
+        console.log(`[isCurrentChannelApproved] Channel: ${activeTab}, Queued IDs:`, Array.from(queuedItemIds), `Items:`, itemsForChannel.map(i => i.id), `Result: ${result}`);
+        return result;
     }, [activeTab, groupedByChannel, queuedItemIds, currentPlan]);
     
     useEffect(() => {
@@ -276,12 +280,16 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const handleBulkApproveChannel = () => {
+        console.log('[handleBulkApproveChannel] Clicked.');
         if (!currentPlan || !activeTab) {
+            console.error('[handleBulkApproveChannel] Aborting: No currentPlan or activeTab.');
             return;
         }
 
         const itemsForChannel = groupedByChannel[activeTab] || [];
         const itemIds = itemsForChannel.map(item => item.id);
+        
+        console.log(`[handleBulkApproveChannel] Approving ${itemIds.length} items for channel: ${activeTab}`, itemIds);
         
         if (itemIds.length === 0) {
             toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
@@ -297,8 +305,11 @@ export function OrchestrateMediaPlanDialog({
                 const newQueuedIds = new Set(queuedItemIds);
                 itemIds.forEach(id => newQueuedIds.add(id));
                 setQueuedItemIds(newQueuedIds);
+                console.log('[handleBulkApproveChannel] New queued IDs:', Array.from(newQueuedIds));
+
 
             } catch (error: any) {
+                console.error('[handleBulkApproveChannel] Bulk add failed:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -382,8 +393,8 @@ export function OrchestrateMediaPlanDialog({
                                 <CardHeader>
                                     <div className="flex justify-between items-start">
                                         <CardTitle>{plan.title}</CardTitle>
-                                        {approvedChannelsCount > 0 && (
-                                            <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
+                                        {totalChannels > 0 && (
+                                            <Badge className={approvedChannelsCount === totalChannels ? "bg-green-100 text-green-800 hover:bg-green-100/80" : "bg-blue-100 text-blue-800 hover:bg-blue-100/80"}>
                                                 {approvedChannelsCount}/{totalChannels} Approved
                                             </Badge>
                                         )}
@@ -392,19 +403,13 @@ export function OrchestrateMediaPlanDialog({
                                 </CardHeader>
                                 <CardFooter className="flex justify-end gap-2">
                                     <Button variant="outline" size="sm" onClick={() => {
+                                        console.log('[Edit Click] Loading plan:', plan);
                                         const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
-                                        ...item,
-                                        id: item.id || crypto.randomUUID(),
-                                        stageName: item.stage_name || '',
-                                        creativePrompt: item.creative_prompt || '',
+                                            ...item,
+                                            id: item.id || crypto.randomUUID(),
+                                            stageName: item.stage_name || '',
+                                            creativePrompt: item.creative_prompt || '',
                                         }));
-                                        setCurrentPlan(itemsWithClientIds);
-                                        setPlanTitle(plan.title);
-                                        setPlanIdToEdit(plan.id);
-                                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                        
-                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
-                                        setSelectedChannels(channelsInPlan);
 
                                         const initialQueuedIds = new Set<string>();
                                         itemsWithClientIds.forEach(item => {
@@ -412,7 +417,16 @@ export function OrchestrateMediaPlanDialog({
                                                 initialQueuedIds.add(item.id);
                                             }
                                         });
+                                        console.log('[Edit Click] Initial queued IDs set:', Array.from(initialQueuedIds));
                                         setQueuedItemIds(initialQueuedIds);
+                                        
+                                        setCurrentPlan(itemsWithClientIds);
+                                        setPlanTitle(plan.title);
+                                        setPlanIdToEdit(plan.id);
+                                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                        
+                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                        setSelectedChannels(channelsInPlan);
 
                                         setView('generate');
                                     }}>
@@ -635,4 +649,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-

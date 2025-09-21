@@ -8,6 +8,7 @@ This document outlines the development, testing, and debugging standards for the
 *   **Ownership and Accountability:** Take pride in your work. Every line of code should be written with the intention of creating a high-quality, robust product.
 *   **Async First:** As a modern web application, all asynchronous operations must be handled gracefully using `async/await` patterns. Non-blocking code is the standard.
 *   **Continuous Improvement:** We are committed to iterative improvement. Regularly refactor and enhance the codebase to maintain a high standard of quality.
+*   **Feedback first:** As a good practice add console logs and explicit error .
 
 ## 2. Development Best Practices
 
