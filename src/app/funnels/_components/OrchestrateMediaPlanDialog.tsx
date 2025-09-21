@@ -368,15 +368,25 @@ export function OrchestrateMediaPlanDialog({
                 {plans.length > 0 ? (
                     plans.map(plan => {
                         const allItems = plan.media_plan_items || [];
-                        const queuedItems = allItems.filter(item => item.content_generation_queue && item.content_generation_queue.length > 0);
-                        const isFullyApproved = allItems.length > 0 && allItems.length === queuedItems.length;
+                        const uniqueChannels = [...new Set(allItems.map(item => item.channel))];
+                        const totalChannels = uniqueChannels.length;
+                        
+                        const approvedChannelsCount = uniqueChannels.reduce((count, channel) => {
+                            const channelItems = allItems.filter(item => item.channel === channel);
+                            const areAllQueued = channelItems.length > 0 && channelItems.every(item => item.content_generation_queue && item.content_generation_queue.length > 0);
+                            return areAllQueued ? count + 1 : count;
+                        }, 0);
 
                         return (
                             <Card key={plan.id}>
                                 <CardHeader>
                                     <div className="flex justify-between items-start">
                                         <CardTitle>{plan.title}</CardTitle>
-                                        {isFullyApproved && <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">Approved</Badge>}
+                                        {approvedChannelsCount > 0 && (
+                                            <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">
+                                                {approvedChannelsCount}/{totalChannels} Approved
+                                            </Badge>
+                                        )}
                                     </div>
                                     <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
                                 </CardHeader>
