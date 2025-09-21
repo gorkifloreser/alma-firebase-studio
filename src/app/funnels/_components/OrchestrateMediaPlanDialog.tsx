@@ -533,7 +533,20 @@ export function OrchestrateMediaPlanDialog({
                          <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} className="text-xl font-bold" />
                     </div>
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
-                        <div className="flex-shrink-0 flex justify-center"><TabsList>{channelsForTabs.map(c => (<TabsTrigger key={c} value={c} className="capitalize">{c.replace(/_/g, ' ')}</TabsTrigger>))}</TabsList></div>
+                        <div className="flex-shrink-0 flex justify-center">
+                            <TabsList>
+                                {channelsForTabs.map(c => {
+                                    const channelItems = groupedByChannel[c] || [];
+                                    const isApproved = channelItems.length > 0 && channelItems.every(item => queuedItemIds.has(item.id));
+                                    return (
+                                        <TabsTrigger key={c} value={c} className="capitalize flex items-center gap-2">
+                                            {isApproved && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {c.replace(/_/g, ' ')}
+                                        </TabsTrigger>
+                                    );
+                                })}
+                            </TabsList>
+                        </div>
                         <div className="flex-1 overflow-y-auto mt-4 pr-4">
                             {channelsForTabs.map(c => (
                                 <TabsContent key={c} value={c} className="mt-0">
@@ -622,3 +635,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
