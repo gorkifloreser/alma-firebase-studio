@@ -28,7 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addToArtisanQueue, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel } from '../actions';
+import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel } from '../actions';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
@@ -255,10 +255,10 @@ export function OrchestrateMediaPlanDialog({
 
     const handleAddToQueue = (item: PlanItemWithId) => {
         setIsAddingToQueue(prev => ({ ...prev, [item.id]: true }));
-        addToArtisanQueue(funnel.id, item.id, funnel.offering_id)
+        addMultipleToArtisanQueue(funnel.id, funnel.offering_id, [item.id])
             .then(() => {
                 toast({
-                    title: 'Added to Queue!',
+                    title: queuedItemIds.has(item.id) ? 'Queue Updated!' : 'Added to Queue!',
                     description: 'This item is now ready for generation in the AI Artisan workshop.'
                 });
                 setQueuedItemIds(prev => new Set(prev).add(item.id));
@@ -403,7 +403,7 @@ export function OrchestrateMediaPlanDialog({
                                         setPlanIdToEdit(plan.id);
                                         setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
                                         
-                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
                                         setSelectedChannels(channelsInPlan);
 
                                         const initialQueuedIds = new Set<string>();
@@ -430,7 +430,7 @@ export function OrchestrateMediaPlanDialog({
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    This will permanently delete the media plan titled "{plan.title}".
+                                                    This will permanently delete the media plan titled "{plan.title}". This action cannot be undone.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -587,8 +587,8 @@ export function OrchestrateMediaPlanDialog({
                                                         <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)}>
-                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : (isAddingToQueue[item.id] ? 'Queuing...' : <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>)}
+                                                <Button size="sm" variant="secondary" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id]}>
+                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Update in Queue</> ) : (isAddingToQueue[item.id] ? 'Queuing...' : <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>)}
                                                 </Button>
                                             </div>
                                         </div>
@@ -635,5 +635,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    

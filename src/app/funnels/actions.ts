@@ -462,7 +462,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     // Fetch the newly created/updated plan with its items to return
     const { data: newPlanWithItems, error: newPlanError } = await supabase
         .from('media_plans')
-        .select('*, media_plan_items!media_plan_id (*)')
+        .select('*, media_plan_items!media_plan_id (*, content_generation_queue!media_plan_item_id(id))')
         .eq('id', mediaPlanId)
         .single();
 
@@ -527,30 +527,6 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     return { message: "Media plan deleted successfully." };
 }
 
-export async function addToArtisanQueue(funnelId: string, mediaPlanItemId: string, offeringId: string): Promise<{ message: string }> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-        .from('content_generation_queue')
-        .upsert({
-            user_id: user.id,
-            funnel_id: funnelId,
-            offering_id: offeringId,
-            media_plan_item_id: mediaPlanItemId,
-            status: 'pending',
-        }, { onConflict: 'user_id, media_plan_item_id' });
-
-    if (error) {
-        console.error('Error adding/updating to artisan queue:', error);
-        throw new Error('Could not add or update item in the Artisan Queue.');
-    }
-
-    return { message: 'Item added/updated in Artisan Queue successfully.' };
-}
-
-
 export async function addMultipleToArtisanQueue(funnelId: string, offeringId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
     console.log('[actions.ts] addMultipleToArtisanQueue called with funnelId:', funnelId, 'offeringId:', offeringId, 'and itemIds:', mediaPlanItemIds);
     const supabase = createClient();
@@ -577,7 +553,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
 
     const { count, error } = await supabase
         .from('content_generation_queue')
-        .insert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); 
+        .upsert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); 
 
     if (error) {
         console.error('[actions.ts] Bulk add failed:', error);
