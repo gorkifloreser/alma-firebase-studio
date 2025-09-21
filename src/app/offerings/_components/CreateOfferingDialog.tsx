@@ -338,9 +338,13 @@ export function CreateOfferingDialog({
                     ...prev,
                     title: { ...prev.title, primary: result.title },
                     description: { ...prev.description, primary: result.description },
+                    type: result.type,
                     price: result.price ?? prev.price,
                     currency: result.currency ?? prev.currency,
                     contextual_notes: result.contextual_notes ?? prev.contextual_notes,
+                    event_date: result.event_date ? parseISO(result.event_date) : prev.event_date,
+                    duration: result.duration ?? prev.duration,
+                    frequency: result.frequency ?? prev.frequency,
                 }));
                 toast({ title: 'Draft Generated!', description: 'Review the generated content below.'});
             } catch (error: any) {
