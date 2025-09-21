@@ -41,6 +41,10 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getProfile } from '@/app/settings/actions';
+import { languages as languageList } from '@/lib/languages';
+
+type Profile = Awaited<ReturnType<typeof getProfile>>;
 
 
 interface OrchestrateMediaPlanDialogProps {
@@ -93,13 +97,22 @@ export function OrchestrateMediaPlanDialog({
     });
     const [availableChannels, setAvailableChannels] = useState<string[]>([]);
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [selectedLanguage, setSelectedLanguage] = useState<string>('');
     
     const { toast } = useToast();
+    
+    const languageNames = new Map(languageList.map(l => [l.value, l.label]));
 
     useEffect(() => {
         setFunnel(initialFunnel);
         if (isOpen) {
-            // Only auto-reset if not editing
+            // Fetch profile on open
+            getProfile().then(p => {
+                setProfile(p);
+                setSelectedLanguage(p?.primary_language || 'en');
+            });
+
             if (!planIdToEdit && !currentPlan) {
                 const newViewState = initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate';
                 setView(newViewState);
@@ -117,7 +130,7 @@ export function OrchestrateMediaPlanDialog({
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, initialFunnel, planIdToEdit, currentPlan]);
+    }, [isOpen, initialFunnel, planIdToEdit, currentPlan, dateRange?.from]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -154,6 +167,7 @@ export function OrchestrateMediaPlanDialog({
                     startDate: dateRange?.from?.toISOString(),
                     endDate: dateRange?.to?.toISOString(),
                     channels: selectedChannels,
+                    language: selectedLanguage,
                 });
                 const validatedItems = result.plan.map(item => ({
                     ...item,
@@ -475,6 +489,18 @@ export function OrchestrateMediaPlanDialog({
                             </Popover>
                         </div>
                         <div className="space-y-2">
+                            <Label htmlFor="language-select">Campaign Language</Label>
+                            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                                <SelectTrigger id="language-select">
+                                    <SelectValue placeholder="Select a language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {profile?.primary_language && <SelectItem value={profile.primary_language}>{languageNames.get(profile.primary_language) || profile.primary_language}</SelectItem>}
+                                    {profile?.secondary_language && <SelectItem value={profile.secondary_language}>{languageNames.get(profile.secondary_language) || profile.secondary_language}</SelectItem>}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
                             <Label>Select Target Channels</Label>
                             <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
                                 {availableChannels.map(c => (
@@ -598,5 +624,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    

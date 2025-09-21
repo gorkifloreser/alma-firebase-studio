@@ -41,6 +41,7 @@ const GenerateMediaPlanInputSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   channels: z.array(z.string()).optional(),
+  language: z.string().optional(),
 });
 export type GenerateMediaPlanInput = z.infer<typeof GenerateMediaPlanInputSchema>;
 
@@ -60,6 +61,8 @@ const generateChannelPlanPrompt = ai.definePrompt({
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
+          secondaryLanguage: z.string().optional(),
+          campaignLanguage: z.string(),
           brandHeart: z.any(),
           offering: z.any(),
           strategy: z.any(),
@@ -71,7 +74,9 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint, brand identity, and channel-specific best practices.
+  prompt: `You are an expert direct response copywriter and AI prompt engineer who is fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint, brand identity, and channel-specific best practices.
+
+**CRITICAL INSTRUCTION: You must generate the entire output in the following language: {{campaignLanguage}}**
 
 **The Strategy Blueprint to Execute:**
 ---
@@ -85,12 +90,12 @@ const generateChannelPlanPrompt = ai.definePrompt({
 ---
 **Brand Identity (The "Who"):**
 - Brand Name: {{brandHeart.brand_name}}
-- Brand Brief: {{brandHeart.brand_brief.primary}}
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- Brand Brief: {{#if (eq campaignLanguage primaryLanguage)}}{{brandHeart.brand_brief.primary}}{{else}}{{brandHeart.brand_brief.secondary}}{{/if}}
+- Tone of Voice: {{#if (eq campaignLanguage primaryLanguage)}}{{brandHeart.tone_of_voice.primary}}{{else}}{{brandHeart.tone_of_voice.secondary}}{{/if}}
 ---
 **Offering Details (The "What"):**
-- Title: {{offering.title.primary}}
-- Description: {{offering.description.primary}}
+- Title: {{#if (eq campaignLanguage primaryLanguage)}}{{offering.title.primary}}{{else}}{{offering.title.secondary}}{{/if}}
+- Description: {{#if (eq campaignLanguage primaryLanguage)}}{{offering.description.primary}}{{else}}{{offering.description.secondary}}{{/if}}
 - Contextual Notes: {{offering.contextual_notes}}
 ---
 **Campaign Timing:**
@@ -109,7 +114,7 @@ Generate a list of concrete content packages for the **'{{channel}}' channel ONL
 1.  **offeringId**: '{{offering.id}}'.
 2.  **channel**: '{{channel}}'.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post, embodying the brand's '{{brandHeart.tone_of_voice.primary}}' tone.
+4.  **copy**: Write compelling, direct-response ad copy for the post, embodying the brand's tone of voice.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags.
 6.  **creativePrompt**: A detailed, visually rich prompt for an AI image/video generator.
 7.  **stageName**: The name of the blueprint stage this item belongs to.
@@ -117,7 +122,7 @@ Generate a list of concrete content packages for the **'{{channel}}' channel ONL
 9.  **concept**: **Generate a NEW, specific concept for THIS content piece.** Example: "Feature a powerful customer quote as the hero image with copy that expands on their story."
 10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
 
-Generate this entire plan in the **{{primaryLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
+Generate this entire plan in the **{{campaignLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
 
 
@@ -171,8 +176,7 @@ Generate this single content package in the **{{primaryLanguage}}** language. Re
 const mediaFormatConfig = [
     { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
     { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ]
-    }
+    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Landing Page', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
 ];
 
 const getFormatsForChannel = (channel: string): string[] => {
@@ -191,7 +195,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     inputSchema: GenerateMediaPlanInputSchema,
     outputSchema: GenerateMediaPlanOutputSchema,
   },
-  async ({ funnelId, startDate, endDate, channels: requestedChannels }) => {
+  async ({ funnelId, startDate, endDate, channels: requestedChannels, language: campaignLanguage }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -207,7 +211,7 @@ const generateMediaPlanFlow = ai.defineFlow(
         { data: channelSettings, error: channelSettingsError },
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
-        supabase.from('profiles').select('primary_language').eq('id', user.id).single(),
+        supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single(),
         supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
         supabase.from('user_channel_settings').select('channel_name, best_practices').eq('user_id', user.id),
     ]);
@@ -231,6 +235,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
+    const secondaryLanguage = profile.secondary_language ? languageNames.get(profile.secondary_language) : undefined;
 
     // Create a parallel generation task for each channel
     const channelPromises = channels.map(channel => {
@@ -238,6 +243,8 @@ const generateMediaPlanFlow = ai.defineFlow(
         const bestPractices = channelSettingsMap.get(channel) || 'No specific best practices provided.';
         return generateChannelPlanPrompt({
             primaryLanguage,
+            secondaryLanguage,
+            campaignLanguage: languageNames.get(campaignLanguage || profile.primary_language) || campaignLanguage || primaryLanguage,
             brandHeart,
             offering,
             strategy,
@@ -326,7 +333,3 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
-
-    
-
-    
