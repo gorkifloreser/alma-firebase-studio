@@ -533,6 +533,7 @@ export async function addToArtisanQueue(funnelId: string, mediaPlanItemId: strin
 }
 
 export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
+    console.log('[actions.ts] addMultipleToArtisanQueue called with funnelId:', funnelId, 'and itemIds:', mediaPlanItemIds);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -544,26 +545,40 @@ export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemI
         .select('id, offering_id')
         .in('id', mediaPlanItemIds);
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+        console.error('[actions.ts] Error fetching offering_ids:', itemsError);
+        throw itemsError;
+    }
     const offeringIdMap = new Map(itemsData.map(item => [item.id, item.offering_id]));
+    console.log('[actions.ts] Fetched offering_id mapping:', Object.fromEntries(offeringIdMap));
 
-    const recordsToInsert = mediaPlanItemIds.map(itemId => ({
-        user_id: user.id,
-        funnel_id: funnelId,
-        offering_id: offeringIdMap.get(itemId),
-        media_plan_item_id: itemId,
-        status: 'pending' as const,
-    }));
+    const recordsToInsert = mediaPlanItemIds
+        .filter(itemId => offeringIdMap.has(itemId)) // Ensure we only try to insert items we found
+        .map(itemId => ({
+            user_id: user.id,
+            funnel_id: funnelId,
+            offering_id: offeringIdMap.get(itemId),
+            media_plan_item_id: itemId,
+            status: 'pending' as const,
+        }));
+    
+    console.log('[actions.ts] Records to insert:', recordsToInsert);
+
+    if (recordsToInsert.length === 0) {
+        console.log('[actions.ts] No valid records to insert.');
+        return { count: 0 };
+    }
 
     const { count, error } = await supabase
         .from('content_generation_queue')
-        .insert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); // Prevent duplicates
+        .insert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); 
 
     if (error) {
-        console.error('Error bulk adding to artisan queue:', error);
-        throw new Error('Could not add items to the Artisan Queue.');
+        console.error('[actions.ts] Error bulk adding to artisan queue:', error);
+        throw new Error(`Could not add items to the Artisan Queue. DB Error: ${error.message}`);
     }
 
+    console.log(`[actions.ts] Successfully inserted/ignored ${count || 0} records.`);
     return { count: count || 0 };
 }
 

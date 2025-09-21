@@ -265,9 +265,15 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const handleBulkApproveChannel = () => {
-        if (!currentPlan || !activeTab) return;
+        console.log('[OrchestrateMediaPlanDialog] handleBulkApproveChannel called.');
+        if (!currentPlan || !activeTab) {
+            console.log('[OrchestrateMediaPlanDialog] Aborting: No current plan or active tab.');
+            return;
+        }
+
         const itemsForChannel = groupedByChannel[activeTab] || [];
         const itemIds = itemsForChannel.map(item => item.id);
+        console.log(`[OrchestrateMediaPlanDialog] Approving ${itemIds.length} items for channel: ${activeTab}`, itemIds);
         
         if (itemIds.length === 0) {
             toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
@@ -276,12 +282,18 @@ export function OrchestrateMediaPlanDialog({
 
         startSaving(async () => {
             try {
+                console.log('[OrchestrateMediaPlanDialog] Calling addMultipleToArtisanQueue with funnelId:', funnel.id, 'and itemIds:', itemIds);
                 const { count } = await addMultipleToArtisanQueue(funnel.id, itemIds);
+                console.log('[OrchestrateMediaPlanDialog] addMultipleToArtisanQueue returned count:', count);
+                
                 toast({ title: 'Success!', description: `${count} item(s) for ${activeTab} have been added to the Artisan Queue.` });
+                
                 const newQueuedIds = new Set(queuedItemIds);
                 itemIds.forEach(id => newQueuedIds.add(id));
                 setQueuedItemIds(newQueuedIds);
+
             } catch (error: any) {
+                console.error('[OrchestrateMediaPlanDialog] Bulk add failed:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -353,14 +365,12 @@ export function OrchestrateMediaPlanDialog({
                         </CardHeader>
                         <CardFooter className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
-                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', plan);
                                 const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
                                   ...item,
                                   id: item.id || crypto.randomUUID(),
                                   stageName: item.stage_name || '',
                                   creativePrompt: item.creative_prompt || '',
                                 }));
-                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', itemsWithClientIds);
                                 
                                 setCurrentPlan(itemsWithClientIds);
                                 setPlanTitle(plan.title);
@@ -368,9 +378,7 @@ export function OrchestrateMediaPlanDialog({
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
                                 setSelectedChannels(plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || []);
                                 
-                                console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');
-                                console.log('[OrchestrateMediaPlanDialog] View set to "generate".');
                             }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
