@@ -61,7 +61,7 @@ type ViewState = 'list' | 'generate';
 const mediaFormatConfig = [
     { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
     { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
+    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Landing Page', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
 ];
 
 const getFormatsForChannel = (channel: string): string[] => {
@@ -260,16 +260,19 @@ export function OrchestrateMediaPlanDialog({
             return;
         }
 
+        console.log(`[Client] Approving ${itemIds.length} items for channel '${activeTab}' with offering ID ${funnel.offering_id}`, itemIds);
         startSaving(async () => {
             try {
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 
+                console.log(`[Client] Server responded: ${count} items queued.`);
                 toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
                 setCurrentPlan(prevPlan => prevPlan!.map(item => 
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
                 ));
             } catch (error: any) {
+                console.error('[Client] Bulk approve error:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -595,3 +598,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
