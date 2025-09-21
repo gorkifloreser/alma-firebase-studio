@@ -472,6 +472,40 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
+    // 1. Get all media_plan_item_ids for the plan
+    const { data: itemIds, error: itemIdsError } = await supabase
+        .from('media_plan_items')
+        .select('id')
+        .eq('media_plan_id', planId)
+        .eq('user_id', user.id);
+
+    if (itemIdsError) {
+        console.error('Error fetching item IDs for deletion check:', itemIdsError);
+        throw new Error("Could not verify plan's content status.");
+    }
+    
+    if (itemIds && itemIds.length > 0) {
+        const ids = itemIds.map(item => item.id);
+        
+        // 2. Check if any content linked to these items is scheduled or published
+        const { data: content, error: contentError } = await supabase
+            .from('content')
+            .select('id')
+            .in('media_plan_item_id', ids)
+            .in('status', ['scheduled', 'published'])
+            .limit(1);
+
+        if (contentError) {
+            console.error('Error checking content status:', contentError);
+            throw new Error("Could not verify plan's content status.");
+        }
+        
+        if (content && content.length > 0) {
+            throw new Error("Cannot delete this media plan because some of its content has already been scheduled or published. Please unschedule it first.");
+        }
+    }
+
+    // 3. If no active content, proceed with deletion
     const { error } = await supabase
         .from('media_plans')
         .delete()

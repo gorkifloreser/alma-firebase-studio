@@ -130,6 +130,13 @@ export function OrchestrateMediaPlanDialog({
     }, [currentPlan]);
 
     const channelsForTabs = Object.keys(groupedByChannel);
+
+    const isCurrentChannelApproved = useMemo(() => {
+        if (!currentPlan || !activeTab) return false;
+        const itemsForChannel = groupedByChannel[activeTab] || [];
+        if (itemsForChannel.length === 0) return false;
+        return itemsForChannel.every(item => queuedItemIds.has(item.id));
+    }, [activeTab, groupedByChannel, queuedItemIds, currentPlan]);
     
     useEffect(() => {
         if(channelsForTabs.length > 0 && !channelsForTabs.includes(activeTab)) {
@@ -285,7 +292,7 @@ export function OrchestrateMediaPlanDialog({
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 console.log('[OrchestrateMediaPlanDialog] addMultipleToArtisanQueue returned count:', count);
                 
-                toast({ title: 'Success!', description: `${count} item(s) for ${activeTab} have been added to the Artisan Queue.` });
+                toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
                 const newQueuedIds = new Set(queuedItemIds);
                 itemIds.forEach(id => newQueuedIds.add(id));
@@ -580,7 +587,7 @@ export function OrchestrateMediaPlanDialog({
                                 className="bg-green-600 hover:bg-green-700 text-white"
                             >
                                 <Check className="mr-2 h-4 w-4" />
-                                Approve '{activeTab}' Plan
+                                {isCurrentChannelApproved ? `Update '${activeTab}' Plan` : `Approve '${activeTab}' Plan`}
                             </Button>
                         </>
                     )}
