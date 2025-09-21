@@ -20,7 +20,7 @@ export type MediaPlan = {
     title: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
-    media_plan_items: (PlanItem & { content_generation_queue: { id: string }[] })[] | null;
+    media_plan_items: (PlanItem & { id: string, content_generation_queue: { id: string }[] })[] | null;
 };
 
 export type Funnel = {
@@ -595,3 +595,4 @@ export async function getUserChannels(): Promise<Account[]> {
         best_practices: row.best_practices,
     }));
 }
+

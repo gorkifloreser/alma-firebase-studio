@@ -407,7 +407,7 @@ export function OrchestrateMediaPlanDialog({
                                         setSelectedChannels(channelsInPlan);
 
                                         const initialQueuedIds = new Set<string>();
-                                        plan.media_plan_items?.forEach(item => {
+                                        itemsWithClientIds.forEach(item => {
                                             if (item.content_generation_queue && item.content_generation_queue.length > 0) {
                                                 initialQueuedIds.add(item.id);
                                             }
@@ -635,3 +635,4 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
