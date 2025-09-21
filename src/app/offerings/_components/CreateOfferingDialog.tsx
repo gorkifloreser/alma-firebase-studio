@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,15 +16,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, uploadOfferingMedia, deleteOfferingMedia, generateOfferingDraft } from '../actions';
+import { createOffering, updateOffering, translateText, uploadSingleOfferingMedia, deleteOfferingMedia, generateOfferingDraft, getOffering } from '../actions';
 import type { Offering, OfferingMedia } from '../actions';
-import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Repeat } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2 } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ImageUpload } from './ImageUpload';
 import { Separator } from '@/components/ui/separator';
 
@@ -36,12 +36,8 @@ type Profile = {
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
-type FileWithDescription = {
-    file: File;
-    description: string;
-};
-
 type OfferingFormData = Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'event_date'> & {
+    id?: string;
     event_date: Date | null;
     offering_media: OfferingMedia[];
 };
@@ -137,28 +133,30 @@ export function CreateOfferingDialog({
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
-    const [newMediaFiles, setNewMediaFiles] = useState<FileWithDescription[]>([]);
     const { toast } = useToast();
 
-    const isEditMode = offeringToEdit !== null;
+    const isEditMode = !!offering.id;
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
+
+    const resetState = useCallback(() => {
+        if (offeringToEdit) {
+            const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
+            setOffering({
+                ...initialOfferingState,
+                ...offeringToEdit,
+                event_date: date,
+            });
+        } else {
+            setOffering(initialOfferingState);
+        }
+        setAiPrompt('');
+    }, [offeringToEdit]);
 
     useEffect(() => {
         if (isOpen) {
-            if (isEditMode && offeringToEdit) {
-                const date = offeringToEdit.event_date ? parseISO(offeringToEdit.event_date) : null;
-                setOffering({
-                    ...initialOfferingState,
-                    ...offeringToEdit,
-                    event_date: date,
-                });
-            } else {
-                setOffering(initialOfferingState);
-            }
-            setNewMediaFiles([]);
-            setAiPrompt('');
+            resetState();
         }
-    }, [offeringToEdit, isEditMode, isOpen]);
+    }, [offeringToEdit, isOpen, resetState]);
 
 
     const handleFormChange = (
@@ -176,10 +174,14 @@ export function CreateOfferingDialog({
             }
             if (name === 'event_time') {
                 const timeValue = e as string;
+                if (!timeValue) return { ...prev };
                 const [hours, minutes] = timeValue.split(':').map(Number);
                 const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
-                newDate.setHours(hours, minutes);
-                return { ...prev, event_date: newDate };
+                if(!isNaN(hours) && !isNaN(minutes)) {
+                    newDate.setHours(hours, minutes);
+                    return { ...prev, event_date: newDate };
+                }
+                return { ...prev };
             }
 
             if (typeof e === 'string' && name) {
@@ -208,7 +210,6 @@ export function CreateOfferingDialog({
     
     const handleRemoveExistingMedia = async (mediaId: string) => {
         const originalMedia = [...offering.offering_media];
-        // Optimistically update UI
         setOffering(prev => ({
             ...prev,
             offering_media: prev.offering_media.filter(m => m.id !== mediaId)
@@ -225,10 +226,16 @@ export function CreateOfferingDialog({
                 title: 'Failed to remove media',
                 description: error.message,
             });
-            // Revert UI if deletion fails
             setOffering(prev => ({ ...prev, offering_media: originalMedia }));
         }
     }
+
+    const onNewMediaUploaded = (newMedia: OfferingMedia) => {
+        setOffering(prev => ({
+            ...prev,
+            offering_media: [...prev.offering_media, newMedia]
+        }));
+    };
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -244,8 +251,6 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                let savedOffering: OfferingWithMedia;
-                
                 const payload = {
                     title: offering.title,
                     description: offering.description,
@@ -258,26 +263,21 @@ export function CreateOfferingDialog({
                     frequency: offering.frequency,
                 };
 
-                if (isEditMode && offeringToEdit) {
-                    savedOffering = await updateOffering(offeringToEdit.id, payload);
+                if (isEditMode) {
+                    await updateOffering(offering.id!, payload);
                 } else {
-                    savedOffering = await createOffering(payload);
+                    const newOffering = await createOffering(payload);
+                    setOffering(prev => ({ ...prev, id: newOffering.id }));
+                    toast({
+                        title: 'Draft Created!',
+                        description: "You can now upload media for your offering.",
+                    });
+                    // We don't close the dialog, we just transition to edit mode.
+                    return; // Prevent full save toast
                 }
                 
-                if (newMediaFiles.length > 0) {
-                    const batchSize = 3;
-                    for (let i = 0; i < newMediaFiles.length; i += batchSize) {
-                        const batch = newMediaFiles.slice(i, i + batchSize);
-                        const formData = new FormData();
-                        batch.forEach(item => {
-                            formData.append('files', item.file);
-                            formData.append('descriptions', item.description);
-                        });
-                        await uploadOfferingMedia(savedOffering.id, formData);
-                    }
-                }
-
                 onOfferingSaved();
+
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -341,7 +341,7 @@ export function CreateOfferingDialog({
                     price: result.price ?? prev.price,
                     currency: result.currency ?? prev.currency,
                     contextual_notes: result.contextual_notes ?? prev.contextual_notes,
-                    event_date: result.event_date ? parseISO(result.event_date) : prev.event_date,
+                    event_date: result.event_date && isValid(parseISO(result.event_date)) ? parseISO(result.event_date) : prev.event_date,
                     duration: result.duration ?? prev.duration,
                     frequency: result.frequency ?? prev.frequency,
                 }));
@@ -356,15 +356,15 @@ export function CreateOfferingDialog({
         });
     };
 
-    const eventTime = offering.event_date ? format(offering.event_date, 'HH:mm') : '';
+    const eventTime = offering.event_date && isValid(offering.event_date) ? format(offering.event_date, 'HH:mm') : '';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditMode ? 'Edit Offering' : 'Create a New Offering'}</DialogTitle>
+                    <DialogTitle>{offering.id ? 'Edit Offering' : 'Create a New Offering'}</DialogTitle>
                     <DialogDescription>
-                        {isEditMode ? 'Update the details of your offering.' : 'Add a new product, service, or event to your catalog.'}
+                        {offering.id ? 'Update the details of your offering.' : 'Add a new product, service, or event to your catalog.'}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-8 py-4 max-h-[80vh] overflow-y-auto pr-6">
@@ -464,7 +464,7 @@ export function CreateOfferingDialog({
                                         )}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {offering.event_date ? format(offering.event_date, "PPP") : <span>Pick a date</span>}
+                                        {offering.event_date && isValid(offering.event_date) ? format(offering.event_date, "PPP") : <span>Pick a date</span>}
                                     </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
@@ -481,7 +481,7 @@ export function CreateOfferingDialog({
                                      <Label htmlFor="event_time">Event Time</Label>
                                     <div className="relative">
                                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="event_time" name="event_time" type="time" value={eventTime} onChange={(e) => handleFormChange(e.target.value, 'event_time')} className="pl-10" />
+                                        <Input id="event_time" name="event_time" type="time" value={eventTime} onChange={(e) => handleFormChange(e, 'event_time')} className="pl-10" />
                                     </div>
                                 </div>
                             </div>
@@ -509,17 +509,17 @@ export function CreateOfferingDialog({
                         </div>
                     )}
                     
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                          <Label className="text-md font-semibold">Offering Media</Label>
                          <ImageUpload
-                            onFilesChange={setNewMediaFiles}
+                            offeringId={offering.id}
+                            onNewMediaUploaded={onNewMediaUploaded}
                             existingMedia={offering.offering_media || []}
                             onRemoveExistingMedia={handleRemoveExistingMedia}
-                            isSaving={isSaving}
                             offeringContext={{ title: offering.title.primary, description: offering.description.primary }}
                          />
                          <p className="text-sm text-muted-foreground">
-                            Upload images for your offering (Max 50MB per file). Add a description for AI context.
+                            Upload images for your offering. Add a description for AI context.
                         </p>
                     </div>
 
@@ -534,7 +534,7 @@ export function CreateOfferingDialog({
                     <DialogFooter className="sticky bottom-0 bg-background py-4">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
                         <Button type="submit" disabled={isSaving}>
-                            {isSaving ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? 'Save Changes' : 'Create Offering')}
+                            {isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Create & Continue')}
                         </Button>
                     </DialogFooter>
                 </form>

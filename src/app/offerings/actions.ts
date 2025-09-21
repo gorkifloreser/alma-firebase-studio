@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -36,6 +35,25 @@ export type Offering = {
 };
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
+
+export async function getOffering(offeringId: string): Promise<OfferingWithMedia | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    
+    const { data, error } = await supabase
+        .from('offerings')
+        .select('*, offering_media (*)')
+        .eq('id', offeringId)
+        .eq('user_id', user.id)
+        .single();
+        
+    if (error) {
+        console.error("Error fetching single offering:", error);
+        return null;
+    }
+    return data as OfferingWithMedia;
+}
 
 /**
  * Fetches all offerings for the currently authenticated user, including their media.
@@ -222,60 +240,60 @@ export async function deleteOffering(offeringId: string): Promise<{ message: str
 
 
 /**
- * Uploads media files for a specific offering.
- * @param {string} offeringId - The ID of the offering to associate the media with.
- * @param {FormData} formData - The form data containing the files and descriptions.
- * @returns {Promise<{ message: string }>} A success message.
+ * Uploads a single media file for an offering.
+ * @param {string} offeringId - The ID of the offering.
+ * @param {FormData} formData - Must contain 'file' and 'description'.
+ * @returns {Promise<OfferingMedia>} The newly created media record.
  */
-export async function uploadOfferingMedia(offeringId: string, formData: FormData): Promise<{ message: string }> {
+export async function uploadSingleOfferingMedia(offeringId: string, formData: FormData): Promise<OfferingMedia> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const files = formData.getAll('files') as File[];
-    const descriptions = formData.getAll('descriptions') as string[];
+    const file = formData.get('file') as File | null;
+    const description = formData.get('description') as string | null;
 
-    if (files.length === 0) {
-        return { message: 'No new files to upload.'};
-    }
+    if (!file) throw new Error('No file provided for upload.');
 
     const bucketName = 'Alma';
+    const filePath = `${user.id}/offerings/${offeringId}/${crypto.randomUUID()}-${file.name}`;
     
-    const uploadPromises = files.map(async (file, index) => {
-        const filePath = `${user.id}/offerings/${offeringId}/${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from(bucketName)
-            .upload(filePath, file, { upsert: true });
+    const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, { upsert: false });
 
-        if (uploadError) {
-            console.error('Error uploading file:', file.name, uploadError);
-            throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
-        }
-        
-        const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-
-        return {
-            offering_id: offeringId,
-            user_id: user.id,
-            media_url: publicUrl,
-            media_type: file.type,
-            description: descriptions[index] || null,
-        };
-    });
-
-    const mediaRecords = await Promise.all(uploadPromises);
-
-    const { error: dbError } = await supabase.from('offering_media').insert(mediaRecords);
-
-    if (dbError) {
-        console.error('Error saving media records:', dbError);
-        throw new Error('Could not save media information to the database.');
+    if (uploadError) {
+        console.error('Error uploading single file:', uploadError);
+        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
     }
 
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+
+    const mediaRecord = {
+        offering_id: offeringId,
+        user_id: user.id,
+        media_url: publicUrl,
+        media_type: file.type,
+        description: description,
+    };
+    
+    const { data: newMedia, error: dbError } = await supabase
+        .from('offering_media')
+        .insert(mediaRecord)
+        .select()
+        .single();
+    
+    if (dbError) {
+        console.error('Error saving single media record:', dbError);
+        // Attempt to clean up storage if DB insert fails
+        await supabase.storage.from(bucketName).remove([filePath]);
+        throw new Error('Could not save media information to the database.');
+    }
+    
     revalidatePath('/offerings');
-    return { message: 'Media uploaded successfully.' };
+    return newMedia;
 }
+
 
 /**
  * Deletes a specific media item for an offering from both DB and storage.
@@ -312,6 +330,7 @@ export async function deleteOfferingMedia(mediaId: string): Promise<{ message: s
 
         if (storageError) {
             console.error('Error deleting file from storage:', storageError.message);
+            // We will proceed even if storage deletion fails, to remove the DB record.
         }
     }
     
