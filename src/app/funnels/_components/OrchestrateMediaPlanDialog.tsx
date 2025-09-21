@@ -495,8 +495,11 @@ export function OrchestrateMediaPlanDialog({
                                     <SelectValue placeholder="Select a language" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {profile?.primary_language && <SelectItem value={profile.primary_language}>{languageNames.get(profile.primary_language) || profile.primary_language}</SelectItem>}
-                                    {profile?.secondary_language && <SelectItem value={profile.secondary_language}>{languageNames.get(profile.secondary_language) || profile.secondary_language}</SelectItem>}
+                                    {languageList.map((lang) => (
+                                        <SelectItem key={lang.value} value={lang.value}>
+                                            {lang.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
