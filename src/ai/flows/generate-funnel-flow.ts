@@ -100,6 +100,8 @@ For each stage of the journey, you must define:
     *   **objective**: The specific purpose of this individual piece of content. (e.g., "To build resonance and empathy," not "Establish connection.").
 5.  **successMetrics**: What are the 2-3 key metrics to track for this specific stage's performance?
 
+**CRUCIAL FINAL STEP:** The final stage of your generated strategy MUST ALWAYS be a "Retention/Advocacy" stage. Give it a creative, on-brand name like "Harvesting the Glow" or "Closing the Circle". Its objective is to automate the collection of testimonials and reviews from satisfied customers. Its conceptual steps should include ideas for sending personalized emails or messages asking for a review on social media, Google Maps, or the brand's website. This creates a regenerative loop where customer success becomes new marketing content.
+
 The strategy should be channel-aware but focused on the psychological journey. The conceptual steps should be versatile enough to be adapted to the selected channels.
 
 Generate this entire plan in the **{{primaryLanguage}}** language.
