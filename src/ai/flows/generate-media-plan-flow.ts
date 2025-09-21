@@ -74,13 +74,23 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert direct response copywriter and AI prompt engineer who is fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}. Your task is to create a set of actionable, ready-to-use content packages for a specific marketing channel, based on a provided strategy blueprint, brand identity, and channel-specific best practices.
+  prompt: `You are an expert direct response copywriter and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
+
+**Your most important instruction is to embody the brand's unique identity. Every word you write must be infused with the brand's soul.**
 
 **CRITICAL INSTRUCTION: You must generate the entire output in the following language: {{campaignLanguage}}**
 
-**The Strategy Blueprint to Execute:**
 ---
-**Strategy for Offering: "{{offering.title.primary}}" (Offering ID: {{offering.id}})**
+**THE BRAND'S SOUL (The "Who"): This is your guide for TONE and VOICE.**
+- Brand Name: {{brandHeart.brand_name}}
+- **Tone of Voice:** {{brandHeart.tone_of_voice.primary}}
+- **Values & Mission:** {{brandHeart.values.primary}} & {{brandHeart.mission.primary}}
+- Brand Brief ({{primaryLanguage}}): {{brandHeart.brand_brief.primary}}
+{{#if brandHeart.brand_brief.secondary}}- Brand Brief ({{secondaryLanguage}}): {{brandHeart.brand_brief.secondary}}{{/if}}
+---
+
+**THE STRATEGY BLUEPRINT (The "How"):**
+- Offering: "{{offering.title.primary}}" (ID: {{offering.id}})
 - Goal: {{strategy.goal}}
 - Funnel Model: **{{strategy.strategy_brief.funnelType}}**
 - Blueprint Stages:
@@ -88,39 +98,31 @@ const generateChannelPlanPrompt = ai.definePrompt({
   - **Stage: {{this.stageName}}** (Objective: {{this.objective}})
 {{/each}}
 ---
-**Brand Identity (The "Who"):**
-- Brand Name: {{brandHeart.brand_name}}
-- Brand Brief (Primary: {{primaryLanguage}}): {{brandHeart.brand_brief.primary}}
-{{#if brandHeart.brand_brief.secondary}}- Brand Brief (Secondary: {{secondaryLanguage}}): {{brandHeart.brand_brief.secondary}}{{/if}}
-- Tone of Voice (Primary: {{primaryLanguage}}): {{brandHeart.tone_of_voice.primary}}
-{{#if brandHeart.tone_of_voice.secondary}}- Tone of Voice (Secondary: {{secondaryLanguage}}): {{brandHeart.tone_of_voice.secondary}}{{/if}}
----
-**Offering Details (The "What"):**
-- Title (Primary: {{primaryLanguage}}): {{offering.title.primary}}
-{{#if offering.title.secondary}}- Title (Secondary: {{secondaryLanguage}}): {{offering.title.secondary}}{{/if}}
-- Description (Primary: {{primaryLanguage}}): {{offering.description.primary}}
-{{#if offering.description.secondary}}- Description (Secondary: {{secondaryLanguage}}): {{offering.description.secondary}}{{/if}}
+
+**OFFERING DETAILS (The "What"):**
+- Title ({{primaryLanguage}}): {{offering.title.primary}}
+{{#if offering.title.secondary}}- Title ({{secondaryLanguage}}): {{offering.title.secondary}}{{/if}}
+- Description ({{primaryLanguage}}): {{offering.description.primary}}
+{{#if offering.description.secondary}}- Description ({{secondaryLanguage}}): {{offering.description.secondary}}{{/if}}
 - Contextual Notes: {{offering.contextual_notes}}
 ---
-**Campaign Timing:**
-- Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
-- End Date: {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
-You must create a content sequence that is appropriately paced for this duration.
----
-**CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
-"{{bestPractices}}"
+
+**CAMPAIGN & CHANNEL (The "When" and "Where"):**
+- Campaign Dates: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}} to {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
+- Channel for this plan: **'{{channel}}'**
+- Best practices for '{{channel}}': "{{bestPractices}}"
 ---
 
-**Your Task:**
+**YOUR TASK: Create Authentic, Connected Content**
 
 Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
 
 1.  **offeringId**: '{{offering.id}}'.
 2.  **channel**: '{{channel}}'.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy for the post, embodying the brand's tone of voice.
-5.  **hashtags**: A space-separated list of 5-10 relevant hashtags.
-6.  **creativePrompt**: A detailed, visually rich prompt for an AI image/video generator.
+4.  **copy**: Write compelling, direct-response ad copy. **This is crucial: The copy MUST perfectly embody the brand's specific TONE OF VOICE.** It should feel authentic and connected, not like generic marketing.
+5.  **hashtags**: A space-separated list of 5-10 relevant hashtags that align with the brand's values.
+6.  **creativePrompt**: A detailed, visually rich prompt for an AI image/video generator that aligns with the brand's aesthetic.
 7.  **stageName**: The name of the blueprint stage this item belongs to.
 8.  **objective**: **Generate a NEW, specific goal for THIS content piece.** Example: "To build social proof by highlighting a customer transformation."
 9.  **concept**: **Generate a NEW, specific concept for THIS content piece.** Example: "Feature a powerful customer quote as the hero image with copy that expands on their story."
