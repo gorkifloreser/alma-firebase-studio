@@ -88,10 +88,10 @@ This model's core principles are: {{funnelPrinciples}}
 
 First, define the overall **campaignSuccessMetrics** for the campaign that are directly tied to the main goal.
 
-Then, map out a 3-4 stage psychological journey for the customer. **Crucially, the names of the stages and the concepts within them must deeply reflect the brand's unique Tone of Voice.** Avoid generic marketing terms.
+Then, map out a 5-stage psychological journey for the customer. **Crucially, the names of the stages and the concepts within them must deeply reflect the brand's unique Tone of Voice.**
 
 For each stage of the journey, you must define:
-1.  **stageName**: A creative, on-brand name for the stage (e.g., instead of "Awareness," something like "Sparking a Connection" or "The Gentle Invitation").
+1.  **stageName**: A creative, on-brand name for the stage, followed by the classic marketing stage in parentheses. Example: "The Gentle Invitation (Awareness)". Use the stages: Awareness, Consideration, Conversion, Loyalty.
 2.  **objective**: What is the primary psychological goal of this stage? What mindset shift do you want to create for the customer, expressed in the brand's voice?
 3.  **keyMessage**: What is the single, most important idea or feeling this stage should communicate about the offering? Frame this from the brand's perspective.
 4.  **conceptualSteps**: A sequence of 2-3 high-level conceptual ideas for content. For each step, provide:
@@ -100,7 +100,7 @@ For each stage of the journey, you must define:
     *   **objective**: The specific purpose of this individual piece of content. (e.g., "To build resonance and empathy," not "Establish connection.").
 5.  **successMetrics**: What are the 2-3 key metrics to track for this specific stage's performance?
 
-**CRUCIAL FINAL STEP:** The final stage of your generated strategy MUST ALWAYS be a "Retention/Advocacy" stage. Give it a creative, on-brand name like "Harvesting the Glow" or "Closing the Circle". Its objective is to automate the collection of testimonials and reviews from satisfied customers. Its conceptual steps should include ideas for sending personalized emails or messages asking for a review on social media, Google Maps, or the brand's website. This creates a regenerative loop where customer success becomes new marketing content.
+**CRUCIAL FINAL STEP:** The fifth and final stage of your generated strategy MUST ALWAYS be "Harvesting the Glow (Advocacy)". Its objective is to automate the collection of testimonials and reviews from satisfied customers. Its conceptual steps should include ideas for sending personalized emails or messages asking for a review on social media, Google Maps, or the brand's website. This creates a regenerative loop where customer success becomes new marketing content.
 
 The strategy should be channel-aware but focused on the psychological journey. The conceptual steps should be versatile enough to be adapted to the selected channels.
 
