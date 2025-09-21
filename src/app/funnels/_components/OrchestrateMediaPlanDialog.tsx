@@ -97,7 +97,6 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         setFunnel(initialFunnel);
-
         if (isOpen) {
             // Only auto-reset if not editing
             if (!planIdToEdit && !currentPlan) {
@@ -244,7 +243,7 @@ export function OrchestrateMediaPlanDialog({
 
     const handleAddToQueue = (item: PlanItemWithId) => {
         setIsAddingToQueue(prev => ({ ...prev, [item.id]: true }));
-        addToArtisanQueue(funnel.id, item.id)
+        addToArtisanQueue(funnel.id, item.id, funnel.offering_id)
             .then(() => {
                 toast({
                     title: 'Added to Queue!',
@@ -282,8 +281,8 @@ export function OrchestrateMediaPlanDialog({
 
         startSaving(async () => {
             try {
-                console.log('[OrchestrateMediaPlanDialog] Calling addMultipleToArtisanQueue with funnelId:', funnel.id, 'and itemIds:', itemIds);
-                const { count } = await addMultipleToArtisanQueue(funnel.id, itemIds);
+                console.log('[OrchestrateMediaPlanDialog] Calling addMultipleToArtisanQueue with funnelId:', funnel.id, 'offeringId:', funnel.offering_id, 'and itemIds:', itemIds);
+                const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 console.log('[OrchestrateMediaPlanDialog] addMultipleToArtisanQueue returned count:', count);
                 
                 toast({ title: 'Success!', description: `${count} item(s) for ${activeTab} have been added to the Artisan Queue.` });
@@ -371,14 +370,20 @@ export function OrchestrateMediaPlanDialog({
                                   stageName: item.stage_name || '',
                                   creativePrompt: item.creative_prompt || '',
                                 }));
+                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', plan);
+                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', itemsWithClientIds);
                                 
                                 setCurrentPlan(itemsWithClientIds);
                                 setPlanTitle(plan.title);
                                 setPlanIdToEdit(plan.id);
                                 setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                setSelectedChannels(plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || []);
                                 
+                                const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                setSelectedChannels(channelsInPlan);
+
+                                console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
                                 setView('generate');
+                                console.log('[OrchestrateMediaPlanDialog] View set to "generate".');
                             }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
@@ -537,7 +542,7 @@ export function OrchestrateMediaPlanDialog({
                                                     </div>
                                                 </div>
                                                 <Button size="sm" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id] || queuedItemIds.has(item.id)}>
-                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : ( <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</> )}
+                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Queued</> ) : (isAddingToQueue[item.id] ? 'Queuing...' : <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>)}
                                                 </Button>
                                             </div>
                                         </div>

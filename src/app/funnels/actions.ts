@@ -487,77 +487,43 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     return { message: "Media plan deleted successfully." };
 }
 
-export async function addToArtisanQueue(funnelId: string, mediaPlanItemId: string): Promise<{ message: string }> {
+export async function addToArtisanQueue(funnelId: string, mediaPlanItemId: string, offeringId: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Check if the item is already in the queue for this user
-    const { data: existing, error: existingError } = await supabase
+    const { data, error } = await supabase
         .from('content_generation_queue')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('media_plan_item_id', mediaPlanItemId)
-        .single();
-
-    if (existing) {
-        return { message: 'This item is already in the queue.' };
-    }
-
-    const { data: planItem, error: planItemError } = await supabase
-        .from('media_plan_items')
-        .select('offering_id')
-        .eq('id', mediaPlanItemId)
-        .single();
-
-    if (planItemError || !planItem) {
-        throw new Error('Could not find the specified media plan item.');
-    }
-
-    const { error } = await supabase
-        .from('content_generation_queue')
-        .insert({
+        .upsert({
             user_id: user.id,
             funnel_id: funnelId,
-            offering_id: planItem.offering_id,
+            offering_id: offeringId,
             media_plan_item_id: mediaPlanItemId,
             status: 'pending',
-        });
+        }, { onConflict: 'user_id, media_plan_item_id' });
 
     if (error) {
-        console.error('Error adding to artisan queue:', error);
-        throw new Error('Could not add item to the Artisan Queue.');
+        console.error('Error adding/updating to artisan queue:', error);
+        throw new Error('Could not add or update item in the Artisan Queue.');
     }
 
-    return { message: 'Item added to Artisan Queue successfully.' };
+    return { message: 'Item added/updated in Artisan Queue successfully.' };
 }
 
-export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
-    console.log('[actions.ts] addMultipleToArtisanQueue called with funnelId:', funnelId, 'and itemIds:', mediaPlanItemIds);
+
+export async function addMultipleToArtisanQueue(funnelId: string, offeringId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
+    console.log('[actions.ts] addMultipleToArtisanQueue called with funnelId:', funnelId, 'offeringId:', offeringId, 'and itemIds:', mediaPlanItemIds);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     if (mediaPlanItemIds.length === 0) return { count: 0 };
-    
-    // Fetch offering_ids for all items
-    const { data: itemsData, error: itemsError } = await supabase
-        .from('media_plan_items')
-        .select('id, offering_id')
-        .in('id', mediaPlanItemIds);
-
-    if (itemsError) {
-        console.error('[actions.ts] Error fetching offering_ids:', itemsError);
-        throw itemsError;
-    }
-    const offeringIdMap = new Map(itemsData.map(item => [item.id, item.offering_id]));
-    console.log('[actions.ts] Fetched offering_id mapping:', Object.fromEntries(offeringIdMap));
+    if (!offeringId) throw new Error("An offering ID is required to queue items.");
 
     const recordsToInsert = mediaPlanItemIds
-        .filter(itemId => offeringIdMap.has(itemId)) // Ensure we only try to insert items we found
         .map(itemId => ({
             user_id: user.id,
             funnel_id: funnelId,
-            offering_id: offeringIdMap.get(itemId),
+            offering_id: offeringId,
             media_plan_item_id: itemId,
             status: 'pending' as const,
         }));
@@ -574,7 +540,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, mediaPlanItemI
         .insert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); 
 
     if (error) {
-        console.error('[actions.ts] Error bulk adding to artisan queue:', error);
+        console.error('[actions.ts] Bulk add failed:', error);
         throw new Error(`Could not add items to the Artisan Queue. DB Error: ${error.message}`);
     }
 
