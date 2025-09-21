@@ -41,6 +41,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { addDays, format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 
 interface OrchestrateMediaPlanDialogProps {
@@ -275,15 +276,12 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const handleBulkApproveChannel = () => {
-        console.log('[OrchestrateMediaPlanDialog] handleBulkApproveChannel called.');
         if (!currentPlan || !activeTab) {
-            console.log('[OrchestrateMediaPlanDialog] Aborting: No current plan or active tab.');
             return;
         }
 
         const itemsForChannel = groupedByChannel[activeTab] || [];
         const itemIds = itemsForChannel.map(item => item.id);
-        console.log(`[OrchestrateMediaPlanDialog] Approving ${itemIds.length} items for channel: ${activeTab}`, itemIds);
         
         if (itemIds.length === 0) {
             toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
@@ -292,9 +290,7 @@ export function OrchestrateMediaPlanDialog({
 
         startSaving(async () => {
             try {
-                console.log('[OrchestrateMediaPlanDialog] Calling addMultipleToArtisanQueue with funnelId:', funnel.id, 'offeringId:', funnel.offering_id, 'and itemIds:', itemIds);
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
-                console.log('[OrchestrateMediaPlanDialog] addMultipleToArtisanQueue returned count:', count);
                 
                 toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
@@ -303,7 +299,6 @@ export function OrchestrateMediaPlanDialog({
                 setQueuedItemIds(newQueuedIds);
 
             } catch (error: any) {
-                console.error('[OrchestrateMediaPlanDialog] Bulk add failed:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
@@ -360,86 +355,92 @@ export function OrchestrateMediaPlanDialog({
         );
     }
 
-    const renderListView = () => (
-        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-            <Button onClick={() => setView('generate')} className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create New Media Plan
-            </Button>
-            <h3 className="text-lg font-semibold">Previous Media Plans</h3>
-            {funnel.media_plans && funnel.media_plans.length > 0 ? (
-                funnel.media_plans.map(plan => (
-                    <Card key={plan.id}>
-                        <CardHeader>
-                             <CardTitle>{plan.title}</CardTitle>
-                             <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
-                        </CardHeader>
-                        <CardFooter className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                                const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
-                                  ...item,
-                                  id: item.id || crypto.randomUUID(),
-                                  stageName: item.stage_name || '',
-                                  creativePrompt: item.creative_prompt || '',
-                                }));
-                                console.log('[OrchestrateMediaPlanDialog] Edit button clicked. Plan data:', plan);
-                                console.log('[OrchestrateMediaPlanDialog] Processed items for state:', itemsWithClientIds);
-                                
-                                setCurrentPlan(itemsWithClientIds);
-                                setPlanTitle(plan.title);
-                                setPlanIdToEdit(plan.id);
-                                setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                
-                                const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
-                                setSelectedChannels(channelsInPlan);
+    const renderListView = () => {
+        const plans = funnel.media_plans || [];
 
-                                // Pre-populate the queuedItemIds
-                                const initialQueuedIds = new Set<string>();
-                                plan.media_plan_items?.forEach(item => {
-                                    if (item.content_generation_queue && item.content_generation_queue.length > 0) {
-                                        initialQueuedIds.add(item.id);
-                                    }
-                                });
-                                setQueuedItemIds(initialQueuedIds);
+        return (
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                <Button onClick={() => setView('generate')} className="w-full">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create New Media Plan
+                </Button>
+                <h3 className="text-lg font-semibold">Previous Media Plans</h3>
+                {plans.length > 0 ? (
+                    plans.map(plan => {
+                        const allItems = plan.media_plan_items || [];
+                        const queuedItems = allItems.filter(item => item.content_generation_queue && item.content_generation_queue.length > 0);
+                        const isFullyApproved = allItems.length > 0 && allItems.length === queuedItems.length;
 
+                        return (
+                            <Card key={plan.id}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle>{plan.title}</CardTitle>
+                                        {isFullyApproved && <Badge className="bg-green-100 text-green-800 hover:bg-green-100/80">Approved</Badge>}
+                                    </div>
+                                    <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
+                                </CardHeader>
+                                <CardFooter className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
+                                        ...item,
+                                        id: item.id || crypto.randomUUID(),
+                                        stageName: item.stage_name || '',
+                                        creativePrompt: item.creative_prompt || '',
+                                        }));
+                                        setCurrentPlan(itemsWithClientIds);
+                                        setPlanTitle(plan.title);
+                                        setPlanIdToEdit(plan.id);
+                                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                        
+                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                        setSelectedChannels(channelsInPlan);
 
-                                console.log('[OrchestrateMediaPlanDialog] State before setting view: ', { title: plan.title, id: plan.id, items: itemsWithClientIds });
-                                setView('generate');
-                                console.log('[OrchestrateMediaPlanDialog] View set to "generate".');
-                            }}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </Button>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
+                                        const initialQueuedIds = new Set<string>();
+                                        plan.media_plan_items?.forEach(item => {
+                                            if (item.content_generation_queue && item.content_generation_queue.length > 0) {
+                                                initialQueuedIds.add(item.id);
+                                            }
+                                        });
+                                        setQueuedItemIds(initialQueuedIds);
+
+                                        setView('generate');
+                                    }}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will permanently delete the media plan titled "{plan.title}".
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                            {isDeleting ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </CardFooter>
-                    </Card>
-                ))
-            ) : (
-                <p className="text-muted-foreground text-center py-4">No media plans created for this strategy yet.</p>
-            )}
-        </div>
-    );
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="sm">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete the media plan titled "{plan.title}".
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </CardFooter>
+                            </Card>
+                        )
+                    })
+                ) : (
+                    <p className="text-muted-foreground text-center py-4">No media plans created for this strategy yet.</p>
+                )}
+            </div>
+        );
+    };
     
     const renderGenerateView = () => (
         <div className="max-h-[70vh] flex flex-col">
