@@ -50,9 +50,9 @@ interface OrchestrateMediaPlanDialogProps {
     onPlanSaved: (newFunnelData: Funnel) => void;
 }
 
-type PlanItemWithId = PlanItem & {
+type PlanItemWithStatus = PlanItem & {
     id: string;
-    content_generation_queue: { id: string }[];
+    status: string;
 };
 type RegeneratingState = { [itemId: string]: boolean };
 
@@ -79,15 +79,13 @@ export function OrchestrateMediaPlanDialog({
 }: OrchestrateMediaPlanDialogProps) {
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
     const [view, setView] = useState<ViewState>('list');
-    const [currentPlan, setCurrentPlan] = useState<PlanItemWithId[] | null>(null);
+    const [currentPlan, setCurrentPlan] = useState<PlanItemWithStatus[] | null>(null);
     const [planIdToEdit, setPlanIdToEdit] = useState<string | null>(null);
     const [planTitle, setPlanTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isDeleting, startDeleting] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
-    const [isAddingToQueue, setIsAddingToQueue] = useState<RegeneratingState>({});
-    const [queuedItemIds, setQueuedItemIds] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState('');
     const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
         from: new Date(),
@@ -101,17 +99,13 @@ export function OrchestrateMediaPlanDialog({
     useEffect(() => {
         setFunnel(initialFunnel);
         if (isOpen) {
-            console.log('[Dialog Effect] Dialog opened. Initial funnel:', initialFunnel);
             // Only auto-reset if not editing
             if (!planIdToEdit && !currentPlan) {
                 const newViewState = initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate';
-                console.log('[Dialog Effect] Setting view to:', newViewState);
                 setView(newViewState);
                 setCurrentPlan(null);
                 setPlanIdToEdit(null);
             }
-
-            setQueuedItemIds(new Set());
             
             getUserChannels().then(channels => {
                 const channelNames = channels.map(c => c.id);
@@ -130,9 +124,9 @@ export function OrchestrateMediaPlanDialog({
         return currentPlan.reduce((acc, item) => {
             const channelKey = item.channel || 'General';
             if (!acc[channelKey]) acc[channelKey] = [];
-            acc[channelKey].push(item as PlanItemWithId);
+            acc[channelKey].push(item as PlanItemWithStatus);
             return acc;
-        }, {} as Record<string, PlanItemWithId[]>);
+        }, {} as Record<string, PlanItemWithStatus[]>);
     }, [currentPlan]);
 
     const channelsForTabs = Object.keys(groupedByChannel);
@@ -141,10 +135,8 @@ export function OrchestrateMediaPlanDialog({
         if (!currentPlan || !activeTab) return false;
         const itemsForChannel = groupedByChannel[activeTab] || [];
         if (itemsForChannel.length === 0) return false;
-        const result = itemsForChannel.every(item => queuedItemIds.has(item.id));
-        console.log(`[isCurrentChannelApproved] Channel: ${activeTab}, Queued IDs:`, Array.from(queuedItemIds), `Items:`, itemsForChannel.map(i => i.id), `Result: ${result}`);
-        return result;
-    }, [activeTab, groupedByChannel, queuedItemIds, currentPlan]);
+        return itemsForChannel.every(item => item.status === 'approved');
+    }, [activeTab, groupedByChannel, currentPlan]);
     
     useEffect(() => {
         if(channelsForTabs.length > 0 && !channelsForTabs.includes(activeTab)) {
@@ -166,7 +158,7 @@ export function OrchestrateMediaPlanDialog({
                 const validatedItems = result.plan.map(item => ({
                     ...item,
                     id: crypto.randomUUID(), // Assign temporary IDs for new items
-                    content_generation_queue: [],
+                    status: 'draft',
                 }));
                 setCurrentPlan(validatedItems);
                 setPlanIdToEdit(null); // This is a new plan
@@ -192,7 +184,7 @@ export function OrchestrateMediaPlanDialog({
         startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    const { id, content_generation_queue, ...rest } = item;
+                    const { id, ...rest } = item;
                     return id.startsWith('temp-') ? rest : { ...rest, id };
                 });
                 
@@ -239,7 +231,7 @@ export function OrchestrateMediaPlanDialog({
         });
     };
     
-    const handleRegenerateItem = async (itemToRegen: PlanItemWithId) => {
+    const handleRegenerateItem = async (itemToRegen: PlanItemWithStatus) => {
         setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
         try {
             const newItem = await regeneratePlanItem({ 
@@ -248,7 +240,7 @@ export function OrchestrateMediaPlanDialog({
                 stageName: itemToRegen.stageName,
             });
             
-            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem } : item));
+            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
@@ -257,39 +249,11 @@ export function OrchestrateMediaPlanDialog({
         }
     };
 
-    const handleAddToQueue = (item: PlanItemWithId) => {
-        setIsAddingToQueue(prev => ({ ...prev, [item.id]: true }));
-        addMultipleToArtisanQueue(funnel.id, funnel.offering_id, [item.id])
-            .then(() => {
-                toast({
-                    title: queuedItemIds.has(item.id) ? 'Queue Updated!' : 'Added to Queue!',
-                    description: 'This item is now ready for generation in the AI Artisan workshop.'
-                });
-                setQueuedItemIds(prev => new Set(prev).add(item.id));
-            })
-            .catch((error: any) => {
-                toast({
-                    variant: 'destructive',
-                    title: 'Failed to Add to Queue',
-                    description: error.message
-                });
-            })
-            .finally(() => {
-                setIsAddingToQueue(prev => ({ ...prev, [item.id]: false }));
-            });
-    }
-
     const handleBulkApproveChannel = () => {
-        console.log('[handleBulkApproveChannel] Clicked.');
-        if (!currentPlan || !activeTab) {
-            console.error('[handleBulkApproveChannel] Aborting: No currentPlan or activeTab.');
-            return;
-        }
+        if (!currentPlan || !activeTab) return;
 
         const itemsForChannel = groupedByChannel[activeTab] || [];
         const itemIds = itemsForChannel.map(item => item.id);
-        
-        console.log(`[handleBulkApproveChannel] Approving ${itemIds.length} items for channel: ${activeTab}`, itemIds);
         
         if (itemIds.length === 0) {
             toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
@@ -302,19 +266,14 @@ export function OrchestrateMediaPlanDialog({
                 
                 toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
-                const newQueuedIds = new Set(queuedItemIds);
-                itemIds.forEach(id => newQueuedIds.add(id));
-                setQueuedItemIds(newQueuedIds);
-                console.log('[handleBulkApproveChannel] New queued IDs:', Array.from(newQueuedIds));
-
-
+                setCurrentPlan(prevPlan => prevPlan!.map(item => 
+                    itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
+                ));
             } catch (error: any) {
-                console.error('[handleBulkApproveChannel] Bulk add failed:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
             }
         });
     }
-
 
     const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
         setCurrentPlan(prev => prev!.map(item => {
@@ -328,9 +287,9 @@ export function OrchestrateMediaPlanDialog({
                         const [hours, minutes] = value.split(':').map(Number);
                         newDate = setHours(setMinutes(existingDate, minutes), hours);
                     }
-                    return { ...item, suggested_post_at: newDate.toISOString() };
+                    return { ...item, suggested_post_at: newDate.toISOString(), status: 'draft' };
                 }
-                return { ...item, [field]: value };
+                return { ...item, [field]: value, status: 'draft' };
             }
             return item;
         }));
@@ -341,7 +300,7 @@ export function OrchestrateMediaPlanDialog({
     };
 
     const handleAddNewItem = (channel: string) => {
-        const newItem: PlanItemWithId = {
+        const newItem: PlanItemWithStatus = {
             id: `temp-${crypto.randomUUID()}`,
             offeringId: funnel.offering_id || '',
             channel: channel,
@@ -353,7 +312,7 @@ export function OrchestrateMediaPlanDialog({
             objective: 'Your new objective here',
             concept: 'Your new concept here',
             suggested_post_at: new Date().toISOString(),
-            content_generation_queue: [],
+            status: 'draft',
         };
         setCurrentPlan(prev => [...(prev || []), newItem]);
     };
@@ -384,8 +343,8 @@ export function OrchestrateMediaPlanDialog({
                         
                         const approvedChannelsCount = uniqueChannels.reduce((count, channel) => {
                             const channelItems = allItems.filter(item => item.channel === channel);
-                            const areAllQueued = channelItems.length > 0 && channelItems.every(item => item.content_generation_queue && item.content_generation_queue.length > 0);
-                            return areAllQueued ? count + 1 : count;
+                            const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
+                            return areAllApproved ? count + 1 : count;
                         }, 0);
 
                         return (
@@ -403,24 +362,14 @@ export function OrchestrateMediaPlanDialog({
                                 </CardHeader>
                                 <CardFooter className="flex justify-end gap-2">
                                     <Button variant="outline" size="sm" onClick={() => {
-                                        console.log('[Edit Click] Loading plan:', plan);
-                                        const itemsWithClientIds = (plan.media_plan_items || []).map((item: any) => ({
+                                        const itemsWithStatus = (plan.media_plan_items || []).map((item: any) => ({
                                             ...item,
                                             id: item.id || crypto.randomUUID(),
                                             stageName: item.stage_name || '',
                                             creativePrompt: item.creative_prompt || '',
+                                            status: item.status || 'draft',
                                         }));
-
-                                        const initialQueuedIds = new Set<string>();
-                                        itemsWithClientIds.forEach(item => {
-                                            if (item.content_generation_queue && item.content_generation_queue.length > 0) {
-                                                initialQueuedIds.add(item.id);
-                                            }
-                                        });
-                                        console.log('[Edit Click] Initial queued IDs set:', Array.from(initialQueuedIds));
-                                        setQueuedItemIds(initialQueuedIds);
-                                        
-                                        setCurrentPlan(itemsWithClientIds);
+                                        setCurrentPlan(itemsWithStatus);
                                         setPlanTitle(plan.title);
                                         setPlanIdToEdit(plan.id);
                                         setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
@@ -551,7 +500,7 @@ export function OrchestrateMediaPlanDialog({
                             <TabsList>
                                 {channelsForTabs.map(c => {
                                     const channelItems = groupedByChannel[c] || [];
-                                    const isApproved = channelItems.length > 0 && channelItems.every(item => queuedItemIds.has(item.id));
+                                    const isApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
                                     return (
                                         <TabsTrigger key={c} value={c} className="capitalize flex items-center gap-2">
                                             {isApproved && <CheckCircle2 className="h-4 w-4 text-green-500" />}
@@ -601,9 +550,6 @@ export function OrchestrateMediaPlanDialog({
                                                         <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="secondary" onClick={() => handleAddToQueue(item)} disabled={isAddingToQueue[item.id]}>
-                                                    {queuedItemIds.has(item.id) ? ( <><CheckCircle2 className="mr-2 h-4 w-4"/>Update in Queue</> ) : (isAddingToQueue[item.id] ? 'Queuing...' : <><ListPlus className="mr-2 h-4 w-4"/>Add to Artisan Queue</>)}
-                                                </Button>
                                             </div>
                                         </div>
                                         )

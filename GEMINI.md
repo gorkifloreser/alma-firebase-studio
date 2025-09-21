@@ -8,7 +8,9 @@ This document outlines the development, testing, and debugging standards for the
 *   **Ownership and Accountability:** Take pride in your work. Every line of code should be written with the intention of creating a high-quality, robust product.
 *   **Async First:** As a modern web application, all asynchronous operations must be handled gracefully using `async/await` patterns. Non-blocking code is the standard.
 *   **Continuous Improvement:** We are committed to iterative improvement. Regularly refactor and enhance the codebase to maintain a high standard of quality.
-*   **Feedback first:** As a good practice add console logs and explicit error .
+*   **Reserach first:** When having a complex task be commited to make a deep research in the code base and the documentation to have the best workflow done, with production ready quality code and following the Clarity and Simplicity principle. Respect functional code by adding a comment everytime a function or workflow is functional, that way you'll know what to avoid manupulate in the future, just focusing on the current tasks.
+*   **Feedback first:** As a good practice add console logs and explicit error massages for every steps of important workflows while in development mode, such as all the steps to send forms or calling APIs, so if needed, the data is easy to reach and understand. Also add a comment to all of this options, so they're changed for a user friendly feedback solution when it's in production.
+
 
 ## 2. Development Best Practices
 

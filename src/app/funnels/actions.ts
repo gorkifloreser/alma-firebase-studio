@@ -19,7 +19,7 @@ export type MediaPlan = {
     title: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
-    media_plan_items: (PlanItem & { id: string, content_generation_queue: { id: string }[] })[] | null;
+    media_plan_items: (PlanItem & { id: string, status: string })[] | null;
 };
 
 export type Funnel = {
@@ -50,7 +50,6 @@ export type FunnelPreset = {
 };
 
 export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
-    console.log('[actions.ts:getFunnels] Fetching funnels. Offering ID filter:', offeringId);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -63,8 +62,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
             media_plans!funnel_id (
                 *,
                 media_plan_items!media_plan_id (
-                    *,
-                    content_generation_queue!media_plan_item_id (id)
+                    *
                 )
             )
         `)
@@ -80,18 +78,11 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         console.error('[actions.ts:getFunnels] Error fetching funnels:', error.message);
         throw new Error(`Could not fetch funnels: "${error.message}"`);
     }
-    console.log(`[actions.ts:getFunnels] Successfully fetched ${data.length} funnels.`);
-    // Log details of the first funnel's media plan items if it exists, for debugging
-    if (data[0]?.media_plans?.[0]?.media_plan_items) {
-      console.log('[actions.ts:getFunnels] Sample media_plan_item from first funnel:', JSON.stringify(data[0].media_plans[0].media_plan_items[0], null, 2));
-    }
-
 
     return data as Funnel[];
 }
 
 export async function getFunnel(funnelId: string) {
-    console.log(`[actions.ts:getFunnel] Fetching single funnel with ID: ${funnelId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
@@ -104,8 +95,7 @@ export async function getFunnel(funnelId: string) {
             media_plans!funnel_id (
                 *,
                 media_plan_items!media_plan_id (
-                    *,
-                    content_generation_queue!media_plan_item_id (id)
+                    *
                 )
             )
         `)
@@ -116,11 +106,6 @@ export async function getFunnel(funnelId: string) {
     if (error) {
         console.error(`[actions.ts:getFunnel] Error fetching funnel ${funnelId}:`, error.message);
         throw new Error(`Could not fetch funnel: ${error.message}`);
-    }
-
-    console.log(`[actions.ts:getFunnel] Successfully fetched funnel ${funnelId}.`);
-     if (data?.media_plans?.[0]?.media_plan_items) {
-      console.log('[actions.ts:getFunnel] Sample media_plan_item from fetched funnel:', JSON.stringify(data.media_plans[0].media_plan_items[0], null, 2));
     }
 
     return { data: data as Funnel };
@@ -475,7 +460,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     // Fetch the newly created/updated plan with its items to return
     const { data: newPlanWithItems, error: newPlanError } = await supabase
         .from('media_plans')
-        .select('*, media_plan_items!media_plan_id (*, content_generation_queue!media_plan_item_id(id))')
+        .select('*, media_plan_items!media_plan_id (*)')
         .eq('id', mediaPlanId)
         .single();
 
@@ -541,39 +526,44 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
 }
 
 export async function addMultipleToArtisanQueue(funnelId: string, offeringId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
-    console.log('[actions.ts] addMultipleToArtisanQueue called with funnelId:', funnelId, 'offeringId:', offeringId, 'and itemIds:', mediaPlanItemIds);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     if (mediaPlanItemIds.length === 0) return { count: 0 };
     if (!offeringId) throw new Error("An offering ID is required to queue items.");
 
-    const recordsToInsert = mediaPlanItemIds
-        .map(itemId => ({
-            user_id: user.id,
-            funnel_id: funnelId,
-            offering_id: offeringId,
-            media_plan_item_id: itemId,
-            status: 'pending' as const,
-        }));
-    
-    console.log('[actions.ts] Records to insert:', recordsToInsert);
+    // First transaction: add to queue
+    const recordsToInsert = mediaPlanItemIds.map(itemId => ({
+        user_id: user.id,
+        funnel_id: funnelId,
+        offering_id: offeringId,
+        media_plan_item_id: itemId,
+        status: 'pending' as const,
+    }));
 
-    if (recordsToInsert.length === 0) {
-        console.log('[actions.ts] No valid records to insert.');
-        return { count: 0 };
-    }
-
-    const { count, error } = await supabase
+    const { error: queueError } = await supabase
         .from('content_generation_queue')
-        .upsert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' }); 
+        .upsert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' });
 
-    if (error) {
-        console.error('[actions.ts] Bulk add failed:', error);
-        throw new Error(`Could not add items to the Artisan Queue. DB Error: ${error.message}`);
+    if (queueError) {
+        console.error('Bulk add to queue failed:', queueError);
+        throw new Error(`Could not add items to the Artisan Queue. DB Error: ${queueError.message}`);
     }
 
-    console.log(`[actions.ts] Successfully inserted/ignored ${count || 0} records.`);
+    // Second transaction: update status on media_plan_items
+    const { count, error: statusError } = await supabase
+        .from('media_plan_items')
+        .update({ status: 'approved' })
+        .in('id', mediaPlanItemIds)
+        .eq('user_id', user.id);
+        
+    if (statusError) {
+        console.error('Bulk status update failed:', statusError);
+        // This is not ideal, as the queue is already updated. A transaction would be better.
+        // For now, we'll just throw an error.
+        throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
+    }
+    
     return { count: count || 0 };
 }
 
