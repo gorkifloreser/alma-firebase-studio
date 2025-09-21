@@ -114,6 +114,14 @@ const BilingualFormField = ({
     )
 };
 
+// Generate time options for the select dropdown
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
+});
+
 interface CreateOfferingDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
@@ -174,8 +182,7 @@ export function CreateOfferingDialog({
                 return { ...prev, event_date: newDate };
             }
              if (name === 'event_time') {
-                const target = e as React.ChangeEvent<HTMLInputElement>;
-                const timeValue = target.value;
+                const timeValue = e as string;
                 if (!timeValue) return { ...prev };
                 const [hours, minutes] = timeValue.split(':').map(Number);
                 const newDate = prev.event_date ? new Date(prev.event_date) : new Date();
@@ -481,10 +488,21 @@ export function CreateOfferingDialog({
                                 </div>
                                 <div className="space-y-2">
                                      <Label htmlFor="event_time">Event Time</Label>
-                                    <div className="relative">
-                                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input id="event_time" name="event_time" type="time" value={eventTime} onChange={(e) => handleFormChange(e, 'event_time')} className="pl-10" />
-                                    </div>
+                                    <Select name="event_time" value={eventTime} onValueChange={(value) => handleFormChange(value, 'event_time')}>
+                                        <SelectTrigger id="event_time" className="pl-10">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                            </div>
+                                            <SelectValue placeholder="Select time" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timeOptions.map(option => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
