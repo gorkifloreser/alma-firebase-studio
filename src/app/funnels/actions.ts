@@ -382,7 +382,7 @@ type SaveMediaPlanParams = {
     id: string | null; // ID of the media plan to update, or null for new
     funnelId: string;
     title: string;
-    planItems: (PlanItem & { id: string })[];
+    planItems: (PlanItem & { id?: string })[]; // id is optional for new items
     startDate: string | null;
     endDate: string | null;
 };
@@ -430,7 +430,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     // 2. Prepare and upsert the individual items
     if (planItems && planItems.length > 0) {
         const itemsToUpsert = planItems.map(item => ({
-            id: item.id.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
+            id: item.id?.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
             media_plan_id: mediaPlanId,
             user_id: user.id,
             offering_id: item.offeringId,
@@ -443,11 +443,12 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             stage_name: item.stageName,
             objective: item.objective,
             concept: item.concept,
+            status: 'draft', // Always save as draft
         }));
 
         const { error: itemsError } = await supabase
             .from('media_plan_items')
-            .upsert(itemsToUpsert, { onConflict: 'id' });
+            .upsert(itemsToUpsert, { onConflict: 'id', defaultToNull: false });
         
         if (itemsError) {
             // NOTE: In a real production app, you might want to wrap this in a transaction.

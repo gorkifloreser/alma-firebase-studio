@@ -171,7 +171,7 @@ export function OrchestrateMediaPlanDialog({
                 });
                 const validatedItems = result.plan.map(item => ({
                     ...item,
-                    id: crypto.randomUUID(), // Assign temporary IDs for new items
+                    id: `temp-${crypto.randomUUID()}`, // Assign temporary IDs for new items
                     status: 'draft',
                 }));
                 setCurrentPlan(validatedItems);
@@ -190,19 +190,21 @@ export function OrchestrateMediaPlanDialog({
         });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!currentPlan || !planTitle.trim()) {
             toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please provide a title for the media plan.' });
-            return;
+            return null;
         }
-        startSaving(async () => {
+
+        let savedPlan: MediaPlan | null = null;
+        await startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    const { id, ...rest } = item;
+                    const { id, status, ...rest } = item; // Exclude client-side status from DB save
                     return id.startsWith('temp-') ? rest : { ...rest, id };
                 });
                 
-                const savedPlan = await saveMediaPlan({
+                savedPlan = await saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
@@ -213,6 +215,10 @@ export function OrchestrateMediaPlanDialog({
 
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
+
+                // Update current plan with new IDs from the server
+                setCurrentPlan((savedPlan.media_plan_items || []).map(item => ({...item})));
+
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
@@ -220,8 +226,10 @@ export function OrchestrateMediaPlanDialog({
                 }
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+                savedPlan = null;
             }
         });
+        return savedPlan;
     };
 
     const handleDeletePlan = (planId: string) => {
@@ -263,10 +271,27 @@ export function OrchestrateMediaPlanDialog({
         }
     };
 
-    const handleBulkApproveChannel = () => {
+    const handleBulkApproveChannel = async () => {
         if (!currentPlan || !activeTab) return;
 
-        const itemsForChannel = groupedByChannel[activeTab] || [];
+        let finalPlan = currentPlan;
+        let finalPlanId = planIdToEdit;
+        
+        // Step 1: Save the plan if it's not saved yet.
+        const isUnsaved = finalPlan.some(item => item.id.startsWith('temp-'));
+        if (!finalPlanId || isUnsaved) {
+            toast({ title: 'Saving plan first...', description: 'Your plan needs to be saved before approving.' });
+            const savedPlan = await handleSave();
+            if (!savedPlan || !savedPlan.media_plan_items) {
+                toast({ variant: 'destructive', title: 'Save failed', description: 'Cannot approve an unsaved plan.' });
+                return;
+            }
+            finalPlan = savedPlan.media_plan_items;
+            finalPlanId = savedPlan.id;
+        }
+
+        // Step 2: Proceed with approval
+        const itemsForChannel = finalPlan.filter(item => item.channel === activeTab);
         const itemIds = itemsForChannel.map(item => item.id);
         
         if (itemIds.length === 0) {
@@ -274,17 +299,23 @@ export function OrchestrateMediaPlanDialog({
             return;
         }
 
-        console.log(`[Client] Approving ${itemIds.length} items for channel '${activeTab}' with offering ID ${funnel.offering_id}`, itemIds);
         startSaving(async () => {
             try {
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 
-                console.log(`[Client] Server responded: ${count} items queued.`);
                 toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
                 setCurrentPlan(prevPlan => prevPlan!.map(item => 
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
                 ));
+
+                // Refresh the main funnel data
+                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                if (updatedFunnel) {
+                    onPlanSaved(updatedFunnel);
+                    setFunnel(updatedFunnel);
+                }
+
             } catch (error: any) {
                 console.error('[Client] Bulk approve error:', error);
                 toast({ variant: 'destructive', title: 'Bulk Add Failed', description: error.message });
