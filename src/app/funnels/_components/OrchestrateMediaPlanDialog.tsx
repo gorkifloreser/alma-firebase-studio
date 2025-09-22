@@ -280,7 +280,7 @@ export function OrchestrateMediaPlanDialog({
         // Step 1: Save the plan if it's not saved yet.
         const isUnsaved = finalPlan.some(item => item.id.startsWith('temp-'));
         if (!finalPlanId || isUnsaved) {
-            toast({ title: 'Saving plan first...', description: 'Your plan needs to be saved before approving.' });
+            toast({ title: 'Saving plan before approval...', description: 'This will only take a moment.' });
             const savedPlan = await handleSave();
             if (!savedPlan || !savedPlan.media_plan_items) {
                 toast({ variant: 'destructive', title: 'Save failed', description: 'Cannot approve an unsaved plan.' });
