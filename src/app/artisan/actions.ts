@@ -12,6 +12,7 @@ export type QueueItem = {
     id: string;
     created_at: string;
     status: 'pending' | 'completed' | 'failed';
+    offering_id: string;
     media_plan_items: PlanItem;
 }
 
@@ -30,6 +31,7 @@ export async function getQueueItems(): Promise<QueueItem[]> {
             id,
             created_at,
             status,
+            offering_id,
             media_plan_items (
                 *
             )

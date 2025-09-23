@@ -497,7 +497,7 @@ export default function ArtisanPage() {
             if (item.media_plan_items) {
                 const planItem = item.media_plan_items as any;
                 console.log('Item has media_plan_items:', planItem);
-                const promptFromDb = planItem.creative_prompt || planItem.creativePrompt || '';
+                const promptFromDb = planItem.creative_prompt || '';
                 console.log('Setting creativePrompt state to:', promptFromDb);
                 setCreativePrompt(promptFromDb);
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
@@ -537,6 +537,7 @@ export default function ArtisanPage() {
                 if (queueData.length > 0) {
                     const firstItem = queueData[0];
                     handleQueueItemSelect(firstItem.id, queueData);
+                    setSelectedOfferingId(firstItem.offering_id);
                 } else {
                     handleQueueItemSelect('custom', []);
                 }
