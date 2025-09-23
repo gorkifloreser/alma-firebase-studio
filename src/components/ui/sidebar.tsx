@@ -57,7 +57,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = true,
+      defaultOpen,
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -70,9 +70,17 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen)
+    // Set the initial state from the cookie or the default prop.
+    const [initialState] = React.useState(() => {
+        if (typeof window === 'undefined') return defaultOpen ?? true;
+        const cookieValue = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+            ?.split('=')[1];
+        return cookieValue ? cookieValue === 'true' : defaultOpen ?? true;
+    });
+
+    const [_open, _setOpen] = React.useState(initialState);
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
