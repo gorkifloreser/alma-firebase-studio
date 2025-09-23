@@ -475,16 +475,17 @@ export default function ArtisanPage() {
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
         setSelectedQueueItemId(queueItemId);
-        setIsCodeEditorOpen(false); // Close editor on item change
+        setIsCodeEditorOpen(false);
+        setCreative(null);
+        setEditableHtml(null);
+
         if (queueItemId === 'custom') {
             setCreativePrompt('');
             setEditableContent(null);
-            setCreative(null);
-            setEditableHtml(null);
             setSelectedOfferingId(null);
             return;
         }
-        
+
         const item = items.find(q => q.id === queueItemId);
         if (item && item.media_plan_items) {
             setCreativePrompt(item.media_plan_items.creativePrompt || '');
@@ -494,15 +495,12 @@ export default function ArtisanPage() {
             const format = item.media_plan_items.format.toLowerCase();
             if (format.includes('video')) setSelectedCreativeType('video');
             else if (format.includes('carousel')) setSelectedCreativeType('carousel');
-            else if (format.includes('image')) setSelectedCreativeType('image');
             else if (format.includes('landing')) setSelectedCreativeType('landing_page');
-            else setSelectedCreativeType('image');
+            else setSelectedCreativeType('image'); // Default to image
         } else {
-             setCreativePrompt('');
-             setEditableContent(null);
+            setCreativePrompt('');
+            setEditableContent(null);
         }
-        setCreative(null);
-        setEditableHtml(null);
     }, []);
 
     useEffect(() => {
