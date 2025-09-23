@@ -466,7 +466,7 @@ export default function ArtisanPage() {
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
-    const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
+    const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
 
     const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
     const [activeAccordion, setActiveAccordion] = useState<string[]>(['creative-controls']);
@@ -484,7 +484,7 @@ export default function ArtisanPage() {
             console.log('Selected custom creative.');
             setCreativePrompt('');
             setEditableContent(null);
-            setSelectedOfferingId(null);
+            setSelectedOfferingId(undefined);
             return;
         }
 
@@ -512,7 +512,7 @@ export default function ArtisanPage() {
             console.log('Item not found or no media_plan_items.');
             setCreativePrompt('');
             setEditableContent(null);
-            setSelectedOfferingId(null);
+            setSelectedOfferingId(undefined);
         }
     }, []);
 
@@ -835,7 +835,7 @@ export default function ArtisanPage() {
                                         </CardContent>
                                         <CardFooter className="flex-col gap-4">
                                             <Button onClick={handleGenerate} className="w-full" disabled={isRegenerateDisabled}>
-                                                {isLoading ? 'Generating...' : 'Regenerate'}
+                                                {isLoading ? 'Generating...' : 'Generate with AI'}
                                             </Button>
                                             <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
                                                 {isSaving ? 'Approving...' : 'Approve & Save'}
