@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -627,12 +626,15 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
         throw new Error('Could not fetch media plans.');
     }
     
-    return data.map(plan => ({
+    // Handle the case where funnels or offerings might be null
+    const response = data.map((plan: any) => ({
         id: plan.id,
         title: plan.title,
         offering_id: plan.funnels?.offering_id || '',
         offering_title: plan.funnels?.offerings?.title?.primary || 'Untitled Offering',
     }));
+
+    return response;
 }
       
 
