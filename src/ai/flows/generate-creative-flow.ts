@@ -9,7 +9,6 @@ import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
-import * as fs from 'fs';
 import { Readable } from 'stream';
 import type { MediaPart } from 'genkit';
 import { generateLandingPage } from './generate-landing-page-flow';

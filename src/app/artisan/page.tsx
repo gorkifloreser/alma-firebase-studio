@@ -852,11 +852,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-
-    
-
-    
-
-    
-
