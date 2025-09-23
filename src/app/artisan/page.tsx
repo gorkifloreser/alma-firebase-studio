@@ -492,7 +492,7 @@ export default function ArtisanPage() {
         console.log('Found item in queue:', item);
         if (item && item.media_plan_items) {
             console.log('Item has media_plan_items:', item.media_plan_items);
-            const promptFromDb = item.media_plan_items.creativePrompt || '';
+            const promptFromDb = item.media_plan_items.creative_prompt || '';
             console.log('Setting creativePrompt state to:', promptFromDb);
             setCreativePrompt(promptFromDb);
             setEditableContent({ primary: item.media_plan_items.copy || '', secondary: null });
@@ -862,3 +862,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
