@@ -156,6 +156,7 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 **Offering Details (The "What"):**
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
+- Offering ID: {{offering.id}}
 
 **CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
 "{{bestPractices}}"
@@ -339,3 +340,5 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
+
+      

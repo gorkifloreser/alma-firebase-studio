@@ -490,31 +490,36 @@ export default function ArtisanPage() {
 
         const item = items.find(q => q.id === queueItemId);
         console.log('Found item in queue:', item);
-        if (item && item.media_plan_items) {
-            const planItem = item.media_plan_items as any; // Handle potential snake_case
-            console.log('Item has media_plan_items:', planItem);
-            const promptFromDb = planItem.creative_prompt || planItem.creativePrompt || '';
-            console.log('Setting creativePrompt state to:', promptFromDb);
-            setCreativePrompt(promptFromDb);
-            setEditableContent({ primary: planItem.copy || '', secondary: null });
-            setSelectedOfferingId(planItem.offering_id || planItem.offeringId);
+        if (item) {
+             // Correctly source the offering ID from the queue item itself
+            setSelectedOfferingId(item.offering_id);
 
-            const format = planItem.format.toLowerCase();
-            if (format.includes('video')) setSelectedCreativeType('video');
-            else if (format.includes('carousel')) setSelectedCreativeType('carousel');
-            else if (format.includes('landing')) setSelectedCreativeType('landing_page');
-            else setSelectedCreativeType('image'); // Default to image
+            if (item.media_plan_items) {
+                const planItem = item.media_plan_items as any;
+                console.log('Item has media_plan_items:', planItem);
+                const promptFromDb = planItem.creative_prompt || planItem.creativePrompt || '';
+                console.log('Setting creativePrompt state to:', promptFromDb);
+                setCreativePrompt(promptFromDb);
+                setEditableContent({ primary: planItem.copy || '', secondary: null });
+                
+                const format = planItem.format.toLowerCase();
+                if (format.includes('video')) setSelectedCreativeType('video');
+                else if (format.includes('carousel')) setSelectedCreativeType('carousel');
+                else if (format.includes('landing')) setSelectedCreativeType('landing_page');
+                else setSelectedCreativeType('image'); // Default to image
+            }
         } else {
             console.log('Item not found or no media_plan_items.');
             setCreativePrompt('');
             setEditableContent(null);
+            setSelectedOfferingId(null);
         }
     }, []);
 
     useEffect(() => {
+        console.log('Fetching initial data...');
         async function fetchData() {
             try {
-                console.log('Fetching initial data...');
                 setIsLoading(true);
                 const [profileData, queueData, offeringsData] = await Promise.all([
                     getProfile(),
@@ -532,11 +537,6 @@ export default function ArtisanPage() {
                 if (queueData.length > 0) {
                     const firstItem = queueData[0];
                     handleQueueItemSelect(firstItem.id, queueData);
-                    // Explicitly set offering ID for the first load
-                    if (firstItem.media_plan_items) {
-                        const planItem = firstItem.media_plan_items as any;
-                        setSelectedOfferingId(planItem.offering_id || planItem.offeringId);
-                    }
                 } else {
                     handleQueueItemSelect('custom', []);
                 }
@@ -860,6 +860,7 @@ export default function ArtisanPage() {
                             profile={profile}
                             dimension={dimension}
                             isLoading={isLoading}
+                            selectedCreativeType={selectedCreativeType}
                             creative={{
                                 ...creative,
                                 landingPageHtml: editableHtml ?? creative?.landingPageHtml
@@ -878,3 +879,4 @@ export default function ArtisanPage() {
     );
 }
 
+      

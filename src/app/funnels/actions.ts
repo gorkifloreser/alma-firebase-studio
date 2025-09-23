@@ -433,7 +433,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             id: item.id?.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
             media_plan_id: mediaPlanId,
             user_id: user.id,
-            offering_id: item.offeringId,
+            offering_id: item.offering_id,
             channel: item.channel,
             format: item.format,
             copy: item.copy,
@@ -600,3 +600,6 @@ export async function getUserChannels(): Promise<Account[]> {
         best_practices: row.best_practices,
     }));
 }
+
+
+      
