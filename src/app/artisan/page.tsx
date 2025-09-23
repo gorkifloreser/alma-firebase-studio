@@ -715,6 +715,15 @@ export default function ArtisanPage() {
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
+    const isRegenerateDisabled = isLoading || isSaving || !selectedOfferingId;
+    console.log('Regenerate Button Status:', {
+        isDisabled: isRegenerateDisabled,
+        isLoading,
+        isSaving,
+        selectedOfferingId,
+        hasSelectedOfferingId: !!selectedOfferingId,
+    });
+
     return (
         <DashboardLayout>
             <Toaster />
@@ -824,7 +833,7 @@ export default function ArtisanPage() {
                                             )}
                                         </CardContent>
                                         <CardFooter className="flex-col gap-4">
-                                            <Button onClick={handleGenerate} className="w-full" disabled={isLoading || isSaving || !selectedOfferingId}>
+                                            <Button onClick={handleGenerate} className="w-full" disabled={isRegenerateDisabled}>
                                                 {isLoading ? 'Generating...' : 'Regenerate'}
                                             </Button>
                                             <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
@@ -851,7 +860,6 @@ export default function ArtisanPage() {
                             profile={profile}
                             dimension={dimension}
                             isLoading={isLoading}
-                            selectedCreativeType={selectedCreativeType}
                             creative={{
                                 ...creative,
                                 landingPageHtml: editableHtml ?? creative?.landingPageHtml
@@ -869,3 +877,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
