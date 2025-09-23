@@ -41,29 +41,6 @@ const GenerateCreativeOutputSchema = z.object({
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
 
 
-async function downloadVideo(video: MediaPart): Promise<string> {
-  const fetch = (await import('node-fetch')).default;
-  // Add API key before fetching the video.
-  const videoDownloadResponse = await fetch(
-    `${video.media!.url}&key=${process.env.GEMINI_API_KEY}`
-  );
-  if (
-    !videoDownloadResponse ||
-    videoDownloadResponse.status !== 200 ||
-    !videoDownloadResponse.body
-  ) {
-    throw new Error('Failed to fetch video');
-  }
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of videoDownloadResponse.body) {
-    chunks.push(chunk as Buffer);
-  }
-  const buffer = Buffer.concat(chunks);
-  return `data:video/mp4;base64,${buffer.toString('base64')}`;
-}
-
-
 const imagePrompt = ai.definePrompt({
     name: 'generateImagePrompt',
     input: {
@@ -166,6 +143,30 @@ export const generateCreativeFlow = ai.defineFlow(
     outputSchema: GenerateCreativeOutputSchema,
   },
   async ({ offeringId, creativeTypes, aspectRatio, creativePrompt }) => {
+    
+    // This function uses server-only dependencies and must be defined inside the flow.
+    async function downloadVideo(video: MediaPart): Promise<string> {
+        const fetch = (await import('node-fetch')).default;
+        // Add API key before fetching the video.
+        const videoDownloadResponse = await fetch(
+            `${video.media!.url}&key=${process.env.GEMINI_API_KEY}`
+        );
+        if (
+            !videoDownloadResponse ||
+            videoDownloadResponse.status !== 200 ||
+            !videoDownloadResponse.body
+        ) {
+            throw new Error('Failed to fetch video');
+        }
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of videoDownloadResponse.body) {
+            chunks.push(chunk as Buffer);
+        }
+        const buffer = Buffer.concat(chunks);
+        return `data:video/mp4;base64,${buffer.toString('base64')}`;
+    }
+    
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
