@@ -20,25 +20,31 @@ export type QueueItem = {
  * Fetches pending items from the content generation queue for the current user.
  * @returns {Promise<QueueItem[]>} A promise that resolves to an array of queue items.
  */
-export async function getQueueItems(): Promise<QueueItem[]> {
+export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('content_generation_queue')
         .select(`
             id,
             created_at,
             status,
             offering_id,
-            media_plan_items (
-                *
+            media_plan_items!inner (
+                *,
+                media_plan_id
             )
         `)
         .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
+        .eq('status', 'pending');
+
+    if (mediaPlanId) {
+        query = query.eq('media_plan_items.media_plan_id', mediaPlanId);
+    }
+        
+    const { data, error } = await query.order('created_at', { ascending: true });
 
     if (error) {
         console.error("Error fetching queue items:", error);
@@ -145,3 +151,5 @@ export async function updateQueueItemStatus(queueItemId: string, newStatus: 'com
     revalidatePath('/artisan');
     return { message: `Queue item marked as ${newStatus}.` };
 }
+
+    

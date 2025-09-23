@@ -601,5 +601,39 @@ export async function getUserChannels(): Promise<Account[]> {
     }));
 }
 
+/**
+ * Fetches a list of all media plans for the current user, intended for a selection dialog.
+ */
+export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
 
+    const { data, error } = await supabase
+        .from('media_plans')
+        .select(`
+            id, 
+            title,
+            funnels (
+                offering_id,
+                offerings ( title )
+            )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching media plans:', error);
+        throw new Error('Could not fetch media plans.');
+    }
+    
+    return data.map(plan => ({
+        id: plan.id,
+        title: plan.title,
+        offering_id: plan.funnels?.offering_id || '',
+        offering_title: plan.funnels?.offerings?.title?.primary || 'Untitled Offering',
+    }));
+}
       
+
+    

@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import { getMediaPlans } from '../funnels/actions';
 import type { Offering } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -29,6 +30,10 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import * as Popover from '@radix-ui/react-popover';
+import { Check } from 'lucide-react';
 
 
 type Profile = {
@@ -37,6 +42,13 @@ type Profile = {
     primary_language: string;
     secondary_language: string | null;
 } | null;
+
+type MediaPlanSelectItem = {
+    id: string;
+    title: string;
+    offering_id: string;
+    offering_title: string | null;
+}
 
 type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page';
 
@@ -449,12 +461,90 @@ const CodeEditor = ({
 };
 
 
+const MultiSelect = ({
+  options,
+  selected,
+  onChange,
+  className,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  className?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (value: string) => {
+    const newSelected = selected.includes(value)
+      ? selected.filter((item) => item !== value)
+      : [...selected, value];
+    onChange(newSelected);
+  };
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("w-full justify-between", className)}
+        >
+          <span className="truncate">
+            {selected.length > 0 ? selected.join(', ') : 'Filter by channel...'}
+          </span>
+        </Button>
+      </Popover.Trigger>
+      <Popover.Content className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search channels..." />
+          <CommandList>
+            <CommandEmpty>No channels found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option}
+                  value={option}
+                  onSelect={() => handleSelect(option)}
+                  className="capitalize"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selected.includes(option) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </Popover.Content>
+    </Popover.Root>
+  );
+};
+
+
 export default function ArtisanPage() {
+    // Core State
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<Offering[]>([]);
-    const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
-    const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
+    const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
+    const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
 
+    // Workflow State
+    const [isDialogOpen, setIsDialogOpen] = useState(true);
+    const [workflowMode, setWorkflowMode] = useState<'campaign' | 'custom' | null>(null);
+    const [selectedCampaign, setSelectedCampaign] = useState<MediaPlanSelectItem | null>(null);
+    
+    // Page Content State
+    const [filteredQueueItems, setFilteredQueueItems] = useState<QueueItem[]>([]);
+    const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
+    const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
+    const [channelFilter, setChannelFilter] = useState<string[]>([]);
+
+    // UI & Generation State
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
@@ -466,39 +556,57 @@ export default function ArtisanPage() {
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
-    const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
-
     const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
     const [activeAccordion, setActiveAccordion] = useState<string[]>(['creative-controls']);
     const [globalTheme, setGlobalTheme] = useState<'light' | 'dark'>('light');
 
+    // Filter available channels based on selected campaign
+    const availableChannels = useMemo(() => {
+        if (workflowMode !== 'campaign' || !selectedCampaign) return [];
+        const channels = allQueueItems
+            .filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id)
+            .map(item => item.media_plan_items.channel)
+            .filter((v, i, a) => a.indexOf(v) === i); // Unique
+        return channels;
+    }, [workflowMode, selectedCampaign, allQueueItems]);
 
-    const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
-        console.log('handleQueueItemSelect called with:', queueItemId);
+    // Apply channel filter
+    useEffect(() => {
+        if (workflowMode === 'campaign' && selectedCampaign) {
+            let items = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id);
+            if (channelFilter.length > 0) {
+                items = items.filter(item => channelFilter.includes(item.media_plan_items.channel));
+            }
+            setFilteredQueueItems(items);
+            // Auto-select first item if selection becomes invalid
+            if (items.length > 0 && !items.find(i => i.id === selectedQueueItemId)) {
+                handleQueueItemSelect(items[0].id, items);
+            } else if (items.length === 0) {
+                handleQueueItemSelect(null, []);
+            }
+        }
+    }, [channelFilter, selectedCampaign, allQueueItems, workflowMode, selectedQueueItemId]);
+
+
+    const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
         setEditableHtml(null);
 
-        if (queueItemId === 'custom') {
-            console.log('Selected custom creative.');
+        if (!queueItemId || workflowMode === 'custom') {
             setCreativePrompt('');
             setEditableContent(null);
-            setSelectedOfferingId(undefined);
+            if (workflowMode === 'custom') setSelectedOfferingId(undefined);
             return;
         }
 
         const item = items.find(q => q.id === queueItemId);
-        console.log('Found item in queue:', item);
         if (item) {
-             // Correctly source the offering ID from the queue item itself
             setSelectedOfferingId(item.offering_id);
-
             if (item.media_plan_items) {
                 const planItem = item.media_plan_items as any;
-                console.log('Item has media_plan_items:', planItem);
                 const promptFromDb = planItem.creative_prompt || '';
-                console.log('Setting creativePrompt state to:', promptFromDb);
                 setCreativePrompt(promptFromDb);
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
                 
@@ -509,38 +617,29 @@ export default function ArtisanPage() {
                 else setSelectedCreativeType('image'); // Default to image
             }
         } else {
-            console.log('Item not found or no media_plan_items.');
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(undefined);
         }
-    }, []);
+    }, [workflowMode]);
 
     useEffect(() => {
-        console.log('Fetching initial data...');
         async function fetchData() {
             try {
                 setIsLoading(true);
-                const [profileData, queueData, offeringsData] = await Promise.all([
+                const [profileData, queueData, offeringsData, mediaPlansData] = await Promise.all([
                     getProfile(),
                     getQueueItems(),
                     getOfferings(),
+                    getMediaPlans(),
                 ]);
-                 console.log('Fetched Profile:', profileData);
-                 console.log('Fetched Queue Items:', queueData);
-                 console.log('Fetched Offerings:', offeringsData);
 
                 setProfile(profileData);
-                setQueueItems(queueData);
+                setAllQueueItems(queueData);
                 setOfferings(offeringsData);
+                setMediaPlans(mediaPlansData);
                 
-                if (queueData.length > 0) {
-                    const firstItem = queueData[0];
-                    handleQueueItemSelect(firstItem.id, queueData);
-                    setSelectedOfferingId(firstItem.offering_id);
-                } else {
-                    handleQueueItemSelect('custom', []);
-                }
+                // Don't auto-select here, wait for user action in dialog
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
             } finally {
@@ -549,11 +648,32 @@ export default function ArtisanPage() {
         }
         fetchData();
         
-        // Sync with global theme
         const currentTheme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
         setGlobalTheme(currentTheme);
+    }, [toast]);
+    
+    const startCampaignWorkflow = (campaign: MediaPlanSelectItem) => {
+        setWorkflowMode('campaign');
+        setSelectedCampaign(campaign);
+        const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
+        setFilteredQueueItems(itemsForCampaign);
+        if (itemsForCampaign.length > 0) {
+            handleQueueItemSelect(itemsForCampaign[0].id, itemsForCampaign);
+        } else {
+            handleQueueItemSelect(null, []);
+        }
+        setChannelFilter([]);
+        setIsDialogOpen(false);
+    };
 
-    }, [toast, handleQueueItemSelect]);
+    const startCustomWorkflow = () => {
+        setWorkflowMode('custom');
+        setSelectedCampaign(null);
+        setFilteredQueueItems([]);
+        handleQueueItemSelect(null, []);
+        setIsDialogOpen(false);
+    };
+
 
     useEffect(() => {
         if (selectedCreativeType === 'video' && (dimension !== '9:16' && dimension !== '16:9')) {
@@ -570,8 +690,6 @@ export default function ArtisanPage() {
     }, [selectedCreativeType, dimension, toast]);
 
     useEffect(() => {
-        // When creative content (especially landing page HTML) is generated,
-        // update the editableHtml state as well.
         if (creative?.landingPageHtml) {
             setEditableHtml(creative.landingPageHtml);
         }
@@ -603,32 +721,18 @@ export default function ArtisanPage() {
 
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-
-            const promises = [];
-            
-            const visualBasedSelected = creativeTypes.includes('image') || creativeTypes.includes('video') || creativeTypes.includes('carousel') || creativeTypes.includes('landing_page');
-            if (visualBasedSelected) {
-                const creativeTypesForFlow = creativeTypes.filter(t => t !== 'text') as ('image' | 'carousel' | 'video' | 'landing_page')[];
-                if (creativeTypesForFlow.length > 0) {
-                    const creativePromise = generateCreativeForOffering({
-                        offeringId: selectedOfferingId,
-                        creativeTypes: creativeTypesForFlow,
-                        aspectRatio: dimension,
-                        creativePrompt: creativePrompt,
-                    });
-                    promises.push(creativePromise);
-                }
-            }
-
-            const results = await Promise.all(promises);
+            const visualBasedSelected = creativeTypes.some(t => ['image', 'video', 'carousel', 'landing_page'].includes(t));
 
             if (visualBasedSelected) {
-                const creativeResult = results.find(r => r && ('imageUrl' in r || 'videoUrl' in r || 'carouselSlides' in r || 'landingPageHtml' in r)) as GenerateCreativeOutput | undefined;
-                if (creativeResult) {
-                    setCreative(creativeResult);
-                    if (creativeResult.landingPageHtml) {
-                        setEditableHtml(creativeResult.landingPageHtml);
-                    }
+                const creativeResult = await generateCreativeForOffering({
+                    offeringId: selectedOfferingId,
+                    creativeTypes: creativeTypes.filter(t => t !== 'text') as any,
+                    aspectRatio: dimension,
+                    creativePrompt: creativePrompt,
+                });
+                setCreative(creativeResult);
+                 if (creativeResult.landingPageHtml) {
+                    setEditableHtml(creativeResult.landingPageHtml);
                 }
             }
 
@@ -672,7 +776,7 @@ export default function ArtisanPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
             return;
         }
-        const currentQueueItem = queueItems.find(item => item.id === selectedQueueItemId) || null;
+        const currentQueueItem = allQueueItems.find(item => item.id === selectedQueueItemId) || null;
 
         startSaving(async () => {
             try {
@@ -688,20 +792,15 @@ export default function ArtisanPage() {
                 });
                 if (currentQueueItem) {
                     await updateQueueItemStatus(currentQueueItem.id, 'completed');
+                    setAllQueueItems(prev => prev.filter(i => i.id !== currentQueueItem.id));
                 }
                 toast({
                     title: 'Approved!',
                     description: 'The content has been saved and is ready for the calendar.',
                 });
                 
-                // Refresh queue and move to next item
-                const updatedQueue = await getQueueItems();
-                setQueueItems(updatedQueue);
-                if (updatedQueue.length > 0) {
-                    handleQueueItemSelect(updatedQueue[0].id, updatedQueue);
-                } else {
-                    handleQueueItemSelect('custom', []);
-                }
+                const nextItem = filteredQueueItems.find(i => i.id !== selectedQueueItemId) || null;
+                handleQueueItemSelect(nextItem?.id || null, filteredQueueItems);
 
             } catch (error: any) {
                 toast({
@@ -716,25 +815,52 @@ export default function ArtisanPage() {
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
-    const isRegenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    console.log('Regenerate Button Status:', {
-        isDisabled: isRegenerateDisabled,
-        isLoading,
-        isSaving,
-        selectedOfferingId,
-        hasSelectedOfferingId: !!selectedOfferingId,
-    });
+    const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
 
     return (
         <DashboardLayout>
             <Toaster />
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Choose Your Creative Path</DialogTitle>
+                        <DialogDescription>Select a campaign to work on, or start a new creative from scratch.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <h3 className="font-semibold text-muted-foreground">Work from a Campaign</h3>
+                        {mediaPlans.length > 0 ? (
+                             <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                                {mediaPlans.map(plan => (
+                                    <button key={plan.id} onClick={() => startCampaignWorkflow(plan)} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                                        <p className="font-bold">{plan.title}</p>
+                                        <p className="text-sm text-muted-foreground">For: {plan.offering_title}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                             <p className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">No media plans found. Create one from the AI Strategist page.</p>
+                        )}
+                        <h3 className="font-semibold text-muted-foreground pt-4">Start Fresh</h3>
+                        <button onClick={startCustomWorkflow} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <p className="font-bold flex items-center gap-2"><Wand2 className="h-4 w-4"/>Custom AI Creative</p>
+                            <p className="text-sm text-muted-foreground">Generate a one-off piece of content for any offering.</p>
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-                <header>
-                    <h1 className="text-3xl font-bold flex items-center gap-2">
-                        <Wand2 className="h-8 w-8 text-primary" />
-                        AI Artisan
-                    </h1>
-                    <p className="text-muted-foreground">The workshop for generating all your creative content from your media plan.</p>
+                <header className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-3xl font-bold flex items-center gap-2">
+                            <Wand2 className="h-8 w-8 text-primary" />
+                            AI Artisan
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {workflowMode === 'campaign' && selectedCampaign ? `Working on: ${selectedCampaign.title}` : 'Custom Creative Mode'}
+                        </p>
+                    </div>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(true)}><BookOpen className="mr-2 h-4 w-4" />Change Campaign</Button>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -749,28 +875,37 @@ export default function ArtisanPage() {
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <CardContent className="space-y-6">
+                                            {workflowMode === 'campaign' && selectedCampaign && (
+                                                <div className="space-y-2">
+                                                    <Label>1. Filter by Channel</Label>
+                                                    <MultiSelect
+                                                        options={availableChannels}
+                                                        selected={channelFilter}
+                                                        onChange={setChannelFilter}
+                                                    />
+                                                </div>
+                                            )}
+
                                             <div className="space-y-2">
-                                                <Label htmlFor="queue-select">1. Choose an Item or Go Custom</Label>
-                                                <Select onValueChange={(value) => handleQueueItemSelect(value, queueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                                <Label htmlFor="queue-select">{workflowMode === 'campaign' ? '2.' : '1.'} Choose an Item or Go Custom</Label>
+                                                <Select onValueChange={(value) => handleQueueItemSelect(value, filteredQueueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="custom">Custom AI Creative</SelectItem>
-                                                        <Separator className="my-1"/>
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
-                                                        queueItems.length > 0 ? (
-                                                            queueItems.map(item => (
+                                                        filteredQueueItems.length > 0 ? (
+                                                            filteredQueueItems.map(item => (
                                                                 <SelectItem key={item.id} value={item.id}>{(item.media_plan_items as any)?.concept || 'Untitled Concept'}</SelectItem>
                                                             ))
                                                         ) : (
-                                                            <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
+                                                            <SelectItem value="none" disabled>No pending items.</SelectItem>
                                                         )}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             
-                                            {selectedQueueItemId === 'custom' && (
+                                            {workflowMode === 'custom' && (
                                                 <div className="space-y-2">
                                                     <Label htmlFor="offering-select">2. Choose an Offering</Label>
                                                     <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
@@ -787,7 +922,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <Label htmlFor="creative-prompt">{selectedQueueItemId === 'custom' ? '3.' : '2.'} AI Creative Prompt</Label>
+                                                <Label htmlFor="creative-prompt">{workflowMode === 'campaign' ? '3.' : '3.'} AI Creative Prompt</Label>
                                                 <Textarea
                                                     id="creative-prompt"
                                                     value={creativePrompt}
@@ -798,7 +933,7 @@ export default function ArtisanPage() {
                                             </div>
 
                                             <div>
-                                                <h3 className="font-medium mb-4">{selectedQueueItemId === 'custom' ? '4.' : '3.'} Creative Type</h3>
+                                                <h3 className="font-medium mb-4">{workflowMode === 'campaign' ? '4.' : '4.'} Creative Type</h3>
                                                 <RadioGroup
                                                     value={selectedCreativeType}
                                                     onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -818,7 +953,7 @@ export default function ArtisanPage() {
 
                                             {selectedCreativeType !== 'landing_page' && (
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="dimension-select">{selectedQueueItemId === 'custom' ? '5.' : '4.'} Aspect Ratio</Label>
+                                                    <Label htmlFor="dimension-select">{workflowMode === 'campaign' ? '5.' : '5.'} Aspect Ratio</Label>
                                                     <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
                                                         <SelectTrigger id="dimension-select">
                                                             <SelectValue placeholder="Select aspect ratio..." />
@@ -834,7 +969,7 @@ export default function ArtisanPage() {
                                             )}
                                         </CardContent>
                                         <CardFooter className="flex-col gap-4">
-                                            <Button onClick={handleGenerate} className="w-full" disabled={isRegenerateDisabled}>
+                                            <Button onClick={handleGenerate} className="w-full" disabled={isGenerateDisabled}>
                                                 {isLoading ? 'Generating...' : 'Generate with AI'}
                                             </Button>
                                             <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
@@ -881,3 +1016,5 @@ export default function ArtisanPage() {
 }
 
       
+
+    
