@@ -609,33 +609,33 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     if (!user) throw new Error('User not authenticated');
 
     const { data, error } = await supabase
-        .from('media_plans')
+        .from('funnels')
         .select(`
-            id, 
-            title,
-            funnels (
-                offering_id,
-                offerings ( title )
-            )
+            offering_id,
+            offerings (title),
+            media_plans (id, title)
         `)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .not('media_plans', 'is', null);
 
     if (error) {
         console.error('Error fetching media plans:', error);
         throw new Error('Could not fetch media plans.');
     }
     
-    // Handle the case where funnels or offerings might be null
-    const response = data.map((plan: any) => ({
-        id: plan.id,
-        title: plan.title,
-        offering_id: plan.funnels?.offering_id || '',
-        offering_title: plan.funnels?.offerings?.title?.primary || 'Untitled Offering',
-    }));
+    const response = data.flatMap((funnel: any) => 
+        funnel.media_plans.map((plan: any) => ({
+            id: plan.id,
+            title: plan.title,
+            offering_id: funnel.offering_id,
+            offering_title: funnel.offerings?.title?.primary || 'Untitled Offering',
+        }))
+    );
 
     return response;
 }
       
+
+    
 
     
