@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
+import { useEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -495,7 +495,7 @@ const MultiSelect = ({
           </span>
         </Button>
       </Popover.Trigger>
-      <Popover.Content className="w-[--radix-popover-trigger-width] p-0">
+      <Popover.Content className="w-[--radix-popover-trigger-trigger-width] p-0">
         <Command>
           <CommandInput placeholder="Search channels..." />
           <CommandList>
@@ -1014,7 +1014,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-      
 
     
