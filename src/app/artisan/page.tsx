@@ -496,7 +496,7 @@ export default function ArtisanPage() {
             console.log('Setting creativePrompt state to:', promptFromDb);
             setCreativePrompt(promptFromDb);
             setEditableContent({ primary: item.media_plan_items.copy || '', secondary: null });
-            setSelectedOfferingId(item.media_plan_items.offeringId);
+            setSelectedOfferingId(item.media_plan_items.offering_id);
 
             const format = item.media_plan_items.format.toLowerCase();
             if (format.includes('video')) setSelectedCreativeType('video');
@@ -529,7 +529,12 @@ export default function ArtisanPage() {
                 setOfferings(offeringsData);
                 
                 if (queueData.length > 0) {
-                    handleQueueItemSelect(queueData[0].id, queueData);
+                    const firstItem = queueData[0];
+                    handleQueueItemSelect(firstItem.id, queueData);
+                    // Explicitly set offering ID for the first load
+                    if (firstItem.media_plan_items) {
+                        setSelectedOfferingId(firstItem.media_plan_items.offering_id);
+                    }
                 } else {
                     handleQueueItemSelect('custom', []);
                 }
@@ -862,4 +867,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
