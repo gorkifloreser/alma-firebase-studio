@@ -14,7 +14,7 @@ import { GenerateFunnelOutput, ConceptualStep } from './generate-funnel-flow';
 
 
 const PlanItemSchema = z.object({
-  offeringId: z.string().describe("The ID of the offering this content is for."),
+  offering_id: z.string().describe("The ID of the offering this content is for."),
   channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook')."),
   format: z.string().describe("The specific visual format for the content, chosen from the provided list."),
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
@@ -117,7 +117,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 
 Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
 
-1.  **offeringId**: '{{offering.id}}'.
+1.  **offering_id**: '{{offering.id}}'.
 2.  **channel**: '{{channel}}'.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write compelling, direct-response ad copy. **This is crucial: The copy MUST perfectly embody the brand's specific TONE OF VOICE.** It should feel authentic and connected, not like generic marketing.
@@ -165,7 +165,7 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 Generate ONE NEW, DIFFERENT content package for the **'{{channel}}' channel**, for the **'{{stageName}}'** stage of the campaign.
 
 This content package MUST contain:
-1.  **offeringId**: '{{offering.id}}'.
+1.  **offering_id**: '{{offering.id}}'.
 2.  **channel**: '{{channel}}'.
 3.  **format**: Suggest a NEW, DIFFERENT visual format from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice.

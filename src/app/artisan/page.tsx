@@ -491,14 +491,15 @@ export default function ArtisanPage() {
         const item = items.find(q => q.id === queueItemId);
         console.log('Found item in queue:', item);
         if (item && item.media_plan_items) {
-            console.log('Item has media_plan_items:', item.media_plan_items);
-            const promptFromDb = item.media_plan_items.creative_prompt || '';
+            const planItem = item.media_plan_items as any; // Handle potential snake_case
+            console.log('Item has media_plan_items:', planItem);
+            const promptFromDb = planItem.creative_prompt || planItem.creativePrompt || '';
             console.log('Setting creativePrompt state to:', promptFromDb);
             setCreativePrompt(promptFromDb);
-            setEditableContent({ primary: item.media_plan_items.copy || '', secondary: null });
-            setSelectedOfferingId(item.media_plan_items.offering_id);
+            setEditableContent({ primary: planItem.copy || '', secondary: null });
+            setSelectedOfferingId(planItem.offering_id || planItem.offeringId);
 
-            const format = item.media_plan_items.format.toLowerCase();
+            const format = planItem.format.toLowerCase();
             if (format.includes('video')) setSelectedCreativeType('video');
             else if (format.includes('carousel')) setSelectedCreativeType('carousel');
             else if (format.includes('landing')) setSelectedCreativeType('landing_page');
@@ -533,7 +534,8 @@ export default function ArtisanPage() {
                     handleQueueItemSelect(firstItem.id, queueData);
                     // Explicitly set offering ID for the first load
                     if (firstItem.media_plan_items) {
-                        setSelectedOfferingId(firstItem.media_plan_items.offering_id);
+                        const planItem = firstItem.media_plan_items as any;
+                        setSelectedOfferingId(planItem.offering_id || planItem.offeringId);
                     }
                 } else {
                     handleQueueItemSelect('custom', []);
@@ -749,7 +751,7 @@ export default function ArtisanPage() {
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                                         queueItems.length > 0 ? (
                                                             queueItems.map(item => (
-                                                                <SelectItem key={item.id} value={item.id}>{item.media_plan_items?.concept}</SelectItem>
+                                                                <SelectItem key={item.id} value={item.id}>{(item.media_plan_items as any)?.concept || 'Untitled Concept'}</SelectItem>
                                                             ))
                                                         ) : (
                                                             <SelectItem value="none" disabled>No pending items in queue.</SelectItem>
