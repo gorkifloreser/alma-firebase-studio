@@ -474,12 +474,14 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string, items: QueueItem[]) => {
+        console.log('handleQueueItemSelect called with:', queueItemId);
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
         setEditableHtml(null);
 
         if (queueItemId === 'custom') {
+            console.log('Selected custom creative.');
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(null);
@@ -487,8 +489,12 @@ export default function ArtisanPage() {
         }
 
         const item = items.find(q => q.id === queueItemId);
+        console.log('Found item in queue:', item);
         if (item && item.media_plan_items) {
-            setCreativePrompt(item.media_plan_items.creativePrompt || '');
+            console.log('Item has media_plan_items:', item.media_plan_items);
+            const promptFromDb = item.media_plan_items.creativePrompt || '';
+            console.log('Setting creativePrompt state to:', promptFromDb);
+            setCreativePrompt(promptFromDb);
             setEditableContent({ primary: item.media_plan_items.copy || '', secondary: null });
             setSelectedOfferingId(item.media_plan_items.offeringId);
 
@@ -498,6 +504,7 @@ export default function ArtisanPage() {
             else if (format.includes('landing')) setSelectedCreativeType('landing_page');
             else setSelectedCreativeType('image'); // Default to image
         } else {
+            console.log('Item not found or no media_plan_items.');
             setCreativePrompt('');
             setEditableContent(null);
         }
@@ -506,12 +513,17 @@ export default function ArtisanPage() {
     useEffect(() => {
         async function fetchData() {
             try {
+                console.log('Fetching initial data...');
                 setIsLoading(true);
                 const [profileData, queueData, offeringsData] = await Promise.all([
                     getProfile(),
                     getQueueItems(),
                     getOfferings(),
                 ]);
+                 console.log('Fetched Profile:', profileData);
+                 console.log('Fetched Queue Items:', queueData);
+                 console.log('Fetched Offerings:', offeringsData);
+
                 setProfile(profileData);
                 setQueueItems(queueData);
                 setOfferings(offeringsData);
