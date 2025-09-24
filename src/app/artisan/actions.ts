@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -12,6 +13,7 @@ export type QueueItem = {
     created_at: string;
     status: 'pending' | 'completed' | 'failed';
     offering_id: string;
+    media_plan_item_id: string;
     media_plan_items: (PlanItem & { id: string, media_plan_id: string }) | null;
 }
 
@@ -31,6 +33,7 @@ export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> 
             created_at,
             status,
             offering_id,
+            media_plan_item_id,
             media_plan_items (
                 *,
                 media_plan_id

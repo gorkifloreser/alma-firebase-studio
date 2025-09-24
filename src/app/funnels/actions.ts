@@ -534,7 +534,19 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
     if (mediaPlanItemIds.length === 0) return { count: 0 };
     if (!offeringId) throw new Error("An offering ID is required to queue items.");
 
-    // First transaction: add to queue
+    // First transaction: update status on media_plan_items
+    const { error: statusError } = await supabase
+        .from('media_plan_items')
+        .update({ status: 'approved' })
+        .in('id', mediaPlanItemIds)
+        .eq('user_id', user.id);
+        
+    if (statusError) {
+        console.error('Bulk status update failed:', statusError);
+        throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
+    }
+
+    // Second transaction: add to queue
     const recordsToInsert = mediaPlanItemIds.map(itemId => ({
         user_id: user.id,
         funnel_id: funnelId,
@@ -549,24 +561,17 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
 
     if (queueError) {
         console.error('Bulk add to queue failed:', queueError);
+        // If queue fails, we should ideally roll back the status update.
+        // For now, we'll throw, but this indicates a need for a DB transaction.
+        await supabase
+            .from('media_plan_items')
+            .update({ status: 'draft' })
+            .in('id', mediaPlanItemIds)
+            .eq('user_id', user.id);
         throw new Error(`Could not add items to the Artisan Queue. DB Error: ${queueError.message}`);
     }
-
-    // Second transaction: update status on media_plan_items
-    const { count, error: statusError } = await supabase
-        .from('media_plan_items')
-        .update({ status: 'approved' })
-        .in('id', mediaPlanItemIds)
-        .eq('user_id', user.id);
-        
-    if (statusError) {
-        console.error('Bulk status update failed:', statusError);
-        // This is not ideal, as the queue is already updated. A transaction would be better.
-        // For now, we'll just throw an error.
-        throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
-    }
     
-    return { count: count || 0 };
+    return { count: mediaPlanItemIds.length };
 }
 
 
@@ -664,5 +669,6 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     
 
     
+
 
 
