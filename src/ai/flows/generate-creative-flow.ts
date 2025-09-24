@@ -74,15 +74,42 @@ Return the result in the specified JSON format.`,
 });
 
 
-const imagePrompt = ai.definePrompt({
-    name: 'generateImagePrompt',
+const masterImagePrompt = ai.definePrompt({
+    name: 'masterImagePromptGenerator',
     input: {
         schema: z.object({
-            creativePrompt: z.string(),
+            brandHeart: z.any(),
+            offering: z.any(),
+            basePrompt: z.string(),
+            aspectRatio: z.string().optional(),
         })
     },
-    prompt: `{{creativePrompt}}`,
+    prompt: `You are an expert art director and AI prompt engineer for conscious, soulful brands.
+
+Your task is to combine all the information below to create a single, detailed, and visually rich prompt for an image generation model. The final output must be only the prompt string itself.
+
+**RULE: DO NOT include any text, letters, or words in the visual description for the image. The final image must be purely visual.**
+
+**1. THE BRAND's SOUL (Tone & Keywords):**
+- Tone: {{brandHeart.tone_of_voice.primary}}
+- Values: {{brandHeart.values.primary}}
+- Visual Keywords: Soulful, minimalist, calm, authentic, organic.
+
+**2. THE OFFERING (The Subject):**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+
+**3. THE CREATIVE BRIEF (The Scene & Style):**
+- Your main instruction is: "{{basePrompt}}"
+
+**FINAL TASK:**
+Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, and the specific Creative Brief.
+
+**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic{{#if aspectRatio}} --ar {{aspectRatio}}{{/if}}"
+
+Output only the final prompt string.`,
 });
+
 
 const carouselPrompt = ai.definePrompt({
     name: 'generateCarouselPrompt',
@@ -113,33 +140,12 @@ Each slide must have a short, punchy title, a brief body text, and a unique, det
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
 
-Generate the carousel slides in the specified JSON format. Do not add any art style suffixes (like --ar 1:1) to the creative prompts you generate; those will be added later.`,
+Generate the carousel slides in the specified JSON format. Do not add any art style suffixes or aspect ratios (like --ar 1:1) to the creative prompts you generate; those will be added later.`,
 });
 
 
-const defaultImageGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering.
-
-**Brand Identity:**
-- Brand Name: ${brandHeart.brand_name}
-- Tone of Voice: ${brandHeart.tone_of_voice.primary}
-- Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
-
-**Offering:**
-- Title: ${offering.title.primary}
-
-The image should be magnetic and aligned with a regenerative marketing philosophy. Do not include any text in the image.`;
-
-const defaultVideoGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a visually stunning, high-quality, 5-second video for the following offering.
-
-**Brand Identity:**
-- Brand Name: ${brandHeart.brand_name}
-- Tone of Voice: ${brandHeart.tone_of_voice.primary}
-- Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
-
-**Offering:**
-- Title: ${offering.title.primary}
-
-The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. No text in the video.`;
+const defaultImageGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering. The image should be magnetic and aligned with a regenerative marketing philosophy.`;
+const defaultVideoGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a visually stunning, high-quality, 5-second video for the following offering. The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy.`;
 
 
 export const generateCreativeFlow = ai.defineFlow(
@@ -194,7 +200,6 @@ export const generateCreativeFlow = ai.defineFlow(
         : Promise.resolve(null);
     
     const visualPromises = [];
-    const finalAspectRatio = aspectRatio ? ` --ar ${aspectRatio}` : '';
 
     if (creativeTypes.includes('landing_page')) {
         visualPromises.push(generateLandingPage({ offeringId, creativePrompt: userCreativePrompt || 'Generate a beautiful landing page for this offering.' }).then(r => ({ landingPageHtml: r.htmlContent })));
@@ -202,11 +207,10 @@ export const generateCreativeFlow = ai.defineFlow(
     
     if (creativeTypes.includes('video')) {
         const videoBasePrompt = userCreativePrompt || defaultVideoGenPromptTemplate(brandHeart, offering);
-        const finalVideoPrompt = videoBasePrompt + finalAspectRatio;
         
         visualPromises.push(ai.generate({
             model: googleAI.model('veo-2.0-generate-001'),
-            prompt: finalVideoPrompt,
+            prompt: videoBasePrompt,
             config: { durationSeconds: 5, aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {
             if (!operation) throw new Error('Expected video operation.');
@@ -223,21 +227,19 @@ export const generateCreativeFlow = ai.defineFlow(
 
     if (creativeTypes.includes('image')) {
         const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
-        const finalImagePrompt = imageBasePrompt + finalAspectRatio;
-        const promptPayload = { creativePrompt: finalImagePrompt };
 
-        visualPromises.push(imagePrompt(promptPayload).then(async ({ text }) => {
+        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio }).then(async ({ text: finalImagePrompt }) => {
             let generationResult;
             if (referenceImageUrl) {
                 generationResult = await ai.generate({
                     model: 'googleai/gemini-2.5-flash-image-preview',
-                    prompt: [{ media: { url: referenceImageUrl } }, { text: text }],
+                    prompt: [{ media: { url: referenceImageUrl } }, { text: finalImagePrompt }],
                     config: { responseModalities: ['TEXT', 'IMAGE'] },
                 });
             } else {
                 generationResult = await ai.generate({
                     model: googleAI.model('imagen-4.0-fast-generate-001'),
-                    prompt: text,
+                    prompt: finalImagePrompt,
                 });
             }
             return { imageUrl: generationResult.media?.url };
@@ -247,14 +249,26 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('carousel')) {
         visualPromises.push(carouselPrompt({ brandHeart, offering }).then(async ({ output: carouselOutput }) => {
             if (carouselOutput?.slides) {
-                const artStyleSuffix = userCreativePrompt ? `, ${userCreativePrompt.split(',').slice(1).join(',')}` : '';
+                const artStyleSuffix = userCreativePrompt ? `, ${userCreativePrompt}` : '';
 
                 const slidePromises = carouselOutput.slides.map(async (slide) => {
-                    const finalSlidePrompt = slide.creativePrompt + artStyleSuffix + finalAspectRatio;
+                    const slideBasePrompt = slide.creativePrompt + artStyleSuffix;
+
+                    // Generate the final, detailed prompt for this specific slide
+                    const { text: finalSlidePrompt } = await masterImagePrompt({
+                        brandHeart,
+                        offering,
+                        basePrompt: slideBasePrompt,
+                        aspectRatio,
+                    });
+
+                    // Generate the image using the final prompt
                     const { media } = await ai.generate({
                         model: googleAI.model('imagen-4.0-fast-generate-001'),
                         prompt: finalSlidePrompt,
                     });
+                    
+                    // Return the slide data with the new image and the final prompt used
                     return { ...slide, imageUrl: media?.url, creativePrompt: finalSlidePrompt };
                 });
                 return { carouselSlides: await Promise.all(slidePromises) };
