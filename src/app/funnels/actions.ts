@@ -605,6 +605,7 @@ export async function getUserChannels(): Promise<Account[]> {
  * Fetches a list of all media plans for the current user, intended for a selection dialog.
  */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
+    console.log("getMediaPlans action started.");
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -612,11 +613,17 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     const { data, error } = await supabase
         .from('content_generation_queue')
         .select(`
-            media_plans!inner(id, title),
-            offerings!inner(title)
+            offering_id,
+            offerings (title),
+            media_plan_items!inner (
+                media_plans!inner (id, title)
+            )
         `)
         .eq('user_id', user.id);
         
+    console.log("Supabase getMediaPlans raw data:", data);
+    console.log("Supabase getMediaPlans error:", error);
+
     if (error) {
         console.error('Error fetching media plans:', error);
         throw new Error(`Could not fetch media plans. DB Error: ${error.message}`);
@@ -629,18 +636,18 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     const uniquePlans = new Map<string, { id: string; title: string; offering_id: string; offering_title: string | null }>();
 
     data.forEach((item: any) => {
-        if (item.media_plans && !uniquePlans.has(item.media_plans.id)) {
-            uniquePlans.set(item.media_plans.id, {
-                id: item.media_plans.id,
-                title: item.media_plans.title,
-                offering_id: item.offerings.id, // This is incorrect, offerings is joined not the id
-                offering_title: item.offerings.title.primary,
+        if (item.media_plan_items && item.media_plan_items.media_plans && !uniquePlans.has(item.media_plan_items.media_plans.id)) {
+            uniquePlans.set(item.media_plan_items.media_plans.id, {
+                id: item.media_plan_items.media_plans.id,
+                title: item.media_plan_items.media_plans.title,
+                offering_id: item.offering_id,
+                offering_title: item.offerings?.title?.primary || 'Untitled Offering',
             });
         }
     });
 
     const response = Array.from(uniquePlans.values());
-    
+    console.log("Processed getMediaPlans response:", response);
     return response;
 }
       
@@ -654,3 +661,4 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     
 
     
+

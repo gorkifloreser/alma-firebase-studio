@@ -13,7 +13,7 @@ export type QueueItem = {
     created_at: string;
     status: 'pending' | 'completed' | 'failed';
     offering_id: string;
-    media_plan_items: PlanItem;
+    media_plan_items: PlanItem & { media_plan_id: string };
 }
 
 /**
