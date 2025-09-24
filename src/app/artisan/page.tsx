@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getOfferings } from '../offerings/actions';
+import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
@@ -69,6 +69,7 @@ const dimensionMap = {
     '9:16': 'aspect-[9/16]',
     '16:9': 'aspect-[16/9]',
 };
+
 
 
 const RemixPromptDialog = ({
@@ -418,39 +419,13 @@ const PostPreview = ({
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
-                    {selectedCreativeType === 'carousel' && creative?.carouselSlides ? (
-                        <Carousel setApi={setApi} className="w-full h-full">
-                            <CarouselContent>
-                                {creative.carouselSlides.map((slide, index) => (
-                                    <CarouselItem key={index} className="relative group">
-                                         <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
-                                            {slide.imageUrl ? (
-                                                <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                                    <ImageIcon className="w-24 h-24 text-muted-foreground" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                          onClick={() => setIsPromptEditorOpen(true)}
-                                        >
-                                          <Edit className="mr-2 h-4 w-4" /> Edit Prompt
-                                        </Button>
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            {creative.carouselSlides.length > 1 && (
-                                <>
-                                    <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10" />
-                                    <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10" />
-                                </>
-                            )}
-                        </Carousel>
+                <div className={cn("relative w-full overflow-hidden", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
+                    {dimension === '9:16' ? (
+                        <div className="h-full w-full flex items-center justify-center bg-black">
+                             <div className={cn("relative h-full w-auto", aspectRatioClass)}>
+                                {renderVisualContent()}
+                            </div>
+                        </div>
                     ) : (
                         renderVisualContent()
                     )}
@@ -647,7 +622,7 @@ const MediaSelectionDialog = ({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 max-h-[70vh] overflow-y-auto space-y-6">
-                    <ImageUpload 
+                     <ImageUpload 
                         offeringId={offeringId}
                         onNewMediaUploaded={onUploadComplete}
                         existingMedia={media}
