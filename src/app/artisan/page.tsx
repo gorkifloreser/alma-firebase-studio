@@ -274,18 +274,18 @@ const PostPreview = ({
                                 <Button
                                     variant="secondary"
                                     size="icon"
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100"
+                                    className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100 z-10"
                                     onClick={() => setIsPromptEditorOpen(true)}
                                 >
-                                    <Edit className="h-5 w-5" />
+                                    <Edit className="h-4 w-4" />
                                 </Button>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
                     {(creative.carouselSlides.length > 1) && (
                         <>
-                           <CarouselPrevious className={cn("absolute left-4 top-1/2 -translate-y-1/2 z-10", (isStory || creative.carouselSlides.length <=1) && "hidden")} />
-                            <CarouselNext className={cn("absolute right-4 top-1/2 -translate-y-1/2 z-10", (isStory || creative.carouselSlides.length <=1) && "hidden")} />
+                           <CarouselPrevious className={cn("absolute left-4 top-1/2 -translate-y-1/2 z-10", isStory && "hidden")} />
+                            <CarouselNext className={cn("absolute right-4 top-1/2 -translate-y-1/2 z-10", isStory && "hidden")} />
                         </>
                     )}
                 </Carousel>
@@ -763,7 +763,7 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            setCreativePrompt(planItem.creative_prompt || '');
+            setCreativePrompt(planItem.creativePrompt || '');
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
