@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -994,7 +993,6 @@ export default function ArtisanPage() {
                                         <CardContent className="space-y-6">
                                             {workflowMode === 'campaign' && selectedCampaign && (
                                                 <div className="space-y-2">
-                                                    <Label>1. Filter by Channel</Label>
                                                     <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
                                                         <div className="flex justify-center">
                                                             <TabsList>
@@ -1009,7 +1007,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="queue-select">{workflowMode === 'campaign' ? '2.' : '1.'} Choose an Item or Go Custom</Label>
+                                                <Label htmlFor="queue-select">Choose an Item or Go Custom</Label>
                                                 <Select onValueChange={(value) => handleQueueItemSelect(value, filteredQueueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
@@ -1029,7 +1027,7 @@ export default function ArtisanPage() {
                                             
                                             {workflowMode === 'custom' && (
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="offering-select">2. Choose an Offering</Label>
+                                                    <Label htmlFor="offering-select">Choose an Offering</Label>
                                                     <Select onValueChange={setSelectedOfferingId} disabled={isLoading}>
                                                         <SelectTrigger id="offering-select">
                                                             <SelectValue placeholder="Select an offering..." />
@@ -1044,7 +1042,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <Label htmlFor="creative-prompt">{workflowMode === 'campaign' ? '3.' : '3.'} AI Creative Prompt</Label>
+                                                <Label htmlFor="creative-prompt">AI Creative Prompt</Label>
                                                 <Textarea
                                                     id="creative-prompt"
                                                     value={creativePrompt}
@@ -1055,7 +1053,7 @@ export default function ArtisanPage() {
                                             </div>
 
                                             <div>
-                                                <h3 className="font-medium mb-4">{workflowMode === 'campaign' ? '4.' : '4.'} Creative Type</h3>
+                                                <h3 className="font-medium mb-4">Creative Type</h3>
                                                 <RadioGroup
                                                     value={selectedCreativeType}
                                                     onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -1075,7 +1073,7 @@ export default function ArtisanPage() {
 
                                             {selectedCreativeType !== 'landing_page' && (
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="dimension-select">{workflowMode === 'campaign' ? '5.' : '5.'} Aspect Ratio</Label>
+                                                    <Label htmlFor="dimension-select">Aspect Ratio</Label>
                                                     <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
                                                         <SelectTrigger id="dimension-select">
                                                             <SelectValue placeholder="Select aspect ratio..." />
