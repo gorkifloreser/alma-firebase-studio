@@ -4,7 +4,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
@@ -56,15 +55,6 @@ export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> 
     }
 
     return data as unknown as QueueItem[];
-}
-
-/**
- * Invokes the Genkit content generation flow.
- * @param {GenerateContentInput} input The offering ID.
- * @returns {Promise<GenerateContentOutput>} The generated content.
- */
-export async function generateContentForOffering(input: GenerateContentInput): Promise<GenerateContentOutput> {
-    return genContentFlow(input);
 }
 
 

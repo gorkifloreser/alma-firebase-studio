@@ -3,13 +3,13 @@
 
 /**
  * @fileOverview A flow to generate visual marketing creatives for an offering.
+ * This flow now orchestrates both content (text) and creative (visuals) generation.
  */
 
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
-import { Readable } from 'stream';
 import type { MediaPart } from 'genkit';
 import { generateLandingPage } from './generate-landing-page-flow';
 
@@ -17,7 +17,7 @@ import { generateLandingPage } from './generate-landing-page-flow';
 // Define schemas
 const GenerateCreativeInputSchema = z.object({
   offeringId: z.string(),
-  creativeTypes: z.array(z.enum(['image', 'carousel', 'video', 'landing_page'])),
+  creativeTypes: z.array(z.enum(['image', 'carousel', 'video', 'landing_page', 'text'])),
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
   referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image generation.'),
@@ -33,12 +33,45 @@ const CarouselSlideSchema = z.object({
 export type CarouselSlide = z.infer<typeof CarouselSlideSchema>;
 
 const GenerateCreativeOutputSchema = z.object({
+  content: z.object({
+      primary: z.string().describe('The marketing content in the primary language.'),
+      secondary: z.string().optional().describe('The marketing content in the secondary language.'),
+  }).optional(),
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
   videoUrl: z.string().optional().describe('The data URI of the generated video.'),
   landingPageHtml: z.string().optional().describe('The generated HTML content for the landing page.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
+
+// Prompt for generating main text content
+const contentPrompt = ai.definePrompt({
+  name: 'generateContentOnlyPrompt',
+  input: {
+      schema: z.object({
+          primaryLanguage: z.string(),
+          secondaryLanguage: z.string().optional(),
+          brandHeart: z.any(),
+          offering: z.any(),
+      })
+  },
+  output: { schema: GenerateCreativeOutputSchema.shape.content.unwrap() },
+  prompt: `You are an expert marketing copywriter for conscious creators. Your task is to generate a social media post based on the user's brand identity and a specific offering.
+
+**Brand Heart (Brand Identity):**
+- Brand Name: {{brandHeart.brand_name}}
+- Brand Brief: {{brandHeart.brand_brief.primary}}
+- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+
+**Offering Details:**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+
+**Your Task:**
+1. Write an engaging social media post in the **{{primaryLanguage}}** language that promotes the offering.
+2. {{#if secondaryLanguage}}Translate the post into **{{secondaryLanguage}}**.{{/if}}
+Return the result in the specified JSON format.`,
+});
 
 
 const imagePrompt = ai.definePrompt({
@@ -57,19 +90,13 @@ Generate a stunning, high-quality, and visually appealing advertisement image fo
 
 **Brand Identity:**
 - Brand Name: {{brandHeart.brand_name}}
-- Brand Brief: {{brandHeart.brand_brief.primary}}
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
 
 **Offering:**
 - Title: {{offering.title.primary}}
-- Description: {{offering.description.primary}}
-- Type: {{offering.type}}
-{{#if offering.contextual_notes}}
-- Context: {{offering.contextual_notes}}
-{{/if}}
 
-The image should be magnetic and aligned with a regenerative marketing philosophy. It should attract, not pursue. Evoke a feeling of calm and authenticity. Do not include any text in the image.
+The image should be magnetic and aligned with a regenerative marketing philosophy. Do not include any text in the image.
 {{/if}}`,
 });
 
@@ -122,15 +149,13 @@ Generate a visually stunning, high-quality, 5-second video for the following off
 
 **Brand Identity:**
 - Brand Name: {{brandHeart.brand_name}}
-- Brand Brief: {{brandHeart.brand_brief.primary}}
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
 
 **Offering:**
 - Title: {{offering.title.primary}}
-- Description: {{offering.description.primary}}
 
-The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. It should attract, not pursue. Evoke a feeling of calm and authenticity. There should be no text in the video.
+The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. No text in the video.
 {{/if}}
 `
 });
@@ -144,21 +169,12 @@ export const generateCreativeFlow = ai.defineFlow(
   },
   async ({ offeringId, creativeTypes, aspectRatio, creativePrompt, referenceImageUrl }) => {
     
-    // This function uses server-only dependencies and must be defined inside the flow.
     async function downloadVideo(video: MediaPart): Promise<string> {
         const fetch = (await import('node-fetch')).default;
-        // Add API key before fetching the video.
-        const videoDownloadResponse = await fetch(
-            `${video.media!.url}&key=${process.env.GEMINI_API_KEY}`
-        );
-        if (
-            !videoDownloadResponse ||
-            videoDownloadResponse.status !== 200 ||
-            !videoDownloadResponse.body
-        ) {
+        const videoDownloadResponse = await fetch(`${video.media!.url}&key=${process.env.GEMINI_API_KEY}`);
+        if (!videoDownloadResponse || videoDownloadResponse.status !== 200 || !videoDownloadResponse.body) {
             throw new Error('Failed to fetch video');
         }
-
         const chunks: Buffer[] = [];
         for await (const chunk of videoDownloadResponse.body) {
             chunks.push(chunk as Buffer);
@@ -171,109 +187,109 @@ export const generateCreativeFlow = ai.defineFlow(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    const [{ data: brandHeart, error: brandHeartError }, { data: offering, error: offeringError }] = await Promise.all([
+    const [{ data: brandHeart, error: brandHeartError }, { data: offering, error: offeringError }, { data: profile, error: profileError }] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('offerings').select('*').eq('id', offeringId).single(),
+        supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single()
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
     if (offeringError || !offering) throw new Error('Offering not found.');
+    if (profileError || !profile) throw new Error('User profile not found.');
 
     const promptPayload = { brandHeart, offering, creativePrompt };
     let output: GenerateCreativeOutput = {};
 
+    const languages = await import('@/lib/languages');
+    const languageNames = new Map(languages.map(l => [l.value, l.label]));
+
+    // Generate text content in parallel
+    const contentPromise = creativeTypes.includes('text') 
+        ? contentPrompt({
+            primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,
+            secondaryLanguage: profile.secondary_language ? languageNames.get(profile.secondary_language) : undefined,
+            brandHeart,
+            offering,
+        })
+        : Promise.resolve(null);
+    
+    const visualPromises = [];
+
     if (creativeTypes.includes('landing_page')) {
-        const { htmlContent } = await generateLandingPage({ offeringId, creativePrompt: creativePrompt || 'Generate a beautiful landing page for this offering.' });
-        output.landingPageHtml = htmlContent;
+        visualPromises.push(generateLandingPage({ offeringId, creativePrompt: creativePrompt || 'Generate a beautiful landing page for this offering.' }).then(r => ({ landingPageHtml: r.htmlContent })));
     }
     
     if (creativeTypes.includes('video')) {
-        const { text: videoGenPrompt } = await videoPrompt(promptPayload);
-        let { operation } = await ai.generate({
-            model: googleAI.model('veo-2.0-generate-001'),
-            prompt: videoGenPrompt,
-            config: {
-                durationSeconds: 5,
-                aspectRatio: aspectRatio,
-            },
-        });
-        
-        if (!operation) {
-            throw new Error('Expected the model to return an operation for video generation.');
-        }
-
-        while (!operation.done) {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            operation = await ai.checkOperation(operation);
-        }
-
-        if (operation.error) {
-            throw new Error(`Failed to generate video: ${operation.error.message}`);
-        }
-
-        const video = operation.output?.message?.content.find(p => !!p.media);
-        if (!video || !video.media?.url) {
-            throw new Error('Failed to find the generated video in the operation result.');
-        }
-
-        output.videoUrl = await downloadVideo(video);
+         visualPromises.push(videoPrompt(promptPayload).then(async ({ text: videoGenPrompt }) => {
+            let { operation } = await ai.generate({
+                model: googleAI.model('veo-2.0-generate-001'),
+                prompt: videoGenPrompt,
+                config: { durationSeconds: 5, aspectRatio: aspectRatio },
+            });
+            if (!operation) throw new Error('Expected video operation.');
+            while (!operation.done) {
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                operation = await ai.checkOperation(operation);
+            }
+            if (operation.error) throw new Error(`Video generation failed: ${operation.error.message}`);
+            const video = operation.output?.message?.content.find(p => !!p.media);
+            if (!video || !video.media?.url) throw new Error('Generated video not found.');
+            return { videoUrl: await downloadVideo(video) };
+        }));
     }
 
     if (creativeTypes.includes('image')) {
-        const { text } = await imagePrompt(promptPayload);
-        let generationResult;
-
-        if (referenceImageUrl) {
-            // Image-to-image generation - this model does not support aspectRatio
-            generationResult = await ai.generate({
-                model: 'googleai/gemini-2.5-flash-image-preview',
-                prompt: [
-                    { media: { url: referenceImageUrl } },
-                    { text: text },
-                ],
-                config: {
-                    responseModalities: ['TEXT', 'IMAGE'],
-                },
-            });
-        } else {
-            // Text-to-image generation
-            const imageConfig: any = {};
-            if (aspectRatio) {
-                imageConfig.aspectRatio = aspectRatio;
+        visualPromises.push(imagePrompt(promptPayload).then(async ({ text }) => {
+            let generationResult;
+            if (referenceImageUrl) {
+                generationResult = await ai.generate({
+                    model: 'googleai/gemini-2.5-flash-image-preview',
+                    prompt: [{ media: { url: referenceImageUrl } }, { text: text }],
+                    config: { responseModalities: ['TEXT', 'IMAGE'] },
+                });
+            } else {
+                const imageConfig: any = {};
+                if (aspectRatio) imageConfig.aspectRatio = aspectRatio;
+                generationResult = await ai.generate({
+                    model: googleAI.model('imagen-4.0-fast-generate-001'),
+                    prompt: text,
+                    config: imageConfig,
+                });
             }
-            generationResult = await ai.generate({
-                model: googleAI.model('imagen-4.0-fast-generate-001'),
-                prompt: text,
-                config: imageConfig,
-            });
-        }
-
-        if (generationResult.media?.url) {
-            output.imageUrl = generationResult.media.url;
-        }
+            return { imageUrl: generationResult.media?.url };
+        }));
     }
     
     if (creativeTypes.includes('carousel')) {
-        const { output: carouselOutput } = await carouselPrompt(promptPayload);
-        if (carouselOutput?.slides) {
-            const imageConfig: any = {};
-            if (aspectRatio) {
-                imageConfig.aspectRatio = aspectRatio;
-            }
-            const slidePromises = carouselOutput.slides.map(async (slide) => {
-                const { media } = await ai.generate({
-                    model: googleAI.model('imagen-4.0-fast-generate-001'),
-                    prompt: slide.creativePrompt,
-                    config: imageConfig,
+        visualPromises.push(carouselPrompt(promptPayload).then(async ({ output: carouselOutput }) => {
+            if (carouselOutput?.slides) {
+                const imageConfig: any = {};
+                if (aspectRatio) imageConfig.aspectRatio = aspectRatio;
+                const slidePromises = carouselOutput.slides.map(async (slide) => {
+                    const { media } = await ai.generate({
+                        model: googleAI.model('imagen-4.0-fast-generate-001'),
+                        prompt: slide.creativePrompt,
+                        config: imageConfig,
+                    });
+                    return { ...slide, imageUrl: media?.url };
                 });
-                return {
-                    ...slide,
-                    imageUrl: media?.url,
-                };
-            });
-            output.carouselSlides = await Promise.all(slidePromises);
-        }
+                return { carouselSlides: await Promise.all(slidePromises) };
+            }
+            return { carouselSlides: [] };
+        }));
     }
+
+    const [contentResult, ...visualResults] = await Promise.all([contentPromise, ...visualPromises]);
+    
+    if (contentResult?.output) {
+        output.content = contentResult.output;
+    }
+
+    visualResults.forEach(result => {
+        if (result) {
+            output = { ...output, ...result };
+        }
+    });
     
     return output;
   }

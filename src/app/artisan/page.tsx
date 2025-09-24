@@ -8,12 +8,11 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
+import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import { getArtStyles, ArtStyle } from '../art-styles/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
-import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette } from 'lucide-react';
@@ -55,9 +54,10 @@ type MediaPlanSelectItem = {
     offering_title: string | null;
 }
 
-type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page';
+type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page' | 'text';
 
 const creativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[] = [
+    { id: 'text', label: 'Text Only', icon: Type },
     { id: 'image', label: 'Single Image', icon: ImageIcon },
     { id: 'carousel', label: 'Carousel', icon: Layers },
     { id: 'video', label: 'Video', icon: Video },
@@ -198,7 +198,7 @@ const PostPreview = ({
     isLoading: boolean,
     selectedCreativeType: CreativeType,
     creative: GenerateCreativeOutput | null,
-    editableContent: GenerateContentOutput['content'] | null,
+    editableContent: GenerateCreativeOutput['content'] | null,
     secondaryLangName: string | null,
     isCodeEditorOpen: boolean,
     onCodeEditorToggle: () => void,
@@ -420,16 +420,10 @@ const PostPreview = ({
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className={cn("relative w-full overflow-hidden", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
-                    {dimension === '9:16' ? (
-                        <div className="h-full w-full flex items-center justify-center bg-black">
-                             <div className={cn("relative h-full w-auto", aspectRatioClass)}>
-                                {renderVisualContent()}
-                            </div>
-                        </div>
-                    ) : (
-                        renderVisualContent()
-                    )}
+                <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
+                    <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
+                        {renderVisualContent()}
+                    </div>
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col items-start gap-2 pt-2">
@@ -699,10 +693,10 @@ export default function ArtisanPage() {
 
 
     // UI & Generation State
-    const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
+    const [editableContent, setEditableContent] = useState<GenerateCreativeOutput['content'] | null>(null);
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
-    const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('image');
+    const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('text');
     const [dimension, setDimension] = useState<keyof typeof dimensionMap>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -911,10 +905,14 @@ export default function ArtisanPage() {
         setIsLoading(true);
         setCreative(null);
         setEditableHtml(null);
+        setEditableContent(null);
 
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            const visualBasedSelected = creativeTypes.some(t => ['image', 'video', 'carousel', 'landing_page'].includes(t));
+            // Always generate text unless the type is ONLY video or landing page
+            if (!['video', 'landing_page'].includes(selectedCreativeType)) {
+                creativeTypes.push('text');
+            }
 
             let finalCreativePrompt = creativePrompt;
             if (selectedArtStyleId !== 'none') {
@@ -924,18 +922,20 @@ export default function ArtisanPage() {
                 }
             }
             
-            if (visualBasedSelected) {
-                const creativeResult = await generateCreativeForOffering({
-                    offeringId: selectedOfferingId,
-                    creativeTypes: creativeTypes.filter(t => t !== 'text') as any,
-                    aspectRatio: dimension,
-                    creativePrompt: finalCreativePrompt,
-                    referenceImageUrl: referenceImageUrl || undefined,
-                });
-                setCreative(creativeResult);
-                 if (creativeResult.landingPageHtml) {
-                    setEditableHtml(creativeResult.landingPageHtml);
-                }
+            const result = await generateCreativeForOffering({
+                offeringId: selectedOfferingId,
+                creativeTypes: creativeTypes,
+                aspectRatio: dimension,
+                creativePrompt: finalCreativePrompt,
+                referenceImageUrl: referenceImageUrl || undefined,
+            });
+
+            setCreative(result);
+            if (result.content) {
+                setEditableContent(result.content);
+            }
+             if (result.landingPageHtml) {
+                setEditableHtml(result.landingPageHtml);
             }
 
             toast({
