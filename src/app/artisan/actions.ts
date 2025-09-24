@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
+import { editImageWithInstruction as editImageFlow, EditImageInput, EditImageOutput } from '@/ai/flows/edit-image-flow';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 
 export type QueueItem = {
@@ -159,4 +160,12 @@ export async function updateQueueItemStatus(queueItemId: string, newStatus: 'com
     return { message: `Queue item marked as ${newStatus}.` };
 }
 
+/**
+ * Invokes the Genkit flow to edit an image based on a text instruction.
+ * @param {EditImageInput} input The image data URI and the instruction.
+ * @returns {Promise<EditImageOutput>} The edited image data URI.
+ */
+export async function editImageWithInstruction(input: EditImageInput): Promise<EditImageOutput> {
+    return editImageFlow(input);
+}
     

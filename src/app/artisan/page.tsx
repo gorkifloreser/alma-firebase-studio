@@ -8,7 +8,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
+import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import { getArtStyles, ArtStyle } from '../art-styles/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
@@ -121,57 +121,119 @@ const RemixPromptDialog = ({
   );
 };
 
-
-
-const EditPromptDialog = ({
+type ChatMessage = { role: 'user', content: string } | { role: 'bot', content: string };
+const ImageChatDialog = ({
   isOpen,
   onOpenChange,
-  prompt,
-  onSave,
-  isRegenerating,
+  initialImageUrl,
+  onImageUpdate,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  prompt: string;
-  onSave: (newPrompt: string) => void;
-  isRegenerating: boolean
+  initialImageUrl: string;
+  onImageUpdate: (newImageUrl: string) => void;
 }) => {
-  const [editedPrompt, setEditedPrompt] = useState(prompt);
+  const [currentImage, setCurrentImage] = useState(initialImageUrl);
+  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [message, setMessage] = useState('');
+  const [isEditing, startEditing] = useTransition();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
-      setEditedPrompt(prompt);
+      setCurrentImage(initialImageUrl);
+      setHistory([]);
     }
-  }, [isOpen, prompt]);
+  }, [isOpen, initialImageUrl]);
 
-  const handleSave = () => {
-    onSave(editedPrompt);
+  const handleSend = async () => {
+    if (!message.trim()) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: message };
+    setHistory(prev => [...prev, userMessage]);
+    setMessage('');
+
+    startEditing(async () => {
+      try {
+        const result = await editImageWithInstruction({
+          imageUrl: currentImage,
+          instruction: message,
+        });
+
+        if (!result.editedImageUrl) throw new Error("AI did not return an edited image.");
+        
+        setCurrentImage(result.editedImageUrl);
+        setHistory(prev => [...prev, { role: 'bot', content: result.editedImageUrl }]);
+
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Image Edit Failed', description: error.message });
+        setHistory(prev => prev.slice(0, -1)); // Remove the user's message on failure
+      }
+    });
   };
+  
+  const handleApplyChanges = () => {
+    onImageUpdate(currentImage);
+    onOpenChange(false);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Edit Creative Prompt</DialogTitle>
-          <DialogDescription>
-            Modify the prompt and regenerate the image.
-          </DialogDescription>
+          <DialogTitle>Chat with Your Image</DialogTitle>
+          <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <Textarea
-            value={editedPrompt}
-            onChange={(e) => setEditedPrompt(e.target.value)}
-            className="h-48 font-mono text-sm"
-            placeholder="Enter the new creative prompt..."
-          />
+        <div className="grid grid-cols-2 gap-6 py-4 max-h-[70vh]">
+            <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+                <Image src={currentImage} alt="Image being edited" fill className="object-contain" />
+                 {isEditing && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    </div>
+                )}
+            </div>
+            <div className="flex flex-col">
+                <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                     {history.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <Bot className="w-12 h-12 text-muted-foreground" />
+                            <p className="mt-4 text-muted-foreground">e.g., "make it black and white" or "add a lens flare"</p>
+                        </div>
+                    )}
+                    {history.map((msg, index) => (
+                        <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                            {msg.role === 'bot' && <Avatar className="w-8 h-8 flex-shrink-0"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
+                            <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                            {msg.role === 'user' && <Avatar className="w-8 h-8 flex-shrink-0"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-4 flex gap-2">
+                    <Textarea 
+                        value={message} 
+                        onChange={e => setMessage(e.target.value)} 
+                        placeholder="Type your instruction..." 
+                        className="flex-1"
+                        disabled={isEditing}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
+                    />
+                    <Button onClick={handleSend} disabled={isEditing || !message.trim()}>
+                        {isEditing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                </div>
+            </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isRegenerating}>
-            {isRegenerating ? 'Regenerating...' : 'Save & Regenerate Image'}
-          </Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleApplyChanges}>Apply Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -192,9 +254,7 @@ const PostPreview = ({
     onCodeEditorToggle,
     handleContentChange,
     handleCarouselSlideChange,
-    onRegenerateSlide,
-    onRegenerateSingleImage,
-    mainCreativePrompt,
+    onImageEdit,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -207,9 +267,7 @@ const PostPreview = ({
     onCodeEditorToggle: () => void,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
-    onRegenerateSlide: (slideIndex: number, newPrompt: string) => void;
-    onRegenerateSingleImage: (newPrompt: string) => void;
-    mainCreativePrompt: string;
+    onImageEdit: (imageUrl: string, slideIndex?: number) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -220,8 +278,6 @@ const PostPreview = ({
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     
-    const [isPromptEditorOpen, setIsPromptEditorOpen] = useState(false);
-    const [isRegeneratingSlide, startRegeneratingSlide] = useTransition();
 
     const togglePlay = () => {
         const video = videoRef.current;
@@ -247,25 +303,9 @@ const PostPreview = ({
     
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
-
-    const handlePromptSave = (newPrompt: string) => {
-        startRegeneratingSlide(async () => {
-            if (currentSlideData) {
-                await onRegenerateSlide(current, newPrompt);
-            } else {
-                await onRegenerateSingleImage(newPrompt);
-            }
-            setIsPromptEditorOpen(false);
-        });
-    };
     
-    const getPromptForEditor = () => {
-        if (currentSlideData) return currentSlideData.creativePrompt;
-        if (selectedCreativeType === 'image') return mainCreativePrompt;
-        return '';
-    };
-
-    const canEditPrompt = selectedCreativeType === 'image' || selectedCreativeType === 'carousel';
+    const canEditImage = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl);
+    const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.imageUrl : creative?.imageUrl;
 
 
     const renderVisualContent = () => {
@@ -287,14 +327,6 @@ const PostPreview = ({
                                         </div>
                                     )}
                                 </div>
-                                <Button
-                                    variant="secondary"
-                                    size="icon"
-                                    className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100 z-10"
-                                    onClick={() => setIsPromptEditorOpen(true)}
-                                >
-                                    <Edit className="h-4 w-4" />
-                                </Button>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
@@ -311,16 +343,6 @@ const PostPreview = ({
             return (
                  <div className="relative w-full h-full group">
                     <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
-                     {canEditPrompt && (
-                        <Button
-                            variant="secondary"
-                            size="icon"
-                            className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100 z-10"
-                            onClick={() => setIsPromptEditorOpen(true)}
-                        >
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                    )}
                 </div>
             );
         }
@@ -424,15 +446,16 @@ const PostPreview = ({
                     </div>
                 </div>
             </div>
-            {canEditPrompt && (
-                <EditPromptDialog
-                    isOpen={isPromptEditorOpen}
-                    onOpenChange={setIsPromptEditorOpen}
-                    prompt={getPromptForEditor()}
-                    onSave={handlePromptSave}
-                    isRegenerating={isRegeneratingSlide}
-                />
-             )}
+             {canEditImage && imageUrlToEdit && (
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute -right-12 top-10 h-8 w-8 rounded-full shadow-lg z-10"
+                    onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                >
+                    <Edit className="h-4 w-4" />
+                </Button>
+            )}
             </>
         );
     }
@@ -492,26 +515,17 @@ const PostPreview = ({
                     )}
                 </CardFooter>
             </Card>
-             {canEditPrompt && (
+             {canEditImage && imageUrlToEdit && (
                 <Button
                     variant="secondary"
                     size="icon"
                     className="absolute -right-12 top-10 h-8 w-8 rounded-full shadow-lg z-10"
-                    onClick={() => setIsPromptEditorOpen(true)}
+                    onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
                 >
                     <Edit className="h-4 w-4" />
                 </Button>
             )}
         </div>
-        {canEditPrompt && (
-          <EditPromptDialog
-            isOpen={isPromptEditorOpen}
-            onOpenChange={setIsPromptEditorOpen}
-            prompt={getPromptForEditor()}
-            onSave={handlePromptSave}
-            isRegenerating={isRegeneratingSlide}
-          />
-        )}
         </>
     );
 }
@@ -755,6 +769,9 @@ export default function ArtisanPage() {
     const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
     const [isRemixDialogOpen, setIsRemixDialogOpen] = useState(false);
     const [isRemixing, startRemixing] = useTransition();
+
+    const [isImageChatOpen, setIsImageChatOpen] = useState(false);
+    const [imageToChat, setImageToChat] = useState<{url: string, slideIndex?: number} | null>(null);
 
 
 
@@ -1030,60 +1047,27 @@ export default function ArtisanPage() {
             return { ...prev, carouselSlides: newSlides };
         });
     };
-    
-    const regenerateImage = async (newPrompt: string) => {
-         if (!selectedOfferingId) return;
-        try {
-            const result = await generateCreativeForOffering({
-                offeringId: selectedOfferingId,
-                creativeTypes: ['image'],
-                aspectRatio: dimension,
-                creativePrompt: newPrompt,
-            });
-            if (!result.imageUrl) throw new Error("AI did not return an image.");
-            return result.imageUrl;
-        } catch (error: any) {
-             toast({ variant: 'destructive', title: 'Image Regeneration Failed', description: error.message });
-             return null;
-        }
-    }
-    
-    const handleRegenerateSlide = async (slideIndex: number, newPrompt: string) => {
-        if (!creative || !creative.carouselSlides) return;
 
-        // Optimistically update the prompt in the slide data
-        setCreative(prev => {
-            if (!prev || !prev.carouselSlides) return prev;
-            const newSlides = [...prev.carouselSlides];
-            newSlides[slideIndex] = { ...newSlides[slideIndex], creativePrompt: newPrompt, imageUrl: undefined }; // Show loading
-            return { ...prev, carouselSlides: newSlides };
-        });
+    const handleOpenImageChat = (imageUrl: string, slideIndex?: number) => {
+        setImageToChat({ url: imageUrl, slideIndex });
+        setIsImageChatOpen(true);
+    };
 
-        const newImageUrl = await regenerateImage(newPrompt);
-
-        if (newImageUrl) {
-            setCreative(prev => {
+    const handleImageUpdate = (newImageUrl: string) => {
+        if (imageToChat?.slideIndex !== undefined) {
+            // It's a carousel slide
+            const slideIndex = imageToChat.slideIndex;
+             setCreative(prev => {
                 if (!prev || !prev.carouselSlides) return prev;
                 const newSlides = [...prev.carouselSlides];
                 newSlides[slideIndex] = { ...newSlides[slideIndex], imageUrl: newImageUrl };
                 return { ...prev, carouselSlides: newSlides };
             });
-            toast({ title: 'Slide Image Regenerated!' });
         } else {
-             // Revert optimistic update on failure - tricky without storing old state, for now just log
-            console.error("Failed to get new image URL, UI might be in inconsistent state");
+            // It's a single image
+            setCreative(prev => ({...prev, imageUrl: newImageUrl}));
         }
     };
-    
-    const handleRegenerateSingleImage = async (newPrompt: string) => {
-        setCreative(prev => prev ? { ...prev, imageUrl: undefined } : null); // Show loading
-        const newImageUrl = await regenerateImage(newPrompt);
-        if (newImageUrl) {
-            setCreative(prev => prev ? { ...prev, imageUrl: newImageUrl } : { imageUrl: newImageUrl });
-            toast({ title: 'Image Regenerated!' });
-        }
-    }
-
 
     const handleSave = (status: 'approved' | 'scheduled', scheduleDate?: Date | null) => {
         if (!selectedOfferingId) {
@@ -1263,6 +1247,15 @@ export default function ArtisanPage() {
                     onSelect={setReferenceImageUrl}
                     offeringId={selectedOfferingId}
                     onUploadComplete={handleNewUpload}
+                />
+            )}
+
+            {isImageChatOpen && imageToChat && (
+                <ImageChatDialog
+                    isOpen={isImageChatOpen}
+                    onOpenChange={setIsImageChatOpen}
+                    initialImageUrl={imageToChat.url}
+                    onImageUpdate={handleImageUpdate}
                 />
             )}
 
@@ -1524,9 +1517,7 @@ export default function ArtisanPage() {
                             onCodeEditorToggle={() => handleCodeEditorToggle()}
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
-                            onRegenerateSlide={handleRegenerateSlide}
-                            onRegenerateSingleImage={handleRegenerateSingleImage}
-                            mainCreativePrompt={creativePrompt}
+                            onImageEdit={handleOpenImageChat}
                         />
                     </main>
                 </div>
@@ -1534,5 +1525,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
 

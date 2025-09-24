@@ -9,3 +9,4 @@ import './flows/generate-landing-page-flow';
 import './flows/generate-offering-draft-flow';
 import './flows/generate-image-description-flow';
 import './flows/generate-creative-prompt-flow';
+import './flows/edit-image-flow';
