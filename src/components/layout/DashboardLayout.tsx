@@ -26,6 +26,7 @@ import {
   Calendar,
   GitBranch,
   Wand2,
+  Palette,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -38,6 +39,7 @@ const menuItems = [
   { href: '/brand-heart', label: 'Brand Heart', icon: Heart },
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
   { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
+  { href: '/art-styles', label: 'Art Styles', icon: Palette },
   { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
   { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },

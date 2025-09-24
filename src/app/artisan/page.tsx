@@ -10,12 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
+import { getArtStyles, ArtStyle } from '../art-styles/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2 } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -681,6 +682,7 @@ export default function ArtisanPage() {
     const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
     const [totalCampaignItems, setTotalCampaignItems] = useState(0);
+    const [artStyles, setArtStyles] = useState<ArtStyle[]>([]);
 
     // Workflow State
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -693,6 +695,7 @@ export default function ArtisanPage() {
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
     const [channelFilter, setChannelFilter] = useState<string>('all');
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+    const [selectedArtStyleId, setSelectedArtStyleId] = useState<string>('none');
 
 
     // UI & Generation State
@@ -803,17 +806,19 @@ export default function ArtisanPage() {
         async function fetchData() {
             try {
                 setIsLoading(true);
-                const [profileData, queueData, offeringsData, mediaPlansData] = await Promise.all([
+                const [profileData, queueData, offeringsData, mediaPlansData, stylesData] = await Promise.all([
                     getProfile(),
                     getQueueItems(),
                     getOfferings(),
                     getMediaPlans(),
+                    getArtStyles(),
                 ]);
 
                 setProfile(profileData);
                 setAllQueueItems(queueData);
                 setOfferings(offeringsData);
                 setMediaPlans(mediaPlansData);
+                setArtStyles(stylesData);
                 
                 // Don't auto-select here, wait for user action in dialog
             } catch (error: any) {
@@ -911,12 +916,20 @@ export default function ArtisanPage() {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
             const visualBasedSelected = creativeTypes.some(t => ['image', 'video', 'carousel', 'landing_page'].includes(t));
 
+            let finalCreativePrompt = creativePrompt;
+            if (selectedArtStyleId !== 'none') {
+                const style = artStyles.find(s => s.id === selectedArtStyleId);
+                if (style) {
+                    finalCreativePrompt += style.prompt_suffix;
+                }
+            }
+            
             if (visualBasedSelected) {
                 const creativeResult = await generateCreativeForOffering({
                     offeringId: selectedOfferingId,
                     creativeTypes: creativeTypes.filter(t => t !== 'text') as any,
                     aspectRatio: dimension,
-                    creativePrompt: creativePrompt,
+                    creativePrompt: finalCreativePrompt,
                     referenceImageUrl: referenceImageUrl || undefined,
                 });
                 setCreative(creativeResult);
@@ -1228,6 +1241,38 @@ export default function ArtisanPage() {
                                                 </div>
                                             )}
                                             
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
+                                                    <Button variant="ghost" size="sm" onClick={() => setIsRemixDialogOpen(true)} disabled={!selectedOfferingId}>
+                                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                                        Remix
+                                                    </Button>
+                                                </div>
+                                                <Textarea
+                                                    id="creative-prompt"
+                                                    value={creativePrompt}
+                                                    onChange={(e) => setCreativePrompt(e.target.value)}
+                                                    placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
+                                                    className="h-24 resize-none"
+                                                />
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="art-style-select">4. Art Style</Label>
+                                                <Select value={selectedArtStyleId} onValueChange={setSelectedArtStyleId}>
+                                                    <SelectTrigger id="art-style-select">
+                                                        <SelectValue placeholder="Select an art style..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None (Default)</SelectItem>
+                                                        {artStyles.map(style => (
+                                                            <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
                                             {selectedCreativeType === 'image' && (
                                                 <div className="space-y-2">
                                                     <Button variant="outline" className="w-full" onClick={() => setIsMediaSelectorOpen(true)} disabled={!selectedOfferingId}>
@@ -1244,24 +1289,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
-                                                    <Button variant="ghost" size="sm" onClick={() => setIsRemixDialogOpen(true)} disabled={!selectedOfferingId}>
-                                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                                        Remix
-                                                    </Button>
-                                                </div>
-                                                <Textarea
-                                                    id="creative-prompt"
-                                                    value={creativePrompt}
-                                                    onChange={(e) => setCreativePrompt(e.target.value)}
-                                                    placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
-                                                    className="h-24 resize-none"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <h3 className="font-medium mb-4">4. Choose Creative Type</h3>
+                                                <h3 className="font-medium mb-4">5. Choose Creative Type</h3>
                                                 <RadioGroup
                                                     value={selectedCreativeType}
                                                     onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -1282,7 +1310,7 @@ export default function ArtisanPage() {
                                             <div className="grid grid-cols-2 gap-6">
                                                 {selectedCreativeType !== 'landing_page' && (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
+                                                        <Label htmlFor="dimension-select">6. Set Aspect Ratio</Label>
                                                         <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading || selectedCreativeType === 'video'} value={dimension}>
                                                             <SelectTrigger id="dimension-select">
                                                                 <SelectValue placeholder="Select aspect ratio..." />
