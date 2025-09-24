@@ -15,11 +15,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type ContentItem } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Separator } from '@/components/ui/separator';
 
 interface EditContentDialogProps {
   isOpen: boolean;
@@ -29,6 +33,8 @@ interface EditContentDialogProps {
 }
 
 type Profile = {
+    full_name: string | null;
+    avatar_url: string | null;
     primary_language: string;
     secondary_language: string | null;
 } | null;
@@ -82,6 +88,7 @@ export function EditContentDialog({
       try {
         const updatedContent = await updateContent(contentItem.id, editableContent);
         onContentUpdated(updatedContent);
+        onOpenChange(false);
       } catch (error: any) {
         toast({
           variant: 'destructive',
@@ -91,50 +98,68 @@ export function EditContentDialog({
       }
     });
   };
+  
+    const renderVisualContent = () => {
+        if (contentItem.carousel_slides && Array.isArray(contentItem.carousel_slides) && contentItem.carousel_slides.length > 0) {
+            return (
+                <Carousel className="w-full h-full">
+                    <CarouselContent>
+                        {contentItem.carousel_slides.map((slide: any, index: number) => (
+                            <CarouselItem key={index} className="relative w-full h-full">
+                                {slide.imageUrl ? (
+                                    <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                        <p className="text-muted-foreground text-center p-4">Slide {index + 1}:<br/>{slide.title}</p>
+                                    </div>
+                                )}
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    {contentItem.carousel_slides.length > 1 && (
+                        <>
+                           <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
+                            <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
+                        </>
+                    )}
+                </Carousel>
+            );
+        }
+        if (contentItem.image_url) {
+            return <Image src={contentItem.image_url} alt="Generated creative" fill className="object-cover" />;
+        }
+        if (contentItem.video_url) {
+            return (
+                <video
+                    src={contentItem.video_url}
+                    className="w-full h-full object-cover"
+                    controls
+                    autoPlay
+                    loop
+                />
+            );
+        }
+        return null; // No visual content
+    };
 
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
+  const postUser = profile?.full_name || 'Your Brand';
+  const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Edit Content</DialogTitle>
+          <DialogTitle>Edit Scheduled Post</DialogTitle>
           <DialogDescription>
             For offering: <span className="font-semibold">{contentItem.offerings?.title?.primary || '...'}</span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[70vh] overflow-y-auto pr-6 py-4 space-y-6">
-            {contentItem.image_url && (
-                <div className="relative aspect-square w-full">
-                    <Image src={contentItem.image_url} alt="Content image" fill className="rounded-lg object-contain mx-auto" />
-                </div>
-            )}
-             {contentItem.carousel_slides && (
-                <Card>
-                    <CardHeader><CardTitle className="text-base">Carousel Slides</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{JSON.stringify(contentItem.carousel_slides, null, 2)}</CardContent>
-                </Card>
-            )}
-            {contentItem.video_url && (
-                <div className="relative aspect-video w-full rounded-lg overflow-hidden">
-                    <video src={contentItem.video_url} controls className="w-full h-full" />
-                </div>
-            )}
-            {contentItem.landing_page_html && (
-                 <Card>
-                    <CardHeader><CardTitle className="text-base">Landing Page HTML</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{contentItem.landing_page_html}</CardContent>
-                </Card>
-            )}
-            {isLoadingProfile ? (
-                <div className="space-y-6">
-                    <Skeleton className="h-48 w-full" />
-                    {profile?.secondary_language && <Skeleton className="h-48 w-full" />}
-                </div>
-            ) : (
-                <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4 pr-6">
+            <div className="space-y-6">
                 <Card>
                     <CardHeader>
                     <CardTitle className="text-lg">{primaryLangName} Post</CardTitle>
@@ -163,8 +188,64 @@ export function EditContentDialog({
                     </CardContent>
                     </Card>
                 )}
-                </div>
-            )}
+                 {contentItem.landing_page_html && (
+                     <Card>
+                        <CardHeader><CardTitle className="text-lg">Landing Page HTML</CardTitle></CardHeader>
+                        <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-md">
+                            <code className="h-48 overflow-y-auto block">{contentItem.landing_page_html}</code>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            <div className="flex items-center justify-center">
+                 <Card className="w-full max-w-md mx-auto">
+                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
+                            <Avatar>
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        )}
+                        <div className="grid gap-0.5">
+                            {isLoadingProfile ? (
+                                <>
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-16 mt-1" />
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-semibold">{postUser}</span>
+                                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                                </>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="relative aspect-square w-full overflow-hidden bg-secondary">
+                           {renderVisualContent()}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                        <div className="flex justify-between w-full">
+                            <div className="flex gap-4">
+                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            </div>
+                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                         <p className="text-sm pt-2 w-full">{editableContent?.primary}</p>
+                         {secondaryLangName && editableContent?.secondary && (
+                            <>
+                                <Separator className="my-2"/>
+                                 <p className="text-sm w-full text-muted-foreground">{editableContent?.secondary}</p>
+                            </>
+                         )}
+                    </CardFooter>
+                </Card>
+            </div>
+
         </div>
 
         <DialogFooter>
@@ -179,3 +260,4 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+
