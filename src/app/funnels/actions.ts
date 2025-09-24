@@ -433,7 +433,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             id: item.id?.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
             media_plan_id: mediaPlanId,
             user_id: user.id,
-            offering_id: item.offering_id,
+            offering_id: item.offering_id, // Make sure offering_id is included
             channel: item.channel,
             format: item.format,
             copy: item.copy,
@@ -605,10 +605,13 @@ export async function getUserChannels(): Promise<Account[]> {
  * Fetches a list of all media plans for the current user, intended for a selection dialog.
  */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
-    console.log("getMediaPlans action started.");
+    console.log('getMediaPlans action started.');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+        console.log('getMediaPlans: User not authenticated.');
+        throw new Error('User not authenticated');
+    }
 
     const { data, error } = await supabase
         .from('content_generation_queue')
@@ -661,4 +664,5 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     
 
     
+
 

@@ -610,11 +610,19 @@ export default function ArtisanPage() {
                 setCreativePrompt(promptFromDb);
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
                 
-                const format = planItem.format.toLowerCase();
+                const format = (planItem.format || '').toLowerCase();
+                
+                // Auto-update dimension based on format
                 if (format.includes('video')) setSelectedCreativeType('video');
                 else if (format.includes('carousel')) setSelectedCreativeType('carousel');
                 else if (format.includes('landing')) setSelectedCreativeType('landing_page');
-                else setSelectedCreativeType('image'); // Default to image
+                else setSelectedCreativeType('image');
+
+                if (format.includes('1:1') || format.includes('square')) setDimension('1:1');
+                else if (format.includes('4:5') || format.includes('portrait')) setDimension('4:5');
+                else if (format.includes('9:16') || format.includes('story') || format.includes('reel')) setDimension('9:16');
+                else if (format.includes('16:9') || format.includes('landscape')) setDimension('16:9');
+                else setDimension('1:1'); // Default
             }
         } else {
             setCreativePrompt('');
