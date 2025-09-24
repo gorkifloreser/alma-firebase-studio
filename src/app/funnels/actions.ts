@@ -628,35 +628,54 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    
-    const { data, error } = await supabase
+
+    // Step 1: Fetch media plans and their associated funnel IDs
+    const { data: mediaPlans, error: mediaPlansError } = await supabase
         .from('media_plans')
-        .select(`
-            id,
-            title,
-            funnels (
-                offering_id,
-                offerings (title)
-            )
-        `)
+        .select('id, title, funnel_id')
         .eq('user_id', user.id)
         .not('funnel_id', 'is', null);
 
-    if (error) {
-        console.error('Error fetching media plans for select:', error);
-        throw new Error(`Could not fetch media plans. DB Error: ${error.message}`);
+    if (mediaPlansError) {
+        console.error('Error fetching media plans:', mediaPlansError);
+        throw new Error(`Could not fetch media plans. DB Error: ${mediaPlansError.message}`);
     }
-    
-    if (!data) return [];
+    if (!mediaPlans || mediaPlans.length === 0) {
+        return [];
+    }
 
-    const result = data
-        .filter((plan: any) => plan.funnels) // Ensure funnels is not null
-        .map((plan: any) => ({
+    // Step 2: Extract unique funnel IDs
+    const funnelIds = [...new Set(mediaPlans.map(plan => plan.funnel_id))];
+
+    // Step 3: Fetch the related funnels and their offerings
+    const { data: funnels, error: funnelsError } = await supabase
+        .from('funnels')
+        .select('id, offering_id, offerings(title)')
+        .in('id', funnelIds);
+
+    if (funnelsError) {
+        console.error('Error fetching related funnels:', funnelsError);
+        throw new Error(`Could not fetch funnel details. DB Error: ${funnelsError.message}`);
+    }
+
+    // Step 4: Create a map for easy lookup
+    const funnelDetailsMap = new Map(
+        funnels.map(f => [f.id, {
+            offering_id: f.offering_id,
+            offering_title: (f.offerings as any)?.title?.primary || 'Untitled Offering'
+        }])
+    );
+
+    // Step 5: Combine the data
+    const result = mediaPlans.map(plan => {
+        const funnelDetails = funnelDetailsMap.get(plan.funnel_id);
+        return {
             id: plan.id,
             title: plan.title,
-            offering_id: plan.funnels.offering_id,
-            offering_title: plan.funnels.offerings?.title?.primary || 'Untitled Offering',
-        }));
+            offering_id: funnelDetails?.offering_id || '',
+            offering_title: funnelDetails?.offering_title || 'Untitled Offering',
+        };
+    });
 
     return result;
 }
@@ -691,6 +710,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
