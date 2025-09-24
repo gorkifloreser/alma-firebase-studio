@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -661,17 +662,21 @@ export default function ArtisanPage() {
             setSelectedOfferingId(item.offering_id);
             if (item.media_plan_items) {
                 const planItem = item.media_plan_items as any;
-                const promptFromDb = planItem.creative_prompt || '';
-                setCreativePrompt(promptFromDb);
+                setCreativePrompt(planItem.creative_prompt || '');
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
                 
                 const formatValue = (planItem.format || '').toLowerCase();
                 
                 // Auto-update creative type
-                if (formatValue.includes('video')) setSelectedCreativeType('video');
-                else if (formatValue.includes('carousel')) setSelectedCreativeType('carousel');
-                else if (formatValue.includes('landing')) setSelectedCreativeType('landing_page');
-                else setSelectedCreativeType('image');
+                if (formatValue.includes('video') || formatValue.includes('reel')) {
+                    setSelectedCreativeType('video');
+                } else if (formatValue.includes('carousel')) {
+                    setSelectedCreativeType('carousel');
+                } else if (formatValue.includes('landing')) {
+                    setSelectedCreativeType('landing_page');
+                } else {
+                    setSelectedCreativeType('image');
+                }
 
                 // Auto-update dimension based on format
                 if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
