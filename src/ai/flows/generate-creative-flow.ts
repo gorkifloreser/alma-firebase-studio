@@ -182,11 +182,6 @@ export const generateCreativeFlow = ai.defineFlow(
     const promptPayload = { brandHeart, offering, creativePrompt };
     let output: GenerateCreativeOutput = {};
 
-    const imageConfig: any = {};
-    if (aspectRatio) {
-        imageConfig.aspectRatio = aspectRatio;
-    }
-
     if (creativeTypes.includes('landing_page')) {
         const { htmlContent } = await generateLandingPage({ offeringId, creativePrompt: creativePrompt || 'Generate a beautiful landing page for this offering.' });
         output.landingPageHtml = htmlContent;
@@ -229,7 +224,7 @@ export const generateCreativeFlow = ai.defineFlow(
         let generationResult;
 
         if (referenceImageUrl) {
-            // Image-to-image generation
+            // Image-to-image generation - this model does not support aspectRatio
             generationResult = await ai.generate({
                 model: 'googleai/gemini-2.5-flash-image-preview',
                 prompt: [
@@ -237,12 +232,15 @@ export const generateCreativeFlow = ai.defineFlow(
                     { text: text },
                 ],
                 config: {
-                    ...imageConfig,
                     responseModalities: ['TEXT', 'IMAGE'],
                 },
             });
         } else {
             // Text-to-image generation
+            const imageConfig: any = {};
+            if (aspectRatio) {
+                imageConfig.aspectRatio = aspectRatio;
+            }
             generationResult = await ai.generate({
                 model: googleAI.model('imagen-4.0-fast-generate-001'),
                 prompt: text,
@@ -258,6 +256,10 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('carousel')) {
         const { output: carouselOutput } = await carouselPrompt(promptPayload);
         if (carouselOutput?.slides) {
+            const imageConfig: any = {};
+            if (aspectRatio) {
+                imageConfig.aspectRatio = aspectRatio;
+            }
             const slidePromises = carouselOutput.slides.map(async (slide) => {
                 const { media } = await ai.generate({
                     model: googleAI.model('imagen-4.0-fast-generate-001'),
