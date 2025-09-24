@@ -14,7 +14,7 @@ export type QueueItem = {
     status: 'pending' | 'completed' | 'failed';
     offering_id: string;
     media_plan_item_id: string;
-    media_plan_items: (PlanItem & { id: string, media_plan_id: string }) | null;
+    media_plan_items: (PlanItem & { id: string, media_plan_id: string, user_channel_settings: { channel_name: string } | null }) | null;
 }
 
 /**
@@ -36,7 +36,8 @@ export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> 
             media_plan_item_id,
             media_plan_items!inner (
                 *,
-                media_plan_id
+                media_plan_id,
+                user_channel_settings (channel_name)
             )
         `)
         .eq('user_id', user.id)

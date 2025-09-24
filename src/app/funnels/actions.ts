@@ -13,7 +13,16 @@ import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
 export type { PlanItem };
 
-export type MediaPlanItem = PlanItem & { id: string, status: string };
+export type UserChannelSetting = {
+    id: number;
+    channel_name: string;
+};
+
+export type MediaPlanItem = PlanItem & { 
+    id: string;
+    status: string; 
+    user_channel_settings: UserChannelSetting | null;
+};
 
 export type MediaPlan = {
     id: string;
@@ -65,7 +74,8 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
             media_plans!funnel_id (
                 *,
                 media_plan_items!media_plan_id (
-                    *
+                    *,
+                    user_channel_settings (id, channel_name)
                 )
             )
         `)
@@ -98,7 +108,8 @@ export async function getFunnel(funnelId: string) {
             media_plans!funnel_id (
                 *,
                 media_plan_items!media_plan_id (
-                    *
+                    *,
+                    user_channel_settings (id, channel_name)
                 )
             )
         `)
@@ -431,29 +442,45 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     // 2. Prepare and upsert the individual items
     if (planItems && planItems.length > 0) {
-        const itemsToUpsert = planItems.map(item => ({
-            id: item.id?.startsWith('temp-') ? undefined : item.id, // Let DB generate ID for new items
-            media_plan_id: mediaPlanId,
-            user_id: user.id,
-            offering_id: item.offering_id, // Make sure offering_id is included
-            channel: item.channel,
-            format: item.format,
-            copy: item.copy,
-            hashtags: item.hashtags,
-            creative_prompt: item.creativePrompt,
-            suggested_post_at: item.suggested_post_at,
-            stage_name: item.stageName,
-            objective: item.objective,
-            concept: item.concept,
-            status: 'draft', // Always save as draft
-        }));
+        
+        // Fetch user's channel settings to map names to IDs
+        const { data: userChannels, error: channelsError } = await supabase
+            .from('user_channel_settings')
+            .select('id, channel_name')
+            .eq('user_id', user.id);
+
+        if (channelsError) throw new Error("Could not fetch user channel settings to save plan.");
+        const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
+        
+        const itemsToUpsert = planItems.map(item => {
+            const userChannelId = channelNameToIdMap.get(item.channel);
+            if (!userChannelId) {
+                // This case should be rare if UI is populated correctly, but it's a good safeguard.
+                console.warn(`Could not find channel ID for "${item.channel}". This item may not be linked correctly.`);
+            }
+            return {
+                id: item.id?.startsWith('temp-') ? undefined : item.id,
+                media_plan_id: mediaPlanId,
+                user_id: user.id,
+                offering_id: item.offering_id,
+                user_channel_id: userChannelId, // Use the relational ID
+                format: item.format,
+                copy: item.copy,
+                hashtags: item.hashtags,
+                creative_prompt: item.creativePrompt,
+                suggested_post_at: item.suggested_post_at,
+                stage_name: item.stageName,
+                objective: item.objective,
+                concept: item.concept,
+                status: 'draft',
+            };
+        });
 
         const { error: itemsError } = await supabase
             .from('media_plan_items')
             .upsert(itemsToUpsert, { onConflict: 'id', defaultToNull: false });
         
         if (itemsError) {
-            // NOTE: In a real production app, you might want to wrap this in a transaction.
             console.error("Error saving media plan items:", itemsError);
             throw new Error(`Could not save the media plan items. DB Error: ${itemsError.message}`);
         }
@@ -461,10 +488,9 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     revalidatePath('/funnels');
     
-    // Fetch the newly created/updated plan with its items to return
     const { data: newPlanWithItems, error: newPlanError } = await supabase
         .from('media_plans')
-        .select('*, media_plan_items!media_plan_id (*)')
+        .select('*, media_plan_items!media_plan_id (*, user_channel_settings(id, channel_name))')
         .eq('id', mediaPlanId)
         .single();
 
@@ -480,7 +506,6 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
-    // 1. Get all media_plan_item_ids for the plan
     const { data: itemIds, error: itemIdsError } = await supabase
         .from('media_plan_items')
         .select('id')
@@ -495,7 +520,6 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
     if (itemIds && itemIds.length > 0) {
         const ids = itemIds.map(item => item.id);
         
-        // 2. Check if any content linked to these items is scheduled or published
         const { data: content, error: contentError } = await supabase
             .from('content')
             .select('id')
@@ -513,7 +537,6 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
         }
     }
 
-    // 3. If no active content, proceed with deletion
     const { error } = await supabase
         .from('media_plans')
         .delete()
@@ -536,7 +559,6 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
     if (mediaPlanItemIds.length === 0) return { count: 0 };
     if (!offeringId) throw new Error("An offering ID is required to queue items.");
 
-    // First transaction: update status on media_plan_items
     const { error: statusError } = await supabase
         .from('media_plan_items')
         .update({ status: 'approved' })
@@ -548,7 +570,6 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
         throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
     }
 
-    // Second transaction: add to queue
     const recordsToInsert = mediaPlanItemIds.map(itemId => ({
         user_id: user.id,
         funnel_id: funnelId,
@@ -563,8 +584,6 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
 
     if (queueError) {
         console.error('Bulk add to queue failed:', queueError);
-        // If queue fails, we should ideally roll back the status update.
-        // For now, we'll throw, but this indicates a need for a DB transaction.
         await supabase
             .from('media_plan_items')
             .update({ status: 'draft' })
@@ -577,10 +596,6 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
 }
 
 
-/**
- * Fetches the list of enabled channels for the current user.
- * @returns {Promise<Account[]>} A promise that resolves to an array of channel objects.
- */
 export async function getUserChannels(): Promise<Account[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -596,21 +611,17 @@ export async function getUserChannels(): Promise<Account[]> {
         throw new Error("Could not fetch user channels.");
     }
     
-    // The component expects the `id` field, so we map `channel_name` to `id`.
     return data.map(row => ({
         id: row.channel_name,
         name: row.channel_name,
         description: '',
         icon: '',
-        category: 'social', // This field is just for the UI and not stored in DB, so a default is fine
+        category: 'social',
         status: 'available',
         best_practices: row.best_practices,
     }));
 }
 
-/**
- * Fetches a list of all media plans for the current user, intended for a selection dialog.
- */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -647,9 +658,6 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     return result;
 }
 
-/**
- * Fetches all media plan items for a specific media plan.
- */
 export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanItem[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -657,7 +665,10 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
 
     const { data, error } = await supabase
         .from('media_plan_items')
-        .select('*')
+        .select(`
+            *,
+            user_channel_settings (id, channel_name)
+        `)
         .eq('user_id', user.id)
         .eq('media_plan_id', mediaPlanId);
     
@@ -679,6 +690,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 

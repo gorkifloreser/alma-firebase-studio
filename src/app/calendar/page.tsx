@@ -53,7 +53,7 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
                 <div className="flex-1">
                     <p className="font-medium text-sm line-clamp-2">{item.content_body?.primary || 'Untitled Content'}</p>
                     <div className="flex items-center gap-2 mt-1">
-                         <ChannelIcon channel={item.media_plan_items?.channel} />
+                         <ChannelIcon channel={item.media_plan_items?.user_channel_settings?.channel_name} />
                         <p className="text-xs text-muted-foreground">{item.media_plan_items?.format || 'Content'}</p>
                     </div>
                 </div>
@@ -112,7 +112,7 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
                         <p className="text-xs font-medium truncate">{item.content_body?.primary || 'Untitled'}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
-                                <ChannelIcon channel={item.media_plan_items?.channel} />
+                                <ChannelIcon channel={item.media_plan_items?.user_channel_settings?.channel_name} />
                             </div>
                             <Button
                                 variant="ghost"

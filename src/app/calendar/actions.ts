@@ -16,10 +16,14 @@ export type ContentItem = {
     image_url: string | null;
     carousel_slides: any | null;
     video_url: string | null;
+    landing_page_html: string | null;
     scheduled_at: string | null;
     offerings: { title: { primary: string | null } } | null;
     media_plan_item_id: string | null;
-    media_plan_items: { channel: string; format: string; } | null;
+    media_plan_items: { 
+        format: string;
+        user_channel_settings: { channel_name: string } | null;
+    } | null;
 };
 
 
@@ -39,8 +43,8 @@ export async function getContent(): Promise<ContentItem[]> {
                 title
             ),
             media_plan_items (
-                channel,
-                format
+                format,
+                user_channel_settings (channel_name)
             )
         `)
         .eq('user_id', user.id);
@@ -121,8 +125,8 @@ export async function updateContent(contentId: string, newContentBody: { primary
                 title
             ),
             media_plan_items (
-                channel,
-                format
+                format,
+                user_channel_settings (channel_name)
             )
         `)
         .single();
