@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -15,7 +14,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -34,6 +33,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import * as Popover from '@radix-ui/react-popover';
 import { Check } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
 
 
 type Profile = {
@@ -78,7 +79,7 @@ const EditPromptDialog = ({
   onOpenChange: (open: boolean) => void;
   prompt: string;
   onSave: (newPrompt: string) => void;
-  isRegenerating: boolean;
+  isRegenerating: boolean
 }) => {
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
@@ -632,6 +633,13 @@ const MultiSelect = ({
   );
 };
 
+// Generate time options for the select dropdown
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
+});
 
 export default function ArtisanPage() {
     // Core State
@@ -650,6 +658,8 @@ export default function ArtisanPage() {
     const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
     const [channelFilter, setChannelFilter] = useState<string[]>([]);
+    const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+
 
     // UI & Generation State
     const [editableContent, setEditableContent] = useState<GenerateContentOutput['content'] | null>(null);
@@ -700,6 +710,7 @@ export default function ArtisanPage() {
         setIsCodeEditorOpen(false);
         setCreative(null);
         setEditableHtml(null);
+        setScheduledAt(null);
 
         if (!queueItemId || workflowMode === 'custom') {
             setCreativePrompt('');
@@ -717,19 +728,25 @@ export default function ArtisanPage() {
                 setCreativePrompt(promptFromDb);
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
                 
-                const format = (planItem.format || '').toLowerCase();
+                const formatValue = (planItem.format || '').toLowerCase();
                 
-                // Auto-update dimension based on format
-                if (format.includes('video')) setSelectedCreativeType('video');
-                else if (format.includes('carousel')) setSelectedCreativeType('carousel');
-                else if (format.includes('landing')) setSelectedCreativeType('landing_page');
+                // Auto-update creative type
+                if (formatValue.includes('video')) setSelectedCreativeType('video');
+                else if (formatValue.includes('carousel')) setSelectedCreativeType('carousel');
+                else if (formatValue.includes('landing')) setSelectedCreativeType('landing_page');
                 else setSelectedCreativeType('image');
 
-                if (format.includes('1:1') || format.includes('square')) setDimension('1:1');
-                else if (format.includes('4:5') || format.includes('portrait')) setDimension('4:5');
-                else if (format.includes('9:16') || format.includes('story') || format.includes('reel')) setDimension('9:16');
-                else if (format.includes('16:9') || format.includes('landscape')) setDimension('16:9');
+                // Auto-update dimension based on format
+                if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
+                else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
+                else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
+                else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
                 else setDimension('1:1'); // Default
+
+                if (planItem.suggested_post_at && isValid(parseISO(planItem.suggested_post_at))) {
+                    setScheduledAt(parseISO(planItem.suggested_post_at));
+                }
+
             }
         } else {
             setCreativePrompt('');
@@ -918,7 +935,7 @@ export default function ArtisanPage() {
     };
 
 
-    const handleApprove = () => {
+    const handleSave = (status: 'approved' | 'scheduled', scheduleDate?: Date | null) => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
@@ -938,16 +955,19 @@ export default function ArtisanPage() {
                     carouselSlides: creative?.carouselSlides || null,
                     videoUrl: creative?.videoUrl || null,
                     landingPageHtml: editableHtml,
-                    status: 'approved',
+                    status: status,
                     mediaPlanItemId: currentQueueItem?.media_plan_items?.id,
+                    scheduledAt: scheduleDate?.toISOString(),
                 });
+                
                 if (currentQueueItem) {
                     await updateQueueItemStatus(currentQueueItem.id, 'completed');
                     setAllQueueItems(prev => prev.filter(i => i.id !== currentQueueItem.id));
                 }
+
                 toast({
-                    title: 'Approved!',
-                    description: 'The content has been saved and is ready for the calendar.',
+                    title: status === 'scheduled' ? 'Scheduled!' : 'Approved!',
+                    description: `The content has been saved and is ready for the calendar.`,
                 });
                 
                 const nextItem = filteredQueueItems.find(i => i.id !== selectedQueueItemId) || null;
@@ -956,11 +976,19 @@ export default function ArtisanPage() {
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
-                    title: 'Failed to Approve',
+                    title: 'Failed to Save',
                     description: error.message,
                 });
             }
         });
+    };
+    
+    const handleDateTimeChange = (date: Date | undefined, time: string) => {
+        if (!date) return;
+        const [hours, minutes] = time.split(':').map(Number);
+        const newDate = new Date(date);
+        newDate.setHours(hours, minutes);
+        setScheduledAt(newDate);
     };
 
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
@@ -982,7 +1010,7 @@ export default function ArtisanPage() {
                         {mediaPlans.length > 0 ? (
                              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                                 {mediaPlans.map(plan => (
-                                    <button key={plan.id} onClick={() => startCampaignWorkflow(plan)} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                                    <button key={plan.id} onClick={()={() => startCampaignWorkflow(plan)}} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
                                         <p className="font-bold">{plan.title}</p>
                                         <p className="text-sm text-muted-foreground">For: {plan.offering_title}</p>
                                     </button>
@@ -1119,13 +1147,53 @@ export default function ArtisanPage() {
                                                 </div>
                                             )}
                                         </CardContent>
-                                        <CardFooter className="flex-col gap-4">
+                                        <CardFooter className="flex flex-col gap-4">
                                             <Button onClick={handleGenerate} className="w-full" disabled={isGenerateDisabled}>
                                                 {isLoading ? 'Generating...' : 'Generate with AI'}
                                             </Button>
-                                            <Button onClick={handleApprove} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
-                                                {isSaving ? 'Approving...' : 'Approve & Save'}
-                                            </Button>
+                                            <div className="w-full grid grid-cols-2 gap-2">
+                                                 <Button onClick={() => handleSave('approved')} variant="outline" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
+                                                    {isSaving ? 'Saving...' : 'Approve & Save'}
+                                                </Button>
+                                                <Popover.Root>
+                                                    <Popover.Trigger asChild>
+                                                        <Button variant="secondary" className="w-full" disabled={isLoading || isSaving || (!editableContent && !creative)}>
+                                                            Approve & Schedule...
+                                                        </Button>
+                                                    </Popover.Trigger>
+                                                    <Popover.Content className="w-auto p-0">
+                                                        <div className="p-4 space-y-4">
+                                                            <p className="font-semibold">Set publication time</p>
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={scheduledAt || undefined}
+                                                                onSelect={(d) => handleDateTimeChange(d, scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00')}
+                                                                initialFocus
+                                                            />
+                                                            <Select 
+                                                                value={scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00'}
+                                                                onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
+                                                            >
+                                                                <SelectTrigger>
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {timeOptions.map(option => (
+                                                                        <SelectItem key={option.value} value={option.value}>
+                                                                            {option.label}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <Popover.Close asChild>
+                                                                <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={!scheduledAt}>
+                                                                    Confirm & Schedule
+                                                                </Button>
+                                                            </Popover.Close>
+                                                        </div>
+                                                    </Popover.Content>
+                                                </Popover.Root>
+                                            </div>
                                         </CardFooter>
                                     </AccordionContent>
                                 </Card>

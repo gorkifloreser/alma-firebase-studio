@@ -1,5 +1,3 @@
-
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -89,6 +87,7 @@ type SaveContentInput = {
     landingPageHtml: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     mediaPlanItemId?: string | null;
+    scheduledAt?: string | null;
 };
 
 /**
@@ -101,7 +100,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, mediaPlanItemId, scheduledAt } = input;
 
     const payload: any = {
         user_id: user.id,
@@ -113,6 +112,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         landing_page_html: landingPageHtml,
         status: status,
         media_plan_item_id: mediaPlanItemId || null,
+        scheduled_at: scheduledAt || null,
     };
 
     const { error } = await supabase.from('content').insert(payload);
