@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getOfferings } from '../offerings/actions';
+import { getOfferings, uploadSingleOfferingMedia } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
@@ -15,7 +15,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -37,6 +37,7 @@ import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDropzone } from 'react-dropzone';
 
 
 type Profile = {
@@ -625,22 +626,96 @@ const MediaSelectionDialog = ({
     onOpenChange,
     media,
     onSelect,
+    offeringId,
+    onUploadComplete,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     media: OfferingMedia[];
     onSelect: (mediaUrl: string) => void;
+    offeringId: string;
+    onUploadComplete: (newMedia: OfferingMedia) => void;
 }) => {
+    const { toast } = useToast();
+    const [isUploading, startUploading] = useTransition();
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        if (!offeringId) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'An offering must be selected to upload media.',
+            });
+            return;
+        }
+
+        const file = acceptedFiles[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        // A description can be auto-generated or left blank here
+        formData.append('description', 'New image uploaded from Artisan page'); 
+
+        startUploading(async () => {
+            try {
+                const newMedia = await uploadSingleOfferingMedia(offeringId, formData);
+                toast({
+                    title: 'Upload Successful',
+                    description: `"${file.name}" has been added to the gallery.`,
+                });
+                onUploadComplete(newMedia);
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Upload Failed',
+                    description: error.message,
+                });
+            }
+        });
+    }, [offeringId, toast, onUploadComplete]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: { 'image/jpeg': [], 'image/png': [], 'image/gif': [], 'image/webp': [] },
+        multiple: false,
+    });
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Select a Reference Image</DialogTitle>
                     <DialogDescription>
-                        Choose an image from this offering's media gallery to guide the AI.
+                        Choose an image from this offering's media gallery or upload a new one.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 max-h-[60vh] overflow-y-auto">
+                <div className="py-4 max-h-[70vh] overflow-y-auto space-y-6">
+                    <div
+                        {...getRootProps()}
+                        className={cn(
+                            "flex justify-center items-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                            isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50'
+                        )}
+                    >
+                        <input {...getInputProps()} />
+                        {isUploading ? (
+                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                                <span>Uploading...</span>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    {isDragActive ? 'Drop the image here...' : "Drag 'n' drop or click to upload a new image"}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <Separator />
+
                     {media.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {media.map((item) => (
@@ -666,7 +741,7 @@ const MediaSelectionDialog = ({
                         </div>
                     ) : (
                         <p className="text-center text-muted-foreground py-10">
-                            No media found for this offering. Please upload some images in the offering details.
+                            No media found for this offering.
                         </p>
                     )}
                 </div>
@@ -674,6 +749,7 @@ const MediaSelectionDialog = ({
         </Dialog>
     );
 };
+
 
 
 // Generate time options for the select dropdown
@@ -1088,10 +1164,22 @@ export default function ArtisanPage() {
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const currentOfferingMedia = offerings.find(o => o.id === selectedOfferingId)?.offering_media || [];
+    const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     const hasContentToSave = !!(editableContent || creative || editableHtml);
 
     const doneCount = totalCampaignItems - filteredQueueItems.length;
+
+    const handleNewUpload = (newMedia: OfferingMedia) => {
+        setOfferings(prev => prev.map(o => {
+            if (o.id === selectedOfferingId) {
+                return {
+                    ...o,
+                    offering_media: [...(o.offering_media || []), newMedia]
+                }
+            }
+            return o;
+        }));
+    };
 
     return (
         <DashboardLayout>
@@ -1132,12 +1220,16 @@ export default function ArtisanPage() {
                 isGenerating={isRemixing}
             />
 
-            <MediaSelectionDialog
-                isOpen={isMediaSelectorOpen}
-                onOpenChange={setIsMediaSelectorOpen}
-                media={currentOfferingMedia}
-                onSelect={setReferenceImageUrl}
-            />
+            {selectedOfferingId && (
+                <MediaSelectionDialog
+                    isOpen={isMediaSelectorOpen}
+                    onOpenChange={setIsMediaSelectorOpen}
+                    media={currentOffering?.offering_media || []}
+                    onSelect={setReferenceImageUrl}
+                    offeringId={selectedOfferingId}
+                    onUploadComplete={handleNewUpload}
+                />
+            )}
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex justify-between items-start">
@@ -1277,13 +1369,13 @@ export default function ArtisanPage() {
                                                 {selectedCreativeType !== 'landing_page' && (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
-                                                        <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
+                                                        <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading || selectedCreativeType === 'video'} value={dimension}>
                                                             <SelectTrigger id="dimension-select">
                                                                 <SelectValue placeholder="Select aspect ratio..." />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
-                                                                <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
+                                                                <SelectItem value="1:1">Square (1:1)</SelectItem>
+                                                                <SelectItem value="4:5">Portrait (4:5)</SelectItem>
                                                                 <SelectItem value="9:16">Story (9:16)</SelectItem>
                                                                 <SelectItem value="16:9">Landscape (16:9)</SelectItem>
                                                             </SelectContent>
