@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useTransition, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -66,6 +66,63 @@ const dimensionMap = {
     '16:9': 'aspect-[16/9]',
 };
 
+
+const EditPromptDialog = ({
+  isOpen,
+  onOpenChange,
+  prompt,
+  onSave,
+  isRegenerating,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  prompt: string;
+  onSave: (newPrompt: string) => void;
+  isRegenerating: boolean;
+}) => {
+  const [editedPrompt, setEditedPrompt] = useState(prompt);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEditedPrompt(prompt);
+    }
+  }, [isOpen, prompt]);
+
+  const handleSave = () => {
+    onSave(editedPrompt);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Creative Prompt</DialogTitle>
+          <DialogDescription>
+            Modify the prompt for this specific slide and regenerate the image.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Textarea
+            value={editedPrompt}
+            onChange={(e) => setEditedPrompt(e.target.value)}
+            className="h-48 font-mono text-sm"
+            placeholder="Enter the new creative prompt..."
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isRegenerating}>
+            {isRegenerating ? 'Regenerating...' : 'Save & Regenerate Image'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
 // --- Standalone PostPreview Component ---
 const PostPreview = ({
     profile,
@@ -79,6 +136,7 @@ const PostPreview = ({
     onCodeEditorToggle,
     handleContentChange,
     handleCarouselSlideChange,
+    onRegenerateSlide,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -91,6 +149,7 @@ const PostPreview = ({
     onCodeEditorToggle: () => void,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
+    onRegenerateSlide: (slideIndex: number, newPrompt: string) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -100,6 +159,9 @@ const PostPreview = ({
     const [current, setCurrent] = useState(0)
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    
+    const [isPromptEditorOpen, setIsPromptEditorOpen] = useState(false);
+    const [isRegeneratingSlide, startRegeneratingSlide] = useTransition();
 
     const togglePlay = () => {
         const video = videoRef.current;
@@ -126,6 +188,13 @@ const PostPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
 
+    const handlePromptSave = (newPrompt: string) => {
+        startRegeneratingSlide(async () => {
+            await onRegenerateSlide(current, newPrompt);
+            setIsPromptEditorOpen(false);
+        });
+    };
+
 
     const renderVisualContent = () => {
         if (isLoading) {
@@ -136,7 +205,7 @@ const PostPreview = ({
                 <Carousel setApi={setApi} className="w-full h-full">
                     <CarouselContent>
                         {creative.carouselSlides.map((slide, index) => (
-                             <CarouselItem key={index} className="relative">
+                             <CarouselItem key={index} className="relative group">
                                 <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
                                     {slide.imageUrl ? (
                                         <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
@@ -146,6 +215,14 @@ const PostPreview = ({
                                         </div>
                                     )}
                                 </div>
+                                <Button 
+                                    variant="secondary" 
+                                    size="sm"
+                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => setIsPromptEditorOpen(true)}
+                                >
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Prompt
+                                </Button>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
@@ -204,6 +281,7 @@ const PostPreview = ({
 
     if (isStory) {
         return (
+            <>
             <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
                  <div className="absolute inset-0 bg-black">
                     {renderVisualContent()}
@@ -260,10 +338,21 @@ const PostPreview = ({
                     </div>
                 </div>
             </div>
+            {currentSlideData && (
+                <EditPromptDialog
+                    isOpen={isPromptEditorOpen}
+                    onOpenChange={setIsPromptEditorOpen}
+                    prompt={currentSlideData.creativePrompt}
+                    onSave={handlePromptSave}
+                    isRegenerating={isRegeneratingSlide}
+                />
+             )}
+            </>
         );
     }
 
     return (
+        <>
         <Card className="w-full max-w-md mx-auto">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 <Avatar>
@@ -281,7 +370,7 @@ const PostPreview = ({
                         <Carousel setApi={setApi} className="w-full h-full">
                             <CarouselContent>
                                 {creative.carouselSlides.map((slide, index) => (
-                                    <CarouselItem key={index} className="relative">
+                                    <CarouselItem key={index} className="relative group">
                                          <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
                                             {slide.imageUrl ? (
                                                 <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
@@ -291,6 +380,14 @@ const PostPreview = ({
                                                 </div>
                                             )}
                                         </div>
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={() => setIsPromptEditorOpen(true)}
+                                        >
+                                          <Edit className="mr-2 h-4 w-4" /> Edit Prompt
+                                        </Button>
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
@@ -340,6 +437,16 @@ const PostPreview = ({
                 )}
             </CardFooter>
         </Card>
+        {currentSlideData && (
+          <EditPromptDialog
+            isOpen={isPromptEditorOpen}
+            onOpenChange={setIsPromptEditorOpen}
+            prompt={currentSlideData.creativePrompt}
+            onSave={handlePromptSave}
+            isRegenerating={isRegeneratingSlide}
+          />
+        )}
+        </>
     );
 }
 
@@ -774,6 +881,42 @@ export default function ArtisanPage() {
             return { ...prev, carouselSlides: newSlides };
         });
     };
+    
+    const handleRegenerateSlide = async (slideIndex: number, newPrompt: string) => {
+        if (!creative || !creative.carouselSlides || !selectedOfferingId) return;
+
+        try {
+            // Update the specific slide's prompt
+            const updatedSlides = creative.carouselSlides.map((slide, index) =>
+                index === slideIndex ? { ...slide, creativePrompt: newPrompt } : slide
+            );
+            setCreative(prev => prev ? { ...prev, carouselSlides: updatedSlides } : null);
+
+            // Regenerate only that image
+            const result = await generateCreativeForOffering({
+                offeringId: selectedOfferingId,
+                creativeTypes: ['image'], // We only want one image
+                aspectRatio: dimension,
+                creativePrompt: newPrompt, // Use the new prompt
+            });
+
+            if (result.imageUrl) {
+                // Update the image URL for the correct slide
+                setCreative(prev => {
+                    if (!prev || !prev.carouselSlides) return prev;
+                    const newSlides = [...prev.carouselSlides];
+                    newSlides[slideIndex] = { ...newSlides[slideIndex], imageUrl: result.imageUrl };
+                    return { ...prev, carouselSlides: newSlides };
+                });
+                toast({ title: 'Slide Image Regenerated!' });
+            } else {
+                throw new Error("AI did not return an image.");
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Slide Regeneration Failed', description: error.message });
+        }
+    };
+
 
     const handleApprove = () => {
         if (!selectedOfferingId) {
@@ -1015,6 +1158,7 @@ export default function ArtisanPage() {
                             onCodeEditorToggle={() => handleCodeEditorToggle()}
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
+                            onRegenerateSlide={handleRegenerateSlide}
                         />
                     </main>
                 </div>
@@ -1022,5 +1166,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-    
