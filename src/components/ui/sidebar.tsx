@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -57,7 +58,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen,
+      defaultOpen = true,
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -70,17 +71,19 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // Set the initial state from the cookie or the default prop.
-    const [initialState] = React.useState(() => {
-        if (typeof window === 'undefined') return defaultOpen ?? true;
+    const [_open, _setOpen] = React.useState(defaultOpen);
+
+    React.useEffect(() => {
         const cookieValue = document.cookie
             .split('; ')
             .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
             ?.split('=')[1];
-        return cookieValue ? cookieValue === 'true' : defaultOpen ?? true;
-    });
+        if (cookieValue) {
+            _setOpen(cookieValue === 'true');
+        }
+    }, []);
 
-    const [_open, _setOpen] = React.useState(initialState);
+
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
