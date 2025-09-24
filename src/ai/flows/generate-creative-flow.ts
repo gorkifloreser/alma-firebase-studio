@@ -21,6 +21,7 @@ const GenerateCreativeInputSchema = z.object({
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
   referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image generation.'),
+  artStyleId: z.string().optional().describe('The ID of a saved art style to apply.'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -28,7 +29,7 @@ const CarouselSlideSchema = z.object({
     title: z.string(),
     body: z.string(),
     imageUrl: z.string().optional().describe("The URL of the generated image for this slide. This will be a data URI."),
-    creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for this slide."),
+    finalPrompt: z.string().optional().describe("The final, full prompt that was sent to the image generation model."),
 });
 export type CarouselSlide = z.infer<typeof CarouselSlideSchema>;
 
@@ -38,6 +39,7 @@ const GenerateCreativeOutputSchema = z.object({
       secondary: z.string().optional().describe('The marketing content in the secondary language.'),
   }).optional(),
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
+  finalPrompt: z.string().optional().describe("The final, full prompt that was sent to the image generation model."),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
   videoUrl: z.string().optional().describe('The data URI of the generated video.'),
   landingPageHtml: z.string().optional().describe('The generated HTML content for the landing page.'),
@@ -82,6 +84,7 @@ const masterImagePrompt = ai.definePrompt({
             offering: z.any(),
             basePrompt: z.string(),
             aspectRatio: z.string().optional(),
+            artStyleSuffix: z.string().optional(),
         })
     },
     prompt: `You are an expert art director and AI prompt engineer for conscious, soulful brands.
@@ -102,10 +105,17 @@ Your task is to combine all the information below to create a single, detailed, 
 **3. THE CREATIVE BRIEF (The Scene & Style):**
 - Your main instruction is: "{{basePrompt}}"
 
-**FINAL TASK:**
-Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, and the specific Creative Brief.
+**4. THE ART STYLE (The Suffix):**
+{{#if artStyleSuffix}}
+- Apply this specific art style: {{artStyleSuffix}}
+{{else}}
+- Use a photo-realistic, soft, and natural style.
+{{/if}}
 
-**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic{{#if aspectRatio}} --ar {{aspectRatio}}{{/if}}"
+**FINAL TASK:**
+Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, the specific Creative Brief, and the art style suffix.
+
+**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Output only the final prompt string.`,
 });
@@ -154,7 +164,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl }) => {
+  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl, artStyleId }) => {
     
     async function downloadVideo(video: MediaPart): Promise<string> {
         const fetch = (await import('node-fetch')).default;
@@ -174,15 +184,23 @@ export const generateCreativeFlow = ai.defineFlow(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    const [{ data: brandHeart, error: brandHeartError }, { data: offering, error: offeringError }, { data: profile, error: profileError }] = await Promise.all([
+    const [
+        { data: brandHeart, error: brandHeartError }, 
+        { data: offering, error: offeringError }, 
+        { data: profile, error: profileError },
+        artStyleId ? supabase.from('art_styles').select('prompt_suffix').eq('id', artStyleId).single() : Promise.resolve({ data: null }),
+    ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('offerings').select('*').eq('id', offeringId).single(),
-        supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single()
+        supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single(),
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
     if (offeringError || !offering) throw new Error('Offering not found.');
     if (profileError || !profile) throw new Error('User profile not found.');
+
+    const artStyle = (artStyleId && 'data' in arguments[3]) ? arguments[3].data : null;
+
 
     let output: GenerateCreativeOutput = {};
 
@@ -228,7 +246,7 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('image')) {
         const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
 
-        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio }).then(async ({ text: finalImagePrompt }) => {
+        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio, artStyleSuffix: artStyle?.prompt_suffix }).then(async ({ text: finalImagePrompt }) => {
             let generationResult;
             if (referenceImageUrl) {
                 generationResult = await ai.generate({
@@ -242,34 +260,31 @@ export const generateCreativeFlow = ai.defineFlow(
                     prompt: finalImagePrompt,
                 });
             }
-            return { imageUrl: generationResult.media?.url };
+            return { imageUrl: generationResult.media?.url, finalPrompt: finalImagePrompt };
         }));
     }
     
     if (creativeTypes.includes('carousel')) {
         visualPromises.push(carouselPrompt({ brandHeart, offering }).then(async ({ output: carouselOutput }) => {
             if (carouselOutput?.slides) {
-                const artStyleSuffix = userCreativePrompt ? `, ${userCreativePrompt}` : '';
 
                 const slidePromises = carouselOutput.slides.map(async (slide) => {
-                    const slideBasePrompt = slide.creativePrompt + artStyleSuffix;
+                    const slideBasePrompt = slide.creativePrompt;
 
-                    // Generate the final, detailed prompt for this specific slide
                     const { text: finalSlidePrompt } = await masterImagePrompt({
                         brandHeart,
                         offering,
                         basePrompt: slideBasePrompt,
                         aspectRatio,
+                        artStyleSuffix: artStyle?.prompt_suffix,
                     });
 
-                    // Generate the image using the final prompt
                     const { media } = await ai.generate({
                         model: googleAI.model('imagen-4.0-fast-generate-001'),
                         prompt: finalSlidePrompt,
                     });
                     
-                    // Return the slide data with the new image and the final prompt used
-                    return { ...slide, imageUrl: media?.url, creativePrompt: finalSlidePrompt };
+                    return { ...slide, imageUrl: media?.url, finalPrompt: finalSlidePrompt };
                 });
                 return { carouselSlides: await Promise.all(slidePromises) };
             }
@@ -297,5 +312,3 @@ export const generateCreativeFlow = ai.defineFlow(
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
     return generateCreativeFlow(input);
 }
-
-    

@@ -73,173 +73,6 @@ const dimensionMap = {
 };
 
 
-
-const RemixPromptDialog = ({
-  isOpen,
-  onOpenChange,
-  onGenerate,
-  isGenerating,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onGenerate: (comment: string) => void;
-  isGenerating: boolean;
-}) => {
-  const [comment, setComment] = useState('');
-
-  const handleGenerateClick = () => {
-    onGenerate(comment);
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Remix Creative Prompt</DialogTitle>
-          <DialogDescription>
-            Add a comment to guide the AI in generating a new, different creative prompt.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-4">
-          <Textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="h-24"
-            placeholder="e.g., 'Make it more vibrant and colorful', 'Focus on a feeling of freedom', 'Show a close-up of the product'"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleGenerateClick} disabled={isGenerating}>
-            {isGenerating ? 'Generating...' : 'Generate New Prompt'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-type ChatMessage = { role: 'user', content: string } | { role: 'bot', content: string };
-const ImageChatDialog = ({
-  isOpen,
-  onOpenChange,
-  initialImageUrl,
-  onImageUpdate,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  initialImageUrl: string;
-  onImageUpdate: (newImageUrl: string) => void;
-}) => {
-  const [currentImage, setCurrentImage] = useState(initialImageUrl);
-  const [history, setHistory] = useState<ChatMessage[]>([]);
-  const [message, setMessage] = useState('');
-  const [isEditing, startEditing] = useTransition();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentImage(initialImageUrl);
-      setHistory([]);
-    }
-  }, [isOpen, initialImageUrl]);
-
-  const handleSend = async () => {
-    if (!message.trim()) return;
-
-    const userMessage: ChatMessage = { role: 'user', content: message };
-    setHistory(prev => [...prev, userMessage]);
-    setMessage('');
-
-    startEditing(async () => {
-      try {
-        const result = await editImageWithInstruction({
-          imageUrl: currentImage,
-          instruction: message,
-        });
-
-        if (!result.editedImageUrl) throw new Error("AI did not return an edited image.");
-        
-        setCurrentImage(result.editedImageUrl);
-        // Do not add bot response to history, the updated image is the response
-      } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Image Edit Failed', description: error.message });
-        setHistory(prev => prev.slice(0, -1)); // Remove the user's message on failure
-      }
-    });
-  };
-  
-  const handleApplyChanges = () => {
-    onImageUpdate(currentImage);
-    onOpenChange(false);
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Chat with Your Image</DialogTitle>
-          <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-6 py-4 max-h-[70vh]">
-            <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
-                <Image src={currentImage} alt="Image being edited" fill className="object-contain" />
-                 {isEditing && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 text-white animate-spin" />
-                    </div>
-                )}
-            </div>
-            <div className="flex flex-col">
-                <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-                     {history.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <Bot className="w-12 h-12 text-muted-foreground" />
-                            <p className="mt-4 text-muted-foreground">e.g., "make it black and white" or "add a lens flare"</p>
-                        </div>
-                    )}
-                    {history.map((msg, index) => (
-                        <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                            {msg.role === 'bot' && <Avatar className="w-8 h-8 flex-shrink-0"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
-                            <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            </div>
-                            {msg.role === 'user' && <Avatar className="w-8 h-8 flex-shrink-0"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
-                        </div>
-                    ))}
-                </div>
-                <div className="mt-4 flex gap-2">
-                    <Textarea 
-                        value={message} 
-                        onChange={e => setMessage(e.target.value)} 
-                        placeholder="Type your instruction..." 
-                        className="flex-1"
-                        disabled={isEditing}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend();
-                            }
-                        }}
-                    />
-                    <Button onClick={handleSend} disabled={isEditing || !message.trim()}>
-                        {isEditing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                </div>
-            </div>
-        </div>
-        <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleApplyChanges}>Apply Changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-
 // --- Standalone PostPreview Component ---
 const PostPreview = ({
     profile,
@@ -460,7 +293,6 @@ const PostPreview = ({
     }
 
     return (
-        <>
         <div className="relative">
             <Card className="w-full max-w-md mx-auto">
                 <CardHeader className="flex flex-row items-center gap-3 space-y-0">
@@ -517,7 +349,7 @@ const PostPreview = ({
                     <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute top-[60px] right-2 h-8 w-8 rounded-full shadow-lg z-10"
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10"
                         onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
                     >
                         <Edit className="h-4 w-4" />
@@ -525,7 +357,6 @@ const PostPreview = ({
                 )}
             </Card>
         </div>
-        </>
     );
 }
 
@@ -979,7 +810,7 @@ export default function ArtisanPage() {
     }, [isCodeEditorOpen]);
 
 
-    const handleGenerate = async () => {
+    const handleGenerate = async (regeneratePrompt?: string) => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Please select an offering for your custom creative.' });
             return;
@@ -995,8 +826,8 @@ export default function ArtisanPage() {
 
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            // Also generate text if a visual type is selected
-            if (selectedCreativeType !== 'video' && selectedCreativeType !== 'landing_page' && selectedCreativeType !== 'text') {
+            // Also generate text if a visual type is selected and it's not a regeneration
+            if (selectedCreativeType !== 'video' && selectedCreativeType !== 'landing_page' && selectedCreativeType !== 'text' && !regeneratePrompt) {
                 creativeTypes.push('text');
             }
             
@@ -1004,8 +835,9 @@ export default function ArtisanPage() {
                 offeringId: selectedOfferingId,
                 creativeTypes: creativeTypes,
                 aspectRatio: dimension,
-                creativePrompt,
+                creativePrompt: regeneratePrompt || creativePrompt,
                 referenceImageUrl: referenceImageUrl || undefined,
+                artStyleId: selectedArtStyleId !== 'none' ? selectedArtStyleId : undefined,
             });
 
             setCreative(result);
@@ -1197,6 +1029,16 @@ export default function ArtisanPage() {
         }
         return creativeOptions; // Show all in custom mode
     }, [workflowMode, currentChannel]);
+    
+    // Derived state for the current image's final prompt
+    const finalPromptForCurrentVisual = useMemo(() => {
+        if (!creative) return null;
+        if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > 0) {
+            const currentSlideIndex = 0; // This should be dynamic if carousel is interactive
+            return creative.carouselSlides[currentSlideIndex]?.finalPrompt;
+        }
+        return creative.finalPrompt;
+    }, [creative, selectedCreativeType]);
 
 
     return (
@@ -1231,12 +1073,16 @@ export default function ArtisanPage() {
                 </DialogContent>
             </Dialog>
 
-            <RemixPromptDialog
-                isOpen={isRemixDialogOpen}
-                onOpenChange={setIsRemixDialogOpen}
-                onGenerate={handleRemixPrompt}
-                isGenerating={isRemixing}
-            />
+             <Dialog open={isImageChatOpen} onOpenChange={setIsImageChatOpen}>
+                <DialogContent className="sm:max-w-4xl">
+                <DialogHeader>
+                    <DialogTitle>Chat with Your Image</DialogTitle>
+                    <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
+                </DialogHeader>
+                {/* Image Chat implementation will go here */}
+                </DialogContent>
+            </Dialog>
+
 
             {selectedOfferingId && (
                 <MediaSelectionDialog
@@ -1249,14 +1095,6 @@ export default function ArtisanPage() {
                 />
             )}
 
-            {isImageChatOpen && imageToChat && (
-                <ImageChatDialog
-                    isOpen={isImageChatOpen}
-                    onOpenChange={setIsImageChatOpen}
-                    initialImageUrl={imageToChat.url}
-                    onImageUpdate={handleImageUpdate}
-                />
-            )}
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex justify-between items-start">
@@ -1302,7 +1140,7 @@ export default function ArtisanPage() {
 
                                             <div className="space-y-2">
                                                 <Label htmlFor="queue-select" className="flex items-center justify-between">
-                                                    <span>2. Choose an Item to Work On</span>
+                                                    <span>Choose an Item to Work On</span>
                                                      {workflowMode === 'campaign' && totalCampaignItems > 0 && (
                                                         <span className="text-sm font-medium text-muted-foreground">
                                                             ({doneCount}/{totalCampaignItems})
@@ -1344,11 +1182,7 @@ export default function ArtisanPage() {
                                             
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
-                                                    <Button variant="ghost" size="sm" onClick={() => setIsRemixDialogOpen(true)} disabled={!selectedOfferingId}>
-                                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                                        Remix
-                                                    </Button>
+                                                    <Label htmlFor="creative-prompt">Refine AI Creative Prompt</Label>
                                                 </div>
                                                 <Textarea
                                                     id="creative-prompt"
@@ -1360,7 +1194,7 @@ export default function ArtisanPage() {
                                             </div>
                                             
                                             <div className="space-y-2">
-                                                <Label htmlFor="art-style-select">4. Art Style</Label>
+                                                <Label htmlFor="art-style-select">Art Style</Label>
                                                 <Select value={selectedArtStyleId} onValueChange={setSelectedArtStyleId}>
                                                     <SelectTrigger id="art-style-select">
                                                         <SelectValue placeholder="Select an art style..." />
@@ -1390,7 +1224,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <h3 className="font-medium mb-4">5. Choose Creative Type</h3>
+                                                <h3 className="font-medium mb-4">Choose Creative Type</h3>
                                                 <RadioGroup
                                                     value={selectedCreativeType}
                                                     onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -1411,7 +1245,7 @@ export default function ArtisanPage() {
                                             <div className="grid grid-cols-2 gap-6">
                                                 {selectedCreativeType !== 'landing_page' && (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="dimension-select">6. Set Aspect Ratio</Label>
+                                                        <Label htmlFor="dimension-select">Set Aspect Ratio</Label>
                                                         <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading || selectedCreativeType === 'video'} value={dimension}>
                                                             <SelectTrigger id="dimension-select">
                                                                 <SelectValue placeholder="Select aspect ratio..." />
@@ -1470,7 +1304,8 @@ export default function ArtisanPage() {
                                             </div>
                                         </CardContent>
                                         <CardFooter className="flex flex-col gap-4">
-                                            <Button onClick={handleGenerate} className="w-full" disabled={isGenerateDisabled}>
+                                            <Button onClick={() => handleGenerate()} className="w-full" disabled={isGenerateDisabled}>
+                                                <Wand2 className="mr-2 h-4 w-4" />
                                                 {isLoading ? 'Generating...' : 'Generate with AI'}
                                             </Button>
 
@@ -1488,6 +1323,45 @@ export default function ArtisanPage() {
                                     </AccordionContent>
                                 </Card>
                             </AccordionItem>
+                             {creative && (selectedCreativeType === 'image' || selectedCreativeType === 'carousel') && (
+                                 <AccordionItem value="refinement-controls" className="border-none">
+                                    <Card>
+                                        <AccordionTrigger className="p-6">
+                                            <CardHeader className="p-0">
+                                                <CardTitle>Image Refinement</CardTitle>
+                                            </CardHeader>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <CardContent>
+                                                <Tabs defaultValue="regenerate" className="w-full">
+                                                    <TabsList className="grid w-full grid-cols-2">
+                                                        <TabsTrigger value="regenerate">Regenerate</TabsTrigger>
+                                                        <TabsTrigger value="retouch">Retouch</TabsTrigger>
+                                                    </TabsList>
+                                                    <TabsContent value="regenerate" className="mt-4">
+                                                        <div className="space-y-4">
+                                                            <Label>Final Prompt Used</Label>
+                                                            <Textarea readOnly value={finalPromptForCurrentVisual || 'No prompt available.'} className="h-32 font-mono text-xs bg-muted" />
+                                                            <Button onClick={() => handleGenerate(finalPromptForCurrentVisual || creativePrompt)} className="w-full" disabled={isLoading || !finalPromptForCurrentVisual}>
+                                                                <RefreshCw className="mr-2 h-4 w-4" />
+                                                                Regenerate Image
+                                                            </Button>
+                                                        </div>
+                                                    </TabsContent>
+                                                    <TabsContent value="retouch" className="mt-4">
+                                                        <p className="text-sm text-muted-foreground mb-4">Interactively edit your image with chat commands.</p>
+                                                        <Button className="w-full" onClick={() => {
+                                                            if (creative?.imageUrl) handleOpenImageChat(creative.imageUrl)
+                                                        }}>
+                                                            <Bot className="mr-2 h-4 w-4" /> Start Image Chat
+                                                        </Button>
+                                                    </TabsContent>
+                                                </Tabs>
+                                            </CardContent>
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            )}
                              {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
                                 <AccordionItem value="code-editor" className="border-none">
                                     <CodeEditor

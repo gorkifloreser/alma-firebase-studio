@@ -6,7 +6,9 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
-import { editImageWithInstruction as editImageFlow, EditImageInput, EditImageOutput } from '@/ai/flows/edit-image-flow';
+import { editImageWithInstruction as editImageFlow } from '@/ai/flows/edit-image-flow';
+import type { EditImageInput, EditImageOutput } from '@/ai/flows/edit-image-flow';
+
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 
 export type QueueItem = {
