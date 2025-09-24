@@ -300,8 +300,8 @@ const PostPreview = ({
                     </CarouselContent>
                     {(creative.carouselSlides.length > 1) && (
                         <>
-                           <CarouselPrevious className={cn("absolute left-4 top-1/2 -translate-y-1/2 z-10", isStory && "hidden")} />
-                            <CarouselNext className={cn("absolute right-4 top-1/2 -translate-y-1/2 z-10", isStory && "hidden")} />
+                           <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
+                            <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
                         </>
                     )}
                 </Carousel>
@@ -787,6 +787,7 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
+        console.log('[handleQueueItemSelect] Called with ID:', queueItemId);
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
@@ -795,6 +796,7 @@ export default function ArtisanPage() {
         setReferenceImageUrl(null);
 
         if (!queueItemId || workflowMode === 'custom') {
+            console.log('[handleQueueItemSelect] Custom mode or no ID, resetting prompts.');
             setCreativePrompt('');
             setEditableContent(null);
             if (workflowMode === 'custom') setSelectedOfferingId(undefined);
@@ -803,9 +805,12 @@ export default function ArtisanPage() {
 
         const item = items.find(q => q.id === queueItemId);
         if (item && item.media_plan_items) {
+            console.log('[handleQueueItemSelect] Found item:', item);
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            setCreativePrompt(planItem.creativePrompt || '');
+            const newCreativePrompt = planItem.creativePrompt || '';
+            console.log('[handleQueueItemSelect] Setting creative prompt to:', newCreativePrompt);
+            setCreativePrompt(newCreativePrompt);
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
@@ -843,6 +848,7 @@ export default function ArtisanPage() {
             }
 
         } else {
+            console.log('[handleQueueItemSelect] Item not found or malformed, resetting.');
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(undefined);
@@ -852,6 +858,7 @@ export default function ArtisanPage() {
     useEffect(() => {
         async function fetchData() {
             try {
+                console.log('[useEffect] Starting to fetch initial data.');
                 setIsLoading(true);
                 const [profileData, queueData, offeringsData, mediaPlansData, stylesData] = await Promise.all([
                     getProfile(),
@@ -860,6 +867,10 @@ export default function ArtisanPage() {
                     getMediaPlans(),
                     getArtStyles(),
                 ]);
+
+                console.log('[useEffect] Fetched Queue Data:', queueData);
+                console.log('[useEffect] Fetched Offerings Data:', offeringsData);
+                console.log('[useEffect] Fetched Media Plans:', mediaPlansData);
 
                 setProfile(profileData);
                 setAllQueueItems(queueData);
@@ -872,6 +883,7 @@ export default function ArtisanPage() {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
             } finally {
                 setIsLoading(false);
+                console.log('[useEffect] Finished fetching initial data.');
             }
         }
         fetchData();
@@ -884,9 +896,11 @@ export default function ArtisanPage() {
     }, [toast]);
     
     const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
+        console.log('[startCampaignWorkflow] Starting for campaign:', campaign);
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
         const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
+        console.log('[startCampaignWorkflow] Filtered items for campaign:', itemsForCampaign);
         setFilteredQueueItems(itemsForCampaign);
         if (itemsForCampaign.length > 0) {
             handleQueueItemSelect(itemsForCampaign[0].id, itemsForCampaign);
@@ -1519,3 +1533,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
