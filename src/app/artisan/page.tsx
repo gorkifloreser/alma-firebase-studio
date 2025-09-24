@@ -38,6 +38,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ImageUpload } from '../offerings/_components/ImageUpload';
+import { getFormatsForChannel } from '@/lib/media-formats';
 
 
 type Profile = {
@@ -281,10 +282,10 @@ const PostPreview = ({
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    {isStory && creative.carouselSlides.length > 1 && (
+                    {(creative.carouselSlides.length > 1) && (
                         <>
-                            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white" />
-                            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white" />
+                            <CarouselPrevious className={cn("absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white", isStory && "hidden")} />
+                            <CarouselNext className={cn("absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white", isStory && "hidden")} />
                         </>
                     )}
                 </Carousel>
@@ -420,7 +421,7 @@ const PostPreview = ({
                 </div>
             </CardHeader>
             <CardContent className="p-0">
-                <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
+                 <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
                     <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
                         {renderVisualContent()}
                     </div>
@@ -767,13 +768,23 @@ export default function ArtisanPage() {
             
             const formatValue = (planItem.format || '').toLowerCase();
             
-            // Auto-update creative type
+            const channel = item.media_plan_items.user_channel_settings?.channel_name || '';
+            const formatsForChannel = getFormatsForChannel(channel);
+
+            let newCreativeType: CreativeType = 'image'; // default
+            if (formatsForChannel.includes('Text Post')) newCreativeType = 'text';
+            if (formatsForChannel.some(f => f.toLowerCase().includes('video'))) newCreativeType = 'video';
+            if (formatsForChannel.some(f => f.toLowerCase().includes('carousel'))) newCreativeType = 'carousel';
+            if (formatsForChannel.some(f => f.toLowerCase().includes('landing'))) newCreativeType = 'landing_page';
+            
             if (formatValue.includes('video') || formatValue.includes('reel')) {
                 setSelectedCreativeType('video');
             } else if (formatValue.includes('carousel')) {
                 setSelectedCreativeType('carousel');
             } else if (formatValue.includes('landing')) {
                 setSelectedCreativeType('landing_page');
+            } else if (formatValue.includes('text')) {
+                setSelectedCreativeType('text');
             } else {
                 setSelectedCreativeType('image');
             }
@@ -910,7 +921,7 @@ export default function ArtisanPage() {
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
             // Always generate text unless the type is ONLY video or landing page
-            if (!['video', 'landing_page'].includes(selectedCreativeType)) {
+            if (selectedCreativeType !== 'video' && selectedCreativeType !== 'landing_page' && selectedCreativeType !== 'text') {
                 creativeTypes.push('text');
             }
 
@@ -1108,6 +1119,34 @@ export default function ArtisanPage() {
         }));
     };
 
+    const currentChannel = (workflowMode === 'campaign' && selectedQueueItemId)
+        ? allQueueItems.find(i => i.id === selectedQueueItemId)?.media_plan_items?.user_channel_settings?.channel_name
+        : null;
+
+    const availableCreativeOptions = useMemo(() => {
+        if (workflowMode === 'campaign' && currentChannel) {
+            const formats = getFormatsForChannel(currentChannel);
+            const options = new Set<CreativeType>();
+            
+            formats.forEach(format => {
+                const f = format.toLowerCase();
+                if (f.includes('text post')) options.add('text');
+                if (f.includes('image')) options.add('image');
+                if (f.includes('carousel')) options.add('carousel');
+                if (f.includes('video') || f.includes('reel')) options.add('video');
+                if (f.includes('landing page')) options.add('landing_page');
+            });
+            // Ensure "Text" is an option if any visual type is available
+            if (options.has('image') || options.has('carousel') || options.has('video')) {
+                options.add('text');
+            }
+
+            return creativeOptions.filter(opt => options.has(opt.id));
+        }
+        return creativeOptions; // Show all in custom mode
+    }, [workflowMode, currentChannel]);
+
+
     return (
         <DashboardLayout>
             <Toaster />
@@ -1296,7 +1335,7 @@ export default function ArtisanPage() {
                                                     className="grid grid-cols-2 gap-4"
                                                     disabled={isLoading}
                                                 >
-                                                    {creativeOptions.map(({ id, label, icon: Icon }) => (
+                                                    {availableCreativeOptions.map(({ id, label, icon: Icon }) => (
                                                         <div key={id} className="flex items-center space-x-2">
                                                             <RadioGroupItem value={id} id={id} />
                                                             <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer font-normal">
