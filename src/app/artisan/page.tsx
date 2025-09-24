@@ -271,21 +271,21 @@ const PostPreview = ({
                                         </div>
                                     )}
                                 </div>
-                                <Button 
-                                    variant="secondary" 
-                                    size="sm"
-                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100"
                                     onClick={() => setIsPromptEditorOpen(true)}
                                 >
-                                    <Edit className="mr-2 h-4 w-4" /> Edit Prompt
+                                    <Edit className="h-5 w-5" />
                                 </Button>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
                     {(creative.carouselSlides.length > 1) && (
                         <>
-                            <CarouselPrevious className={cn("absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white", isStory && "hidden")} />
-                            <CarouselNext className={cn("absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white border-none hover:bg-black/70 hover:text-white", isStory && "hidden")} />
+                           <CarouselPrevious className={cn("absolute left-4 top-1/2 -translate-y-1/2 z-10", (isStory || creative.carouselSlides.length <=1) && "hidden")} />
+                            <CarouselNext className={cn("absolute right-4 top-1/2 -translate-y-1/2 z-10", (isStory || creative.carouselSlides.length <=1) && "hidden")} />
                         </>
                     )}
                 </Carousel>
@@ -916,28 +916,23 @@ export default function ArtisanPage() {
         setIsLoading(true);
         setCreative(null);
         setEditableHtml(null);
-        setEditableContent(null);
+        // Keep existing text content when regenerating visuals only
+        if (selectedCreativeType === 'text') {
+            setEditableContent(null);
+        }
 
         try {
             const creativeTypes: CreativeType[] = [selectedCreativeType];
-            // Always generate text unless the type is ONLY video or landing page
+            // Also generate text if a visual type is selected
             if (selectedCreativeType !== 'video' && selectedCreativeType !== 'landing_page' && selectedCreativeType !== 'text') {
                 creativeTypes.push('text');
-            }
-
-            let finalCreativePrompt = creativePrompt;
-            if (selectedArtStyleId !== 'none') {
-                const style = artStyles.find(s => s.id === selectedArtStyleId);
-                if (style) {
-                    finalCreativePrompt += style.prompt_suffix;
-                }
             }
             
             const result = await generateCreativeForOffering({
                 offeringId: selectedOfferingId,
                 creativeTypes: creativeTypes,
                 aspectRatio: dimension,
-                creativePrompt: finalCreativePrompt,
+                creativePrompt,
                 referenceImageUrl: referenceImageUrl || undefined,
             });
 
