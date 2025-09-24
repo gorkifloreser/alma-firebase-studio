@@ -1273,7 +1273,7 @@ export default function ArtisanPage() {
                                                 </RadioGroup>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-6">
                                                 {selectedCreativeType !== 'landing_page' && (
                                                     <div className="space-y-2">
                                                         <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
