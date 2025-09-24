@@ -1188,62 +1188,64 @@ export default function ArtisanPage() {
                                                 </RadioGroup>
                                             </div>
 
-                                            {selectedCreativeType !== 'landing_page' && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
-                                                    <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
-                                                        <SelectTrigger id="dimension-select">
-                                                            <SelectValue placeholder="Select aspect ratio..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
-                                                            <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
-                                                            <SelectItem value="9:16">Story (9:16)</SelectItem>
-                                                            <SelectItem value="16:9">Landscape (16:9)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {selectedCreativeType !== 'landing_page' && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
+                                                        <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
+                                                            <SelectTrigger id="dimension-select">
+                                                                <SelectValue placeholder="Select aspect ratio..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="1:1" disabled={selectedCreativeType === 'video'}>Square (1:1)</SelectItem>
+                                                                <SelectItem value="4:5" disabled={selectedCreativeType === 'video'}>Portrait (4:5)</SelectItem>
+                                                                <SelectItem value="9:16">Story (9:16)</SelectItem>
+                                                                <SelectItem value="16:9">Landscape (16:9)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
 
-                                            <div className="space-y-4">
-                                                <Label>Schedule Publication</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Popover.Root>
-                                                        <Popover.Trigger asChild>
-                                                            <Button
-                                                                variant={"outline"}
-                                                                className={cn("w-[240px] justify-start text-left font-normal", !scheduledAt && "text-muted-foreground")}
-                                                                disabled={!hasContentToSave}
-                                                            >
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {scheduledAt ? format(scheduledAt, "PPP") : <span>Pick a date</span>}
-                                                            </Button>
-                                                        </Popover.Trigger>
-                                                        <Popover.Content className="w-auto p-0">
-                                                            <Calendar
-                                                                mode="single"
-                                                                selected={scheduledAt || undefined}
-                                                                onSelect={(d) => handleDateTimeChange(d, scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00')}
-                                                                initialFocus
-                                                            />
-                                                        </Popover.Content>
-                                                    </Popover.Root>
-                                                    <Select
-                                                        value={scheduledAt ? format(scheduledAt, 'HH:mm') : ''}
-                                                        onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
-                                                        disabled={!hasContentToSave}
-                                                    >
-                                                        <SelectTrigger className="w-[120px]">
-                                                            <SelectValue placeholder="Select time" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {timeOptions.map(option => (
-                                                                <SelectItem key={option.value} value={option.value}>
-                                                                    {option.label}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                <div className="space-y-2">
+                                                    <Label>Schedule Publication</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Popover.Root>
+                                                            <Popover.Trigger asChild>
+                                                                <Button
+                                                                    variant={"outline"}
+                                                                    className={cn("w-full justify-start text-left font-normal", !scheduledAt && "text-muted-foreground")}
+                                                                    disabled={!hasContentToSave}
+                                                                >
+                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                    {scheduledAt ? format(scheduledAt, "PPP") : <span>Pick a date</span>}
+                                                                </Button>
+                                                            </Popover.Trigger>
+                                                            <Popover.Content className="w-auto p-0">
+                                                                <Calendar
+                                                                    mode="single"
+                                                                    selected={scheduledAt || undefined}
+                                                                    onSelect={(d) => handleDateTimeChange(d, scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00')}
+                                                                    initialFocus
+                                                                />
+                                                            </Popover.Content>
+                                                        </Popover.Root>
+                                                        <Select
+                                                            value={scheduledAt ? format(scheduledAt, 'HH:mm') : ''}
+                                                            onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
+                                                            disabled={!hasContentToSave}
+                                                        >
+                                                            <SelectTrigger className="w-full">
+                                                                <SelectValue placeholder="Time" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {timeOptions.map(option => (
+                                                                    <SelectItem key={option.value} value={option.value}>
+                                                                        {option.label}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </CardContent>
