@@ -627,7 +627,6 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-
     const { data, error } = await supabase
         .from('media_plans')
         .select(`
@@ -639,7 +638,7 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
             )
         `)
         .eq('user_id', user.id)
-        .not('funnels', 'is', null);
+        .not('funnel_id', 'is', null);
 
     if (error) {
         console.error('Error fetching media plans for select:', error);
@@ -648,12 +647,14 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     
     if (!data) return [];
 
-    const result = data.map((plan: any) => ({
-        id: plan.id,
-        title: plan.title,
-        offering_id: plan.funnels.offering_id,
-        offering_title: plan.funnels.offerings?.title?.primary || 'Untitled Offering',
-    }));
+    const result = data
+        .filter((plan: any) => plan.funnels) // Ensure funnels is not null
+        .map((plan: any) => ({
+            id: plan.id,
+            title: plan.title,
+            offering_id: plan.funnels.offering_id,
+            offering_title: plan.funnels.offerings?.title?.primary || 'Untitled Offering',
+        }));
 
     return result;
 }
@@ -690,6 +691,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
