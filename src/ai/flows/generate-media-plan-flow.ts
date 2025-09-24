@@ -175,6 +175,7 @@ This content package MUST contain:
 7.  **stageName**: '{{stageName}}'.
 8.  **objective**: **Generate a NEW, specific goal for this content piece.**
 9.  **concept**: **Generate a NEW, specific concept for this content piece.**
+10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });

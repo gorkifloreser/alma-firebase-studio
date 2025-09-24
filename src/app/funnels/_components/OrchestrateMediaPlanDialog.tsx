@@ -350,7 +350,7 @@ export function OrchestrateMediaPlanDialog({
     const handleAddNewItem = (channel: string) => {
         const newItem: PlanItemWithStatus = {
             id: `temp-${crypto.randomUUID()}`,
-            offeringId: funnel.offering_id || '',
+            offering_id: funnel.offering_id || '',
             channel: channel,
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
