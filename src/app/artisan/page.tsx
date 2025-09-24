@@ -631,8 +631,8 @@ const ImageChatDialog = ({
                                     <Image 
                                         src={currentImage} 
                                         alt="Current image to edit" 
-                                        layout="fill" 
-                                        objectFit={zoom} 
+                                        fill
+                                        style={{objectFit: zoom}}
                                         className="transition-all duration-300"
                                     />
                                      <Button 
@@ -812,7 +812,7 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            const newCreativePrompt = planItem.creative_prompt || '';
+            const newCreativePrompt = planItem.creativePrompt || '';
             setCreativePrompt(newCreativePrompt);
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
@@ -1135,7 +1135,7 @@ export default function ArtisanPage() {
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
     
     const hasVisualContent = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl || creative?.landingPageHtml;
-    const isTextOnlyCreative = selectedCreativeType === 'text';
+    const isTextOnlyCreative = selectedCreativeType === 'text' || selectedCreativeType === 'landing_page';
     const canSave = (isTextOnlyCreative && !!editableContent) || (!!editableContent && hasVisualContent);
     const hasContentToSave = canSave;
 
@@ -1557,6 +1557,7 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
 
 
 
