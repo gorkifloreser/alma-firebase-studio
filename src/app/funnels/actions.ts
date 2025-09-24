@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -604,12 +605,11 @@ export async function getUserChannels(): Promise<Account[]> {
  * Fetches a list of all media plans for the current user, intended for a selection dialog.
  */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
+    console.log("getMediaPlans action started.");
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Query funnels and eagerly load their offerings and media plans
-    // Using !inner join ensures we only get funnels that HAVE media plans
     const { data, error } = await supabase
         .from('funnels')
         .select(`
@@ -619,17 +619,19 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
         `)
         .eq('user_id', user.id);
 
+    console.log("Supabase query result:", { data, error });
+
     if (error) {
         console.error('Error fetching media plans:', error);
         throw new Error('Could not fetch media plans.');
     }
     
     if (!data) {
+        console.log("No funnels with media plans found.");
         return [];
     }
     
     const response = data.flatMap((funnel: any) => 
-        // For each funnel, map over its media plans and create the desired flat structure
         funnel.media_plans.map((plan: any) => ({
             id: plan.id,
             title: plan.title,
@@ -638,9 +640,12 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
         }))
     );
     
+    console.log("Final processed response:", response);
     return response;
 }
       
+
+    
 
     
 
