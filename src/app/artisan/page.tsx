@@ -13,7 +13,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -560,11 +560,20 @@ const ImageChatDialog = ({
     const [isEditing, startEditing] = useTransition();
     const { toast } = useToast();
     const [currentImage, setCurrentImage] = useState(imageUrl);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [zoom, setZoom] = useState<'contain' | 'cover'>('contain');
 
     useEffect(() => {
         setCurrentImage(imageUrl);
         setHistory([]);
     }, [imageUrl]);
+
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [history, isEditing]);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -596,17 +605,35 @@ const ImageChatDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col">
+            <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Chat with Your Image</DialogTitle>
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
                 <div className="grid md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                        {currentImage && <Image src={currentImage} alt="Current image to edit" layout="fill" objectFit="contain" />}
+                        {currentImage && (
+                            <>
+                                <Image 
+                                    src={currentImage} 
+                                    alt="Current image to edit" 
+                                    layout="fill" 
+                                    objectFit={zoom} 
+                                    className="transition-all duration-300"
+                                />
+                                 <Button 
+                                    variant="secondary" 
+                                    size="icon" 
+                                    className="absolute top-2 right-2 z-10"
+                                    onClick={() => setZoom(prev => prev === 'contain' ? 'cover' : 'contain')}
+                                >
+                                    <ZoomIn className="h-4 w-4" />
+                                </Button>
+                            </>
+                        )}
                     </div>
-                    <div className="flex flex-col h-full">
-                        <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                    <div className="flex flex-col h-full bg-background rounded-lg">
+                        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                             {history.map((msg, index) => (
                                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                                     {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
@@ -629,7 +656,7 @@ const ImageChatDialog = ({
                                 </div>
                             )}
                         </div>
-                        <form onSubmit={handleSubmit} className="relative mt-4">
+                        <form onSubmit={handleSubmit} className="relative p-4 border-t">
                             <Textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
@@ -643,7 +670,7 @@ const ImageChatDialog = ({
                                     }
                                 }}
                             />
-                            <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-10" disabled={isEditing || !input.trim()}>
+                            <Button type="submit" size="icon" className="absolute right-6 top-1/2 -translate-y-1/2 h-8 w-10" disabled={isEditing || !input.trim()}>
                                 {isEditing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             </Button>
                         </form>
@@ -742,7 +769,6 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
-        console.log('[handleQueueItemSelect] Called with ID:', queueItemId);
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
@@ -751,7 +777,6 @@ export default function ArtisanPage() {
         setReferenceImageUrl(null);
 
         if (!queueItemId || workflowMode === 'custom') {
-            console.log('[handleQueueItemSelect] Custom mode or no ID, resetting prompts.');
             setCreativePrompt('');
             setEditableContent(null);
             if (workflowMode === 'custom') setSelectedOfferingId(undefined);
@@ -760,11 +785,9 @@ export default function ArtisanPage() {
 
         const item = items.find(q => q.id === queueItemId);
         if (item && item.media_plan_items) {
-            console.log('[handleQueueItemSelect] Found item:', item);
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
             const newCreativePrompt = planItem.creative_prompt || '';
-            console.log('[handleQueueItemSelect] Setting creative prompt to:', newCreativePrompt);
             setCreativePrompt(newCreativePrompt);
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
@@ -803,7 +826,6 @@ export default function ArtisanPage() {
             }
 
         } else {
-            console.log('[handleQueueItemSelect] Item not found or malformed, resetting.');
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(undefined);
@@ -813,7 +835,6 @@ export default function ArtisanPage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                console.log('[useEffect] Starting to fetch initial data.');
                 setIsLoading(true);
                 const [profileData, queueData, offeringsData, mediaPlansData, stylesData] = await Promise.all([
                     getProfile(),
@@ -822,10 +843,6 @@ export default function ArtisanPage() {
                     getMediaPlans(),
                     getArtStyles(),
                 ]);
-
-                console.log('[useEffect] Fetched Queue Data:', queueData);
-                console.log('[useEffect] Fetched Offerings Data:', offeringsData);
-                console.log('[useEffect] Fetched Media Plans:', mediaPlansData);
 
                 setProfile(profileData);
                 setAllQueueItems(queueData);
@@ -838,7 +855,6 @@ export default function ArtisanPage() {
                 toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
             } finally {
                 setIsLoading(false);
-                console.log('[useEffect] Finished fetching initial data.');
             }
         }
         fetchData();
@@ -851,11 +867,9 @@ export default function ArtisanPage() {
     }, [toast]);
     
     const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
-        console.log('[startCampaignWorkflow] Starting for campaign:', campaign);
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
         const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
-        console.log('[startCampaignWorkflow] Filtered items for campaign:', itemsForCampaign);
         setFilteredQueueItems(itemsForCampaign);
         if (itemsForCampaign.length > 0) {
             handleQueueItemSelect(itemsForCampaign[0].id, itemsForCampaign);
@@ -1218,9 +1232,9 @@ export default function ArtisanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
-                            <AccordionItem value="creative-controls" className="border-none">
+                             <AccordionItem value="creative-controls" className="border-none">
                                 <Card>
-                                    <AccordionTrigger className="p-6">
+                                     <AccordionTrigger className="p-6">
                                          <CardHeader className="p-0">
                                             <CardTitle>Creative Controls</CardTitle>
                                          </CardHeader>
