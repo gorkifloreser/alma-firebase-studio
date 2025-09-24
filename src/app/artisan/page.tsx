@@ -598,59 +598,57 @@ const ImageChatDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl h-[90vh]">
+            <DialogContent className="sm:max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Chat with Your Image</DialogTitle>
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col h-full overflow-hidden">
-                    <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden">
-                        <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                            {currentImage && <Image src={currentImage} alt="Current image to edit" layout="fill" objectFit="contain" />}
-                        </div>
-                        <div className="flex flex-col h-full">
-                            <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-                                {history.map((msg, index) => (
-                                    <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                                        {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
-                                        <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                            {typeof msg.content === 'string' ? (
-                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                            ) : (
-                                                <Image src={msg.content.imageUrl} width={200} height={200} alt="Edited image" className="rounded-md"/>
-                                            )}
-                                        </div>
-                                        {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
+                <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden">
+                    <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                        {currentImage && <Image src={currentImage} alt="Current image to edit" layout="fill" objectFit="contain" />}
+                    </div>
+                    <div className="flex flex-col h-full">
+                        <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                            {history.map((msg, index) => (
+                                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                                    {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
+                                    <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                        {typeof msg.content === 'string' ? (
+                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                        ) : (
+                                            <Image src={msg.content.imageUrl} width={200} height={200} alt="Edited image" className="rounded-md"/>
+                                        )}
                                     </div>
-                                ))}
-                                {isEditing && (
-                                    <div className="flex items-start gap-3">
-                                        <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>
-                                        <div className="rounded-lg px-3 py-2 bg-muted flex items-center">
-                                            <Sparkles className="w-5 h-5 animate-spin text-muted-foreground" />
-                                        </div>
+                                    {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
+                                </div>
+                            ))}
+                            {isEditing && (
+                                <div className="flex items-start gap-3">
+                                    <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>
+                                    <div className="rounded-lg px-3 py-2 bg-muted flex items-center">
+                                        <Wand2 className="w-5 h-5 animate-spin text-muted-foreground" />
                                     </div>
-                                )}
-                            </div>
-                            <form onSubmit={handleSubmit} className="relative mt-4">
-                                <Textarea
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder="e.g., make the background lighter..."
-                                    className="pr-16"
-                                    disabled={isEditing}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleSubmit(e);
-                                        }
-                                    }}
-                                />
-                                <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-10" disabled={isEditing || !input.trim()}>
-                                    {isEditing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                </Button>
-                            </form>
+                                </div>
+                            )}
                         </div>
+                        <form onSubmit={handleSubmit} className="relative mt-4">
+                            <Textarea
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="e.g., make the background lighter..."
+                                className="pr-16"
+                                disabled={isEditing}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSubmit(e);
+                                    }
+                                }}
+                            />
+                            <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-10" disabled={isEditing || !input.trim()}>
+                                {isEditing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            </Button>
+                        </form>
                     </div>
                 </div>
             </DialogContent>
@@ -1222,7 +1220,6 @@ export default function ArtisanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
-                            {/* @functional: This component is functionally complete and should not be modified without explicit user request. */}
                             <AccordionItem value="creative-controls" className="border-none">
                                 <Card>
                                     <AccordionTrigger className="p-6">
@@ -1460,7 +1457,8 @@ export default function ArtisanPage() {
                                                     <TabsContent value="retouch" className="mt-4">
                                                         <p className="text-sm text-muted-foreground mb-4">Interactively edit your image with chat commands.</p>
                                                         <Button className="w-full" onClick={() => {
-                                                            if (creative?.imageUrl) handleOpenImageChat(creative.imageUrl)
+                                                            const imageUrl = selectedCreativeType === 'carousel' ? creative.carouselSlides?.[0]?.imageUrl : creative.imageUrl;
+                                                            if (imageUrl) handleOpenImageChat(imageUrl)
                                                         }}>
                                                             <Bot className="mr-2 h-4 w-4" /> Start Image Chat
                                                         </Button>
