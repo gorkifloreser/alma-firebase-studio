@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -85,6 +86,7 @@ const PostPreview = ({
     handleContentChange,
     handleCarouselSlideChange,
     onImageEdit,
+    onCurrentSlideChange,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -98,6 +100,7 @@ const PostPreview = ({
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
+    onCurrentSlideChange: (index: number) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -125,11 +128,15 @@ const PostPreview = ({
 
     useEffect(() => {
         if (!api) return;
-        setCurrent(api.selectedScrollSnap());
+        const newCurrent = api.selectedScrollSnap();
+        setCurrent(newCurrent);
+        onCurrentSlideChange(newCurrent);
         api.on("select", () => {
-            setCurrent(api.selectedScrollSnap());
+            const newIndex = api.selectedScrollSnap();
+            setCurrent(newIndex);
+            onCurrentSlideChange(newIndex);
         });
-    }, [api]);
+    }, [api, onCurrentSlideChange]);
     
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
@@ -225,6 +232,17 @@ const PostPreview = ({
                     {renderVisualContent()}
                 </div>
                 
+                 {canEditImage && imageUrlToEdit && (
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-16 right-4 h-10 w-10 rounded-full shadow-lg z-10 pointer-events-auto"
+                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                    >
+                        <Edit className="h-5 w-5" />
+                    </Button>
+                )}
+                
                 {/* Content Overlay */}
                  <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
                     {/* Header */}
@@ -275,16 +293,6 @@ const PostPreview = ({
                         <Send className="h-6 w-6 cursor-pointer" />
                     </div>
                 </div>
-                 {canEditImage && imageUrlToEdit && (
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10 pointer-events-auto"
-                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                    >
-                        <Edit className="h-4 w-4" />
-                    </Button>
-                )}
             </div>
             </>
         );
@@ -308,6 +316,16 @@ const PostPreview = ({
                         <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
                             {renderVisualContent()}
                         </div>
+                         {canEditImage && imageUrlToEdit && (
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10"
+                                onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                            >
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
                 <CardFooter className="flex flex-col items-start gap-2 pt-2">
@@ -343,16 +361,6 @@ const PostPreview = ({
                         </>
                     )}
                 </CardFooter>
-                 {canEditImage && imageUrlToEdit && (
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        className="absolute top-16 right-2 h-8 w-8 rounded-full shadow-lg z-10"
-                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                    >
-                        <Edit className="h-4 w-4" />
-                    </Button>
-                )}
             </Card>
         </div>
     );
@@ -549,11 +557,15 @@ const ImageChatDialog = ({
     onOpenChange,
     imageUrl,
     onImageUpdate,
+    originalPrompt,
+    onRegenerate
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     imageUrl: string | null;
     onImageUpdate: (newImageUrl: string) => void;
+    originalPrompt: string | null;
+    onRegenerate: (prompt: string) => void;
 }) => {
     const [history, setHistory] = useState<Array<{ role: 'user' | 'bot'; content: string | { imageUrl: string } }>>([]);
     const [input, setInput] = useState('');
@@ -610,29 +622,40 @@ const ImageChatDialog = ({
                     <DialogTitle>Chat with Your Image</DialogTitle>
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
-                <div className="grid md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-                    <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                        {currentImage && (
-                            <>
-                                <Image 
-                                    src={currentImage} 
-                                    alt="Current image to edit" 
-                                    layout="fill" 
-                                    objectFit={zoom} 
-                                    className="transition-all duration-300"
-                                />
-                                 <Button 
-                                    variant="secondary" 
-                                    size="icon" 
-                                    className="absolute top-2 right-2 z-10"
-                                    onClick={() => setZoom(prev => prev === 'contain' ? 'cover' : 'contain')}
-                                >
-                                    <ZoomIn className="h-4 w-4" />
+                <div className="grid md:grid-cols-2 gap-4 flex-1 min-h-0">
+                     <div className="flex flex-col space-y-4">
+                        <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden flex-1">
+                            {currentImage && (
+                                <>
+                                    <Image 
+                                        src={currentImage} 
+                                        alt="Current image to edit" 
+                                        layout="fill" 
+                                        objectFit={zoom} 
+                                        className="transition-all duration-300"
+                                    />
+                                     <Button 
+                                        variant="secondary" 
+                                        size="icon" 
+                                        className="absolute top-2 right-2 z-10"
+                                        onClick={() => setZoom(prev => prev === 'contain' ? 'cover' : 'contain')}
+                                    >
+                                        <ZoomIn className="h-4 w-4" />
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                        {originalPrompt && (
+                             <div className="space-y-2 flex-shrink-0">
+                                <Label>Original Prompt</Label>
+                                <Textarea readOnly value={originalPrompt} className="h-24 font-mono text-xs" />
+                                <Button variant="secondary" size="sm" onClick={() => onRegenerate(originalPrompt)} disabled={isEditing}>
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
                                 </Button>
-                            </>
+                             </div>
                         )}
                     </div>
-                    <div className="flex flex-col h-full bg-background rounded-lg">
+                    <div className="flex flex-col h-full bg-background rounded-lg border">
                         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                             {history.map((msg, index) => (
                                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -712,6 +735,7 @@ export default function ArtisanPage() {
     const [channelFilter, setChannelFilter] = useState<string>('all');
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
     const [selectedArtStyleId, setSelectedArtStyleId] = useState<string>('none');
+    const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
 
 
     // UI & Generation State
@@ -1155,12 +1179,11 @@ export default function ArtisanPage() {
     // Derived state for the current image's final prompt
     const finalPromptForCurrentVisual = useMemo(() => {
         if (!creative) return null;
-        if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > 0) {
-            const currentSlideIndex = 0; // This should be dynamic if carousel is interactive
-            return creative.carouselSlides[currentSlideIndex]?.finalPrompt;
+        if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
+            return creative.carouselSlides[currentCarouselSlide]?.finalPrompt;
         }
         return creative.finalPrompt;
-    }, [creative, selectedCreativeType]);
+    }, [creative, selectedCreativeType, currentCarouselSlide]);
 
 
     return (
@@ -1200,6 +1223,10 @@ export default function ArtisanPage() {
                 onOpenChange={setIsImageChatOpen}
                 imageUrl={imageToChat?.url || null}
                 onImageUpdate={handleImageUpdate}
+                originalPrompt={finalPromptForCurrentVisual}
+                onRegenerate={(prompt) => {
+                    handleGenerate(prompt);
+                }}
             />
 
 
@@ -1469,8 +1496,8 @@ export default function ArtisanPage() {
                                                     <TabsContent value="retouch" className="mt-4">
                                                         <p className="text-sm text-muted-foreground mb-4">Interactively edit your image with chat commands.</p>
                                                         <Button className="w-full" onClick={() => {
-                                                            const imageUrl = selectedCreativeType === 'carousel' ? creative.carouselSlides?.[0]?.imageUrl : creative.imageUrl;
-                                                            if (imageUrl) handleOpenImageChat(imageUrl)
+                                                            const imageUrl = selectedCreativeType === 'carousel' ? creative.carouselSlides?.[currentCarouselSlide]?.imageUrl : creative.imageUrl;
+                                                            if (imageUrl) handleOpenImageChat(imageUrl, selectedCreativeType === 'carousel' ? currentCarouselSlide : undefined)
                                                         }}>
                                                             <Bot className="mr-2 h-4 w-4" /> Start Image Chat
                                                         </Button>
@@ -1510,6 +1537,7 @@ export default function ArtisanPage() {
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
                             onImageEdit={handleOpenImageChat}
+                            onCurrentSlideChange={setCurrentCarouselSlide}
                         />
                     </main>
                 </div>
@@ -1517,3 +1545,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
