@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -622,8 +623,8 @@ const ImageChatDialog = ({
                     <DialogTitle>Chat with Your Image</DialogTitle>
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
-                <div className="grid md:grid-cols-2 gap-4 flex-1 min-h-0">
-                     <div className="flex flex-col space-y-4">
+                <div className="grid md:grid-cols-2 gap-6 flex-1 min-h-0">
+                    <div className="flex flex-col space-y-4">
                         <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden flex-1">
                             {currentImage && (
                                 <>
@@ -655,7 +656,7 @@ const ImageChatDialog = ({
                              </div>
                         )}
                     </div>
-                    <div className="flex flex-col h-full bg-background rounded-lg border">
+                     <div className="flex flex-col h-full bg-background rounded-lg border">
                         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                             {history.map((msg, index) => (
                                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -1197,7 +1198,12 @@ export default function ArtisanPage() {
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         <h3 className="font-semibold text-muted-foreground">Work from a Campaign</h3>
-                        {mediaPlans.length > 0 ? (
+                        {isLoading ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        ) : mediaPlans.length > 0 ? (
                              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                                 {mediaPlans.map(plan => (
                                     <button key={plan.id} onClick={() => startCampaignWorkflow(plan)} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -1259,6 +1265,7 @@ export default function ArtisanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
+                            {/* @functional: This component and its related features (creative controls) are considered functionally complete. */}
                              <AccordionItem value="creative-controls" className="border-none">
                                 <Card>
                                      <AccordionTrigger className="p-6">
@@ -1545,4 +1552,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
 
