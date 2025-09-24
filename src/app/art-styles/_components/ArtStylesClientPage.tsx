@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -110,7 +111,7 @@ function ArtStyleDialog({ isOpen, onOpenChange, onStyleSaved, styleToEdit, creat
     );
 }
 
-interface ArtStylesClientPageProps {
+export interface ArtStylesClientPageProps {
     initialArtStyles: ArtStyle[];
     actions: {
         createArtStyle: typeof createArtStyle;
@@ -230,7 +231,7 @@ export function ArtStylesClientPage({ initialArtStyles, actions }: ArtStylesClie
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+        <div className="space-y-8">
             <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Art Styles</h1>

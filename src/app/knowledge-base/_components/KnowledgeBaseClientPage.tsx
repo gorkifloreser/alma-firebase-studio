@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition, useRef } from 'react';
@@ -25,7 +26,7 @@ interface ChatMessage {
 
 type BrandDocument = Awaited<ReturnType<typeof getBrandDocuments>>[0];
 
-interface KnowledgeBaseClientPageProps {
+export interface KnowledgeBaseClientPageProps {
     initialDocuments: BrandDocument[];
     getBrandDocumentsAction: typeof getBrandDocuments;
     deleteBrandDocumentAction: typeof deleteBrandDocument;
@@ -146,147 +147,140 @@ export function KnowledgeBaseClientPage({
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-            <header>
-                <h1 className="text-3xl font-bold">Knowledge Base</h1>
-                <p className="text-muted-foreground">Upload brand documents and chat with your AI assistant.</p>
-            </header>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <div className="space-y-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Brand Documents</CardTitle>
-                            <CardDescription>
-                                Upload documents for the AI to learn from. The system will automatically process them.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-6">
-                                <div>
-                                    <Label htmlFor="document-upload">Upload a new document</Label>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Input
-                                            id="document-upload"
-                                            type="file"
-                                            ref={fileInputRef}
-                                            onChange={handleFileChange}
-                                            className="flex-1"
-                                            accept=".pdf,.docx,.txt"
-                                            disabled={isUploading}
-                                        />
-                                        <Button 
-                                            size="icon" 
-                                            onClick={handleDocumentUpload} 
-                                            disabled={!selectedFile || isUploading}
-                                        >
-                                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                        </Button>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported formats: PDF, DOCX, TXT.</p>
-                                </div>
-                                <div className="space-y-3">
-                                    <h4 className="font-medium">Processed Documents</h4>
-                                    {isLoading ? (
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-12 w-full" />
-                                            <Skeleton className="h-12 w-full" />
-                                        </div>
-                                    ) : documents.length > 0 ? (
-                                        <ul className="divide-y divide-border rounded-md border">
-                                            {documents.map(doc => (
-                                                <li key={doc.document_group_id} className="flex items-center justify-between p-3">
-                                                    <div className="flex items-center gap-3 overflow-hidden">
-                                                        <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                                        <div className="flex-grow overflow-hidden">
-                                                            <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Processed {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDocumentDelete(doc.document_group_id)}
-                                                        disabled={isDeleting && deletingId === doc.document_group_id}
-                                                    >
-                                                    {isDeleting && deletingId === doc.document_group_id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        )}
-                                                    </Button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                                            <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                                            <h3 className="mt-4 text-lg font-semibold">No documents processed yet.</h3>
-                                            <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <Card className="sticky top-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div className="space-y-8">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Chat with your Knowledge Base</CardTitle>
-                        <CardDescription>Ask questions about your uploaded documents.</CardDescription>
+                        <CardTitle>Brand Documents</CardTitle>
+                        <CardDescription>
+                            Upload documents for the AI to learn from. The system will automatically process them.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <div className="h-[400px] flex flex-col">
-                            <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-                                 {chatHistory.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center h-full text-center">
-                                        <Bot className="w-12 h-12 text-muted-foreground" />
-                                        <p className="mt-4 text-muted-foreground">Ask me anything about your brand!</p>
+                        <div className="space-y-6">
+                            <div>
+                                <Label htmlFor="document-upload">Upload a new document</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Input
+                                        id="document-upload"
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        className="flex-1"
+                                        accept=".pdf,.docx,.txt"
+                                        disabled={isUploading}
+                                    />
+                                    <Button 
+                                        size="icon" 
+                                        onClick={handleDocumentUpload} 
+                                        disabled={!selectedFile || isUploading}
+                                    >
+                                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported formats: PDF, DOCX, TXT.</p>
+                            </div>
+                            <div className="space-y-3">
+                                <h4 className="font-medium">Processed Documents</h4>
+                                {isLoading ? (
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-12 w-full" />
+                                        <Skeleton className="h-12 w-full" />
                                     </div>
-                                )}
-                                {chatHistory.map((msg, index) => (
-                                    <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                                        {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
-                                        <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                        </div>
-                                         {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
-                                    </div>
-                                ))}
-                                {isAnswering && (
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-8 h-8 flex-shrink-0"><Bot className="w-5 h-5" /></div>
-                                        <div className="rounded-lg px-3 py-2 bg-muted flex items-center">
-                                            <Sparkles className="w-5 h-5 animate-spin text-muted-foreground" />
-                                        </div>
+                                ) : documents.length > 0 ? (
+                                    <ul className="divide-y divide-border rounded-md border">
+                                        {documents.map(doc => (
+                                            <li key={doc.document_group_id} className="flex items-center justify-between p-3">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                    <div className="flex-grow overflow-hidden">
+                                                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Processed {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDocumentDelete(doc.document_group_id)}
+                                                    disabled={isDeleting && deletingId === doc.document_group_id}
+                                                >
+                                                {isDeleting && deletingId === doc.document_group_id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    )}
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                                        <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                                        <h3 className="mt-4 text-lg font-semibold">No documents processed yet.</h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
                                     </div>
                                 )}
                             </div>
-                            <form onSubmit={handleChatSubmit} className="relative mt-4">
-                                <Textarea
-                                    value={chatQuery}
-                                    onChange={(e) => setChatQuery(e.target.value)}
-                                    placeholder="Type your question here..."
-                                    className="pr-16"
-                                    disabled={isAnswering}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handleChatSubmit(e);
-                                        }
-                                    }}
-                                />
-                                <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-10" disabled={isAnswering || !chatQuery.trim()}>
-                                    {isAnswering ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
-                                </Button>
-                            </form>
-                       </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
+
+            <Card className="sticky top-24">
+                <CardHeader>
+                    <CardTitle>Chat with your Knowledge Base</CardTitle>
+                    <CardDescription>Ask questions about your uploaded documents.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                   <div className="h-[400px] flex flex-col">
+                        <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                             {chatHistory.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-full text-center">
+                                    <Bot className="w-12 h-12 text-muted-foreground" />
+                                    <p className="mt-4 text-muted-foreground">Ask me anything about your brand!</p>
+                                </div>
+                            )}
+                            {chatHistory.map((msg, index) => (
+                                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                                    {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
+                                    <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                    </div>
+                                     {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
+                                </div>
+                            ))}
+                            {isAnswering && (
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 flex-shrink-0"><Bot className="w-5 h-5" /></div>
+                                    <div className="rounded-lg px-3 py-2 bg-muted flex items-center">
+                                        <Sparkles className="w-5 h-5 animate-spin text-muted-foreground" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <form onSubmit={handleChatSubmit} className="relative mt-4">
+                            <Textarea
+                                value={chatQuery}
+                                onChange={(e) => setChatQuery(e.target.value)}
+                                placeholder="Type your question here..."
+                                className="pr-16"
+                                disabled={isAnswering}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleChatSubmit(e);
+                                    }
+                                }}
+                            />
+                            <Button type="submit" size="icon" className="absolute right-2 bottom-2 h-8 w-10" disabled={isAnswering || !chatQuery.trim()}>
+                                {isAnswering ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
+                            </Button>
+                        </form>
+                   </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
