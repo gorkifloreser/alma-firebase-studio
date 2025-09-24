@@ -680,7 +680,7 @@ export default function ArtisanPage() {
         if (workflowMode !== 'campaign' || !selectedCampaign) return [];
         const channels = allQueueItems
             .filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id)
-            .map(item => item.media_plan_items.channel)
+            .map(item => item.media_plan_items!.channel)
             .filter((v, i, a) => a.indexOf(v) === i); // Unique
         return channels;
     }, [workflowMode, selectedCampaign, allQueueItems]);
@@ -690,7 +690,7 @@ export default function ArtisanPage() {
         if (workflowMode === 'campaign' && selectedCampaign) {
             let items = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id);
             if (channelFilter !== 'all') {
-                items = items.filter(item => item.media_plan_items.channel === channelFilter);
+                items = items.filter(item => item.media_plan_items?.channel === channelFilter);
             }
             setFilteredQueueItems(items);
             // Auto-select first item if selection becomes invalid
@@ -722,8 +722,8 @@ export default function ArtisanPage() {
         if (item) {
             setSelectedOfferingId(item.offering_id);
             if (item.media_plan_items) {
-                const planItem = item.media_plan_items as any;
-                setCreativePrompt(planItem.creative_prompt || '');
+                const planItem = item.media_plan_items;
+                setCreativePrompt(planItem.creativePrompt || '');
                 setEditableContent({ primary: planItem.copy || '', secondary: null });
                 
                 const formatValue = (planItem.format || '').toLowerCase();
@@ -1101,7 +1101,7 @@ export default function ArtisanPage() {
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                                         filteredQueueItems.length > 0 ? (
                                                             filteredQueueItems.map(item => (
-                                                                <SelectItem key={item.id} value={item.id}>{(item.media_plan_items as any)?.concept || 'Untitled Concept'}</SelectItem>
+                                                                <SelectItem key={item.id} value={item.id}>{item.media_plan_items?.concept || 'Untitled Concept'}</SelectItem>
                                                             ))
                                                         ) : (
                                                             <SelectItem value="none" disabled>No pending items.</SelectItem>
