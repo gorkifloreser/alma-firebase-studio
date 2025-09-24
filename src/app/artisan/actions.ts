@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -123,6 +124,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     }
     
     revalidatePath('/calendar');
+    revalidatePath('/artisan');
     return { message: 'Content approved and saved successfully.' };
 }
 
