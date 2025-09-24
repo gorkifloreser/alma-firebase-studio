@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
@@ -23,7 +24,7 @@ interface UploadQueueItem {
     id: string;
     file: FileWithPreview;
     description: string;
-    status: 'pending' | 'uploading' | 'generating_desc' | 'completed' | 'failed';
+    status: 'pending' | 'generating_desc' | 'uploading' | 'completed' | 'failed';
     progress: number;
     error?: string;
 }

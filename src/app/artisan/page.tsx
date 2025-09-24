@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getOfferings, uploadSingleOfferingMedia } from '../offerings/actions';
+import { getOfferings } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
@@ -37,7 +37,7 @@ import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDropzone } from 'react-dropzone';
+import { ImageUpload } from '../offerings/_components/ImageUpload';
 
 
 type Profile = {
@@ -636,50 +636,6 @@ const MediaSelectionDialog = ({
     offeringId: string;
     onUploadComplete: (newMedia: OfferingMedia) => void;
 }) => {
-    const { toast } = useToast();
-    const [isUploading, startUploading] = useTransition();
-
-    const onDrop = useCallback(async (acceptedFiles: File[]) => {
-        if (!offeringId) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'An offering must be selected to upload media.',
-            });
-            return;
-        }
-
-        const file = acceptedFiles[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('file', file);
-        // A description can be auto-generated or left blank here
-        formData.append('description', 'New image uploaded from Artisan page'); 
-
-        startUploading(async () => {
-            try {
-                const newMedia = await uploadSingleOfferingMedia(offeringId, formData);
-                toast({
-                    title: 'Upload Successful',
-                    description: `"${file.name}" has been added to the gallery.`,
-                });
-                onUploadComplete(newMedia);
-            } catch (error: any) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Upload Failed',
-                    description: error.message,
-                });
-            }
-        });
-    }, [offeringId, toast, onUploadComplete]);
-
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: { 'image/jpeg': [], 'image/png': [], 'image/gif': [], 'image/webp': [] },
-        multiple: false,
-    });
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -691,30 +647,13 @@ const MediaSelectionDialog = ({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 max-h-[70vh] overflow-y-auto space-y-6">
-                    <div
-                        {...getRootProps()}
-                        className={cn(
-                            "flex justify-center items-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
-                            isDragActive ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/50'
-                        )}
-                    >
-                        <input {...getInputProps()} />
-                        {isUploading ? (
-                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                                <span>Uploading...</span>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                    {isDragActive ? 'Drop the image here...' : "Drag 'n' drop or click to upload a new image"}
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    <Separator />
+                    <ImageUpload 
+                        offeringId={offeringId}
+                        onNewMediaUploaded={onUploadComplete}
+                        existingMedia={media}
+                        onRemoveExistingMedia={() => { /* Not implemented in this dialog */}}
+                        offeringContext={{ title: '', description: '' }} // Context not critical here
+                    />
 
                     {media.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
