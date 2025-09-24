@@ -808,7 +808,7 @@ export default function ArtisanPage() {
             console.log('[handleQueueItemSelect] Found item:', item);
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            const newCreativePrompt = planItem.creativePrompt || '';
+            const newCreativePrompt = planItem.creative_prompt || '';
             console.log('[handleQueueItemSelect] Setting creative prompt to:', newCreativePrompt);
             setCreativePrompt(newCreativePrompt);
             setEditableContent({ primary: planItem.copy || '', secondary: null });
