@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -15,7 +13,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -349,7 +347,7 @@ const PostPreview = ({
                     <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10"
+                        className="absolute top-16 right-2 h-8 w-8 rounded-full shadow-lg z-10"
                         onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
                     >
                         <Edit className="h-4 w-4" />
@@ -603,7 +601,7 @@ const ImageChatDialog = ({
                     <DialogTitle>Chat with Your Image</DialogTitle>
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden">
+                <div className="grid md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                         {currentImage && <Image src={currentImage} alt="Current image to edit" layout="fill" objectFit="contain" />}
                     </div>
@@ -626,7 +624,7 @@ const ImageChatDialog = ({
                                 <div className="flex items-start gap-3">
                                     <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>
                                     <div className="rounded-lg px-3 py-2 bg-muted flex items-center">
-                                        <Wand2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                        <Sparkles className="w-5 h-5 animate-spin text-muted-foreground" />
                                     </div>
                                 </div>
                             )}
