@@ -11,11 +11,12 @@ import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { GenerateFunnelOutput, ConceptualStep } from './generate-funnel-flow';
+import { mediaFormatConfig } from '@/lib/media-formats';
 
 
 const PlanItemSchema = z.object({
   offering_id: z.string().describe("The ID of the offering this content is for."),
-  channel: z.string().describe("The specific channel this content is for (e.g., 'Instagram', 'Facebook')."),
+  user_channel_settings: z.object({ channel_name: z.string() }).describe("The channel this content is for."),
   format: z.string().describe("The specific visual format for the content, chosen from the provided list."),
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
@@ -118,7 +119,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
 
 1.  **offering_id**: '{{offering.id}}'.
-2.  **channel**: '{{channel}}'.
+2.  **user_channel_settings**: { "channel_name": '{{channel}}' }.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write compelling, direct-response ad copy. **This is crucial: The copy MUST perfectly embody the brand's specific TONE OF VOICE.** It should feel authentic and connected, not like generic marketing.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags that align with the brand's values.
@@ -167,7 +168,7 @@ Generate ONE NEW, DIFFERENT content package for the **'{{channel}}' channel**, f
 
 This content package MUST contain:
 1.  **offering_id**: '{{offering.id}}'.
-2.  **channel**: '{{channel}}'.
+2.  **user_channel_settings**: { "channel_name": '{{channel}}' }.
 3.  **format**: Suggest a NEW, DIFFERENT visual format from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
@@ -179,13 +180,6 @@ This content package MUST contain:
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
 });
-
-
-const mediaFormatConfig = [
-    { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
-    { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Landing Page', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
-];
 
 const getFormatsForChannel = (channel: string): string[] => {
     const channelLower = channel.toLowerCase();
@@ -341,5 +335,3 @@ export async function generateMediaPlanForStrategy(input: GenerateMediaPlanInput
 export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promise<PlanItem> {
     return regeneratePlanItemFlow(input);
 }
-
-      

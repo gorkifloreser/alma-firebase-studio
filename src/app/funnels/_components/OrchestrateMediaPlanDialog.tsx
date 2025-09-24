@@ -43,6 +43,7 @@ import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { getProfile } from '@/app/settings/actions';
 import { languages as languageList } from '@/lib/languages';
+import { mediaFormatConfig } from '@/lib/media-formats';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 
@@ -61,12 +62,6 @@ type PlanItemWithStatus = PlanItem & {
 type RegeneratingState = { [itemId: string]: boolean };
 
 type ViewState = 'list' | 'generate';
-
-const mediaFormatConfig = [
-    { label: "Image", formats: [ { value: '1:1 Square Image', channels: ['instagram', 'facebook'] }, { value: '4:5 Portrait Image', channels: ['instagram', 'facebook'] }, { value: '9:16 Story Image', channels: ['instagram', 'facebook'] }, ] },
-    { label: "Video", formats: [ { value: '9:16 Reel/Short', channels: ['instagram', 'facebook', 'tiktok', 'linkedin'] }, { value: '1:1 Square Video', channels: ['instagram', 'facebook', 'linkedin'] }, { value: '16:9 Landscape Video', channels: ['facebook', 'linkedin', 'website'] }, ] },
-    { label: "Text & Communication", formats: [ { value: 'Carousel (3-5 slides)', channels: ['instagram', 'facebook', 'linkedin'] }, { value: 'Newsletter', channels: ['webmail'] }, { value: 'Promotional Email', channels: ['webmail'] }, { value: 'Blog Post', channels: ['website'] }, { value: 'Landing Page', channels: ['website'] }, { value: 'Text Message', channels: ['whatsapp', 'telegram'] }, ] }
-];
 
 const getFormatsForChannel = (channel: string): string[] => {
     const channelLower = channel.toLowerCase();
@@ -135,7 +130,7 @@ export function OrchestrateMediaPlanDialog({
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
         return currentPlan.reduce((acc, item) => {
-            const channelKey = item.channel || 'General';
+            const channelKey = item.user_channel_settings?.channel_name || 'General';
             if (!acc[channelKey]) acc[channelKey] = [];
             acc[channelKey].push(item as PlanItemWithStatus);
             return acc;
@@ -258,7 +253,7 @@ export function OrchestrateMediaPlanDialog({
         try {
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
-                channel: itemToRegen.channel, 
+                channel: itemToRegen.user_channel_settings!.channel_name, 
                 stageName: itemToRegen.stageName,
             });
             
@@ -291,7 +286,7 @@ export function OrchestrateMediaPlanDialog({
         }
 
         // Step 2: Proceed with approval
-        const itemsForChannel = finalPlan.filter(item => item.channel === activeTab);
+        const itemsForChannel = finalPlan.filter(item => item.user_channel_settings?.channel_name === activeTab);
         const itemIds = itemsForChannel.map(item => item.id);
         
         if (itemIds.length === 0) {
@@ -351,7 +346,7 @@ export function OrchestrateMediaPlanDialog({
         const newItem: PlanItemWithStatus = {
             id: `temp-${crypto.randomUUID()}`,
             offering_id: funnel.offering_id || '',
-            channel: channel,
+            user_channel_settings: { channel_name: channel, id: 0 },
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
@@ -386,11 +381,11 @@ export function OrchestrateMediaPlanDialog({
                 {plans.length > 0 ? (
                     plans.map(plan => {
                         const allItems = plan.media_plan_items || [];
-                        const uniqueChannels = [...new Set(allItems.map(item => item.channel))];
+                        const uniqueChannels = [...new Set(allItems.map(item => item.user_channel_settings?.channel_name).filter(Boolean))];
                         const totalChannels = uniqueChannels.length;
                         
                         const approvedChannelsCount = uniqueChannels.reduce((count, channel) => {
-                            const channelItems = allItems.filter(item => item.channel === channel);
+                            const channelItems = allItems.filter(item => item.user_channel_settings?.channel_name === channel);
                             const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
                             return areAllApproved ? count + 1 : count;
                         }, 0);
@@ -422,7 +417,7 @@ export function OrchestrateMediaPlanDialog({
                                         setPlanIdToEdit(plan.id);
                                         setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
                                         
-                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.channel).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.user_channel_settings?.channel_name).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
                                         setSelectedChannels(channelsInPlan);
 
                                         setView('generate');
@@ -592,7 +587,7 @@ export function OrchestrateMediaPlanDialog({
                                                 </div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
                                                 <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.channel.toLowerCase())); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
