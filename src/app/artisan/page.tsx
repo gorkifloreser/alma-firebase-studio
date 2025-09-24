@@ -154,7 +154,7 @@ const EditPromptDialog = ({
         <DialogHeader>
           <DialogTitle>Edit Creative Prompt</DialogTitle>
           <DialogDescription>
-            Modify the prompt for this specific slide and regenerate the image.
+            Modify the prompt and regenerate the image.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -193,6 +193,8 @@ const PostPreview = ({
     handleContentChange,
     handleCarouselSlideChange,
     onRegenerateSlide,
+    onRegenerateSingleImage,
+    mainCreativePrompt,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -206,6 +208,8 @@ const PostPreview = ({
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
     onRegenerateSlide: (slideIndex: number, newPrompt: string) => void;
+    onRegenerateSingleImage: (newPrompt: string) => void;
+    mainCreativePrompt: string;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -246,10 +250,22 @@ const PostPreview = ({
 
     const handlePromptSave = (newPrompt: string) => {
         startRegeneratingSlide(async () => {
-            await onRegenerateSlide(current, newPrompt);
+            if (currentSlideData) {
+                await onRegenerateSlide(current, newPrompt);
+            } else {
+                await onRegenerateSingleImage(newPrompt);
+            }
             setIsPromptEditorOpen(false);
         });
     };
+    
+    const getPromptForEditor = () => {
+        if (currentSlideData) return currentSlideData.creativePrompt;
+        if (selectedCreativeType === 'image') return mainCreativePrompt;
+        return '';
+    };
+
+    const canEditPrompt = selectedCreativeType === 'image' || selectedCreativeType === 'carousel';
 
 
     const renderVisualContent = () => {
@@ -292,7 +308,21 @@ const PostPreview = ({
             );
         }
         if (creative?.imageUrl) {
-            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
+            return (
+                 <div className="relative w-full h-full group">
+                    <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
+                     {canEditPrompt && (
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg focus:opacity-100 z-10"
+                            onClick={() => setIsPromptEditorOpen(true)}
+                        >
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+            );
         }
         if (selectedCreativeType === 'video' && creative?.videoUrl) {
             return (
@@ -394,11 +424,11 @@ const PostPreview = ({
                     </div>
                 </div>
             </div>
-            {currentSlideData && (
+            {canEditPrompt && (
                 <EditPromptDialog
                     isOpen={isPromptEditorOpen}
                     onOpenChange={setIsPromptEditorOpen}
-                    prompt={currentSlideData.creativePrompt}
+                    prompt={getPromptForEditor()}
                     onSave={handlePromptSave}
                     isRegenerating={isRegeneratingSlide}
                 />
@@ -462,7 +492,7 @@ const PostPreview = ({
                     )}
                 </CardFooter>
             </Card>
-             {currentSlideData && (
+             {canEditPrompt && (
                 <Button
                     variant="secondary"
                     size="icon"
@@ -473,11 +503,11 @@ const PostPreview = ({
                 </Button>
             )}
         </div>
-        {currentSlideData && (
+        {canEditPrompt && (
           <EditPromptDialog
             isOpen={isPromptEditorOpen}
             onOpenChange={setIsPromptEditorOpen}
-            prompt={currentSlideData.creativePrompt}
+            prompt={getPromptForEditor()}
             onSave={handlePromptSave}
             isRegenerating={isRegeneratingSlide}
           />
@@ -775,7 +805,7 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            setCreativePrompt(planItem.creative_prompt || '');
+            setCreativePrompt(planItem.creativePrompt || '');
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
@@ -987,40 +1017,58 @@ export default function ArtisanPage() {
         });
     };
     
-    const handleRegenerateSlide = async (slideIndex: number, newPrompt: string) => {
-        if (!creative || !creative.carouselSlides || !selectedOfferingId) return;
-
+    const regenerateImage = async (newPrompt: string) => {
+         if (!selectedOfferingId) return;
         try {
-            // Update the specific slide's prompt
-            const updatedSlides = creative.carouselSlides.map((slide, index) =>
-                index === slideIndex ? { ...slide, creativePrompt: newPrompt } : slide
-            );
-            setCreative(prev => prev ? { ...prev, carouselSlides: updatedSlides } : null);
-
-            // Regenerate only that image
             const result = await generateCreativeForOffering({
                 offeringId: selectedOfferingId,
-                creativeTypes: ['image'], // We only want one image
+                creativeTypes: ['image'],
                 aspectRatio: dimension,
-                creativePrompt: newPrompt, // Use the new prompt
+                creativePrompt: newPrompt,
             });
-
-            if (result.imageUrl) {
-                // Update the image URL for the correct slide
-                setCreative(prev => {
-                    if (!prev || !prev.carouselSlides) return prev;
-                    const newSlides = [...prev.carouselSlides];
-                    newSlides[slideIndex] = { ...newSlides[slideIndex], imageUrl: result.imageUrl };
-                    return { ...prev, carouselSlides: newSlides };
-                });
-                toast({ title: 'Slide Image Regenerated!' });
-            } else {
-                throw new Error("AI did not return an image.");
-            }
+            if (!result.imageUrl) throw new Error("AI did not return an image.");
+            return result.imageUrl;
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Slide Regeneration Failed', description: error.message });
+             toast({ variant: 'destructive', title: 'Image Regeneration Failed', description: error.message });
+             return null;
+        }
+    }
+    
+    const handleRegenerateSlide = async (slideIndex: number, newPrompt: string) => {
+        if (!creative || !creative.carouselSlides) return;
+
+        // Optimistically update the prompt in the slide data
+        setCreative(prev => {
+            if (!prev || !prev.carouselSlides) return prev;
+            const newSlides = [...prev.carouselSlides];
+            newSlides[slideIndex] = { ...newSlides[slideIndex], creativePrompt: newPrompt, imageUrl: undefined }; // Show loading
+            return { ...prev, carouselSlides: newSlides };
+        });
+
+        const newImageUrl = await regenerateImage(newPrompt);
+
+        if (newImageUrl) {
+            setCreative(prev => {
+                if (!prev || !prev.carouselSlides) return prev;
+                const newSlides = [...prev.carouselSlides];
+                newSlides[slideIndex] = { ...newSlides[slideIndex], imageUrl: newImageUrl };
+                return { ...prev, carouselSlides: newSlides };
+            });
+            toast({ title: 'Slide Image Regenerated!' });
+        } else {
+             // Revert optimistic update on failure - tricky without storing old state, for now just log
+            console.error("Failed to get new image URL, UI might be in inconsistent state");
         }
     };
+    
+    const handleRegenerateSingleImage = async (newPrompt: string) => {
+        setCreative(prev => prev ? { ...prev, imageUrl: undefined } : null); // Show loading
+        const newImageUrl = await regenerateImage(newPrompt);
+        if (newImageUrl) {
+            setCreative(prev => prev ? { ...prev, imageUrl: newImageUrl } : { imageUrl: newImageUrl });
+            toast({ title: 'Image Regenerated!' });
+        }
+    }
 
 
     const handleSave = (status: 'approved' | 'scheduled', scheduleDate?: Date | null) => {
@@ -1462,6 +1510,8 @@ export default function ArtisanPage() {
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
                             onRegenerateSlide={handleRegenerateSlide}
+                            onRegenerateSingleImage={handleRegenerateSingleImage}
+                            mainCreativePrompt={creativePrompt}
                         />
                     </main>
                 </div>
