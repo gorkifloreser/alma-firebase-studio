@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
@@ -26,9 +26,11 @@ const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
     if (!channel) return <Sparkles className="h-4 w-4 text-muted-foreground" />;
     
     const lowerChannel = channel.toLowerCase();
-    if (lowerChannel.includes('social')) return <Instagram className="h-4 w-4 text-muted-foreground" />;
-    if (lowerChannel.includes('email')) return <Mail className="h-4 w-4 text-muted-foreground" />;
-    if (lowerChannel.includes('whatsapp')) return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
+    if (lowerChannel.includes('instagram')) return <Instagram className="h-4 w-4 text-muted-foreground" />;
+    if (lowerChannel.includes('facebook')) return <Instagram className="h-4 w-4 text-muted-foreground" />;
+    if (lowerChannel.includes('webmail')) return <Mail className="h-4 w-4 text-muted-foreground" />;
+    if (lowerChannel.includes('whatsapp') || lowerChannel.includes('telegram')) return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
+    if (lowerChannel.includes('website')) return <Globe className="h-4 w-4 text-muted-foreground" />;
     return <Sparkles className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -51,8 +53,8 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
                 <div className="flex-1">
                     <p className="font-medium text-sm line-clamp-2">{item.content_body?.primary || 'Untitled Content'}</p>
                     <div className="flex items-center gap-2 mt-1">
-                         <ChannelIcon channel={item.source_plan?.channel} />
-                        <p className="text-xs text-muted-foreground">{item.source_plan?.format || 'Content'}</p>
+                         <ChannelIcon channel={item.media_plan_items?.channel} />
+                        <p className="text-xs text-muted-foreground">{item.media_plan_items?.format || 'Content'}</p>
                     </div>
                 </div>
             </div>
@@ -110,7 +112,7 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
                         <p className="text-xs font-medium truncate">{item.content_body?.primary || 'Untitled'}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
-                                <ChannelIcon channel={item.source_plan?.channel} />
+                                <ChannelIcon channel={item.media_plan_items?.channel} />
                             </div>
                             <Button
                                 variant="ghost"
@@ -320,7 +322,7 @@ export default function CalendarPage() {
                         ) : (
                             <div className="text-center text-muted-foreground mt-10">
                                 <p>No unscheduled content.</p>
-                                <p className="text-sm">Approve content from the Offerings or Media Plan page to see it here.</p>
+                                <p className="text-sm">Approve content from the Artisan to see it here.</p>
                             </div>
                         )}
                         {isOverUnscheduled && <div className="text-center p-4 text-destructive font-bold">Return to Unscheduled</div>}

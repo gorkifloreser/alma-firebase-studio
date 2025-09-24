@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -120,6 +121,12 @@ export function EditContentDialog({
                 <div className="relative aspect-video w-full rounded-lg overflow-hidden">
                     <video src={contentItem.video_url} controls className="w-full h-full" />
                 </div>
+            )}
+            {contentItem.landing_page_html && (
+                 <Card>
+                    <CardHeader><CardTitle className="text-base">Landing Page HTML</CardTitle></CardHeader>
+                    <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap">{contentItem.landing_page_html}</CardContent>
+                </Card>
             )}
             {isLoadingProfile ? (
                 <div className="space-y-6">

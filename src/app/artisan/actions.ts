@@ -34,7 +34,7 @@ export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> 
             status,
             offering_id,
             media_plan_item_id,
-            media_plan_items (
+            media_plan_items!inner (
                 *,
                 media_plan_id
             )

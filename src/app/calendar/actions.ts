@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -15,10 +16,10 @@ export type ContentItem = {
     image_url: string | null;
     carousel_slides: any | null;
     video_url: string | null;
-    source_plan: { channel: string; format: string; description: string; } | null;
     scheduled_at: string | null;
-    scheduled_for_channel: string | null;
     offerings: { title: { primary: string | null } } | null;
+    media_plan_item_id: string | null;
+    media_plan_items: { channel: string; format: string; } | null;
 };
 
 
@@ -36,6 +37,10 @@ export async function getContent(): Promise<ContentItem[]> {
             *,
             offerings (
                 title
+            ),
+            media_plan_items (
+                channel,
+                format
             )
         `)
         .eq('user_id', user.id);
@@ -114,6 +119,10 @@ export async function updateContent(contentId: string, newContentBody: { primary
             *,
             offerings (
                 title
+            ),
+            media_plan_items (
+                channel,
+                format
             )
         `)
         .single();

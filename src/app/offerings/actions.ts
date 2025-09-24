@@ -398,15 +398,9 @@ type SaveContentInput = {
     imageUrl: string | null;
     carouselSlides: CarouselSlide[] | null;
     videoUrl: string | null;
+    landingPageHtml: string | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
-    sourcePlan?: {
-        channel: string;
-        format: string;
-        copy: string;
-        hashtags: string;
-        creativePrompt: string;
-    } | null;
-    mediaPlanItemId?: string;
+    mediaPlanItemId?: string | null;
 };
 
 /**
@@ -419,7 +413,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, status, sourcePlan, mediaPlanItemId } = input;
+    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, status, landingPageHtml, mediaPlanItemId } = input;
 
     const payload: any = {
         user_id: user.id,
@@ -428,16 +422,10 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         image_url: imageUrl,
         carousel_slides: carouselSlides,
         video_url: videoUrl,
+        landing_page_html: landingPageHtml,
         status: status,
-        source_plan: sourcePlan,
+        media_plan_item_id: mediaPlanItemId || null
     };
-
-    // This is a temporary ID for the media plan item, not a DB ID.
-    // In a real app, you might have a proper relation.
-    if (sourcePlan?.creativePrompt) { 
-      payload.media_plan_item_id = sourcePlan.creativePrompt.slice(0, 36);
-    }
-
 
     const { error } = await supabase.from('content').insert(payload);
 
