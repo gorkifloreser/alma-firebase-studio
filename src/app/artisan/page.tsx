@@ -1284,6 +1284,7 @@ export default function ArtisanPage() {
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
                             <AccordionItem value="creative-controls" className="border-none">
+                                {/* @functional: This component is functionally complete and should not be modified without explicit user request. */}
                                 <Card>
                                     <AccordionTrigger className="p-6">
                                          <CardHeader className="p-0">
@@ -1533,4 +1534,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
 
