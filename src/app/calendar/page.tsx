@@ -102,7 +102,7 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
              <Card className="p-2 bg-secondary/50 hover:bg-secondary transition-colors">
                 <div className="flex flex-col gap-2">
                      {item.image_url && (
-                        <div className="relative w-full aspect-video">
+                        <div className="relative w-full aspect-square">
                             <Image src={item.image_url} alt="thumbnail" layout="fill" className="rounded-sm object-cover" />
                         </div>
                      )}

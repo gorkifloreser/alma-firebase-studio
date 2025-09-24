@@ -106,7 +106,7 @@ export function EditContentDialog({
 
         <div className="max-h-[70vh] overflow-y-auto pr-6 py-4 space-y-6">
             {contentItem.image_url && (
-                <div className="relative aspect-video w-full">
+                <div className="relative aspect-square w-full">
                     <Image src={contentItem.image_url} alt="Content image" fill className="rounded-lg object-contain mx-auto" />
                 </div>
             )}
