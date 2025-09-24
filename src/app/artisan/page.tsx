@@ -36,6 +36,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 type Profile = {
@@ -570,70 +571,6 @@ const CodeEditor = ({
 };
 
 
-const MultiSelect = ({
-  options,
-  selected,
-  onChange,
-  className,
-}: {
-  options: string[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
-  className?: string;
-}) => {
-  const [open, setOpen] = useState(false);
-
-  const handleSelect = (value: string) => {
-    const newSelected = selected.includes(value)
-      ? selected.filter((item) => item !== value)
-      : [...selected, value];
-    onChange(newSelected);
-  };
-
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between", className)}
-        >
-          <span className="truncate">
-            {selected.length > 0 ? selected.join(', ') : 'Filter by channel...'}
-          </span>
-        </Button>
-      </Popover.Trigger>
-      <Popover.Content className="w-[--radix-popover-trigger-trigger-width] p-0">
-        <Command>
-          <CommandInput placeholder="Search channels..." />
-          <CommandList>
-            <CommandEmpty>No channels found.</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option}
-                  value={option}
-                  onSelect={() => handleSelect(option)}
-                  className="capitalize"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selected.includes(option) ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </Popover.Content>
-    </Popover.Root>
-  );
-};
-
 // Generate time options for the select dropdown
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
   const hours = Math.floor(i / 2);
@@ -658,7 +595,7 @@ export default function ArtisanPage() {
     const [filteredQueueItems, setFilteredQueueItems] = useState<QueueItem[]>([]);
     const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
-    const [channelFilter, setChannelFilter] = useState<string[]>([]);
+    const [channelFilter, setChannelFilter] = useState<string>('all');
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
 
 
@@ -692,8 +629,8 @@ export default function ArtisanPage() {
     useEffect(() => {
         if (workflowMode === 'campaign' && selectedCampaign) {
             let items = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id);
-            if (channelFilter.length > 0) {
-                items = items.filter(item => channelFilter.includes(item.media_plan_items.channel));
+            if (channelFilter !== 'all') {
+                items = items.filter(item => item.media_plan_items.channel === channelFilter);
             }
             setFilteredQueueItems(items);
             // Auto-select first item if selection becomes invalid
@@ -795,7 +732,7 @@ export default function ArtisanPage() {
         } else {
             handleQueueItemSelect(null, []);
         }
-        setChannelFilter([]);
+        setChannelFilter('all');
         setIsDialogOpen(false);
     };
 
@@ -1058,11 +995,16 @@ export default function ArtisanPage() {
                                             {workflowMode === 'campaign' && selectedCampaign && (
                                                 <div className="space-y-2">
                                                     <Label>1. Filter by Channel</Label>
-                                                    <MultiSelect
-                                                        options={availableChannels}
-                                                        selected={channelFilter}
-                                                        onChange={setChannelFilter}
-                                                    />
+                                                    <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
+                                                        <div className="flex justify-center">
+                                                            <TabsList>
+                                                                <TabsTrigger value="all">All</TabsTrigger>
+                                                                {availableChannels.map(channel => (
+                                                                    <TabsTrigger key={channel} value={channel} className="capitalize">{channel}</TabsTrigger>
+                                                                ))}
+                                                            </TabsList>
+                                                        </div>
+                                                    </Tabs>
                                                 </div>
                                             )}
 
