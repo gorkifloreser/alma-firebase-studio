@@ -10,12 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { getOfferings } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
 import { getMediaPlans } from '../funnels/actions';
-import type { Offering } from '../offerings/actions';
+import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -571,6 +571,62 @@ const CodeEditor = ({
 };
 
 
+const MediaSelectionDialog = ({
+    isOpen,
+    onOpenChange,
+    media,
+    onSelect,
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    media: OfferingMedia[];
+    onSelect: (mediaUrl: string) => void;
+}) => {
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Select a Reference Image</DialogTitle>
+                    <DialogDescription>
+                        Choose an image from this offering's media gallery to guide the AI.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 max-h-[60vh] overflow-y-auto">
+                    {media.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {media.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="relative aspect-square rounded-md overflow-hidden cursor-pointer group"
+                                    onClick={() => {
+                                        onSelect(item.media_url);
+                                        onOpenChange(false);
+                                    }}
+                                >
+                                    <Image
+                                        src={item.media_url}
+                                        alt={item.description || "Offering media"}
+                                        fill
+                                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Check className="h-8 w-8 text-white" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-10">
+                            No media found for this offering. Please upload some images in the offering details.
+                        </p>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 // Generate time options for the select dropdown
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
   const hours = Math.floor(i / 2);
@@ -615,6 +671,10 @@ export default function ArtisanPage() {
     const [activeAccordion, setActiveAccordion] = useState<string[]>(['creative-controls']);
     const [globalTheme, setGlobalTheme] = useState<'light' | 'dark'>('light');
 
+    const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
+    const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+
+
     // Filter available channels based on selected campaign
     const availableChannels = useMemo(() => {
         if (workflowMode !== 'campaign' || !selectedCampaign) return [];
@@ -649,6 +709,7 @@ export default function ArtisanPage() {
         setCreative(null);
         setEditableHtml(null);
         setScheduledAt(null);
+        setReferenceImageUrl(null);
 
         if (!queueItemId || workflowMode === 'custom') {
             setCreativePrompt('');
@@ -803,6 +864,7 @@ export default function ArtisanPage() {
                     creativeTypes: creativeTypes.filter(t => t !== 'text') as any,
                     aspectRatio: dimension,
                     creativePrompt: creativePrompt,
+                    referenceImageUrl: referenceImageUrl || undefined,
                 });
                 setCreative(creativeResult);
                  if (creativeResult.landingPageHtml) {
@@ -937,6 +999,7 @@ export default function ArtisanPage() {
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
+    const currentOfferingMedia = offerings.find(o => o.id === selectedOfferingId)?.offering_media || [];
 
     return (
         <DashboardLayout>
@@ -969,6 +1032,13 @@ export default function ArtisanPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <MediaSelectionDialog
+                isOpen={isMediaSelectorOpen}
+                onOpenChange={setIsMediaSelectorOpen}
+                media={currentOfferingMedia}
+                onSelect={setReferenceImageUrl}
+            />
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex justify-between items-start">
@@ -1043,6 +1113,21 @@ export default function ArtisanPage() {
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
+                                                </div>
+                                            )}
+                                            
+                                            {selectedCreativeType === 'image' && (
+                                                <div className="space-y-2">
+                                                    <Button variant="outline" className="w-full" onClick={() => setIsMediaSelectorOpen(true)} disabled={!selectedOfferingId}>
+                                                        <Images className="mr-2" /> Select Reference Image
+                                                    </Button>
+                                                    {referenceImageUrl && (
+                                                        <div className="relative p-2 border rounded-md">
+                                                            <p className="text-xs text-muted-foreground mb-2">Using as reference:</p>
+                                                            <Image src={referenceImageUrl} alt="Reference image" width={64} height={64} className="rounded" />
+                                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReferenceImageUrl(null)}><X className="h-4 w-4" /></Button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 

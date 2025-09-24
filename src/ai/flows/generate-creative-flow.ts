@@ -20,6 +20,7 @@ const GenerateCreativeInputSchema = z.object({
   creativeTypes: z.array(z.enum(['image', 'carousel', 'video', 'landing_page'])),
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
+  referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image generation.'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -141,7 +142,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt }) => {
+  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt, referenceImageUrl }) => {
     
     // This function uses server-only dependencies and must be defined inside the flow.
     async function downloadVideo(video: MediaPart): Promise<string> {
@@ -225,13 +226,32 @@ export const generateCreativeFlow = ai.defineFlow(
 
     if (creativeTypes.includes('image')) {
         const { text } = await imagePrompt(promptPayload);
-        const { media } = await ai.generate({
-            model: googleAI.model('imagen-4.0-fast-generate-001'),
-            prompt: text,
-            config: imageConfig,
-        });
-        if (media?.url) {
-            output.imageUrl = media.url;
+        let generationResult;
+
+        if (referenceImageUrl) {
+            // Image-to-image generation
+            generationResult = await ai.generate({
+                model: 'googleai/gemini-2.5-flash-image-preview',
+                prompt: [
+                    { media: { url: referenceImageUrl } },
+                    { text: text },
+                ],
+                config: {
+                    ...imageConfig,
+                    responseModalities: ['TEXT', 'IMAGE'],
+                },
+            });
+        } else {
+            // Text-to-image generation
+            generationResult = await ai.generate({
+                model: googleAI.model('imagen-4.0-fast-generate-001'),
+                prompt: text,
+                config: imageConfig,
+            });
+        }
+
+        if (generationResult.media?.url) {
+            output.imageUrl = generationResult.media.url;
         }
     }
     
