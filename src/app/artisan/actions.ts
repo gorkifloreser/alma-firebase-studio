@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 
 export type QueueItem = {
@@ -82,6 +83,16 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
         throw new Error(`Failed to generate creative. Please try again. ${error.message}`);
     }
 }
+
+/**
+ * Invokes the Genkit flow to regenerate a creative prompt.
+ * @param {GenerateCreativePromptInput} input The context for regeneration.
+ * @returns {Promise<GenerateCreativePromptOutput>} The new creative prompt.
+ */
+export async function generateCreativePrompt(input: GenerateCreativePromptInput): Promise<GenerateCreativePromptOutput> {
+    return genCreativePromptFlow(input);
+}
+
 
 type SaveContentInput = {
     offeringId: string;

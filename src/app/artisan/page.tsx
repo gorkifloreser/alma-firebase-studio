@@ -8,14 +8,14 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings } from '../offerings/actions';
-import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
+import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus, generateCreativePrompt } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -68,6 +68,55 @@ const dimensionMap = {
     '9:16': 'aspect-[9/16]',
     '16:9': 'aspect-[16/9]',
 };
+
+
+const RemixPromptDialog = ({
+  isOpen,
+  onOpenChange,
+  onGenerate,
+  isGenerating,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onGenerate: (comment: string) => void;
+  isGenerating: boolean;
+}) => {
+  const [comment, setComment] = useState('');
+
+  const handleGenerateClick = () => {
+    onGenerate(comment);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remix Creative Prompt</DialogTitle>
+          <DialogDescription>
+            Add a comment to guide the AI in generating a new, different creative prompt.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="h-24"
+            placeholder="e.g., 'Make it more vibrant and colorful', 'Focus on a feeling of freedom', 'Show a close-up of the product'"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleGenerateClick} disabled={isGenerating}>
+            {isGenerating ? 'Generating...' : 'Generate New Prompt'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 
 
 const EditPromptDialog = ({
@@ -296,7 +345,7 @@ const PostPreview = ({
                     <div className="flex-shrink-0">
                          <div className="flex items-center gap-1 mb-2">
                              {[...Array(progressCount)].map((_, i) => (
-                                 <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full">
+                                <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full">
                                     <div className={cn("h-full rounded-full bg-white transition-all duration-500", i === current ? "w-full" : "w-0")}></div>
                                 </div>
                              ))}
@@ -674,6 +723,9 @@ export default function ArtisanPage() {
 
     const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
     const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+    const [isRemixDialogOpen, setIsRemixDialogOpen] = useState(false);
+    const [isRemixing, startRemixing] = useTransition();
+
 
 
     // Filter available channels based on selected campaign
@@ -1012,6 +1064,26 @@ export default function ArtisanPage() {
         setScheduledAt(newDate);
     };
 
+    const handleRemixPrompt = (comment: string) => {
+        if (!selectedOfferingId) {
+            toast({ variant: 'destructive', title: 'Please select an offering first.' });
+            return;
+        }
+        startRemixing(async () => {
+            try {
+                const result = await generateCreativePrompt({
+                    offeringId: selectedOfferingId,
+                    userComment: comment,
+                });
+                setCreativePrompt(result.newCreativePrompt);
+                toast({ title: 'Prompt Remixed!', description: 'A new creative prompt has been generated.' });
+                setIsRemixDialogOpen(false);
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Remix Failed', description: error.message });
+            }
+        });
+    };
+
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
@@ -1052,6 +1124,13 @@ export default function ArtisanPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <RemixPromptDialog
+                isOpen={isRemixDialogOpen}
+                onOpenChange={setIsRemixDialogOpen}
+                onGenerate={handleRemixPrompt}
+                isGenerating={isRemixing}
+            />
 
             <MediaSelectionDialog
                 isOpen={isMediaSelectorOpen}
@@ -1159,13 +1238,19 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
+                                                    <Button variant="ghost" size="sm" onClick={() => setIsRemixDialogOpen(true)} disabled={!selectedOfferingId}>
+                                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                                        Remix
+                                                    </Button>
+                                                </div>
                                                 <Textarea
                                                     id="creative-prompt"
                                                     value={creativePrompt}
                                                     onChange={(e) => setCreativePrompt(e.target.value)}
                                                     placeholder="e.g., A minimalist photo of a steaming mug of cacao on a rustic wooden table..."
-                                                    className="h-24 mt-1 resize-none"
+                                                    className="h-24 resize-none"
                                                 />
                                             </div>
 
