@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -1010,7 +1011,7 @@ export default function ArtisanPage() {
                         {mediaPlans.length > 0 ? (
                              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                                 {mediaPlans.map(plan => (
-                                    <button key={plan.id} onClick={()={() => startCampaignWorkflow(plan)}} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
+                                    <button key={plan.id} onClick={() => startCampaignWorkflow(plan)} className="w-full text-left p-4 border rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors">
                                         <p className="font-bold">{plan.title}</p>
                                         <p className="text-sm text-muted-foreground">For: {plan.offering_title}</p>
                                     </button>
@@ -1234,4 +1235,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
