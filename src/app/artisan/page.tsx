@@ -1133,10 +1133,15 @@ export default function ArtisanPage() {
     const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const currentOffering = offerings.find(o => o.id === selectedOfferingId);
-    const hasContentToSave = !!(editableContent || creative || editableHtml);
+    
+    const hasVisualContent = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl || creative?.landingPageHtml;
+    const isTextOnlyCreative = selectedCreativeType === 'text';
+    const canSave = (isTextOnlyCreative && !!editableContent) || (!!editableContent && hasVisualContent);
+    const hasContentToSave = canSave;
 
-    const doneCount = totalCampaignItems - filteredQueueItems.length;
+    const currentOffering = offerings.find(o => o.id === selectedOfferingId);
+    
+    const doneCount = totalCampaignItems > 0 ? totalCampaignItems - allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign?.id).length : 0;
 
     const handleNewUpload = (newMedia: OfferingMedia) => {
         setOfferings(prev => prev.map(o => {
@@ -1552,5 +1557,6 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
 
 
