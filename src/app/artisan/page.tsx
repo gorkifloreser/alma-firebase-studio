@@ -409,58 +409,70 @@ const PostPreview = ({
 
     return (
         <>
-        <Card className="w-full max-w-md mx-auto">
-            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                <Avatar>
-                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                    <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="grid gap-0.5">
-                    <span className="font-semibold">{postUser}</span>
-                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                </div>
-            </CardHeader>
-            <CardContent className="p-0">
-                 <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
-                    <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
-                        {renderVisualContent()}
+        <div className="relative">
+            <Card className="w-full max-w-md mx-auto">
+                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                    <Avatar>
+                        <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                        <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid gap-0.5">
+                        <span className="font-semibold">{postUser}</span>
+                        <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
                     </div>
-                </div>
-            </CardContent>
-            <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                <div className="flex justify-between w-full">
-                    <div className="flex gap-4">
-                        <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                        <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
+                        <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
+                            {renderVisualContent()}
+                        </div>
                     </div>
-                    <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                </div>
-                <Textarea
-                    value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
-                    onChange={(e) => {
-                        if (selectedCreativeType === 'carousel' && currentSlideData) {
-                            handleCarouselSlideChange(current, e.target.value)
-                        } else {
-                            handleContentChange('primary', e.target.value)
-                        }
-                    }}
-                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                    placeholder="Your post copy will appear here..."
-                />
-                {secondaryLangName && editableContent?.secondary && (
-                    <>
-                        <Separator className="my-2"/>
-                        <Textarea
-                            value={editableContent?.secondary || ''}
-                            onChange={(e) => handleContentChange('secondary', e.target.value)}
-                            className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                            placeholder="Your secondary language post copy..."
-                        />
-                    </>
-                )}
-            </CardFooter>
-        </Card>
+                </CardContent>
+                <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                    <div className="flex justify-between w-full">
+                        <div className="flex gap-4">
+                            <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                            <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                        <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                    </div>
+                    <Textarea
+                        value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
+                        onChange={(e) => {
+                            if (selectedCreativeType === 'carousel' && currentSlideData) {
+                                handleCarouselSlideChange(current, e.target.value)
+                            } else {
+                                handleContentChange('primary', e.target.value)
+                            }
+                        }}
+                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                        placeholder="Your post copy will appear here..."
+                    />
+                    {secondaryLangName && editableContent?.secondary && (
+                        <>
+                            <Separator className="my-2"/>
+                            <Textarea
+                                value={editableContent?.secondary || ''}
+                                onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                placeholder="Your secondary language post copy..."
+                            />
+                        </>
+                    )}
+                </CardFooter>
+            </Card>
+             {currentSlideData && (
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute -right-12 top-10 h-8 w-8 rounded-full shadow-lg z-10"
+                    onClick={() => setIsPromptEditorOpen(true)}
+                >
+                    <Edit className="h-4 w-4" />
+                </Button>
+            )}
+        </div>
         {currentSlideData && (
           <EditPromptDialog
             isOpen={isPromptEditorOpen}
@@ -763,7 +775,7 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            setCreativePrompt(planItem.creativePrompt || '');
+            setCreativePrompt(planItem.creative_prompt || '');
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
