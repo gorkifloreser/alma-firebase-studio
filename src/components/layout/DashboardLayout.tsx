@@ -39,7 +39,7 @@ const menuItems = [
   { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
   { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
   { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
   { href: '/knowledge-base', label: 'Knowledge Base', icon: BrainCircuit },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/imports', label: 'Imports', icon: Import },
