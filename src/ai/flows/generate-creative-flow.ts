@@ -87,6 +87,7 @@ const masterImagePrompt = ai.definePrompt({
             artStyleSuffix: z.string().optional(),
         })
     },
+    output: { schema: z.object({ text: z.string() }) },
     prompt: `You are an expert art director and AI prompt engineer for conscious, soulful brands.
 
 Your task is to combine all the information below to create a single, detailed, and visually rich prompt for an image generation model. The final output must be only the prompt string itself.
@@ -188,7 +189,6 @@ export const generateCreativeFlow = ai.defineFlow(
         { data: brandHeart, error: brandHeartError }, 
         { data: offering, error: offeringError }, 
         { data: profile, error: profileError },
-        artStyleId ? supabase.from('art_styles').select('prompt_suffix').eq('id', artStyleId).single() : Promise.resolve({ data: null }),
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('offerings').select('*').eq('id', offeringId).single(),
@@ -199,7 +199,7 @@ export const generateCreativeFlow = ai.defineFlow(
     if (offeringError || !offering) throw new Error('Offering not found.');
     if (profileError || !profile) throw new Error('User profile not found.');
 
-    const artStyle = (artStyleId && 'data' in arguments[3]) ? arguments[3].data : null;
+    const { data: artStyle } = artStyleId ? await supabase.from('art_styles').select('prompt_suffix').eq('id', artStyleId).single() : { data: null };
 
 
     let output: GenerateCreativeOutput = {};
@@ -246,7 +246,11 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('image')) {
         const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
 
-        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio, artStyleSuffix: artStyle?.prompt_suffix }).then(async ({ text: finalImagePrompt }) => {
+        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio, artStyleSuffix: artStyle?.prompt_suffix }).then(async ({ output: promptOutput }) => {
+            if (!promptOutput) {
+                throw new Error('Master image prompt generation failed.');
+            }
+            const finalImagePrompt = promptOutput.text;
             let generationResult;
             if (referenceImageUrl) {
                 generationResult = await ai.generate({
@@ -271,13 +275,18 @@ export const generateCreativeFlow = ai.defineFlow(
                 const slidePromises = carouselOutput.slides.map(async (slide) => {
                     const slideBasePrompt = slide.creativePrompt;
 
-                    const { text: finalSlidePrompt } = await masterImagePrompt({
+                    const { output: promptOutput } = await masterImagePrompt({
                         brandHeart,
                         offering,
                         basePrompt: slideBasePrompt,
                         aspectRatio,
                         artStyleSuffix: artStyle?.prompt_suffix,
                     });
+
+                    if (!promptOutput) {
+                        throw new Error(`Failed to generate master prompt for a carousel slide.`);
+                    }
+                    const finalSlidePrompt = promptOutput.text;
 
                     const { media } = await ai.generate({
                         model: googleAI.model('imagen-4.0-fast-generate-001'),
