@@ -13,6 +13,8 @@ import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
 export type { PlanItem };
 
+export type MediaPlanItem = PlanItem & { id: string, status: string };
+
 export type MediaPlan = {
     id: string;
     funnel_id: string;
@@ -20,7 +22,7 @@ export type MediaPlan = {
     title: string;
     campaign_start_date: string | null;
     campaign_end_date: string | null;
-    media_plan_items: (PlanItem & { id: string, status: string })[] | null;
+    media_plan_items: MediaPlanItem[] | null;
 };
 
 export type Funnel = {
@@ -610,53 +612,61 @@ export async function getUserChannels(): Promise<Account[]> {
  * Fetches a list of all media plans for the current user, intended for a selection dialog.
  */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
-    console.log('getMediaPlans action started.');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        console.log('getMediaPlans: User not authenticated.');
-        throw new Error('User not authenticated');
-    }
+    if (!user) throw new Error('User not authenticated');
+    
 
     const { data, error } = await supabase
-        .from('content_generation_queue')
+        .from('media_plans')
         .select(`
-            offering_id,
-            offerings (title),
-            media_plan_items!inner (
-                media_plans!inner (id, title)
+            id,
+            title,
+            funnels (
+                offering_id,
+                offerings (title)
             )
         `)
-        .eq('user_id', user.id);
-        
-    console.log("Supabase getMediaPlans raw data:", data);
-    console.log("Supabase getMediaPlans error:", error);
+        .eq('user_id', user.id)
+        .not('funnels', 'is', null);
 
     if (error) {
-        console.error('Error fetching media plans:', error);
+        console.error('Error fetching media plans for select:', error);
         throw new Error(`Could not fetch media plans. DB Error: ${error.message}`);
     }
     
-    if (!data) {
-        return [];
-    }
+    if (!data) return [];
+
+    const result = data.map((plan: any) => ({
+        id: plan.id,
+        title: plan.title,
+        offering_id: plan.funnels.offering_id,
+        offering_title: plan.funnels.offerings?.title?.primary || 'Untitled Offering',
+    }));
+
+    return result;
+}
+
+/**
+ * Fetches all media plan items for a specific media plan.
+ */
+export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanItem[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+        .from('media_plan_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('media_plan_id', mediaPlanId);
     
-    const uniquePlans = new Map<string, { id: string; title: string; offering_id: string; offering_title: string | null }>();
+    if (error) {
+        console.error('Error fetching media plan items:', error);
+        throw new Error(`Could not fetch media plan items. DB Error: ${error.message}`);
+    }
 
-    data.forEach((item: any) => {
-        if (item.media_plan_items && item.media_plan_items.media_plans && !uniquePlans.has(item.media_plan_items.media_plans.id)) {
-            uniquePlans.set(item.media_plan_items.media_plans.id, {
-                id: item.media_plan_items.media_plans.id,
-                title: item.media_plan_items.media_plans.title,
-                offering_id: item.offering_id,
-                offering_title: item.offerings?.title?.primary || 'Untitled Offering',
-            });
-        }
-    });
-
-    const response = Array.from(uniquePlans.values());
-    console.log("Processed getMediaPlans response:", response);
-    return response;
+    return data as MediaPlanItem[];
 }
       
 
@@ -669,6 +679,7 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     
 
     
+
 
 
 

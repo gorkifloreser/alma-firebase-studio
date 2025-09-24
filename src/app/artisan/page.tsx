@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings } from '../offerings/actions';
 import { generateContentForOffering, saveContent, generateCreativeForOffering, getQueueItems, updateQueueItemStatus } from './actions';
-import { getMediaPlans } from '../funnels/actions';
+import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateContentOutput } from '@/ai/flows/generate-content-flow';
@@ -641,6 +641,7 @@ export default function ArtisanPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
+    const [totalCampaignItems, setTotalCampaignItems] = useState(0);
 
     // Workflow State
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -719,38 +720,36 @@ export default function ArtisanPage() {
         }
 
         const item = items.find(q => q.id === queueItemId);
-        if (item) {
+        if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
-            if (item.media_plan_items) {
-                const planItem = item.media_plan_items;
-                setCreativePrompt(planItem.creativePrompt || '');
-                setEditableContent({ primary: planItem.copy || '', secondary: null });
-                
-                const formatValue = (planItem.format || '').toLowerCase();
-                
-                // Auto-update creative type
-                if (formatValue.includes('video') || formatValue.includes('reel')) {
-                    setSelectedCreativeType('video');
-                } else if (formatValue.includes('carousel')) {
-                    setSelectedCreativeType('carousel');
-                } else if (formatValue.includes('landing')) {
-                    setSelectedCreativeType('landing_page');
-                } else {
-                    setSelectedCreativeType('image');
-                }
-
-                // Auto-update dimension based on format
-                if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
-                else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
-                else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
-                else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
-                else setDimension('1:1'); // Default
-
-                if (planItem.suggested_post_at && isValid(parseISO(planItem.suggested_post_at))) {
-                    setScheduledAt(parseISO(planItem.suggested_post_at));
-                }
-
+            const planItem = item.media_plan_items;
+            setCreativePrompt(planItem.creativePrompt || '');
+            setEditableContent({ primary: planItem.copy || '', secondary: null });
+            
+            const formatValue = (planItem.format || '').toLowerCase();
+            
+            // Auto-update creative type
+            if (formatValue.includes('video') || formatValue.includes('reel')) {
+                setSelectedCreativeType('video');
+            } else if (formatValue.includes('carousel')) {
+                setSelectedCreativeType('carousel');
+            } else if (formatValue.includes('landing')) {
+                setSelectedCreativeType('landing_page');
+            } else {
+                setSelectedCreativeType('image');
             }
+
+            // Auto-update dimension based on format
+            if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
+            else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
+            else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
+            else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
+            else setDimension('1:1'); // Default
+
+            if (planItem.suggested_post_at && isValid(parseISO(planItem.suggested_post_at))) {
+                setScheduledAt(parseISO(planItem.suggested_post_at));
+            }
+
         } else {
             setCreativePrompt('');
             setEditableContent(null);
@@ -790,7 +789,7 @@ export default function ArtisanPage() {
 
     }, [toast]);
     
-    const startCampaignWorkflow = (campaign: MediaPlanSelectItem) => {
+    const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
         const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
@@ -800,6 +799,14 @@ export default function ArtisanPage() {
         } else {
             handleQueueItemSelect(null, []);
         }
+        
+        try {
+            const allItems = await getMediaPlanItems(campaign.id);
+            setTotalCampaignItems(allItems.length);
+        } catch (e) {
+            setTotalCampaignItems(itemsForCampaign.length); // fallback
+        }
+
         setChannelFilter('all');
         setIsDialogOpen(false);
     };
@@ -808,6 +815,7 @@ export default function ArtisanPage() {
         setWorkflowMode('custom');
         setSelectedCampaign(null);
         setFilteredQueueItems([]);
+        setTotalCampaignItems(0);
         handleQueueItemSelect(null, []);
         setIsDialogOpen(false);
     };
@@ -951,10 +959,11 @@ export default function ArtisanPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
             return;
         }
-        const currentQueueItem = allQueueItems.find(item => item.id === selectedQueueItemId) || null;
-
+        
         startSaving(async () => {
             try {
+                const currentQueueItem = allQueueItems.find(item => item.id === selectedQueueItemId) || null;
+                
                 await saveContent({
                     offeringId: selectedOfferingId,
                     contentBody: editableContent,
@@ -1010,6 +1019,7 @@ export default function ArtisanPage() {
     const currentOfferingMedia = offerings.find(o => o.id === selectedOfferingId)?.offering_media || [];
     const hasContentToSave = !!(editableContent || creative || editableHtml);
 
+    const doneCount = totalCampaignItems - filteredQueueItems.length;
 
     return (
         <DashboardLayout>
@@ -1092,7 +1102,14 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="queue-select">2. Choose an Item to Work On</Label>
+                                                <Label htmlFor="queue-select" className="flex items-center justify-between">
+                                                    <span>2. Choose an Item to Work On</span>
+                                                     {workflowMode === 'campaign' && totalCampaignItems > 0 && (
+                                                        <span className="text-sm font-medium text-muted-foreground">
+                                                            ({doneCount}/{totalCampaignItems})
+                                                        </span>
+                                                    )}
+                                                </Label>
                                                 <Select onValueChange={(value) => handleQueueItemSelect(value, filteredQueueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
