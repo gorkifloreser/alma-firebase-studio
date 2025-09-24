@@ -624,7 +624,7 @@ const ImageChatDialog = ({
                     <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
                 </DialogHeader>
                 <div className="grid md:grid-cols-2 gap-6 flex-1 min-h-0">
-                    <div className="flex flex-col space-y-4">
+                    <div className="flex flex-col space-y-4 min-h-0">
                         <div className="relative bg-muted rounded-lg flex items-center justify-center overflow-hidden flex-1">
                             {currentImage && (
                                 <>
@@ -680,7 +680,7 @@ const ImageChatDialog = ({
                                 </div>
                             )}
                         </div>
-                        <form onSubmit={handleSubmit} className="relative p-4 border-t">
+                        <form onSubmit={handleSubmit} className="relative p-4 border-t flex-shrink-0">
                             <Textarea
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
@@ -1557,6 +1557,7 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
 
 
 
