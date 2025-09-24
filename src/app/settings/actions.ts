@@ -18,11 +18,15 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error('updateProfile error: User not authenticated.');
     throw new Error('User not authenticated');
   }
+  console.log('User authenticated:', user.id);
 
   try {
     const currentProfile = await getProfile();
+    console.log('Current profile fetched:', currentProfile);
+
     const avatarFile = formData.get('avatar') as File | null;
     let newAvatarUrl: string | null = currentProfile?.avatar_url || null;
 
@@ -35,9 +39,6 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
 
     if (avatarFile && avatarFile.size > 0) {
       console.log(`Avatar file found: ${avatarFile.name}, type: ${avatarFile.type}, size: ${avatarFile.size}`);
-      console.log('avatarFile instanceof File:', avatarFile instanceof File);
-      console.log('avatarFile constructor name:', avatarFile?.constructor?.name);
-
       const fileExt = avatarFile.name.split('.').pop();
       const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`;
 
@@ -52,12 +53,10 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
 
       console.log('Avatar uploaded successfully to path:', filePath);
 
-      // Get the public URL of the uploaded file.
       const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
       newAvatarUrl = publicUrl;
       console.log('New avatar public URL:', newAvatarUrl);
 
-      // Delete old avatar if it exists and is different
       if (currentProfile?.avatar_url && currentProfile.avatar_url !== newAvatarUrl) {
         const oldAvatarPath = currentProfile.avatar_url.split(`/${bucketName}/`).pop();
         if (oldAvatarPath) {
@@ -68,9 +67,10 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
           }
         }
       }
+    } else {
+        console.log('No new avatar file provided or file is empty.');
     }
 
-    // Extract other form data
     const primary = formData.get('primaryLanguage') as string;
     let secondary = formData.get('secondaryLanguage') as string | null;
     if (secondary === 'none') {
@@ -102,7 +102,7 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
       throw new Error(`Database Update Failed: ${dbError.message}`);
     }
 
-    console.log('Profile updated successfully in database.');
+    console.log('Profile updated successfully in database. Result:', data);
 
     revalidatePath('/settings');
     revalidatePath('/brand-heart');
@@ -112,7 +112,7 @@ export async function updateProfile(formData: FormData): Promise<{ message: stri
       profile: data,
     };
   } catch (error: any) {
-    console.error('Caught an exception in updateProfile:', error.message);
+    console.error('Caught a top-level exception in updateProfile:', error.message);
     throw error;
   }
 }
