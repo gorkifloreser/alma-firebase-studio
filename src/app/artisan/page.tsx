@@ -963,7 +963,7 @@ export default function ArtisanPage() {
                     videoUrl: creative?.videoUrl || null,
                     landingPageHtml: editableHtml,
                     status: status,
-                    mediaPlanItemId: currentQueueItem?.media_plan_items?.id || null,
+                    mediaPlanItemId: currentQueueItem?.media_plan_item_id || null,
                     scheduledAt: scheduleDate?.toISOString(),
                 });
                 
@@ -1092,7 +1092,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="queue-select">Choose an Item or Go Custom</Label>
+                                                <Label htmlFor="queue-select">2. Choose an Item to Work On</Label>
                                                 <Select onValueChange={(value) => handleQueueItemSelect(value, filteredQueueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
@@ -1142,7 +1142,7 @@ export default function ArtisanPage() {
                                             )}
 
                                             <div>
-                                                <Label htmlFor="creative-prompt">AI Creative Prompt</Label>
+                                                <Label htmlFor="creative-prompt">3. Refine AI Creative Prompt</Label>
                                                 <Textarea
                                                     id="creative-prompt"
                                                     value={creativePrompt}
@@ -1153,7 +1153,7 @@ export default function ArtisanPage() {
                                             </div>
 
                                             <div>
-                                                <h3 className="font-medium mb-4">Creative Type</h3>
+                                                <h3 className="font-medium mb-4">4. Choose Creative Type</h3>
                                                 <RadioGroup
                                                     value={selectedCreativeType}
                                                     onValueChange={(value) => setSelectedCreativeType(value as CreativeType)}
@@ -1173,7 +1173,7 @@ export default function ArtisanPage() {
 
                                             {selectedCreativeType !== 'landing_page' && (
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="dimension-select">Aspect Ratio</Label>
+                                                    <Label htmlFor="dimension-select">5. Set Aspect Ratio</Label>
                                                     <Select onValueChange={(v) => setDimension(v as keyof typeof dimensionMap)} disabled={isLoading} value={dimension}>
                                                         <SelectTrigger id="dimension-select">
                                                             <SelectValue placeholder="Select aspect ratio..." />
