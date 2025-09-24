@@ -783,8 +783,11 @@ export default function ArtisanPage() {
         }
         fetchData();
         
-        const currentTheme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
-        setGlobalTheme(currentTheme);
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme) {
+            setGlobalTheme(storedTheme as 'light' | 'dark');
+        }
+
     }, [toast]);
     
     const startCampaignWorkflow = (campaign: MediaPlanSelectItem) => {
@@ -960,7 +963,7 @@ export default function ArtisanPage() {
                     videoUrl: creative?.videoUrl || null,
                     landingPageHtml: editableHtml,
                     status: status,
-                    mediaPlanItemId: currentQueueItem?.media_plan_items?.id,
+                    mediaPlanItemId: currentQueueItem?.media_plan_items?.id || null,
                     scheduledAt: scheduleDate?.toISOString(),
                 });
                 
@@ -1184,6 +1187,48 @@ export default function ArtisanPage() {
                                                     </Select>
                                                 </div>
                                             )}
+
+                                            <div className="space-y-4">
+                                                <Label>Schedule Publication</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Popover.Root>
+                                                        <Popover.Trigger asChild>
+                                                            <Button
+                                                                variant={"outline"}
+                                                                className={cn("w-[240px] justify-start text-left font-normal", !scheduledAt && "text-muted-foreground")}
+                                                                disabled={!hasContentToSave}
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {scheduledAt ? format(scheduledAt, "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </Popover.Trigger>
+                                                        <Popover.Content className="w-auto p-0">
+                                                            <Calendar
+                                                                mode="single"
+                                                                selected={scheduledAt || undefined}
+                                                                onSelect={(d) => handleDateTimeChange(d, scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00')}
+                                                                initialFocus
+                                                            />
+                                                        </Popover.Content>
+                                                    </Popover.Root>
+                                                    <Select
+                                                        value={scheduledAt ? format(scheduledAt, 'HH:mm') : ''}
+                                                        onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
+                                                        disabled={!hasContentToSave}
+                                                    >
+                                                        <SelectTrigger className="w-[120px]">
+                                                            <SelectValue placeholder="Select time" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {timeOptions.map(option => (
+                                                                <SelectItem key={option.value} value={option.value}>
+                                                                    {option.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
                                         </CardContent>
                                         <CardFooter className="flex flex-col gap-4">
                                             <Button onClick={handleGenerate} className="w-full" disabled={isGenerateDisabled}>
@@ -1192,56 +1237,13 @@ export default function ArtisanPage() {
 
                                             <Separator />
 
-                                            <div className="w-full space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label>Schedule Publication</Label>
-                                                    <div className="flex items-center gap-2">
-                                                        <Popover.Root>
-                                                            <Popover.Trigger asChild>
-                                                                <Button
-                                                                    variant={"outline"}
-                                                                    className={cn("w-[240px] justify-start text-left font-normal", !scheduledAt && "text-muted-foreground")}
-                                                                    disabled={!hasContentToSave}
-                                                                >
-                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                    {scheduledAt ? format(scheduledAt, "PPP") : <span>Pick a date</span>}
-                                                                </Button>
-                                                            </Popover.Trigger>
-                                                            <Popover.Content className="w-auto p-0">
-                                                                <Calendar
-                                                                    mode="single"
-                                                                    selected={scheduledAt || undefined}
-                                                                    onSelect={(d) => handleDateTimeChange(d, scheduledAt ? format(scheduledAt, 'HH:mm') : '09:00')}
-                                                                    initialFocus
-                                                                />
-                                                            </Popover.Content>
-                                                        </Popover.Root>
-                                                        <Select
-                                                            value={scheduledAt ? format(scheduledAt, 'HH:mm') : ''}
-                                                            onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
-                                                            disabled={!hasContentToSave}
-                                                        >
-                                                            <SelectTrigger className="w-[120px]">
-                                                                <SelectValue placeholder="Select time" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {timeOptions.map(option => (
-                                                                    <SelectItem key={option.value} value={option.value}>
-                                                                        {option.label}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                                <div className="w-full grid grid-cols-2 gap-2">
-                                                    <Button onClick={() => handleSave('approved')} variant="outline" className="w-full" disabled={isSaving || !hasContentToSave}>
-                                                        {isSaving ? 'Saving...' : 'Save Draft'}
-                                                    </Button>
-                                                    <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContentToSave || !scheduledAt}>
-                                                        Schedule Post
-                                                    </Button>
-                                                </div>
+                                            <div className="w-full grid grid-cols-2 gap-2">
+                                                <Button onClick={() => handleSave('approved')} variant="outline" className="w-full" disabled={isSaving || !hasContentToSave}>
+                                                    {isSaving ? 'Saving...' : 'Save Draft'}
+                                                </Button>
+                                                <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContentToSave || !scheduledAt}>
+                                                    Schedule Post
+                                                </Button>
                                             </div>
                                         </CardFooter>
                                     </AccordionContent>
