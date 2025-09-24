@@ -681,7 +681,7 @@ export default function ArtisanPage() {
         if (workflowMode !== 'campaign' || !selectedCampaign) return [];
         const channels = allQueueItems
             .filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id)
-            .map(item => item.media_plan_items!.channel)
+            .map(item => item.media_plan_items!.user_channel_settings!.channel_name)
             .filter((v, i, a) => a.indexOf(v) === i); // Unique
         return channels;
     }, [workflowMode, selectedCampaign, allQueueItems]);
@@ -691,7 +691,7 @@ export default function ArtisanPage() {
         if (workflowMode === 'campaign' && selectedCampaign) {
             let items = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id);
             if (channelFilter !== 'all') {
-                items = items.filter(item => item.media_plan_items?.channel === channelFilter);
+                items = items.filter(item => item.media_plan_items?.user_channel_settings?.channel_name === channelFilter);
             }
             setFilteredQueueItems(items);
             // Auto-select first item if selection becomes invalid
@@ -723,7 +723,7 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            setCreativePrompt(planItem.creativePrompt || '');
+            setCreativePrompt(planItem.creative_prompt || '');
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
