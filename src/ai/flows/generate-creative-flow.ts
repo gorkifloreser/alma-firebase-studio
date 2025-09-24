@@ -78,26 +78,10 @@ const imagePrompt = ai.definePrompt({
     name: 'generateImagePrompt',
     input: {
         schema: z.object({
-            brandHeart: z.any(),
-            offering: z.any(),
-            creativePrompt: z.string().optional(),
+            creativePrompt: z.string(),
         })
     },
-    prompt: `{{#if creativePrompt}}
-{{creativePrompt}}
-{{else}}
-Generate a stunning, high-quality, and visually appealing advertisement image for the following offering.
-
-**Brand Identity:**
-- Brand Name: {{brandHeart.brand_name}}
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
-- Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
-
-**Offering:**
-- Title: {{offering.title.primary}}
-
-The image should be magnetic and aligned with a regenerative marketing philosophy. Do not include any text in the image.
-{{/if}}`,
+    prompt: `{{creativePrompt}}`,
 });
 
 const carouselPrompt = ai.definePrompt({
@@ -113,7 +97,7 @@ const carouselPrompt = ai.definePrompt({
             slides: z.array(z.object({
                 title: z.string(),
                 body: z.string(),
-                creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: 'A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1'."),
+                creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: 'A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic'."),
             })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique creative prompt for its image.'),
         })
     },
@@ -129,36 +113,33 @@ Each slide must have a short, punchy title, a brief body text, and a unique, det
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
 
-Generate the carousel slides in the specified JSON format.`,
+Generate the carousel slides in the specified JSON format. Do not add any art style suffixes (like --ar 1:1) to the creative prompts you generate; those will be added later.`,
 });
 
 
-const videoPrompt = ai.definePrompt({
-    name: 'generateVideoPrompt',
-    input: {
-        schema: z.object({
-            brandHeart: z.any(),
-            offering: z.any(),
-            creativePrompt: z.string().optional(),
-        })
-    },
-    prompt: `{{#if creativePrompt}}
-{{creativePrompt}}
-{{else}}
-Generate a visually stunning, high-quality, 5-second video for the following offering.
+const defaultImageGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering.
 
 **Brand Identity:**
-- Brand Name: {{brandHeart.brand_name}}
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- Brand Name: ${brandHeart.brand_name}
+- Tone of Voice: ${brandHeart.tone_of_voice.primary}
 - Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
 
 **Offering:**
-- Title: {{offering.title.primary}}
+- Title: ${offering.title.primary}
 
-The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. No text in the video.
-{{/if}}
-`
-});
+The image should be magnetic and aligned with a regenerative marketing philosophy. Do not include any text in the image.`;
+
+const defaultVideoGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a visually stunning, high-quality, 5-second video for the following offering.
+
+**Brand Identity:**
+- Brand Name: ${brandHeart.brand_name}
+- Tone of Voice: ${brandHeart.tone_of_voice.primary}
+- Keywords: Conscious, soulful, minimalist, calm, creative, authentic.
+
+**Offering:**
+- Title: ${offering.title.primary}
+
+The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy. No text in the video.`;
 
 
 export const generateCreativeFlow = ai.defineFlow(
@@ -167,7 +148,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt, referenceImageUrl }) => {
+  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl }) => {
     
     async function downloadVideo(video: MediaPart): Promise<string> {
         const fetch = (await import('node-fetch')).default;
@@ -197,11 +178,10 @@ export const generateCreativeFlow = ai.defineFlow(
     if (offeringError || !offering) throw new Error('Offering not found.');
     if (profileError || !profile) throw new Error('User profile not found.');
 
-    const promptPayload = { brandHeart, offering, creativePrompt };
     let output: GenerateCreativeOutput = {};
 
     const languages = await import('@/lib/languages');
-    const languageNames = new Map(languages.map(l => [l.value, l.label]));
+    const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
 
     // Generate text content in parallel
     const contentPromise = creativeTypes.includes('text') 
@@ -214,18 +194,21 @@ export const generateCreativeFlow = ai.defineFlow(
         : Promise.resolve(null);
     
     const visualPromises = [];
+    const finalAspectRatio = aspectRatio ? ` --ar ${aspectRatio}` : '';
 
     if (creativeTypes.includes('landing_page')) {
-        visualPromises.push(generateLandingPage({ offeringId, creativePrompt: creativePrompt || 'Generate a beautiful landing page for this offering.' }).then(r => ({ landingPageHtml: r.htmlContent })));
+        visualPromises.push(generateLandingPage({ offeringId, creativePrompt: userCreativePrompt || 'Generate a beautiful landing page for this offering.' }).then(r => ({ landingPageHtml: r.htmlContent })));
     }
     
     if (creativeTypes.includes('video')) {
-         visualPromises.push(videoPrompt(promptPayload).then(async ({ text: videoGenPrompt }) => {
-            let { operation } = await ai.generate({
-                model: googleAI.model('veo-2.0-generate-001'),
-                prompt: videoGenPrompt,
-                config: { durationSeconds: 5, aspectRatio: aspectRatio },
-            });
+        const videoBasePrompt = userCreativePrompt || defaultVideoGenPromptTemplate(brandHeart, offering);
+        const finalVideoPrompt = videoBasePrompt + finalAspectRatio;
+        
+        visualPromises.push(ai.generate({
+            model: googleAI.model('veo-2.0-generate-001'),
+            prompt: finalVideoPrompt,
+            config: { durationSeconds: 5, aspectRatio: aspectRatio },
+        }).then(async ({ operation }) => {
             if (!operation) throw new Error('Expected video operation.');
             while (!operation.done) {
                 await new Promise(resolve => setTimeout(resolve, 5000));
@@ -239,6 +222,10 @@ export const generateCreativeFlow = ai.defineFlow(
     }
 
     if (creativeTypes.includes('image')) {
+        const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
+        const finalImagePrompt = imageBasePrompt + finalAspectRatio;
+        const promptPayload = { creativePrompt: finalImagePrompt };
+
         visualPromises.push(imagePrompt(promptPayload).then(async ({ text }) => {
             let generationResult;
             if (referenceImageUrl) {
@@ -248,12 +235,9 @@ export const generateCreativeFlow = ai.defineFlow(
                     config: { responseModalities: ['TEXT', 'IMAGE'] },
                 });
             } else {
-                const imageConfig: any = {};
-                if (aspectRatio) imageConfig.aspectRatio = aspectRatio;
                 generationResult = await ai.generate({
                     model: googleAI.model('imagen-4.0-fast-generate-001'),
                     prompt: text,
-                    config: imageConfig,
                 });
             }
             return { imageUrl: generationResult.media?.url };
@@ -261,17 +245,17 @@ export const generateCreativeFlow = ai.defineFlow(
     }
     
     if (creativeTypes.includes('carousel')) {
-        visualPromises.push(carouselPrompt(promptPayload).then(async ({ output: carouselOutput }) => {
+        visualPromises.push(carouselPrompt({ brandHeart, offering }).then(async ({ output: carouselOutput }) => {
             if (carouselOutput?.slides) {
-                const imageConfig: any = {};
-                if (aspectRatio) imageConfig.aspectRatio = aspectRatio;
+                const artStyleSuffix = userCreativePrompt ? `, ${userCreativePrompt.split(',').slice(1).join(',')}` : '';
+
                 const slidePromises = carouselOutput.slides.map(async (slide) => {
+                    const finalSlidePrompt = slide.creativePrompt + artStyleSuffix + finalAspectRatio;
                     const { media } = await ai.generate({
                         model: googleAI.model('imagen-4.0-fast-generate-001'),
-                        prompt: slide.creativePrompt,
-                        config: imageConfig,
+                        prompt: finalSlidePrompt,
                     });
-                    return { ...slide, imageUrl: media?.url };
+                    return { ...slide, imageUrl: media?.url, creativePrompt: finalSlidePrompt };
                 });
                 return { carouselSlides: await Promise.all(slidePromises) };
             }
@@ -299,3 +283,5 @@ export const generateCreativeFlow = ai.defineFlow(
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
     return generateCreativeFlow(input);
 }
+
+    
