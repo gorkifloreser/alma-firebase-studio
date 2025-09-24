@@ -15,7 +15,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -163,8 +163,7 @@ const ImageChatDialog = ({
         if (!result.editedImageUrl) throw new Error("AI did not return an edited image.");
         
         setCurrentImage(result.editedImageUrl);
-        setHistory(prev => [...prev, { role: 'bot', content: result.editedImageUrl }]);
-
+        // Do not add bot response to history, the updated image is the response
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Image Edit Failed', description: error.message });
         setHistory(prev => prev.slice(0, -1)); // Remove the user's message on failure
@@ -445,17 +444,17 @@ const PostPreview = ({
                         <Send className="h-6 w-6 cursor-pointer" />
                     </div>
                 </div>
+                 {canEditImage && imageUrlToEdit && (
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10 pointer-events-auto"
+                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                    >
+                        <Edit className="h-4 w-4" />
+                    </Button>
+                )}
             </div>
-             {canEditImage && imageUrlToEdit && (
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="absolute -right-12 top-10 h-8 w-8 rounded-full shadow-lg z-10"
-                    onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                >
-                    <Edit className="h-4 w-4" />
-                </Button>
-            )}
             </>
         );
     }
@@ -514,17 +513,17 @@ const PostPreview = ({
                         </>
                     )}
                 </CardFooter>
+                 {canEditImage && imageUrlToEdit && (
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-[60px] right-2 h-8 w-8 rounded-full shadow-lg z-10"
+                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                    >
+                        <Edit className="h-4 w-4" />
+                    </Button>
+                )}
             </Card>
-             {canEditImage && imageUrlToEdit && (
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="absolute -right-12 top-10 h-8 w-8 rounded-full shadow-lg z-10"
-                    onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                >
-                    <Edit className="h-4 w-4" />
-                </Button>
-            )}
         </div>
         </>
     );
@@ -1276,8 +1275,8 @@ export default function ArtisanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
+                            {/* @functional: This component is functionally complete and should not be modified without explicit user request. */}
                             <AccordionItem value="creative-controls" className="border-none">
-                                {/* @functional: This component is functionally complete and should not be modified without explicit user request. */}
                                 <Card>
                                     <AccordionTrigger className="p-6">
                                          <CardHeader className="p-0">
@@ -1525,4 +1524,3 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
