@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useCallback, useMemo } from 'react';
+import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import * as Popover from '@radix-ui/react-popover';
 import { Check } from 'lucide-react';
@@ -1166,3 +1166,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
