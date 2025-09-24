@@ -604,22 +604,20 @@ export async function getUserChannels(): Promise<Account[]> {
  * Fetches a list of all media plans for the current user, intended for a selection dialog.
  */
 export async function getMediaPlans(): Promise<{ id: string; title: string; offering_id: string; offering_title: string | null }[]> {
-    console.log('[getMediaPlans] Action started.');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Query funnels and eagerly load their offerings and media plans
+    // Using !inner join ensures we only get funnels that HAVE media plans
     const { data, error } = await supabase
         .from('funnels')
         .select(`
             offering_id,
             offerings (title),
-            media_plans (id, title)
+            media_plans!inner (id, title)
         `)
-        .eq('user_id', user.id)
-        .not('media_plans', 'is', null);
-
-    console.log('[getMediaPlans] Raw Supabase response:', { data, error });
+        .eq('user_id', user.id);
 
     if (error) {
         console.error('Error fetching media plans:', error);
@@ -627,11 +625,11 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
     }
     
     if (!data) {
-        console.log('[getMediaPlans] No data returned from Supabase.');
         return [];
     }
     
     const response = data.flatMap((funnel: any) => 
+        // For each funnel, map over its media plans and create the desired flat structure
         funnel.media_plans.map((plan: any) => ({
             id: plan.id,
             title: plan.title,
@@ -640,10 +638,11 @@ export async function getMediaPlans(): Promise<{ id: string; title: string; offe
         }))
     );
     
-    console.log('[getMediaPlans] Processed response:', response);
     return response;
 }
       
+
+    
 
     
 
