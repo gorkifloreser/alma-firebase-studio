@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const EditImageInputSchema = z.object({
+const EditImageInputSchema = z.object({
   imageUrl: z
     .string()
     .describe(
@@ -18,15 +18,14 @@ export const EditImageInputSchema = z.object({
 });
 export type EditImageInput = z.infer<typeof EditImageInputSchema>;
 
-export const EditImageOutputSchema = z.object({
+const EditImageOutputSchema = z.object({
   editedImageUrl: z.string().describe('The data URI of the edited image.'),
 });
 export type EditImageOutput = z.infer<typeof EditImageOutputSchema>;
 
-
-export const editImageWithInstruction = ai.defineFlow(
+const editImageFlow = ai.defineFlow(
   {
-    name: 'editImageWithInstruction',
+    name: 'editImageWithInstructionFlow',
     inputSchema: EditImageInputSchema,
     outputSchema: EditImageOutputSchema,
   },
@@ -50,3 +49,9 @@ export const editImageWithInstruction = ai.defineFlow(
     return { editedImageUrl: media.url };
   }
 );
+
+
+export async function editImageWithInstruction(input: EditImageInput): Promise<EditImageOutput> {
+  const result = await editImageFlow(input);
+  return result;
+}
