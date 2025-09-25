@@ -178,7 +178,7 @@ Based on all the information above, create a 3-5 slide carousel script. For each
 2.  **body:** Brief, engaging body text.
 3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual keywords, the specified art style, and the aspect ratio if provided. Do NOT include placeholders.
 
-   **Example of a good `creativePrompt`:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic, vintage film photography, grainy texture, muted colors{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic, vintage film photography, grainy texture, muted colors{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Generate the carousel slides in the specified JSON format.`,
 });
