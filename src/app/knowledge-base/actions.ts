@@ -107,10 +107,11 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     }
 
     // Step 1: Chunking the text
-    // Regex to split by titles (at least 5 consecutive uppercase letters and maybe spaces) or by multiple newlines
+    // This regex looks for lines that are mostly uppercase, which are likely titles, and splits the text by them.
+    // The `(?= ... )` is a positive lookahead, so it splits *before* the title, keeping the title with its content.
     const chunks = textContent
-        .split(/(\n\s*\n)|(^[A-Z\s]{5,}[A-Z]$)/m)
-        .map(chunk => chunk.trim())
+        .split(/(?=\b[A-Z\s\(\)]{5,}\b\n)/)
+        .map(chunk => chunk.trim().replace(/\s+/g, ' ')) // Normalize whitespace
         .filter(chunk => chunk && chunk.length > 50); // Filter out very short or empty chunks
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
