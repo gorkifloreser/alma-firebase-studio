@@ -8,6 +8,8 @@ import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, 
 import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
 import { editImageWithInstruction as editImageFlow } from '@/ai/flows/edit-image-flow';
 import type { EditImageInput, EditImageOutput } from '@/ai/flows/edit-image-flow';
+import { regenerateCarouselSlide as regenerateSlideFlow, RegenerateCarouselSlideInput, RegenerateCarouselSlideOutput } from '@/ai/flows/regenerate-carousel-slide-flow';
+
 
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 
@@ -170,4 +172,14 @@ export async function updateQueueItemStatus(queueItemId: string, newStatus: 'com
 export async function editImageWithInstruction(input: EditImageInput): Promise<EditImageOutput> {
     return editImageFlow(input);
 }
+
+/**
+ * Invokes the Genkit flow to regenerate a single carousel slide image.
+ * @param {RegenerateCarouselSlideInput} input The context for regenerating the slide.
+ * @returns {Promise<RegenerateCarouselSlideOutput>} The regenerated slide's image URL and final prompt.
+ */
+export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
+    return regenerateSlideFlow(input);
+}
     
+

@@ -8,7 +8,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction } from './actions';
+import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
 import { getArtStyles, ArtStyle } from '../art-styles/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
@@ -911,7 +911,7 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
-        console.log("handleQueueItemSelect called with ID:", queueItemId);
+        console.log("[handleQueueItemSelect] ID:", queueItemId);
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
@@ -920,7 +920,7 @@ export default function ArtisanPage() {
         setReferenceImageUrl(null);
 
         if (!queueItemId || workflowMode === 'custom') {
-            console.log("No queue item ID or in custom mode, clearing fields.");
+            console.log("[handleQueueItemSelect] No queue item ID or in custom mode, clearing fields.");
             setCreativePrompt('');
             setEditableContent(null);
             if (workflowMode === 'custom') setSelectedOfferingId(undefined);
@@ -928,15 +928,15 @@ export default function ArtisanPage() {
         }
 
         const item = items.find(q => q.id === queueItemId);
-        console.log("Found item:", item);
+        console.log("[handleQueueItemSelect] Found item:", item);
 
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            console.log("Plan item data:", planItem);
-
+            console.log("[handleQueueItemSelect] Plan item data:", planItem);
+            
             const newCreativePrompt = planItem.creativePrompt || '';
-            console.log("Setting creative prompt to:", newCreativePrompt);
+            console.log("[handleQueueItemSelect] Setting creative prompt to:", newCreativePrompt);
             setCreativePrompt(newCreativePrompt);
 
             setEditableContent({ primary: planItem.copy || '', secondary: null });
@@ -976,7 +976,7 @@ export default function ArtisanPage() {
             }
 
         } else {
-            console.log("Item or item.media_plan_items not found. Clearing fields.");
+            console.log("[handleQueueItemSelect] Item or item.media_plan_items not found. Clearing fields.");
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(undefined);
@@ -1087,6 +1087,36 @@ export default function ArtisanPage() {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Please select an offering for your custom creative.' });
             return;
+        }
+        
+        // Handle single carousel slide regeneration
+        if (selectedCreativeType === 'carousel' && regeneratePrompt) {
+            const slideToRegen = creative?.carouselSlides?.[currentCarouselSlide];
+            if (slideToRegen) {
+                startSaving(async () => {
+                    try {
+                        const { imageUrl, finalPrompt } = await regenerateCarouselSlide({
+                            offeringId: selectedOfferingId,
+                            basePrompt: regeneratePrompt,
+                            aspectRatio: dimension,
+                            artStyleId: selectedArtStyleId !== 'none' ? selectedArtStyleId : undefined,
+                        });
+
+                        setCreative(prev => {
+                            if (!prev || !prev.carouselSlides) return prev;
+                            const newSlides = [...prev.carouselSlides];
+                            newSlides[currentCarouselSlide] = { ...newSlides[currentCarouselSlide], imageUrl, finalPrompt };
+                            return { ...prev, carouselSlides: newSlides };
+                        });
+                        
+                        toast({ title: 'Slide Regenerated!', description: 'The image for the current slide has been updated.' });
+
+                    } catch(e: any) {
+                        toast({ variant: 'destructive', title: 'Regeneration Failed', description: e.message });
+                    }
+                });
+                return; // End execution here for slide regen
+            }
         }
 
         setIsLoading(true);
@@ -1739,5 +1769,6 @@ export default function ArtisanPage() {
 
     
     
+
 
 
