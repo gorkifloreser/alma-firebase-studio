@@ -128,6 +128,9 @@ const carouselPrompt = ai.definePrompt({
         schema: z.object({
             brandHeart: z.any(),
             offering: z.any(),
+            basePrompt: z.string().optional(),
+            artStyleSuffix: z.string().optional(),
+            aspectRatio: z.string().optional(),
         })
     },
     output: {
@@ -135,23 +138,49 @@ const carouselPrompt = ai.definePrompt({
             slides: z.array(z.object({
                 title: z.string(),
                 body: z.string(),
-                creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: 'A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic'."),
-            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique creative prompt for its image.'),
+                creativePrompt: z.string().describe("A detailed, final, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. This prompt must be a fusion of the brand's aesthetic, the offering, the art style, the aspect ratio, and the user's creative brief. It should be self-contained and ready for generation."),
+            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique, final creative prompt for its image.'),
         })
     },
-  prompt: `You are a marketing expert specializing in creating engaging social media carousels.
-Based on the Brand Heart and Offering below, create a 3-5 slide carousel script.
-Each slide must have a short, punchy title, a brief body text, and a unique, detailed creative prompt to generate an image for that specific slide. The goal is to tell a story that leads to the offering.
+  prompt: `You are a marketing expert and AI prompt engineer specializing in creating engaging social media carousels.
 
-**Brand Heart:**
+**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt**.
+
+---
+**1. THE BRAND's SOUL (Tone & Keywords):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
+- Visual Keywords: Soulful, minimalist, calm, creative, authentic, organic.
 
-**Offering:**
+**2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
 
-Generate the carousel slides in the specified JSON format. Do not add any art style suffixes or aspect ratios (like --ar 1:1) to the creative prompts you generate; those will be added later.`,
+**3. THE USER's CREATIVE BRIEF (The Main Story):**
+{{#if basePrompt}}
+- "{{basePrompt}}"
+{{else}}
+- Create a carousel that tells a story about the offering, starting with the problem or desire, showing the transformation, and ending with a call to action.
+{{/if}}
+
+**4. THE ART STYLE (The Suffix):**
+{{#if artStyleSuffix}}
+- Apply this specific art style: {{artStyleSuffix}}
+{{else}}
+- Use a photo-realistic, soft, and natural style.
+{{/if}}
+
+---
+**YOUR TASK:**
+
+Based on all the information above, create a 3-5 slide carousel script. For each slide:
+1.  **title:** A short, punchy title.
+2.  **body:** Brief, engaging body text.
+3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual keywords, the specified art style, and the aspect ratio if provided. Do NOT include placeholders.
+
+   **Example of a good `creativePrompt`:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic, vintage film photography, grainy texture, muted colors{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+
+Generate the carousel slides in the specified JSON format.`,
 });
 
 
@@ -274,24 +303,19 @@ export const generateCreativeFlow = ai.defineFlow(
     }
     
     if (creativeTypes.includes('carousel')) {
-        visualPromises.push(carouselPrompt({ brandHeart, offering }).then(async ({ output: carouselOutput }) => {
+        const carouselBasePrompt = userCreativePrompt || 'Generate a 3-5 slide carousel that tells a story about this offering.';
+        
+        visualPromises.push(carouselPrompt({ 
+            brandHeart, 
+            offering, 
+            basePrompt: carouselBasePrompt,
+            artStyleSuffix: artStyle?.prompt_suffix,
+            aspectRatio,
+        }).then(async ({ output: carouselOutput }) => {
             if (carouselOutput?.slides) {
 
                 const slidePromises = carouselOutput.slides.map(async (slide) => {
-                    const slideBasePrompt = slide.creativePrompt;
-
-                    const { output: promptOutput } = await masterImagePrompt({
-                        brandHeart,
-                        offering,
-                        basePrompt: slideBasePrompt,
-                        aspectRatio,
-                        artStyleSuffix: artStyle?.prompt_suffix,
-                    });
-
-                    if (!promptOutput) {
-                        throw new Error(`Failed to generate master prompt for a carousel slide.`);
-                    }
-                    const finalSlidePrompt = promptOutput.text;
+                    const finalSlidePrompt = slide.creativePrompt; // The prompt is now final and complete from the carouselPrompt
 
                     const { media } = await ai.generate({
                         model: googleAI.model('imagen-4.0-fast-generate-001'),
