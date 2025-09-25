@@ -5,6 +5,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
+import pdf from 'pdfjs-dist/legacy/build/pdf.js';
+import { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+
 
 export type BrandDocument = {
     id: string;
@@ -66,24 +69,43 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 }
 
 /**
- * Invokes the 'parse-document' Supabase Edge Function to process a file.
+ * Downloads a document from Supabase storage and parses its content.
  * @param {string} filePath - The path of the file in Supabase Storage.
  * @returns {Promise<{ content: string }>} The parsed content of the document.
  */
-export async function invokeParseDocument(filePath: string): Promise<{ content: string }> {
+export async function parseDocument(filePath: string): Promise<{ content: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('parse-document', {
-        body: { filePath },
-    });
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
+    
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from(bucketName)
+      .download(filePath);
 
-    if (error) {
-        throw new Error(`Failed to invoke parse function: ${error.message}`);
+    if (downloadError) {
+        console.error('Error downloading file for parsing:', downloadError);
+        throw new Error(downloadError.message);
+    }
+    
+    const buffer = await fileData.arrayBuffer();
+
+    const loadingTask = pdf.getDocument(buffer as DocumentInitParameters);
+    const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
+    let textContent = "";
+
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const text = await page.getTextContent();
+        textContent += text.items.map((item: any) => item.str).join(" ") + "\n";
     }
 
-    return data;
+    console.log('--- PARSED PDF CONTENT ---');
+    console.log(textContent);
+    console.log('--- END PARSED CONTENT ---');
+    
+    return { content: textContent };
 }
 
 

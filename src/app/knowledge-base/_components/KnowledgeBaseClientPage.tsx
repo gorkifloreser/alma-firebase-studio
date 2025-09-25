@@ -13,7 +13,7 @@ import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLef
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, invokeParseDocument } from '../actions';
+import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument } from '../actions';
 
 
 const MAX_FILE_SIZE_MB = 5;
@@ -32,7 +32,7 @@ export interface KnowledgeBaseClientPageProps {
     deleteBrandDocumentAction: typeof deleteBrandDocument;
     uploadBrandDocumentAction: typeof uploadBrandDocument;
     askRagAction: typeof askRag;
-    invokeParseDocumentAction: typeof invokeParseDocument;
+    parseDocumentAction: typeof parseDocument;
 }
 
 
@@ -42,7 +42,7 @@ export function KnowledgeBaseClientPage({
     deleteBrandDocumentAction,
     uploadBrandDocumentAction,
     askRagAction,
-    invokeParseDocumentAction,
+    parseDocumentAction,
 }: KnowledgeBaseClientPageProps) {
     const [documents, setDocuments] = useState(initialDocuments);
     const [isLoading, setIsLoading] = useState(false);
@@ -131,13 +131,10 @@ export function KnowledgeBaseClientPage({
     };
 
     const handleParseDocument = (filePath: string) => {
-        setParsingId(filePath); // Use filePath as a temporary ID for the loading state
+        setParsingId(filePath);
         startParsing(async () => {
             try {
-                const result = await invokeParseDocumentAction(filePath);
-                console.log('--- PARSED PDF CONTENT ---');
-                console.log(result.content);
-                console.log('--- END PARSED CONTENT ---');
+                const result = await parseDocumentAction(filePath);
                 toast({
                     title: 'Parsing Successful',
                     description: `Extracted ${result.content.length} characters. Check the console for the full text.`,
