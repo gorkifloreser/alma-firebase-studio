@@ -801,53 +801,120 @@ const AddTextDialog = ({
     isOpen,
     onOpenChange,
     onSubmit,
+    originalImageUrl,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (text: string, position: string) => void;
+    onSubmit: (newImageUrl: string) => void;
+    originalImageUrl: string;
 }) => {
     const [text, setText] = useState('');
     const [position, setPosition] = useState('center');
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [isGenerating, startGenerating] = useTransition();
+    const { toast } = useToast();
 
-    const handleSubmit = () => {
-        onSubmit(text, position);
-        onOpenChange(false);
-        setText('');
+    useEffect(() => {
+        if (!isOpen) {
+            // Reset state when dialog closes
+            setText('');
+            setPosition('center');
+            setPreviewImage(null);
+        }
+    }, [isOpen]);
+
+    const handlePreview = () => {
+        if (!text.trim()) {
+            toast({ variant: 'destructive', title: 'Please enter text to add.' });
+            return;
+        }
+
+        startGenerating(async () => {
+            try {
+                const instruction = `Add the text "${text}" to the ${position.replace('-', ' ')} of the image.`;
+                const { editedImageUrl } = await editImageWithInstruction({
+                    imageUrl: originalImageUrl,
+                    instruction,
+                });
+                setPreviewImage(editedImageUrl);
+                toast({ title: 'Preview Generated', description: 'Review the image below and approve it.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Failed to Generate Preview', description: error.message });
+            }
+        });
     };
+    
+    const handleApprove = () => {
+        if (previewImage) {
+            onSubmit(previewImage);
+            onOpenChange(false);
+        }
+    };
+
 
     const positions = ['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Add Text Overlay</DialogTitle>
                     <DialogDescription>
-                        Type the text you want to add and choose its position. The AI will render it onto the image.
+                        Type the text you want to add, generate a preview, and then approve the final image.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="text-overlay">Text</Label>
-                        <Textarea id="text-overlay" value={text} onChange={(e) => setText(e.target.value)} placeholder="Your text here..."/>
+
+                {previewImage ? (
+                    <div className="py-4 space-y-4">
+                        <h3 className="font-semibold">Preview</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Original</Label>
+                                <div className="relative aspect-square rounded-md overflow-hidden">
+                                     <Image src={originalImageUrl} alt="Original image" fill className="object-contain" />
+                                </div>
+                            </div>
+                             <div className="space-y-2">
+                                <Label>With Text Overlay</Label>
+                                <div className="relative aspect-square rounded-md overflow-hidden">
+                                     <Image src={previewImage} alt="Preview with text" fill className="object-contain" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="text-position">Position</Label>
-                         <Select value={position} onValueChange={setPosition}>
-                            <SelectTrigger id="text-position">
-                                <SelectValue placeholder="Select position" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {positions.map(pos => (
-                                    <SelectItem key={pos} value={pos} className="capitalize">{pos.replace('-', ' ')}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                ) : (
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="text-overlay">Text</Label>
+                            <Textarea id="text-overlay" value={text} onChange={(e) => setText(e.target.value)} placeholder="Your text here..."/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="text-position">Position</Label>
+                             <Select value={position} onValueChange={setPosition}>
+                                <SelectTrigger id="text-position">
+                                    <SelectValue placeholder="Select position" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {positions.map(pos => (
+                                        <SelectItem key={pos} value={pos} className="capitalize">{pos.replace('-', ' ')}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                </div>
+                )}
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={!text.trim()}>Add Text</Button>
+                    {previewImage ? (
+                        <Button onClick={handleApprove}>
+                            <Check className="mr-2 h-4 w-4"/>
+                            Approve
+                        </Button>
+                    ) : (
+                        <Button onClick={handlePreview} disabled={isGenerating || !text.trim()}>
+                            {isGenerating ? 'Generating...' : 'Preview Text'}
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -993,17 +1060,19 @@ export default function ArtisanPage() {
         setEditableHtml(null);
         setScheduledAt(null);
         setReferenceImageUrl(null);
-        setCreativePrompt('');
-        setSelectedArtStyleId('none');
         setSelectedQueueItemId(queueItemId);
 
         if (workflowMode === 'custom') {
             setSelectedOfferingId(undefined);
+            setCreativePrompt('');
+            setSelectedArtStyleId('none');
             return;
         }
 
         if (!queueItemId) {
             setSelectedOfferingId(undefined);
+            setCreativePrompt('');
+            setSelectedArtStyleId('none');
             return;
         }
 
@@ -1019,6 +1088,10 @@ export default function ArtisanPage() {
             const promptValue = (planItem.creativePrompt || '');
             console.log("DEBUG: Prompt value from planItem:", promptValue);
             setCreativePrompt(promptValue);
+            
+            // Set Art Style if it exists on the item, this part is hypothetical as it's not on the model yet
+            const artStyleId = (planItem as any).art_style_id || 'none';
+            setSelectedArtStyleId(artStyleId);
 
             setEditableContent({ primary: planItem.copy || '', secondary: null });
 
@@ -1217,8 +1290,9 @@ export default function ArtisanPage() {
             // When regenerating, also update the prompt in the text area
             if (regeneratePrompt && result.finalPrompt) {
                 setCreativePrompt(result.finalPrompt);
+            } else if (result.finalPrompt) { // Also update on first generation
+                setCreativePrompt(result.finalPrompt);
             }
-
 
             toast({
                 title: 'Content Generated!',
@@ -1261,22 +1335,8 @@ export default function ArtisanPage() {
         setIsAddTextOpen(true);
     };
 
-    const handleAddTextSubmit = (text: string, position: string) => {
-        if (!imageToChat?.url) return;
-
-        startSaving(async () => {
-            try {
-                const instruction = `Add the text "${text}" to the ${position.replace('-', ' ')} of the image.`;
-                const { editedImageUrl } = await editImageWithInstruction({
-                    imageUrl: imageToChat.url,
-                    instruction,
-                });
-                handleImageUpdate(editedImageUrl);
-                toast({ title: 'Text Added!', description: 'The AI has added your text to the image.' });
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Failed to Add Text', description: error.message });
-            }
-        });
+    const handleAddTextSubmit = (newImageUrl: string) => {
+        handleImageUpdate(newImageUrl);
     };
 
     const handleImageUpdate = (newImageUrl: string) => {
@@ -1528,6 +1588,7 @@ export default function ArtisanPage() {
                 isOpen={isAddTextOpen}
                 onOpenChange={setIsAddTextOpen}
                 onSubmit={handleAddTextSubmit}
+                originalImageUrl={imageToChat?.url || ''}
             />
 
             <RegenerateDialog
@@ -1876,3 +1937,4 @@ export default function ArtisanPage() {
 
 
     
+
