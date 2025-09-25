@@ -5,7 +5,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import pdf from 'pdfjs-dist/legacy/build/pdf.js';
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 import type { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
 
@@ -78,6 +78,9 @@ export async function parseDocument(filePath: string): Promise<{ content: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Set the worker source to the correct path for the Next.js server environment.
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `../../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.js`;
+
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -91,7 +94,7 @@ export async function parseDocument(filePath: string): Promise<{ content: string
     
     const buffer = await fileData.arrayBuffer();
 
-    const loadingTask = pdf.getDocument(buffer as DocumentInitParameters);
+    const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
