@@ -15,7 +15,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -90,6 +90,7 @@ const PostPreview = ({
     onImageEdit,
     onRegenerateClick,
     onCurrentSlideChange,
+    onDownload,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -105,6 +106,7 @@ const PostPreview = ({
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
     onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
+    onDownload: (url: string, filename: string) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -145,8 +147,9 @@ const PostPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
     
-    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl);
+    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl) || (selectedCreativeType === 'video' && creative?.videoUrl);
     const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.imageUrl : creative?.imageUrl;
+    const urlToDownload = selectedCreativeType === 'video' ? creative?.videoUrl : imageUrlToEdit;
 
 
     const renderVisualContent = () => {
@@ -236,38 +239,36 @@ const PostPreview = ({
                         {renderVisualContent()}
                     </div>
                     
-                    {hasVisuals && imageUrlToEdit && (
+                    {hasVisuals && (
                         <div className="absolute top-16 right-4 flex flex-col gap-2 z-10 pointer-events-auto">
+                            {imageUrlToEdit && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}>
+                                            <Edit className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Retouch Image</p></TooltipContent>
+                                </Tooltip>
+                            )}
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="h-10 w-10 rounded-full shadow-lg"
-                                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                                    >
-                                        <Edit className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Retouch Image</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="h-10 w-10 rounded-full shadow-lg"
-                                        onClick={onRegenerateClick}
-                                    >
+                                    <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onRegenerateClick}>
                                         <RefreshCw className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Regenerate Image</p>
-                                </TooltipContent>
+                                <TooltipContent><p>Regenerate Image</p></TooltipContent>
                             </Tooltip>
+                            {urlToDownload && (
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => onDownload(urlToDownload, 'alma-ai-creative')}>
+                                            <Download className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Download</p></TooltipContent>
+                                </Tooltip>
+                            )}
                         </div>
                     )}
                     
@@ -345,38 +346,24 @@ const PostPreview = ({
                             <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
                                 {renderVisualContent()}
                             </div>
-                            {hasVisuals && imageUrlToEdit && (
+                            {hasVisuals && (
                                 <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+                                    {imageUrlToEdit && (
+                                         <Tooltip>
+                                            <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}><Edit className="h-4 w-4" /></Button></TooltipTrigger>
+                                            <TooltipContent side="left"><p>Retouch Image</p></TooltipContent>
+                                        </Tooltip>
+                                    )}
                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full shadow-lg"
-                                                onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                                            >
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Retouch Image</p>
-                                        </TooltipContent>
+                                        <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onRegenerateClick}><RefreshCw className="h-4 w-4" /></Button></TooltipTrigger>
+                                        <TooltipContent side="left"><p>Regenerate Image</p></TooltipContent>
                                     </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="secondary"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-full shadow-lg"
-                                                onClick={onRegenerateClick}
-                                            >
-                                                <RefreshCw className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">
-                                            <p>Regenerate Image</p>
-                                        </TooltipContent>
-                                    </Tooltip>
+                                    {urlToDownload && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => onDownload(urlToDownload, 'alma-ai-creative')}><Download className="h-4 w-4" /></Button></TooltipTrigger>
+                                            <TooltipContent side="left"><p>Download</p></TooltipContent>
+                                        </Tooltip>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -628,13 +615,11 @@ const ImageChatDialog = ({
     const [currentImage, setCurrentImage] = useState(imageUrl);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [zoom, setZoom] = useState<'contain' | 'cover'>('contain');
-    const [editablePrompt, setEditablePrompt] = useState(originalPrompt || '');
 
     useEffect(() => {
         setCurrentImage(imageUrl);
         setHistory([]);
-        setEditablePrompt(originalPrompt || '');
-    }, [imageUrl, originalPrompt]);
+    }, [imageUrl]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -707,14 +692,6 @@ const ImageChatDialog = ({
                                     </Button>
                                 </>
                             )}
-                        </div>
-                        <div className="space-y-2 flex-shrink-0">
-                            <Label htmlFor="original-prompt">Original Prompt</Label>
-                            <Textarea id="original-prompt" value={editablePrompt} onChange={(e) => setEditablePrompt(e.target.value)} className="h-24 font-mono text-xs" />
-                            <Button onClick={() => onRegenerate(editablePrompt)} size="sm" className="w-full">
-                                <RefreshCw className="mr-2 h-4 w-4"/>
-                                Regenerate with this prompt
-                            </Button>
                         </div>
                     </div>
                      <div className="flex flex-col h-full bg-background rounded-lg border min-h-0">
@@ -1116,6 +1093,11 @@ export default function ArtisanPage() {
              if (result.landingPageHtml) {
                 setEditableHtml(result.landingPageHtml);
             }
+            // When regenerating, also update the prompt in the text area
+            if (regeneratePrompt && result.finalPrompt) {
+                setCreativePrompt(result.finalPrompt);
+            }
+
 
             toast({
                 title: 'Content Generated!',
@@ -1322,6 +1304,26 @@ export default function ArtisanPage() {
         return creative.finalPrompt;
     }, [creative, selectedCreativeType, currentCarouselSlide]);
 
+    const handleDownload = (url: string, filename: string) => {
+        fetch(url)
+            .then(res => res.blob())
+            .then(blob => {
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = `${filename}.${blob.type.split('/')[1] || 'media'}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+                toast({ title: 'Download Started', description: `Downloading ${filename}` });
+            })
+            .catch(e => {
+                toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
+                console.error("Download error:", e);
+            });
+    };
+
 
     return (
         <DashboardLayout>
@@ -1368,6 +1370,8 @@ export default function ArtisanPage() {
                 originalPrompt={finalPromptForCurrentVisual}
                 onRegenerate={(newPrompt) => {
                     setIsImageChatOpen(false);
+                    // Update the main prompt and regenerate from the main page
+                    setCreativePrompt(newPrompt);
                     handleGenerate(newPrompt);
                 }}
             />
@@ -1377,6 +1381,8 @@ export default function ArtisanPage() {
                 onOpenChange={setIsRegenerateOpen}
                 originalPrompt={finalPromptForCurrentVisual}
                 onRegenerate={(newPrompt) => {
+                    // Update the main prompt and regenerate
+                    setCreativePrompt(newPrompt);
                     handleGenerate(newPrompt);
                 }}
             />
@@ -1601,7 +1607,7 @@ export default function ArtisanPage() {
                                             </div>
                                         </CardContent>
                                         <CardFooter className="flex flex-col gap-4">
-                                            <Button onClick={() => handleGenerate()} className="w-full" disabled={isGenerateDisabled}>
+                                            <Button onClick={() => handleGenerate(creativePrompt)} className="w-full" disabled={isGenerateDisabled}>
                                                 <Wand2 className="mr-2 h-4 w-4" />
                                                 {isLoading ? 'Generating...' : 'Generate with AI'}
                                             </Button>
@@ -1620,12 +1626,12 @@ export default function ArtisanPage() {
                                     </AccordionContent>
                                 </Card>
                             </AccordionItem>
-                             {creative && (selectedCreativeType === 'image' || selectedCreativeType === 'carousel') && (
+                             {creative && (selectedCreativeType === 'image' || selectedCreativeType === 'carousel' || selectedCreativeType === 'video') && (
                                 <AccordionItem value="refinement-controls" className="border-none">
                                     <Card>
                                         <AccordionTrigger className="p-6">
                                             <CardHeader className="p-0">
-                                                <CardTitle>Image Refinement</CardTitle>
+                                                <CardTitle>Visual Refinement</CardTitle>
                                             </CardHeader>
                                         </AccordionTrigger>
                                         <AccordionContent>
@@ -1633,15 +1639,15 @@ export default function ArtisanPage() {
                                                 <Tabs defaultValue="regenerate" className="w-full">
                                                     <TabsList className="grid w-full grid-cols-2">
                                                         <TabsTrigger value="regenerate">Regenerate</TabsTrigger>
-                                                        <TabsTrigger value="retouch">Retouch</TabsTrigger>
+                                                        <TabsTrigger value="retouch" disabled={selectedCreativeType === 'video'}>Retouch</TabsTrigger>
                                                     </TabsList>
                                                     <TabsContent value="regenerate" className="mt-4">
                                                         <div className="space-y-4">
                                                             <Label>Final Prompt Used</Label>
                                                             <Textarea readOnly value={finalPromptForCurrentVisual || 'No prompt available.'} className="h-32 font-mono text-xs bg-muted" />
-                                                            <Button onClick={() => handleGenerate(finalPromptForCurrentVisual || creativePrompt)} className="w-full" disabled={isLoading || !finalPromptForCurrentVisual}>
+                                                            <Button onClick={() => setIsRegenerateOpen(true)} className="w-full" disabled={isLoading}>
                                                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                                                Regenerate Image
+                                                                Edit Prompt & Regenerate
                                                             </Button>
                                                         </div>
                                                     </TabsContent>
@@ -1691,6 +1697,7 @@ export default function ArtisanPage() {
                             onImageEdit={handleOpenImageChat}
                             onRegenerateClick={() => setIsRegenerateOpen(true)}
                             onCurrentSlideChange={setCurrentCarouselSlide}
+                            onDownload={handleDownload}
                         />
                     </main>
                 </div>
