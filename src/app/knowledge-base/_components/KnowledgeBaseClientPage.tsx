@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useTransition, useRef } from 'react';
@@ -13,8 +12,8 @@ import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLef
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument } from '../actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument, generateAndStoreEmbeddings } from '../actions';
 
 
 const MAX_FILE_SIZE_MB = 5;
@@ -34,6 +33,7 @@ export interface KnowledgeBaseClientPageProps {
     uploadBrandDocumentAction: typeof uploadBrandDocument;
     askRagAction: typeof askRag;
     parseDocumentAction: typeof parseDocument;
+    generateAndStoreEmbeddingsAction: typeof generateAndStoreEmbeddings;
 }
 
 
@@ -44,6 +44,7 @@ export function KnowledgeBaseClientPage({
     uploadBrandDocumentAction,
     askRagAction,
     parseDocumentAction,
+    generateAndStoreEmbeddingsAction,
 }: KnowledgeBaseClientPageProps) {
     const [documents, setDocuments] = useState(initialDocuments);
     const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +62,8 @@ export function KnowledgeBaseClientPage({
     const [isAnswering, startAnswering] = useTransition();
 
     const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
-    const [parsingResult, setParsingResult] = useState<string[] | null>(null);
+    const [parsingResult, setParsingResult] = useState<{chunks: string[], document_group_id: string} | null>(null);
+    const [isStoring, startStoring] = useTransition();
 
 
     const fetchAllData = async () => {
@@ -139,7 +141,7 @@ export function KnowledgeBaseClientPage({
         startParsing(async () => {
             try {
                 const result = await parseDocumentAction(filePath);
-                setParsingResult(result.chunks);
+                setParsingResult(result);
                 setIsResultDialogOpen(true);
             } catch (error: any) {
                 toast({
@@ -150,6 +152,35 @@ export function KnowledgeBaseClientPage({
                  console.error('Parsing error details:', error);
             } finally {
                 setParsingId(null);
+            }
+        });
+    };
+
+    const handleGenerateEmbeddings = async () => {
+        if (!parsingResult || parsingResult.chunks.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'No Chunks to Process',
+                description: 'There are no text chunks to generate embeddings for.',
+            });
+            return;
+        }
+
+        startStoring(async () => {
+            try {
+                const result = await generateAndStoreEmbeddingsAction(parsingResult.chunks, parsingResult.document_group_id);
+                toast({
+                    title: 'Success!',
+                    description: result.message,
+                });
+                setIsResultDialogOpen(false);
+                setParsingResult(null);
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Embedding Failed',
+                    description: error.message,
+                });
             }
         });
     };
@@ -331,17 +362,33 @@ export function KnowledgeBaseClientPage({
                 <DialogHeader>
                     <DialogTitle>Document Parsing Result</DialogTitle>
                     <DialogDescription>
-                        The document was split into the following text chunks.
+                        The document was split into the following text chunks. Review them and then generate embeddings to add them to your knowledge base.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto space-y-4 p-4 my-4 border rounded-md">
-                    {parsingResult?.map((chunk, index) => (
+                    {parsingResult?.chunks.map((chunk, index) => (
                         <div key={index} className="p-3 bg-muted/50 rounded-md">
                             <p className="text-xs font-semibold text-muted-foreground mb-1">Chunk {index + 1}</p>
                             <p className="text-sm whitespace-pre-wrap">{chunk}</p>
                         </div>
                     ))}
                 </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsResultDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleGenerateEmbeddings} disabled={isStoring}>
+                        {isStoring ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Generating Embeddings...
+                            </>
+                        ) : (
+                             <>
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Generate Embeddings & Save
+                            </>
+                        )}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
         </>

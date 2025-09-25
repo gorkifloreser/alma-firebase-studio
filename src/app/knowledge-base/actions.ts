@@ -70,17 +70,30 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 }
 
 /**
- * Downloads a document from Supabase storage and parses its content.
+ * Downloads a document from Supabase storage and parses its content into text chunks.
  * @param {string} filePath - The path of the file in Supabase Storage.
- * @returns {Promise<{ chunkCount: number; chunks: string[] }>} The number of text chunks created and the chunks themselves.
+ * @returns {Promise<{ chunks: string[]; document_group_id: string; }>} The text chunks and the document group ID.
  */
-export async function parseDocument(filePath: string): Promise<{ chunkCount: number; chunks: string[] }> {
+export async function parseDocument(filePath: string): Promise<{ chunks: string[]; document_group_id: string; }> {
+    console.log('[parseDocument] Starting parsing process for file:', filePath);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+
+    const { data: docInfo, error: docError } = await supabase
+        .from('brand_documents')
+        .select('document_group_id')
+        .eq('file_path', filePath)
+        .eq('user_id', user.id)
+        .single();
+    
+    if (docError || !docInfo) {
+        throw new Error('Could not retrieve document information.');
+    }
     
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
+    console.log('[parseDocument] Downloading file from storage...');
     const { data: fileData, error: downloadError } = await supabase.storage
       .from(bucketName)
       .download(filePath);
@@ -93,11 +106,14 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     if (!fileData) {
         throw new Error("Downloaded file data is null.");
     }
+    console.log('[parseDocument] File downloaded successfully.');
 
     const buffer = await fileData.arrayBuffer();
 
-    const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
+    console.log('[parseDocument] Loading PDF document...');
+    const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
+    console.log(`[parseDocument] PDF loaded with ${pdfDoc.numPages} pages.`);
     let textContent = "";
 
     for (let i = 1; i <= pdfDoc.numPages; i++) {
@@ -106,20 +122,60 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
         textContent += (text.items ?? []).map((item: any) => item.str).join(" ") + "\n";
     }
 
-    // Step 1: Chunking the text
-    // This regex looks for lines that are mostly uppercase, which are likely titles, and splits the text by them.
-    // The `(?= ... )` is a positive lookahead, so it splits *before* the title, keeping the title with its content.
+    console.log('[parseDocument] Extracted full text content. Now chunking...');
+    
     const chunks = textContent
-        .split(/(?=\b[A-Z\s\(\)]{5,}\b\n)/)
-        .map(chunk => chunk.trim().replace(/\s+/g, ' ')) // Normalize whitespace
-        .filter(chunk => chunk && chunk.length > 50); // Filter out very short or empty chunks
+        .split(/(?=\b[A-Z\s()]{5,}\b(?:\n|$))/)
+        .map(chunk => chunk.trim().replace(/\s+/g, ' '))
+        .filter(chunk => chunk && chunk.length > 50);
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
     chunks.forEach((chunk, index) => {
-        console.log(`Chunk ${index + 1}:`, chunk);
+        console.log(`[parseDocument] Chunk ${index + 1} Preview:`, chunk.substring(0, 100) + '...');
     });
+    
+    return { chunks, document_group_id: docInfo.document_group_id };
+}
 
-    return { chunkCount: chunks.length, chunks };
+/**
+ * Generates embeddings for text chunks and stores them in the database.
+ * @param {string[]} chunks - The array of text chunks to process.
+ * @param {string} documentGroupId - The ID to associate all these chunks with.
+ * @returns {Promise<{ message: string }>} A success message.
+ */
+export async function generateAndStoreEmbeddings(chunks: string[], documentGroupId: string): Promise<{ message: string }> {
+    console.log(`[generateAndStoreEmbeddings] Starting embedding process for ${chunks.length} chunks.`);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    for (const [index, chunk] of chunks.entries()) {
+        console.log(`[generateAndStoreEmbeddings] Generating embedding for chunk ${index + 1}/${chunks.length}...`);
+
+        const embedding = await ai.embed({
+            model: 'googleai/text-embedding-preview-0518',
+            input: chunk,
+        });
+
+        console.log(`[generateAndStoreEmbeddings] Storing chunk ${index + 1} and its embedding in the database.`);
+        const { error: insertError } = await supabase
+            .from('brand_documents')
+            .insert({
+                user_id: user.id,
+                document_group_id: documentGroupId,
+                content: chunk,
+                embedding: embedding,
+                is_file_reference: false, // These are content chunks, not the file reference
+            });
+
+        if (insertError) {
+            console.error(`[generateAndStoreEmbeddings] Error inserting chunk ${index + 1}:`, insertError);
+            throw new Error(`Failed to store chunk ${index + 1} in the knowledge base.`);
+        }
+    }
+
+    console.log('[generateAndStoreEmbeddings] All chunks have been processed and stored successfully.');
+    return { message: `${chunks.length} document chunks added to knowledge base.` };
 }
 
 
