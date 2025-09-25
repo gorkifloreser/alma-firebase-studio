@@ -902,35 +902,36 @@ export default function ArtisanPage() {
             setFilteredQueueItems(items);
             // Auto-select first item if selection becomes invalid
             if (items.length > 0 && !items.find(i => i.id === selectedQueueItemId)) {
-                handleQueueItemSelect(items[0].id, items);
+                handleQueueItemSelect(items[0].id);
             } else if (items.length === 0) {
-                handleQueueItemSelect(null, []);
+                handleQueueItemSelect(null);
             }
         }
     }, [channelFilter, selectedCampaign, allQueueItems, workflowMode, selectedQueueItemId]);
 
 
-    const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
-        const resetAllFields = () => {
-            setSelectedQueueItemId(queueItemId);
-            setCreative(null);
-            setEditableContent(null);
-            setEditableHtml(null);
-            setScheduledAt(null);
-            setReferenceImageUrl(null);
-            setCreativePrompt('');
-            if (workflowMode === 'custom') {
-                setSelectedOfferingId(undefined);
-            }
-        };
+    const handleQueueItemSelect = useCallback((queueItemId: string | null) => {
+        
+        setCreative(null);
+        setEditableContent(null);
+        setEditableHtml(null);
+        setScheduledAt(null);
+        setReferenceImageUrl(null);
+        setCreativePrompt('');
+        setSelectedArtStyleId('none');
+        setSelectedQueueItemId(queueItemId);
 
-        resetAllFields();
-
-        if (!queueItemId || workflowMode === 'custom') {
+        if (workflowMode === 'custom') {
+            setSelectedOfferingId(undefined);
             return;
         }
 
-        const item = items.find(q => q.id === queueItemId);
+        if (!queueItemId) {
+            setSelectedOfferingId(undefined);
+            return;
+        }
+
+        const item = allQueueItems.find(q => q.id === queueItemId);
 
         if (item && item.media_plan_items) {
             const planItem = item.media_plan_items;
@@ -962,7 +963,7 @@ export default function ArtisanPage() {
                 setScheduledAt(parseISO(planItem.suggested_post_at));
             }
         }
-    }, [workflowMode]);
+    }, [workflowMode, allQueueItems]);
 
     useEffect(() => {
         async function fetchData() {
@@ -1004,9 +1005,9 @@ export default function ArtisanPage() {
         const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
         setFilteredQueueItems(itemsForCampaign);
         if (itemsForCampaign.length > 0) {
-            handleQueueItemSelect(itemsForCampaign[0].id, itemsForCampaign);
+            handleQueueItemSelect(itemsForCampaign[0].id);
         } else {
-            handleQueueItemSelect(null, []);
+            handleQueueItemSelect(null);
         }
         
         try {
@@ -1025,7 +1026,7 @@ export default function ArtisanPage() {
         setSelectedCampaign(null);
         setFilteredQueueItems([]);
         setTotalCampaignItems(0);
-        handleQueueItemSelect(null, []);
+        handleQueueItemSelect(null);
         setIsDialogOpen(false);
     };
 
@@ -1234,8 +1235,12 @@ export default function ArtisanPage() {
                     description: `The content has been saved and is ready for the calendar.`,
                 });
                 
-                const nextItem = filteredQueueItems.find(i => i.id !== selectedQueueItemId) || null;
-                handleQueueItemSelect(nextItem?.id || null, filteredQueueItems);
+                const nextItemIndex = filteredQueueItems.findIndex(i => i.id === selectedQueueItemId);
+                if (nextItemIndex !== -1 && nextItemIndex + 1 < filteredQueueItems.length) {
+                    handleQueueItemSelect(filteredQueueItems[nextItemIndex + 1].id);
+                } else {
+                    handleQueueItemSelect(null);
+                }
 
             } catch (error: any) {
                 toast({
@@ -1491,7 +1496,7 @@ export default function ArtisanPage() {
                                                         </span>
                                                     )}
                                                 </Label>
-                                                <Select onValueChange={(value) => handleQueueItemSelect(value, filteredQueueItems)} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                                <Select onValueChange={(value) => handleQueueItemSelect(value)} disabled={isLoading} value={selectedQueueItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
                                                     </SelectTrigger>
