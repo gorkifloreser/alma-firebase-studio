@@ -15,7 +15,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download, CaseUpper } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -92,6 +92,7 @@ const PostPreview = ({
     onCurrentSlideChange,
     onDownload,
     onSelectReferenceImage,
+    onAddText,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -109,6 +110,7 @@ const PostPreview = ({
     onCurrentSlideChange: (index: number) => void;
     onDownload: (url: string, filename: string) => void;
     onSelectReferenceImage: () => void;
+    onAddText: (imageUrl: string, slideIndex?: number) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -244,6 +246,15 @@ const PostPreview = ({
                     {(hasVisuals || selectedCreativeType === 'video') && (
                         <div className="absolute top-16 right-4 flex flex-col gap-2 z-10 pointer-events-auto">
                             {imageUrlToEdit && (
+                                <>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => onAddText(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}>
+                                            <CaseUpper className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Add Text</p></TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}>
@@ -252,6 +263,7 @@ const PostPreview = ({
                                     </TooltipTrigger>
                                     <TooltipContent><p>Retouch Image</p></TooltipContent>
                                 </Tooltip>
+                                </>
                             )}
                             {selectedCreativeType === 'video' && (
                                 <Tooltip>
@@ -361,10 +373,16 @@ const PostPreview = ({
                             {(hasVisuals || selectedCreativeType === 'video') && (
                                 <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
                                     {imageUrlToEdit && (
+                                        <>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => onAddText(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}><CaseUpper className="h-4 w-4" /></Button></TooltipTrigger>
+                                            <TooltipContent side="left"><p>Add Text</p></TooltipContent>
+                                        </Tooltip>
                                          <Tooltip>
                                             <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}><Edit className="h-4 w-4" /></Button></TooltipTrigger>
                                             <TooltipContent side="left"><p>Retouch Image</p></TooltipContent>
                                         </Tooltip>
+                                        </>
                                     )}
                                     {selectedCreativeType === 'video' && (
                                         <Tooltip>
@@ -779,6 +797,63 @@ const ImageChatDialog = ({
     );
 };
 
+const AddTextDialog = ({
+    isOpen,
+    onOpenChange,
+    onSubmit,
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (text: string, position: string) => void;
+}) => {
+    const [text, setText] = useState('');
+    const [position, setPosition] = useState('center');
+
+    const handleSubmit = () => {
+        onSubmit(text, position);
+        onOpenChange(false);
+        setText('');
+    };
+
+    const positions = ['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add Text Overlay</DialogTitle>
+                    <DialogDescription>
+                        Type the text you want to add and choose its position. The AI will render it onto the image.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="text-overlay">Text</Label>
+                        <Textarea id="text-overlay" value={text} onChange={(e) => setText(e.target.value)} placeholder="Your text here..."/>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="text-position">Position</Label>
+                         <Select value={position} onValueChange={setPosition}>
+                            <SelectTrigger id="text-position">
+                                <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {positions.map(pos => (
+                                    <SelectItem key={pos} value={pos} className="capitalize">{pos.replace('-', ' ')}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={!text.trim()}>Add Text</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 const RegenerateDialog = ({
     isOpen,
     onOpenChange,
@@ -879,6 +954,7 @@ export default function ArtisanPage() {
     const [isImageChatOpen, setIsImageChatOpen] = useState(false);
     const [imageToChat, setImageToChat] = useState<{url: string, slideIndex?: number} | null>(null);
     const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
+    const [isAddTextOpen, setIsAddTextOpen] = useState(false);
 
 
 
@@ -1180,6 +1256,29 @@ export default function ArtisanPage() {
         setIsImageChatOpen(true);
     };
 
+     const handleOpenAddText = (imageUrl: string, slideIndex?: number) => {
+        setImageToChat({ url: imageUrl, slideIndex });
+        setIsAddTextOpen(true);
+    };
+
+    const handleAddTextSubmit = (text: string, position: string) => {
+        if (!imageToChat?.url) return;
+
+        startSaving(async () => {
+            try {
+                const instruction = `Add the text "${text}" to the ${position.replace('-', ' ')} of the image.`;
+                const { editedImageUrl } = await editImageWithInstruction({
+                    imageUrl: imageToChat.url,
+                    instruction,
+                });
+                handleImageUpdate(editedImageUrl);
+                toast({ title: 'Text Added!', description: 'The AI has added your text to the image.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Failed to Add Text', description: error.message });
+            }
+        });
+    };
+
     const handleImageUpdate = (newImageUrl: string) => {
         if (imageToChat?.slideIndex !== undefined) {
             // It's a carousel slide
@@ -1423,6 +1522,12 @@ export default function ArtisanPage() {
                     setCreativePrompt(newPrompt);
                     handleGenerate(newPrompt);
                 }}
+            />
+            
+             <AddTextDialog
+                isOpen={isAddTextOpen}
+                onOpenChange={setIsAddTextOpen}
+                onSubmit={handleAddTextSubmit}
             />
 
             <RegenerateDialog
@@ -1751,6 +1856,7 @@ export default function ArtisanPage() {
                             onCurrentSlideChange={setCurrentCarouselSlide}
                             onDownload={handleDownload}
                             onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
+                            onAddText={handleOpenAddText}
                         />
                     </main>
                 </div>
