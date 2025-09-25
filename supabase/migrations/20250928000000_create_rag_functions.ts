@@ -10,7 +10,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   // This function finds document chunks similar to a user's query.
   await db.schema.raw(`
     CREATE OR REPLACE FUNCTION match_brand_documents (
-      query_embedding vector(768),
+      query_embedding vector(1536),
       match_threshold float,
       match_count int,
       p_user_id uuid

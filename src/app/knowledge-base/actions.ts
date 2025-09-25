@@ -86,7 +86,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     console.log('[Knowledge Base Action] Generating embeddings for chunks...');
     const embeddings = await Promise.all(
       chunks.map(chunk => ai.embed({
-        model: 'googleai/text-embedding-004',
+        model: 'googleai/text-embedding-preview-0518',
         input: chunk,
       }))
     );
