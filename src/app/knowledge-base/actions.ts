@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import { ai } from '@/ai/genkit';
-import pdf from 'pdf-parse';
+import pdf from 'pdf-parse/lib/pdf-parse.js';
+
 
 export type BrandDocument = {
     id: string;
@@ -53,22 +54,13 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         console.log('[RAG Ingestion] STEP 2: Converting file to buffer...');
         const buffer = Buffer.from(await documentFile.arrayBuffer());
         
-        if (documentFile.type === 'application/pdf') {
-            console.log('[RAG Ingestion] STEP 3: Parsing PDF...');
-            const data = await pdf(buffer);
-            content = data.text;
-            // -- DEBUGGING LOG --
-            console.log('--- START PARSED PDF CONTENT ---');
-            console.log(content);
-            console.log('--- END PARSED PDF CONTENT ---');
-            // --------------------
-        } else if (documentFile.type === 'text/plain') {
-            console.log('[RAG Ingestion] STEP 3: Parsing TXT...');
-            content = buffer.toString('utf8');
-        } else {
-            console.error(`[RAG Ingestion] Unsupported file type: ${documentFile.type}`);
-            throw new Error(`Unsupported file type: ${documentFile.type}. Only PDF and TXT are currently supported.`);
-        }
+        console.log('[RAG Ingestion] STEP 3: Parsing file content from buffer...');
+        const data = await pdf(buffer);
+        content = data.text;
+        // -- DEBUGGING LOG --
+        console.log('--- START PARSED PDF CONTENT ---');
+        console.log(content);
+        console.log('--- END PARSED PDF CONTENT ---');
     } catch (error: any) {
         console.error('[RAG Ingestion] CRITICAL ERROR extracting document content:', error);
         throw new Error('Failed to parse document content. The file might be corrupted or in an unsupported format.');
