@@ -58,8 +58,20 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error(`Document Storage Failed: ${uploadError.message}`);
     }
 
-    // Since we are not processing the file for RAG immediately, we'll
-    // just save a reference to the uploaded file.
+    // Parse the PDF content
+    let parsedText = '';
+    if (documentFile.type === 'application/pdf') {
+        const buffer = Buffer.from(await documentFile.arrayBuffer());
+        const pdfData = await pdf(buffer);
+        parsedText = pdfData.text;
+        console.log('--- PDF PARSE RESULT ---');
+        console.log(parsedText.substring(0, 1000) + '...');
+        console.log('--- END PARSE RESULT ---');
+    } else {
+        parsedText = await documentFile.text();
+    }
+
+
     // We will use a proper UUID for the group id.
     const documentGroupId = crypto.randomUUID();
 
@@ -70,8 +82,8 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             file_name: documentFile.name,
             file_path: filePath,
             document_group_id: documentGroupId,
-            content: `File uploaded to: ${filePath}`, // Placeholder content
-            // embedding is omitted as we are not generating it
+            content: parsedText,
+            // embedding is omitted for now
         });
     
      if (dbError) {
@@ -82,7 +94,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     }
 
     revalidatePath('/brand');
-    return { message: 'Document uploaded successfully!' };
+    return { message: 'Document uploaded and parsed successfully!' };
 }
 
 
