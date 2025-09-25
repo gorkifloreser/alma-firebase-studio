@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -14,7 +15,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -620,7 +621,7 @@ const ImageChatDialog = ({
     originalPrompt: string | null;
     onRegenerate: (newPrompt: string) => void;
 }) => {
-    const [history, setHistory] = useState<Array<{ role: 'user' | 'bot'; content: string | { imageUrl: string } }>>([]);
+    const [history, setHistory] = useState<Array<{ role: 'user' | 'bot' | 'system'; content: string | { imageUrl: string } }>>([]);
     const [input, setInput] = useState('');
     const [isEditing, startEditing] = useTransition();
     const { toast } = useToast();
@@ -640,6 +641,13 @@ const ImageChatDialog = ({
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [history, isEditing]);
+    
+    const handleRestoreImage = (imageUrlToRestore: string) => {
+        setCurrentImage(imageUrlToRestore);
+        onImageUpdate(imageUrlToRestore);
+        setHistory(prev => [...prev, { role: 'system', content: 'Image restored to this version.' }]);
+        toast({ title: 'Image Restored', description: 'The main preview has been updated.' });
+    };
 
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -718,15 +726,27 @@ const ImageChatDialog = ({
                                 </div>
                             )}
                             {history.map((msg, index) => (
-                                <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                                 <div key={index} className={cn("flex items-start gap-3 w-full", msg.role === 'user' ? 'justify-end' : 'justify-start', msg.role === 'system' && 'justify-center')}>
                                     {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
-                                    <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                        {typeof msg.content === 'string' ? (
-                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                        ) : (
-                                            <Image src={msg.content.imageUrl} width={200} height={200} alt="Edited image" className="rounded-md"/>
-                                        )}
-                                    </div>
+                                    
+                                     {msg.role === 'system' ? (
+                                        <div className="text-xs text-center text-muted-foreground italic py-2">{msg.content}</div>
+                                    ) : (
+                                        <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                            {typeof msg.content === 'string' ? (
+                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <Image src={msg.content.imageUrl} width={200} height={200} alt="Edited image" className="rounded-md"/>
+                                                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => handleRestoreImage(msg.content.imageUrl)}>
+                                                        <History className="h-4 w-4" />
+                                                        Restore to this image
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
                                 </div>
                             ))}
@@ -1679,4 +1699,5 @@ export default function ArtisanPage() {
     );
 }
 
+    
     
