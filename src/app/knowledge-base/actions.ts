@@ -114,45 +114,55 @@ export async function parseDocument(filePath: string): Promise<{ chunks: string[
     const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     console.log(`[parseDocument] PDF loaded with ${pdfDoc.numPages} pages.`);
-    let textContent = "";
+    let fullText = "";
 
     for (let i = 1; i <= pdfDoc.numPages; i++) {
         const page = await pdfDoc.getPage(i);
-        const text = await page.getTextContent();
-        textContent += (text.items ?? []).map((item: any) => item.str).join(" ") + "\n";
+        const textContent = await page.getTextContent();
+        fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
     }
-
+    
     console.log('[parseDocument] Extracted full text content. Now chunking...');
     
-    // Improved regex to split by titles (at least 5 consecutive caps, spaces, or specific symbols) or multiple newlines.
-    const chunks = textContent
-      .split(/(\n\s*\n)|(^[A-Z\s,·$()]{5,}\s*$)/m)
-      .map(chunk => chunk?.trim().replace(/\s+/g, ' '))
-      .filter(chunk => chunk && chunk.length > 30 && chunk.length < 2000); // Filter for meaningful chunks
+    const lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const chunks: string[] = [];
+    let currentChunk = '';
 
-    console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
+    for (const line of lines) {
+        if (currentChunk.length + line.length + 1 <= 1500) {
+            currentChunk += (currentChunk ? ' ' : '') + line;
+        } else {
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+            currentChunk = line;
+        }
+    }
+    if (currentChunk) {
+        chunks.push(currentChunk);
+    }
     
+    console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
+
     return { chunks, document_group_id: docInfo.document_group_id };
 }
+
 
 /**
  * Generates embeddings for text chunks and stores them in the database.
  * @param {{ chunks: string[]; documentGroupId: string; }} { chunks, documentGroupId } - The text chunks and their associated document group ID.
  * @returns {Promise<{ message: string }>} A success message.
  */
-export async function generateAndStoreEmbeddings({
-  chunks,
-  documentGroupId,
-}: {
-  chunks: string[];
-  documentGroupId: string;
-}): Promise<{ message: string }> {
+export async function generateAndStoreEmbeddings(
+  { chunks, documentGroupId }: { chunks: string[]; documentGroupId: string; }
+): Promise<{ message: string }> {
     console.log(`[generateAndStoreEmbeddings] Starting batch embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     // Step 1: Generate all embeddings in a single batch call.
+    console.log('[generateAndStoreEmbeddings] Calling AI to generate embeddings...');
     const embeddings = await ai.embed({
         model: 'googleai/text-embedding-preview-0518',
         input: chunks,
