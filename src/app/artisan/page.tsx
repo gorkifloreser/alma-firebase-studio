@@ -810,6 +810,7 @@ const AddTextDialog = ({
 }) => {
     const [text, setText] = useState('');
     const [position, setPosition] = useState('center');
+    const [fontStyle, setFontStyle] = useState('sans-serif');
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
@@ -819,6 +820,7 @@ const AddTextDialog = ({
             // Reset state when dialog closes
             setText('');
             setPosition('center');
+            setFontStyle('sans-serif');
             setPreviewImage(null);
         }
     }, [isOpen]);
@@ -831,7 +833,7 @@ const AddTextDialog = ({
 
         startGenerating(async () => {
             try {
-                const instruction = `Add the text "${text}" to the ${position.replace('-', ' ')} of the image.`;
+                const instruction = `Add the text "${text}" in a ${fontStyle} style to the ${position.replace('-', ' ')} of the image.`;
                 const { editedImageUrl } = await editImageWithInstruction({
                     imageUrl: originalImageUrl,
                     instruction,
@@ -853,6 +855,7 @@ const AddTextDialog = ({
 
 
     const positions = ['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+    const fontStyles = ['serif', 'sans-serif', 'handwritten script', 'elegant cursive', 'calligraphy', 'bold block letters', 'thin minimalist', 'retro', 'futuristic', 'graffiti', 'typewriter', 'gothic'];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -888,18 +891,33 @@ const AddTextDialog = ({
                             <Label htmlFor="text-overlay">Text</Label>
                             <Textarea id="text-overlay" value={text} onChange={(e) => setText(e.target.value)} placeholder="Your text here..."/>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="text-position">Position</Label>
-                             <Select value={position} onValueChange={setPosition}>
-                                <SelectTrigger id="text-position">
-                                    <SelectValue placeholder="Select position" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {positions.map(pos => (
-                                        <SelectItem key={pos} value={pos} className="capitalize">{pos.replace('-', ' ')}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div className="grid gap-2">
+                                <Label htmlFor="font-style">Font Style</Label>
+                                <Select value={fontStyle} onValueChange={setFontStyle}>
+                                    <SelectTrigger id="font-style">
+                                        <SelectValue placeholder="Select style" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {fontStyles.map(style => (
+                                            <SelectItem key={style} value={style} className="capitalize">{style}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="text-position">Position</Label>
+                                <Select value={position} onValueChange={setPosition}>
+                                    <SelectTrigger id="text-position">
+                                        <SelectValue placeholder="Select position" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {positions.map(pos => (
+                                            <SelectItem key={pos} value={pos} className="capitalize">{pos.replace('-', ' ')}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1937,4 +1955,5 @@ export default function ArtisanPage() {
 
 
     
+
 
