@@ -20,7 +20,7 @@ const GenerateCreativeInputSchema = z.object({
   creativeTypes: z.array(z.enum(['image', 'carousel', 'video', 'landing_page', 'text'])),
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
-  referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image generation.'),
+  referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image or image-to-video generation.'),
   artStyleId: z.string().optional().describe('The ID of a saved art style to apply.'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
@@ -226,9 +226,14 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('video')) {
         const videoBasePrompt = userCreativePrompt || defaultVideoGenPromptTemplate(brandHeart, offering);
         
+        const videoPromptPayload: (MediaPart | { text: string })[] = [{ text: videoBasePrompt }];
+        if (referenceImageUrl) {
+            videoPromptPayload.unshift({ media: { url: referenceImageUrl, contentType: 'image/jpeg' } });
+        }
+
         visualPromises.push(ai.generate({
             model: googleAI.model('veo-2.0-generate-001'),
-            prompt: videoBasePrompt,
+            prompt: videoPromptPayload,
             config: { durationSeconds: 5, aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {
             if (!operation) throw new Error('Expected video operation.');

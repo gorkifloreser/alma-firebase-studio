@@ -91,6 +91,7 @@ const PostPreview = ({
     onRegenerateClick,
     onCurrentSlideChange,
     onDownload,
+    onSelectReferenceImage,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -107,6 +108,7 @@ const PostPreview = ({
     onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
     onDownload: (url: string, filename: string) => void;
+    onSelectReferenceImage: () => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -239,7 +241,7 @@ const PostPreview = ({
                         {renderVisualContent()}
                     </div>
                     
-                    {hasVisuals && (
+                    {(hasVisuals || selectedCreativeType === 'video') && (
                         <div className="absolute top-16 right-4 flex flex-col gap-2 z-10 pointer-events-auto">
                             {imageUrlToEdit && (
                                 <Tooltip>
@@ -251,13 +253,23 @@ const PostPreview = ({
                                     <TooltipContent><p>Retouch Image</p></TooltipContent>
                                 </Tooltip>
                             )}
+                            {selectedCreativeType === 'video' && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onSelectReferenceImage}>
+                                            <Images className="h-5 w-5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Create from Image</p></TooltipContent>
+                                </Tooltip>
+                            )}
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onRegenerateClick}>
                                         <RefreshCw className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent><p>Regenerate Image</p></TooltipContent>
+                                <TooltipContent><p>Regenerate Visual</p></TooltipContent>
                             </Tooltip>
                             {urlToDownload && (
                                  <Tooltip>
@@ -346,7 +358,7 @@ const PostPreview = ({
                             <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
                                 {renderVisualContent()}
                             </div>
-                            {hasVisuals && (
+                            {(hasVisuals || selectedCreativeType === 'video') && (
                                 <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
                                     {imageUrlToEdit && (
                                          <Tooltip>
@@ -354,9 +366,15 @@ const PostPreview = ({
                                             <TooltipContent side="left"><p>Retouch Image</p></TooltipContent>
                                         </Tooltip>
                                     )}
+                                    {selectedCreativeType === 'video' && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onSelectReferenceImage}><Images className="h-4 w-4" /></Button></TooltipTrigger>
+                                            <TooltipContent side="left"><p>Create from Image</p></TooltipContent>
+                                        </Tooltip>
+                                    )}
                                     <Tooltip>
                                         <TooltipTrigger asChild><Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onRegenerateClick}><RefreshCw className="h-4 w-4" /></Button></TooltipTrigger>
-                                        <TooltipContent side="left"><p>Regenerate Image</p></TooltipContent>
+                                        <TooltipContent side="left"><p>Regenerate Visual</p></TooltipContent>
                                     </Tooltip>
                                     {urlToDownload && (
                                         <Tooltip>
@@ -917,7 +935,7 @@ export default function ArtisanPage() {
             const planItem = item.media_plan_items;
             console.log("Plan item data:", planItem);
 
-            const newCreativePrompt = (planItem as any).creative_prompt || '';
+            const newCreativePrompt = planItem.creativePrompt || '';
             console.log("Setting creative prompt to:", newCreativePrompt);
             setCreativePrompt(newCreativePrompt);
 
@@ -1402,7 +1420,10 @@ export default function ArtisanPage() {
                     isOpen={isMediaSelectorOpen}
                     onOpenChange={setIsMediaSelectorOpen}
                     media={currentOffering?.offering_media || []}
-                    onSelect={setReferenceImageUrl}
+                    onSelect={(url) => {
+                        setReferenceImageUrl(url);
+                        handleGenerate(); // Optionally auto-generate when an image is selected
+                    }}
                     offeringId={selectedOfferingId}
                     onUploadComplete={handleNewUpload}
                 />
@@ -1520,7 +1541,7 @@ export default function ArtisanPage() {
                                                 </Select>
                                             </div>
 
-                                            {selectedCreativeType === 'image' && (
+                                            {(selectedCreativeType === 'image' || selectedCreativeType === 'video') && (
                                                 <div className="space-y-2">
                                                     <Button variant="outline" className="w-full" onClick={() => setIsMediaSelectorOpen(true)} disabled={!selectedOfferingId}>
                                                         <Images className="mr-2" /> Select Reference Image
@@ -1707,6 +1728,7 @@ export default function ArtisanPage() {
                             onRegenerateClick={() => setIsRegenerateOpen(true)}
                             onCurrentSlideChange={setCurrentCarouselSlide}
                             onDownload={handleDownload}
+                            onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
                         />
                     </main>
                 </div>
@@ -1717,4 +1739,5 @@ export default function ArtisanPage() {
 
     
     
+
 
