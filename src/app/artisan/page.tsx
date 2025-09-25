@@ -1097,15 +1097,16 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             const planItem = item.media_plan_items;
             
-            // The fix is here: accessing creative_prompt instead of creativePrompt
+            console.log("DEBUG: Selected Queue Item's Plan Item:", planItem);
+
             const promptValue = planItem.creative_prompt || '';
             setCreativePrompt(promptValue);
+            
+            const artStyleId = (planItem as any).art_style_id || 'none';
+            console.log("DEBUG: Art Style ID from planItem:", artStyleId);
+            setSelectedArtStyleId(artStyleId);
 
             setSelectedOfferingId(item.offering_id);
-
-            // Set Art Style if it exists on the item
-            const artStyleId = (planItem as any).art_style_id || 'none';
-            setSelectedArtStyleId(artStyleId);
 
             setEditableContent({ primary: planItem.copy || '', secondary: null });
 
@@ -1951,6 +1952,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
