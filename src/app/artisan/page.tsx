@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -710,7 +709,7 @@ const ImageChatDialog = ({
                             </Button>
                         </div>
                     </div>
-                     <div className="flex flex-col h-full bg-background rounded-lg border">
+                     <div className="flex flex-col h-full bg-background rounded-lg border min-h-0">
                         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                             {history.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full text-center">
@@ -788,11 +787,11 @@ const RegenerateDialog = ({
                 <DialogHeader>
                     <DialogTitle>Regenerate Image</DialogTitle>
                     <DialogDescription>
-                        Use the original prompt to generate a new variation of this image.
+                        Edit the prompt below to generate a new variation of this image.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <Label>Original Prompt</Label>
+                    <Label>Creative Prompt</Label>
                     <Textarea value={editablePrompt} onChange={(e) => setEditablePrompt(e.target.value)} className="h-48 font-mono text-xs bg-muted" />
                 </div>
                 <DialogFooter>
@@ -1680,3 +1679,4 @@ export default function ArtisanPage() {
     );
 }
 
+    
