@@ -81,9 +81,9 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     if (!user) throw new Error('User not authenticated');
 
     console.log('[parseDocument] User authenticated:', user.id);
-
-    // Set the worker source to the correct path for the Next.js server environment.
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `../../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.js`;
+    
+    // In a Next.js server environment, the worker is generally not needed for the legacy build.
+    // pdfjsLib.GlobalWorkerOptions.workerSrc = `../../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.js`;
 
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
@@ -105,7 +105,7 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
 
     const buffer = await fileData.arrayBuffer();
 
-    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const loadingTask = pdfjsLib.getDocument({data: buffer});
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
@@ -125,7 +125,7 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
         .filter(chunk => chunk.length > 50); // Filter out very short or empty chunks
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
-    console.log('[parseDocument] Sample chunks:', chunks.slice(0, 2));
+    console.log('[parseDocument] Full chunk result:', chunks);
     
     return { chunkCount: chunks.length };
 }
