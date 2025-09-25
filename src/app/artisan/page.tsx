@@ -893,6 +893,7 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
+        console.log("handleQueueItemSelect called with ID:", queueItemId);
         setSelectedQueueItemId(queueItemId);
         setIsCodeEditorOpen(false);
         setCreative(null);
@@ -901,6 +902,7 @@ export default function ArtisanPage() {
         setReferenceImageUrl(null);
 
         if (!queueItemId || workflowMode === 'custom') {
+            console.log("No queue item ID or in custom mode, clearing fields.");
             setCreativePrompt('');
             setEditableContent(null);
             if (workflowMode === 'custom') setSelectedOfferingId(undefined);
@@ -908,11 +910,17 @@ export default function ArtisanPage() {
         }
 
         const item = items.find(q => q.id === queueItemId);
+        console.log("Found item:", item);
+
         if (item && item.media_plan_items) {
             setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            const newCreativePrompt = planItem.creativePrompt || '';
+            console.log("Plan item data:", planItem);
+
+            const newCreativePrompt = (planItem as any).creative_prompt || '';
+            console.log("Setting creative prompt to:", newCreativePrompt);
             setCreativePrompt(newCreativePrompt);
+
             setEditableContent({ primary: planItem.copy || '', secondary: null });
             
             const formatValue = (planItem.format || '').toLowerCase();
@@ -950,6 +958,7 @@ export default function ArtisanPage() {
             }
 
         } else {
+            console.log("Item or item.media_plan_items not found. Clearing fields.");
             setCreativePrompt('');
             setEditableContent(null);
             setSelectedOfferingId(undefined);
@@ -1708,3 +1717,4 @@ export default function ArtisanPage() {
 
     
     
+
