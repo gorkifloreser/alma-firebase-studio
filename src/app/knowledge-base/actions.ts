@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
-import type { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 import { ai } from '@/ai/genkit';
 
 
@@ -124,16 +124,13 @@ export async function parseDocument(filePath: string): Promise<{ chunks: string[
 
     console.log('[parseDocument] Extracted full text content. Now chunking...');
     
-    // Improved regex to split by capitalized titles or multiple newlines
+    // Improved regex to split by titles (at least 5 consecutive caps, spaces, or specific symbols) or multiple newlines.
     const chunks = textContent
-      .split(/(\n\s*\n)|(^[A-Z\s]{5,}\s*$)/m)
+      .split(/(\n\s*\n)|(^[A-Z\s,·$()]{5,}\s*$)/m)
       .map(chunk => chunk?.trim().replace(/\s+/g, ' '))
-      .filter(chunk => chunk && chunk.length > 50);
+      .filter(chunk => chunk && chunk.length > 30 && chunk.length < 2000); // Filter for meaningful chunks
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
-    chunks.forEach((chunk, index) => {
-        console.log(`[parseDocument] Chunk ${index + 1} Preview:`, chunk.substring(0, 100) + '...');
-    });
     
     return { chunks, document_group_id: docInfo.document_group_id };
 }
@@ -150,34 +147,41 @@ export async function generateAndStoreEmbeddings({
   chunks: string[];
   documentGroupId: string;
 }): Promise<{ message: string }> {
-    console.log(`[generateAndStoreEmbeddings] Starting embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
+    console.log(`[generateAndStoreEmbeddings] Starting batch embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    for (const [index, chunk] of chunks.entries()) {
-        console.log(`[generateAndStoreEmbeddings] Generating embedding for chunk ${index + 1}/${chunks.length}...`);
+    // Step 1: Generate all embeddings in a single batch call.
+    const embeddings = await ai.embed({
+        model: 'googleai/text-embedding-preview-0518',
+        input: chunks,
+    });
 
-        const embedding = await ai.embed({
-            model: 'googleai/text-embedding-preview-0518',
-            input: chunk,
-        });
+    if (embeddings.length !== chunks.length) {
+        throw new Error('The number of embeddings returned does not match the number of chunks.');
+    }
+    console.log(`[generateAndStoreEmbeddings] Successfully generated ${embeddings.length} embeddings.`);
 
-        console.log(`[generateAndStoreEmbeddings] Storing chunk ${index + 1} and its embedding in the database.`);
-        const { error: insertError } = await supabase
-            .from('brand_documents')
-            .insert({
-                user_id: user.id,
-                document_group_id: documentGroupId,
-                content: chunk,
-                embedding: embedding,
-                is_file_reference: false, // These are content chunks, not the file reference
-            });
+    // Step 2: Prepare the data for a batch database insert.
+    const recordsToInsert = chunks.map((chunk, index) => ({
+        user_id: user.id,
+        document_group_id: documentGroupId,
+        content: chunk,
+        embedding: embeddings[index],
+        is_file_reference: false, // These are content chunks, not the file reference
+    }));
+    
+    console.log(`[generateAndStoreEmbeddings] Storing ${recordsToInsert.length} chunks and their embeddings in the database.`);
+    
+    // Step 3: Perform a single batch insert.
+    const { error: insertError } = await supabase
+        .from('brand_documents')
+        .insert(recordsToInsert);
 
-        if (insertError) {
-            console.error(`[generateAndStoreEmbeddings] Error inserting chunk ${index + 1}:`, insertError);
-            throw new Error(`Failed to store chunk ${index + 1} in the knowledge base.`);
-        }
+    if (insertError) {
+        console.error(`[generateAndStoreEmbeddings] Error inserting batch records:`, insertError);
+        throw new Error(`Failed to store chunks in the knowledge base. DB Error: ${insertError.message}`);
     }
 
     console.log('[generateAndStoreEmbeddings] All chunks have been processed and stored successfully.');
@@ -271,8 +275,5 @@ export async function askRag(query: string): Promise<RagOutput> {
     if (!query) {
         throw new Error('Query cannot be empty.');
     }
-    // The RAG flow might need adjustments now that we are not pre-processing files.
-    // For now, it will likely not return useful results until we add the processing step back.
     return await askMyDocuments({ query });
 }
-
