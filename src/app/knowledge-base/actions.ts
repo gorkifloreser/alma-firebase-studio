@@ -80,6 +80,8 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    console.log('[parseDocument] User authenticated:', user.id);
+
     // Set the worker source to the correct path for the Next.js server environment.
     pdfjsLib.GlobalWorkerOptions.workerSrc = `../../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.js`;
 
@@ -103,7 +105,7 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
 
     const buffer = await fileData.arrayBuffer();
 
-    const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
@@ -111,11 +113,12 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     for (let i = 1; i <= pdfDoc.numPages; i++) {
         const page = await pdfDoc.getPage(i);
         const text = await page.getTextContent();
-        textContent += text.items.map((item: any) => item.str).join(" ") + "\n";
+        textContent += (text.items ?? []).map((item: any) => item.str).join(" ") + "\n";
     }
     console.log(`[parseDocument] Text extraction complete. Total length: ${textContent.length}`);
 
     // Step 1: Chunking the text
+    console.log('[parseDocument] Starting text chunking...');
     const chunks = textContent
         .split(/\n\s*\n/) // Split by one or more empty lines (paragraphs)
         .map(chunk => chunk.trim())
@@ -218,4 +221,3 @@ export async function askRag(query: string): Promise<RagOutput> {
     // For now, it will likely not return useful results until we add the processing step back.
     return await askMyDocuments({ query });
 }
-
