@@ -228,5 +228,3 @@ export async function askRag(query: string): Promise<RagOutput> {
     }
     return await askMyDocuments({ query });
 }
-
-    
