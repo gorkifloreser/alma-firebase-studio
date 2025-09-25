@@ -289,7 +289,7 @@ export const generateCreativeFlow = ai.defineFlow(
             if (referenceImageUrl) {
                 generationResult = await ai.generate({
                     model: 'googleai/gemini-2.5-flash-image-preview',
-                    prompt: [{ media: { url: referenceImageUrl } }, { text: finalImagePrompt }],
+                    prompt: [{ media: { contentType: 'image/jpeg', url: referenceImageUrl } }, { text: finalImagePrompt }],
                     config: { responseModalities: ['TEXT', 'IMAGE'] },
                 });
             } else {
