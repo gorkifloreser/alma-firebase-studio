@@ -29,14 +29,12 @@ function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
 
 
 /**
- * Uploads a document, extracts its content, splits it into chunks,
- * generates an embedding for each chunk, and saves everything to the database.
+ * Uploads a document to Supabase storage.
  * @param {FormData} formData The form data containing the file to upload.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If any step of the process fails.
  */
 export async function uploadBrandDocument(formData: FormData): Promise<{ message: string }> {
-    console.log('[RAG Ingestion] Starting document upload process...');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -46,91 +44,45 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error('No file provided or file is empty.');
     }
     
-    console.log(`[RAG Ingestion] STEP 1: Received file: ${documentFile.name}, Type: ${documentFile.type}, Size: ${documentFile.size} bytes`);
-
-
-    let content: string;
-    try {
-        console.log('[RAG Ingestion] STEP 2: Converting file to buffer...');
-        const buffer = Buffer.from(await documentFile.arrayBuffer());
-        
-        console.log('[RAG Ingestion] STEP 3: Parsing file content from buffer...');
-        const data = await pdf(buffer);
-        content = data.text;
-        // -- DEBUGGING LOG --
-        console.log('--- START PARSED PDF CONTENT ---');
-        console.log(content);
-        console.log('--- END PARSED PDF CONTENT ---');
-    } catch (error: any) {
-        console.error('[RAG Ingestion] CRITICAL ERROR extracting document content:', error);
-        throw new Error('Failed to parse document content. The file might be corrupted or in an unsupported format.');
-    }
-
-    if (!content || !content.trim()) {
-        throw new Error('Could not extract any text content from the document.');
-    }
-    
-    console.log(`[RAG Ingestion] STEP 4: Successfully extracted content. Length: ${content.length} characters.`);
-
-
-    // Split content into chunks
-    const chunks = chunkText(content);
-    const documentGroupId = crypto.randomUUID();
-    console.log(`[RAG Ingestion] STEP 5: Split content into ${chunks.length} chunks.`);
-
-
-    // Generate embeddings for each chunk
-    console.log('[RAG Ingestion] STEP 6: Generating embeddings for chunks...');
-    const embeddings = await Promise.all(
-      chunks.map(chunk => ai.embed({
-        model: 'googleai/text-embedding-preview-0518',
-        input: chunk,
-      }))
-    );
-    console.log('[RAG Ingestion] STEP 7: Embeddings generated successfully.');
-
-    // Upload the original file to storage
+    // Define the storage path
     const bucketName = 'Alma';
-    const filePath = `${user.id}/${documentFile.name}`;
-    console.log(`[RAG Ingestion] STEP 8: Uploading original file to storage at: ${bucketName}/${filePath}`);
+    const filePath = `${user.id}/brand_documents/${documentFile.name}`;
+
+    // Upload the file to Supabase Storage
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, documentFile, { upsert: true });
 
     if (uploadError) {
-        console.error('[RAG Ingestion] Error uploading document to storage:', uploadError);
+        console.error('Error uploading document to storage:', uploadError);
         throw new Error(`Document Storage Failed: ${uploadError.message}`);
     }
-    console.log('[RAG Ingestion] STEP 9: File uploaded to storage successfully.');
 
+    // Since we are not processing the file for RAG immediately, we'll
+    // just save a reference to the uploaded file.
+    // We will use the file path as a unique group id for now.
+    const documentGroupId = filePath;
 
-    // Prepare data for batch insert
-    const recordsToInsert = chunks.map((chunk, index) => ({
-        user_id: user.id,
-        file_name: documentFile.name,
-        file_path: filePath,
-        content: chunk,
-        embedding: embeddings[index],
-        document_group_id: documentGroupId,
-    }));
-
-
-    // Save metadata, content, and embedding for each chunk to the database
-    console.log(`[RAG Ingestion] STEP 10: Inserting ${recordsToInsert.length} records into the database...`);
     const { error: dbError } = await supabase
         .from('brand_documents')
-        .insert(recordsToInsert);
-
-    if (dbError) {
-        console.error('[RAG Ingestion] Error saving document chunks to DB:', dbError);
+        .insert({
+            user_id: user.id,
+            file_name: documentFile.name,
+            file_path: filePath,
+            document_group_id: documentGroupId,
+            content: `File uploaded to: ${filePath}`, // Placeholder content
+            // embedding is omitted as we are not generating it
+        });
+    
+     if (dbError) {
+        console.error('Error saving document reference to DB:', dbError);
         // Attempt to delete the file from storage if the DB insert fails
         await supabase.storage.from(bucketName).remove([filePath]);
-        throw new Error('Could not save document chunks.');
+        throw new Error('Could not save document reference.');
     }
-    
-    console.log('[RAG Ingestion] FINAL STEP: Document processing complete.');
+
     revalidatePath('/brand');
-    return { message: 'Document processed and added to Knowledge Base!' };
+    return { message: 'Document uploaded successfully!' };
 }
 
 
@@ -223,5 +175,8 @@ export async function askRag(query: string): Promise<RagOutput> {
     if (!query) {
         throw new Error('Query cannot be empty.');
     }
-    return await askMyDocuments({ query });
+    // The RAG flow might need adjustments now that we are not pre-processing files.
+    // For now, it will likely not return useful results until we add the processing step back.
+    // return await askMyDocuments({ query });
+    return { response: "The document processing workflow has been updated. The RAG query functionality is temporarily disabled pending the next step of development."}
 }
