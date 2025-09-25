@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import pdf from 'pdfjs-dist/legacy/build/pdf.js';
-import { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+import type { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
 
 export type BrandDocument = {
