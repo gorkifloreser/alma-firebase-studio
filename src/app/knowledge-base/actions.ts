@@ -35,62 +35,82 @@ function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
  * @throws {Error} If any step of the process fails.
  */
 export async function uploadBrandDocument(formData: FormData): Promise<{ message: string }> {
+    console.log('[Knowledge Base Action] Starting document upload process...');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const documentFile = formData.get('document') as File | null;
     if (!documentFile || documentFile.size === 0) {
+        console.error('[Knowledge Base Action] Error: No file provided or file is empty.');
         throw new Error('No file provided or file is empty.');
     }
+    
+    console.log(`[Knowledge Base Action] Received file: ${documentFile.name}, Type: ${documentFile.type}, Size: ${documentFile.size} bytes`);
+
 
     let content: string;
     try {
         const buffer = Buffer.from(await documentFile.arrayBuffer());
         if (documentFile.type === 'application/pdf') {
+            console.log('[Knowledge Base Action] Parsing PDF...');
             const pdf = (await import('pdf-parse')).default;
             const data = await pdf(buffer);
             content = data.text;
         } else if (documentFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            console.log('[Knowledge Base Action] Parsing DOCX...');
             const { value } = await mammoth.extractRawText({ buffer });
             content = value;
         } else if (documentFile.type === 'text/plain') {
+            console.log('[Knowledge Base Action] Parsing TXT...');
             content = buffer.toString('utf8');
         } else {
+             console.error(`[Knowledge Base Action] Unsupported file type: ${documentFile.type}`);
             throw new Error(`Unsupported file type: ${documentFile.type}`);
         }
     } catch (error: any) {
-        console.error('Error extracting document content:', error);
+        console.error('[Knowledge Base Action] Error extracting document content:', error);
         throw new Error('Failed to parse document content.');
     }
 
     if (!content) {
+        console.error('[Knowledge Base Action] Error: Could not extract any text content from the document.');
         throw new Error('Could not extract any text content from the document.');
     }
+    
+    console.log(`[Knowledge Base Action] Successfully extracted content. Length: ${content.length} characters.`);
+
 
     // Split content into chunks
     const chunks = chunkText(content);
     const documentGroupId = crypto.randomUUID();
+    console.log(`[Knowledge Base Action] Split content into ${chunks.length} chunks.`);
+
 
     // Generate embeddings for each chunk
+    console.log('[Knowledge Base Action] Generating embeddings for chunks...');
     const embeddings = await Promise.all(
       chunks.map(chunk => ai.embed({
         model: 'googleai/text-embedding-004',
         input: chunk,
       }))
     );
+    console.log('[Knowledge Base Action] Embeddings generated successfully.');
 
     // Upload the original file to storage
     const bucketName = 'Alma';
     const filePath = `${user.id}/${documentFile.name}`;
+    console.log(`[Knowledge Base Action] Uploading original file to storage at: ${bucketName}/${filePath}`);
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, documentFile, { upsert: true });
 
     if (uploadError) {
-        console.error('Error uploading document to storage:', uploadError);
+        console.error('[Knowledge Base Action] Error uploading document to storage:', uploadError);
         throw new Error(`Document Storage Failed: ${uploadError.message}`);
     }
+    console.log('[Knowledge Base Action] File uploaded to storage successfully.');
+
 
     // Prepare data for batch insert
     const recordsToInsert = chunks.map((chunk, index) => ({
@@ -104,17 +124,19 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 
 
     // Save metadata, content, and embedding for each chunk to the database
+    console.log(`[Knowledge Base Action] Inserting ${recordsToInsert.length} records into the database...`);
     const { error: dbError } = await supabase
         .from('brand_documents')
         .insert(recordsToInsert);
 
     if (dbError) {
-        console.error('Error saving document chunks:', dbError);
+        console.error('[Knowledge Base Action] Error saving document chunks to DB:', dbError);
         // Attempt to delete the file from storage if the DB insert fails
         await supabase.storage.from(bucketName).remove([filePath]);
         throw new Error('Could not save document chunks.');
     }
     
+    console.log('[Knowledge Base Action] Document processing complete.');
     revalidatePath('/knowledge-base');
     return { message: 'Document processed and added to Knowledge Base!' };
 }
@@ -140,7 +162,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
 
     if (error) {
         console.error('Error fetching brand documents:', error);
-        return [];
+        throw error;
     }
 
     // Deduplicate documents based on document_group_id
