@@ -137,7 +137,7 @@ export function KnowledgeBaseClientPage({
                 const result = await parseDocumentAction(filePath);
                 toast({
                     title: 'Parsing Successful',
-                    description: `Extracted ${result.content.length} characters. Check the console for the full text.`,
+                    description: `Document was split into ${result.chunkCount} chunks.`,
                 });
             } catch (error: any) {
                 toast({
@@ -333,3 +333,4 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+

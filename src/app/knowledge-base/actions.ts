@@ -56,6 +56,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             file_name: documentFile.name,
             file_path: filePath,
             document_group_id: documentGroupId,
+            is_file_reference: true, // Mark this as the main file reference
         });
     
      if (dbError) {
@@ -71,9 +72,10 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 /**
  * Downloads a document from Supabase storage and parses its content.
  * @param {string} filePath - The path of the file in Supabase Storage.
- * @returns {Promise<{ content: string }>} The parsed content of the document.
+ * @returns {Promise<{ chunkCount: number }>} The number of text chunks created.
  */
-export async function parseDocument(filePath: string): Promise<{ content: string }> {
+export async function parseDocument(filePath: string): Promise<{ chunkCount: number }> {
+    console.log(`[parseDocument] Starting parsing for: ${filePath}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -83,32 +85,46 @@ export async function parseDocument(filePath: string): Promise<{ content: string
 
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
+    console.log(`[parseDocument] Downloading file from bucket: ${bucketName}`);
     const { data: fileData, error: downloadError } = await supabase.storage
       .from(bucketName)
       .download(filePath);
 
     if (downloadError) {
         console.error('Error downloading file for parsing:', downloadError);
-        throw new Error(downloadError.message);
+        throw new Error(`Failed to download file: ${downloadError.message}`);
     }
     
+    if (!fileData) {
+        throw new Error("Downloaded file data is null.");
+    }
+
+    console.log('[parseDocument] File downloaded successfully. Size:', fileData.size);
+
     const buffer = await fileData.arrayBuffer();
 
     const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
+    console.log(`[parseDocument] PDF has ${pdfDoc.numPages} pages. Extracting text...`);
     for (let i = 1; i <= pdfDoc.numPages; i++) {
         const page = await pdfDoc.getPage(i);
         const text = await page.getTextContent();
         textContent += text.items.map((item: any) => item.str).join(" ") + "\n";
     }
+    console.log(`[parseDocument] Text extraction complete. Total length: ${textContent.length}`);
 
-    console.log('--- PARSED PDF CONTENT ---');
-    console.log(textContent);
-    console.log('--- END PARSED CONTENT ---');
+    // Step 1: Chunking the text
+    const chunks = textContent
+        .split(/\n\s*\n/) // Split by one or more empty lines (paragraphs)
+        .map(chunk => chunk.trim())
+        .filter(chunk => chunk.length > 50); // Filter out very short or empty chunks
+
+    console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
+    console.log('[parseDocument] Sample chunks:', chunks.slice(0, 2));
     
-    return { content: textContent };
+    return { chunkCount: chunks.length };
 }
 
 
@@ -126,6 +142,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
         .from('brand_documents')
         .select('id, file_name, created_at, document_group_id, file_path')
         .eq('user_id', user.id)
+        .eq('is_file_reference', true) // Only fetch the main file references
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -133,11 +150,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
         throw error;
     }
     
-    // In case there are multiple entries for a single upload (e.g., chunks in the future),
-    // we only show one entry per document group.
-    const uniqueDocuments = Array.from(new Map(data.map(doc => [doc.document_group_id, doc])).values());
-    
-    return uniqueDocuments as BrandDocument[];
+    return data as BrandDocument[];
 }
 
 /**
@@ -205,3 +218,4 @@ export async function askRag(query: string): Promise<RagOutput> {
     // For now, it will likely not return useful results until we add the processing step back.
     return await askMyDocuments({ query });
 }
+
