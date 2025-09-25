@@ -57,6 +57,11 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             console.log('[RAG Ingestion] STEP 3: Parsing PDF...');
             const data = await pdf(buffer);
             content = data.text;
+            // -- DEBUGGING LOG --
+            console.log('--- START PARSED PDF CONTENT ---');
+            console.log(content);
+            console.log('--- END PARSED PDF CONTENT ---');
+            // --------------------
         } else if (documentFile.type === 'text/plain') {
             console.log('[RAG Ingestion] STEP 3: Parsing TXT...');
             content = buffer.toString('utf8');
