@@ -936,8 +936,14 @@ export default function ArtisanPage() {
         if (item && item.media_plan_items) {
             const planItem = item.media_plan_items;
             
+            console.log("DEBUG: Selected Queue Item's Plan Item:", JSON.stringify(planItem, null, 2));
+
             setSelectedOfferingId(item.offering_id);
-            setCreativePrompt(planItem.creativePrompt || '');
+            
+            const promptValue = (planItem.creativePrompt || '');
+            console.log("DEBUG: Prompt value from planItem:", promptValue);
+            setCreativePrompt(promptValue);
+
             setEditableContent({ primary: planItem.copy || '', secondary: null });
 
             const formatValue = (planItem.format || '').toLowerCase();
@@ -1758,6 +1764,9 @@ export default function ArtisanPage() {
 
 
 
+
+
+    
 
 
     
