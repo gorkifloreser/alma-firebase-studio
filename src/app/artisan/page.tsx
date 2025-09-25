@@ -1072,7 +1072,6 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null) => {
-        
         setCreative(null);
         setEditableContent(null);
         setEditableHtml(null);
@@ -1095,19 +1094,16 @@ export default function ArtisanPage() {
         }
 
         const item = allQueueItems.find(q => q.id === queueItemId);
-
         if (item && item.media_plan_items) {
             const planItem = item.media_plan_items;
             
-            console.log("DEBUG: Selected Queue Item's Plan Item:", JSON.stringify(planItem, null, 2));
+            // The fix is here: accessing creative_prompt instead of creativePrompt
+            const promptValue = planItem.creative_prompt || '';
+            setCreativePrompt(promptValue);
 
             setSelectedOfferingId(item.offering_id);
-            
-            const promptValue = (planItem.creativePrompt || '');
-            console.log("DEBUG: Prompt value from planItem:", promptValue);
-            setCreativePrompt(promptValue);
-            
-            // Set Art Style if it exists on the item, this part is hypothetical as it's not on the model yet
+
+            // Set Art Style if it exists on the item
             const artStyleId = (planItem as any).art_style_id || 'none';
             setSelectedArtStyleId(artStyleId);
 
@@ -1955,5 +1951,6 @@ export default function ArtisanPage() {
 
 
     
+
 
 
