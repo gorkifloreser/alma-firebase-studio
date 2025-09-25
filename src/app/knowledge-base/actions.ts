@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 import type { DocumentInitParameters, PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+import { ai } from '@/ai/genkit';
 
 
 export type BrandDocument = {
@@ -105,7 +106,7 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
 
     const buffer = await fileData.arrayBuffer();
 
-    const loadingTask = pdfjsLib.getDocument({data: buffer});
+    const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
@@ -125,7 +126,11 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
         .filter(chunk => chunk.length > 50); // Filter out very short or empty chunks
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
-    console.log('[parseDocument] Full chunk result:', chunks);
+    console.log('[parseDocument] --- Start of Chunk Content ---');
+    chunks.forEach((chunk, index) => {
+        console.log(`Chunk ${index + 1}:`, chunk);
+    });
+    console.log('[parseDocument] --- End of Chunk Content ---');
     
     return { chunkCount: chunks.length };
 }
