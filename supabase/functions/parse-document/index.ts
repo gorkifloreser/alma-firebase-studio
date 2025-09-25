@@ -18,7 +18,7 @@ async function getTextFromPdf(data: ArrayBuffer) {
   for (let i = 1; i <= numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    fullText += textContent.items.map((item: any) => item.str).join(' ') + '\\n';
+    fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
   }
   return fullText;
 }
