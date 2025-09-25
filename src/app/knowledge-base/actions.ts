@@ -124,10 +124,11 @@ export async function parseDocument(filePath: string): Promise<{ chunks: string[
 
     console.log('[parseDocument] Extracted full text content. Now chunking...');
     
+    // Improved regex to split by capitalized titles or multiple newlines
     const chunks = textContent
-        .split(/(?=\b[A-Z\s()]{5,}\b(?:\n|$))/)
-        .map(chunk => chunk.trim().replace(/\s+/g, ' '))
-        .filter(chunk => chunk && chunk.length > 50);
+      .split(/(\n\s*\n)|(^[A-Z\s]{5,}\s*$)/m)
+      .map(chunk => chunk?.trim().replace(/\s+/g, ' '))
+      .filter(chunk => chunk && chunk.length > 50);
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
     chunks.forEach((chunk, index) => {
@@ -139,12 +140,17 @@ export async function parseDocument(filePath: string): Promise<{ chunks: string[
 
 /**
  * Generates embeddings for text chunks and stores them in the database.
- * @param {string[]} chunks - The array of text chunks to process.
- * @param {string} documentGroupId - The ID to associate all these chunks with.
+ * @param {{ chunks: string[]; documentGroupId: string; }} { chunks, documentGroupId } - The text chunks and their associated document group ID.
  * @returns {Promise<{ message: string }>} A success message.
  */
-export async function generateAndStoreEmbeddings(chunks: string[], documentGroupId: string): Promise<{ message: string }> {
-    console.log(`[generateAndStoreEmbeddings] Starting embedding process for ${chunks.length} chunks.`);
+export async function generateAndStoreEmbeddings({
+  chunks,
+  documentGroupId,
+}: {
+  chunks: string[];
+  documentGroupId: string;
+}): Promise<{ message: string }> {
+    console.log(`[generateAndStoreEmbeddings] Starting embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -269,3 +275,4 @@ export async function askRag(query: string): Promise<RagOutput> {
     // For now, it will likely not return useful results until we add the processing step back.
     return await askMyDocuments({ query });
 }
+
