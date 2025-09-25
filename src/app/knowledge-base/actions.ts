@@ -4,7 +4,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import mammoth from 'mammoth';
 import { ai } from '@/ai/genkit';
 
 export type BrandDocument = {
@@ -57,16 +56,12 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             const pdf = (await import('pdf-parse')).default;
             const data = await pdf(buffer);
             content = data.text;
-        } else if (documentFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-            console.log('[Knowledge Base Action] Parsing DOCX...');
-            const { value } = await mammoth.extractRawText({ buffer });
-            content = value;
         } else if (documentFile.type === 'text/plain') {
             console.log('[Knowledge Base Action] Parsing TXT...');
             content = buffer.toString('utf8');
         } else {
              console.error(`[Knowledge Base Action] Unsupported file type: ${documentFile.type}`);
-            throw new Error(`Unsupported file type: ${documentFile.type}`);
+            throw new Error(`Unsupported file type: ${documentFile.type}. DOCX is not currently supported.`);
         }
     } catch (error: any) {
         console.error('[Knowledge Base Action] Error extracting document content:', error);
@@ -214,7 +209,7 @@ export async function deleteBrandDocument(document_group_id: string): Promise<{ 
             .from('Alma')
             .remove([document.file_path]);
         if (storageError) {
-            console.error('Error deleting file from storage:', storageError);
+            console.error('Error deleting file from storage:', storageError.message);
             // We can choose to continue or stop. In this case, we'll log the error but consider the primary (DB) deletion successful.
         }
     }
