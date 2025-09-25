@@ -911,75 +911,56 @@ export default function ArtisanPage() {
 
 
     const handleQueueItemSelect = useCallback((queueItemId: string | null, items: QueueItem[]) => {
-        console.log("[handleQueueItemSelect] ID:", queueItemId);
-        setSelectedQueueItemId(queueItemId);
-        setIsCodeEditorOpen(false);
-        setCreative(null);
-        setEditableHtml(null);
-        setScheduledAt(null);
-        setReferenceImageUrl(null);
+        const resetAllFields = () => {
+            setSelectedQueueItemId(queueItemId);
+            setCreative(null);
+            setEditableContent(null);
+            setEditableHtml(null);
+            setScheduledAt(null);
+            setReferenceImageUrl(null);
+            setCreativePrompt('');
+            if (workflowMode === 'custom') {
+                setSelectedOfferingId(undefined);
+            }
+        };
+
+        resetAllFields();
 
         if (!queueItemId || workflowMode === 'custom') {
-            console.log("[handleQueueItemSelect] No queue item ID or in custom mode, clearing fields.");
-            setCreativePrompt('');
-            setEditableContent(null);
-            if (workflowMode === 'custom') setSelectedOfferingId(undefined);
             return;
         }
 
         const item = items.find(q => q.id === queueItemId);
-        console.log("[handleQueueItemSelect] Found item:", item);
 
         if (item && item.media_plan_items) {
-            setSelectedOfferingId(item.offering_id);
             const planItem = item.media_plan_items;
-            console.log("[handleQueueItemSelect] Plan item data:", planItem);
             
-            const newCreativePrompt = planItem.creativePrompt || '';
-            console.log("[handleQueueItemSelect] Setting creative prompt to:", newCreativePrompt);
-            setCreativePrompt(newCreativePrompt);
-
+            setSelectedOfferingId(item.offering_id);
+            setCreativePrompt(planItem.creativePrompt || '');
             setEditableContent({ primary: planItem.copy || '', secondary: null });
-            
+
             const formatValue = (planItem.format || '').toLowerCase();
-            
-            const channel = item.media_plan_items.user_channel_settings?.channel_name || '';
+            const channel = planItem.user_channel_settings?.channel_name || '';
             const formatsForChannel = getFormatsForChannel(channel);
 
-            let newCreativeType: CreativeType = 'image'; // default
+            let newCreativeType: CreativeType = 'image';
             if (formatsForChannel.includes('Text Post')) newCreativeType = 'text';
-            if (formatsForChannel.some(f => f.toLowerCase().includes('video'))) newCreativeType = 'video';
-            if (formatsForChannel.some(f => f.toLowerCase().includes('carousel'))) newCreativeType = 'carousel';
-            if (formatsForChannel.some(f => f.toLowerCase().includes('landing'))) newCreativeType = 'landing_page';
-            
-            if (formatValue.includes('video') || formatValue.includes('reel')) {
-                setSelectedCreativeType('video');
-            } else if (formatValue.includes('carousel')) {
-                setSelectedCreativeType('carousel');
-            } else if (formatValue.includes('landing')) {
-                setSelectedCreativeType('landing_page');
-            } else if (formatValue.includes('text')) {
-                setSelectedCreativeType('text');
-            } else {
-                setSelectedCreativeType('image');
-            }
+            if (formatValue.includes('video') || formatValue.includes('reel')) newCreativeType = 'video';
+            else if (formatValue.includes('carousel')) newCreativeType = 'carousel';
+            else if (formatValue.includes('landing')) newCreativeType = 'landing_page';
+            else if (formatValue.includes('text')) newCreativeType = 'text';
+            else if (formatsForChannel.some(f => f.toLowerCase().includes('image'))) newCreativeType = 'image';
+            setSelectedCreativeType(newCreativeType);
 
-            // Auto-update dimension based on format
             if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
             else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
             else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
             else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
-            else setDimension('1:1'); // Default
+            else setDimension('1:1');
 
             if (planItem.suggested_post_at && isValid(parseISO(planItem.suggested_post_at))) {
                 setScheduledAt(parseISO(planItem.suggested_post_at));
             }
-
-        } else {
-            console.log("[handleQueueItemSelect] Item or item.media_plan_items not found. Clearing fields.");
-            setCreativePrompt('');
-            setEditableContent(null);
-            setSelectedOfferingId(undefined);
         }
     }, [workflowMode]);
 
@@ -1772,3 +1753,6 @@ export default function ArtisanPage() {
 
 
 
+
+
+    
