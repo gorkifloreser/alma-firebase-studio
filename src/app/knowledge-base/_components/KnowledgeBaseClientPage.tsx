@@ -13,7 +13,7 @@ import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLef
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag } from '../actions';
+import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, invokeParseDocument } from '../actions';
 
 
 const MAX_FILE_SIZE_MB = 5;
@@ -32,6 +32,7 @@ export interface KnowledgeBaseClientPageProps {
     deleteBrandDocumentAction: typeof deleteBrandDocument;
     uploadBrandDocumentAction: typeof uploadBrandDocument;
     askRagAction: typeof askRag;
+    invokeParseDocumentAction: typeof invokeParseDocument;
 }
 
 
@@ -41,12 +42,15 @@ export function KnowledgeBaseClientPage({
     deleteBrandDocumentAction,
     uploadBrandDocumentAction,
     askRagAction,
+    invokeParseDocumentAction,
 }: KnowledgeBaseClientPageProps) {
     const [documents, setDocuments] = useState(initialDocuments);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploading, startUploading] = useTransition();
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [isDeleting, startDeleting] = useTransition();
+    const [isDeleting, startDeletingTransition] = useTransition();
+    const [parsingId, setParsingId] = useState<string | null>(null);
+    const [isParsing, startParsing] = useTransition();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,14 +110,14 @@ export function KnowledgeBaseClientPage({
                 if(fileInputRef.current) fileInputRef.current.value = "";
                 await fetchAllData();
             } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Processing failed', description: error.message });
+                toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
             }
         });
     };
 
     const handleDocumentDelete = (groupId: string) => {
         setDeletingId(groupId);
-        startDeleting(async () => {
+        startDeletingTransition(async () => {
             try {
                 const result = await deleteBrandDocumentAction(groupId);
                 toast({ title: 'Success!', description: result.message });
@@ -122,6 +126,31 @@ export function KnowledgeBaseClientPage({
                 toast({ variant: 'destructive', title: 'Deletion failed', description: error.message });
             } finally {
                 setDeletingId(null);
+            }
+        });
+    };
+
+    const handleParseDocument = (filePath: string) => {
+        setParsingId(filePath); // Use filePath as a temporary ID for the loading state
+        startParsing(async () => {
+            try {
+                const result = await invokeParseDocumentAction(filePath);
+                console.log('--- PARSED PDF CONTENT ---');
+                console.log(result.content);
+                console.log('--- END PARSED CONTENT ---');
+                toast({
+                    title: 'Parsing Successful',
+                    description: `Extracted ${result.content.length} characters. Check the console for the full text.`,
+                });
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Parsing Failed',
+                    description: error.message,
+                });
+                 console.error('Parsing error details:', error);
+            } finally {
+                setParsingId(null);
             }
         });
     };
@@ -167,7 +196,7 @@ export function KnowledgeBaseClientPage({
                                         ref={fileInputRef}
                                         onChange={handleFileChange}
                                         className="flex-1"
-                                        accept=".pdf,.docx,.txt"
+                                        accept=".pdf"
                                         disabled={isUploading}
                                     />
                                     <Button 
@@ -178,10 +207,10 @@ export function KnowledgeBaseClientPage({
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported formats: PDF, DOCX, TXT.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported format: PDF.</p>
                             </div>
                             <div className="space-y-3">
-                                <h4 className="font-medium">Processed Documents</h4>
+                                <h4 className="font-medium">Uploaded Documents</h4>
                                 {isLoading ? (
                                     <div className="space-y-2">
                                         <Skeleton className="h-12 w-full" />
@@ -196,29 +225,44 @@ export function KnowledgeBaseClientPage({
                                                     <div className="flex-grow overflow-hidden">
                                                         <p className="text-sm font-medium truncate">{doc.file_name}</p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Processed {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
+                                                            Uploaded {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleDocumentDelete(doc.document_group_id)}
-                                                    disabled={isDeleting && deletingId === doc.document_group_id}
-                                                >
-                                                {isDeleting && deletingId === doc.document_group_id ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    )}
-                                                </Button>
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleParseDocument(doc.file_path)}
+                                                        disabled={isParsing && parsingId === doc.file_path}
+                                                    >
+                                                        {isParsing && parsingId === doc.file_path ? (
+                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        ) : (
+                                                            <Sparkles className="h-4 w-4 mr-2" />
+                                                        )}
+                                                        Parse
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleDocumentDelete(doc.document_group_id)}
+                                                        disabled={isDeleting && deletingId === doc.document_group_id}
+                                                    >
+                                                    {isDeleting && deletingId === doc.document_group_id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        )}
+                                                    </Button>
+                                                </div>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
                                     <div className="text-center py-8 border-2 border-dashed rounded-lg">
                                         <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                                        <h3 className="mt-4 text-lg font-semibold">No documents processed yet.</h3>
+                                        <h3 className="mt-4 text-lg font-semibold">No documents uploaded yet.</h3>
                                         <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
                                     </div>
                                 )}

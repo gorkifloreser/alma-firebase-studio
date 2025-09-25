@@ -1,35 +1,23 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import { ai } from '@/ai/genkit';
-import pdf from 'pdf-parse';
-
 
 export type BrandDocument = {
     id: string;
     file_name: string;
     created_at: string;
     document_group_id: string;
+    file_path: string;
 };
-
-// Helper function to split text into chunks
-function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
-    const chunks: string[] = [];
-    let i = 0;
-    while (i < text.length) {
-        const end = i + chunkSize;
-        chunks.push(text.slice(i, end));
-        i = end - overlap > i ? end - overlap : i + 1; // Ensure progress
-    }
-    return chunks;
-}
 
 
 /**
- * Uploads a document to Supabase storage.
+ * Uploads a document to Supabase storage. This action only handles the file upload.
+ * Parsing is handled by a separate Edge Function.
  * @param {FormData} formData The form data containing the file to upload.
  * @returns {Promise<{ message: string }>} A success message.
  * @throws {Error} If any step of the process fails.
@@ -44,35 +32,18 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
         throw new Error('No file provided or file is empty.');
     }
     
-    // Define the storage path
-    const bucketName = 'Alma';
-    const filePath = `${user.id}/brand_documents/${documentFile.name}`;
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
+    const filePath = `${user.id}/brand_documents/${crypto.randomUUID()}-${documentFile.name}`;
 
-    // Upload the file to Supabase Storage
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, documentFile, { upsert: true });
+        .upload(filePath, documentFile, { upsert: false });
 
     if (uploadError) {
         console.error('Error uploading document to storage:', uploadError);
         throw new Error(`Document Storage Failed: ${uploadError.message}`);
     }
 
-    // Parse the PDF content
-    let parsedText = '';
-    if (documentFile.type === 'application/pdf') {
-        const buffer = Buffer.from(await documentFile.arrayBuffer());
-        const pdfData = await pdf(buffer);
-        parsedText = pdfData.text;
-        console.log('--- PDF PARSE RESULT ---');
-        console.log(parsedText.substring(0, 1000) + '...');
-        console.log('--- END PARSE RESULT ---');
-    } else {
-        parsedText = await documentFile.text();
-    }
-
-
-    // We will use a proper UUID for the group id.
     const documentGroupId = crypto.randomUUID();
 
     const { error: dbError } = await supabase
@@ -82,19 +53,37 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             file_name: documentFile.name,
             file_path: filePath,
             document_group_id: documentGroupId,
-            content: parsedText,
-            // embedding is omitted for now
         });
     
      if (dbError) {
         console.error('Error saving document reference to DB:', dbError);
-        // Attempt to delete the file from storage if the DB insert fails
         await supabase.storage.from(bucketName).remove([filePath]);
         throw new Error('Could not save document reference.');
     }
 
     revalidatePath('/brand');
-    return { message: 'Document uploaded and parsed successfully!' };
+    return { message: 'Document uploaded successfully!' };
+}
+
+/**
+ * Invokes the 'parse-document' Supabase Edge Function to process a file.
+ * @param {string} filePath - The path of the file in Supabase Storage.
+ * @returns {Promise<{ content: string }>} The parsed content of the document.
+ */
+export async function invokeParseDocument(filePath: string): Promise<{ content: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('parse-document', {
+        body: { filePath },
+    });
+
+    if (error) {
+        throw new Error(`Failed to invoke parse function: ${error.message}`);
+    }
+
+    return data;
 }
 
 
@@ -110,7 +99,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
 
     const { data, error } = await supabase
         .from('brand_documents')
-        .select('id, file_name, created_at, document_group_id')
+        .select('id, file_name, created_at, document_group_id, file_path')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -118,8 +107,9 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
         console.error('Error fetching brand documents:', error);
         throw error;
     }
-
-    // Deduplicate documents based on document_group_id
+    
+    // In case there are multiple entries for a single upload (e.g., chunks in the future),
+    // we only show one entry per document group.
     const uniqueDocuments = Array.from(new Map(data.map(doc => [doc.document_group_id, doc])).values());
     
     return uniqueDocuments as BrandDocument[];
@@ -164,13 +154,12 @@ export async function deleteBrandDocument(document_group_id: string): Promise<{ 
 
     // Finally, delete the file from storage
     if (document.file_path) {
-        const bucketName = 'Alma';
+        const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
         const { error: storageError } = await supabase.storage
             .from(bucketName)
             .remove([document.file_path]);
         if (storageError) {
             console.error('Error deleting file from storage:', storageError.message);
-            // We can choose to continue or stop. In this case, we'll log the error but consider the primary (DB) deletion successful.
         }
     }
     
