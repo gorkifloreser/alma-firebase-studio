@@ -26,7 +26,6 @@ import {
   Calendar,
   GitBranch,
   Wand2,
-  Palette,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';

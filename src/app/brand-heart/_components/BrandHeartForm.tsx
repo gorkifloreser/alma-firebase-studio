@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -17,7 +18,7 @@ type BrandHeartData = NonNullable<Awaited<ReturnType<typeof getBrandHeart>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
 
-type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name'>;
+type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity'>;
 
 export interface BrandHeartFormProps {
     profile: Profile | null;
@@ -57,7 +58,7 @@ export function BrandHeartForm({
         setLogoFile(file);
     };
 
-    const handleFieldChange = (field: keyof BrandHeartFields, language: 'primary' | 'secondary', value: string) => {
+    const handleFieldChange = (field: keyof BrandHeartFields | 'visual_identity', language: 'primary' | 'secondary', value: string) => {
         setBrandHeart(prev => ({
             ...prev,
             [field]: {
@@ -110,7 +111,7 @@ export function BrandHeartForm({
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields) => {
+    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields | 'visual_identity') => {
         if (!profile?.secondary_language) return;
 
         const fieldData = (brandHeart as any)[fieldId];

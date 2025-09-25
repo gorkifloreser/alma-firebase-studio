@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -10,7 +11,7 @@ import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/trans
  * Defines the shape of the Brand Heart data, including the nested structure
  * for bilingual fields, which aligns with the 'jsonb' columns in the database.
  */
-type BrandHeartData = {
+export type BrandHeartData = {
   id?: string;
   user_id?: string;
   created_at?: string;
