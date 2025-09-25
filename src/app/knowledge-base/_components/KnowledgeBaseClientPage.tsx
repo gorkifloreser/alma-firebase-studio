@@ -13,6 +13,7 @@ import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLef
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument } from '../actions';
 
 
@@ -58,6 +59,9 @@ export function KnowledgeBaseClientPage({
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [chatQuery, setChatQuery] = useState('');
     const [isAnswering, startAnswering] = useTransition();
+
+    const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
+    const [parsingResult, setParsingResult] = useState<string[] | null>(null);
 
 
     const fetchAllData = async () => {
@@ -135,10 +139,8 @@ export function KnowledgeBaseClientPage({
         startParsing(async () => {
             try {
                 const result = await parseDocumentAction(filePath);
-                toast({
-                    title: 'Parsing Successful',
-                    description: `Document was split into ${result.chunkCount} chunks.`,
-                });
+                setParsingResult(result.chunks);
+                setIsResultDialogOpen(true);
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -173,6 +175,7 @@ export function KnowledgeBaseClientPage({
     }
 
     return (
+        <>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <div className="space-y-8">
                 <Card>
@@ -323,6 +326,25 @@ export function KnowledgeBaseClientPage({
                 </CardContent>
             </Card>
         </div>
+        <Dialog open={isResultDialogOpen} onOpenChange={setIsResultDialogOpen}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Document Parsing Result</DialogTitle>
+                    <DialogDescription>
+                        The document was split into the following text chunks.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto space-y-4 p-4 my-4 border rounded-md">
+                    {parsingResult?.map((chunk, index) => (
+                        <div key={index} className="p-3 bg-muted/50 rounded-md">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">Chunk {index + 1}</p>
+                            <p className="text-sm whitespace-pre-wrap">{chunk}</p>
+                        </div>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
 
@@ -333,4 +355,3 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-

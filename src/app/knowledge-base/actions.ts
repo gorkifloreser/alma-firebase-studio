@@ -73,9 +73,9 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 /**
  * Downloads a document from Supabase storage and parses its content.
  * @param {string} filePath - The path of the file in Supabase Storage.
- * @returns {Promise<{ chunkCount: number }>} The number of text chunks created.
+ * @returns {Promise<{ chunkCount: number; chunks: string[] }>} The number of text chunks created and the chunks themselves.
  */
-export async function parseDocument(filePath: string): Promise<{ chunkCount: number }> {
+export async function parseDocument(filePath: string): Promise<{ chunkCount: number; chunks: string[] }> {
     console.log(`[parseDocument] Starting parsing for: ${filePath}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -83,9 +83,6 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
 
     console.log('[parseDocument] User authenticated:', user.id);
     
-    // In a Next.js server environment, the worker is generally not needed for the legacy build.
-    // pdfjsLib.GlobalWorkerOptions.workerSrc = `../../../../node_modules/pdfjs-dist/legacy/build/pdf.worker.js`;
-
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
     console.log(`[parseDocument] Downloading file from bucket: ${bucketName}`);
@@ -132,7 +129,7 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
     });
     console.log('[parseDocument] --- End of Chunk Content ---');
     
-    return { chunkCount: chunks.length };
+    return { chunkCount: chunks.length, chunks };
 }
 
 
