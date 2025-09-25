@@ -21,6 +21,7 @@ export type UserChannelSetting = {
 export type MediaPlanItem = PlanItem & { 
     id: string;
     status: string; 
+    art_style_id: string | null;
     user_channel_settings: UserChannelSetting | null;
 };
 
@@ -75,6 +76,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
                 *,
                 media_plan_items!media_plan_id (
                     *,
+                    art_style_id,
                     user_channel_settings (id, channel_name)
                 )
             )
@@ -109,6 +111,7 @@ export async function getFunnel(funnelId: string) {
                 *,
                 media_plan_items!media_plan_id (
                     *,
+                    art_style_id,
                     user_channel_settings (id, channel_name)
                 )
             )
@@ -475,6 +478,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 objective: item.objective,
                 concept: item.concept,
                 status: 'draft',
+                art_style_id: item.art_style_id,
             };
         });
 
@@ -689,6 +693,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
         .from('media_plan_items')
         .select(`
             *,
+            art_style_id,
             user_channel_settings (id, channel_name)
         `)
         .eq('user_id', user.id)
@@ -710,6 +715,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
