@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import { ai } from '@/ai/genkit';
-import pdf from 'pdf-parse/lib/pdf-parse.js';
+import pdf from 'pdf-parse';
 
 
 export type BrandDocument = {
@@ -60,8 +60,8 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
 
     // Since we are not processing the file for RAG immediately, we'll
     // just save a reference to the uploaded file.
-    // We will use the file path as a unique group id for now.
-    const documentGroupId = filePath;
+    // We will use a proper UUID for the group id.
+    const documentGroupId = crypto.randomUUID();
 
     const { error: dbError } = await supabase
         .from('brand_documents')
@@ -177,6 +177,5 @@ export async function askRag(query: string): Promise<RagOutput> {
     }
     // The RAG flow might need adjustments now that we are not pre-processing files.
     // For now, it will likely not return useful results until we add the processing step back.
-    // return await askMyDocuments({ query });
-    return { response: "The document processing workflow has been updated. The RAG query functionality is temporarily disabled pending the next step of development."}
+    return await askMyDocuments({ query });
 }
