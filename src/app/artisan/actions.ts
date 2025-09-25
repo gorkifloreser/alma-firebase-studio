@@ -4,11 +4,12 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { generateCreativePrompt as genCreativePromptFlow, GenerateCreativePromptInput, GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
+import { generateCreativeForOffering as genCreativeFlow, type GenerateCreativeInput, type GenerateCreativeOutput, type CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateCreativePrompt as genCreativePromptFlow, type GenerateCreativePromptInput, type GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
 import { editImageWithInstruction as editImageFlow } from '@/ai/flows/edit-image-flow';
 import type { EditImageInput, EditImageOutput } from '@/ai/flows/edit-image-flow';
-import { regenerateCarouselSlide as regenerateSlideFlow, RegenerateCarouselSlideInput, RegenerateCarouselSlideOutput } from '@/ai/flows/regenerate-carousel-slide-flow';
+import { regenerateCarouselSlide as regenerateSlideFlow } from '@/ai/flows/regenerate-carousel-slide-flow';
+import type { RegenerateCarouselSlideInput, RegenerateCarouselSlideOutput } from '@/ai/flows/regenerate-carousel-slide-flow';
 
 
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';

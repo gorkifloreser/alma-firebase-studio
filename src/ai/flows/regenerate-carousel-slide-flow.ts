@@ -10,8 +10,8 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
-// Define schemas
-export const RegenerateCarouselSlideInputSchema = z.object({
+// Define schemas for internal use only
+const RegenerateCarouselSlideInputSchema = z.object({
   offeringId: z.string(),
   basePrompt: z.string().describe('The creative brief or instruction for the new image.'),
   aspectRatio: z.string().optional(),
@@ -19,7 +19,7 @@ export const RegenerateCarouselSlideInputSchema = z.object({
 });
 export type RegenerateCarouselSlideInput = z.infer<typeof RegenerateCarouselSlideInputSchema>;
 
-export const RegenerateCarouselSlideOutputSchema = z.object({
+const RegenerateCarouselSlideOutputSchema = z.object({
   imageUrl: z.string().describe('The data URI of the newly generated image.'),
   finalPrompt: z.string().describe('The final, full prompt sent to the image generation model.'),
 });
@@ -27,7 +27,7 @@ export type RegenerateCarouselSlideOutput = z.infer<typeof RegenerateCarouselSli
 
 
 const masterImagePrompt = ai.definePrompt({
-    name: 'masterImagePromptForRegen', // Use a different name to avoid conflicts if it's identical
+    name: 'masterImagePromptForRegen', 
     input: {
         schema: z.object({
             brandHeart: z.any(),
@@ -69,7 +69,7 @@ Output only the final prompt string.`,
 });
 
 
-export const regenerateCarouselSlideFlow = ai.defineFlow(
+const regenerateCarouselSlideFlow = ai.defineFlow(
   {
     name: 'regenerateCarouselSlideFlow',
     inputSchema: RegenerateCarouselSlideInputSchema,
