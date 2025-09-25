@@ -1,11 +1,28 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import pdf from 'https://esm.sh/pdf-parse@1.1.1';
+// Use pdf.js, a Deno-compatible library, instead of the Node-specific pdf-parse
+import * as pdfjs from 'https://esm.sh/pdfjs-dist@4.4.168/legacy/build/pdf.mjs';
 
 const BUCKET_NAME = Deno.env.get('SUPABASE_STORAGE_BUCKET_NAME') || 'Alma';
 
-console.log('Parse Document Edge Function Initialized');
+console.log('Parse Document Edge Function Initialized (v2)');
+
+// Required for pdf.js to work in a web worker-like environment
+pdfjs.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.4.168/legacy/build/pdf.worker.mjs`;
+
+async function getTextFromPdf(data: ArrayBuffer) {
+  const pdf = await pdfjs.getDocument({ data }).promise;
+  const numPages = pdf.numPages;
+  let fullText = '';
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    fullText += textContent.items.map((item: any) => item.str).join(' ') + '\\n';
+  }
+  return fullText;
+}
+
 
 serve(async (req) => {
   // Handle CORS preflight request
@@ -47,17 +64,15 @@ serve(async (req) => {
     const buffer = await fileData.arrayBuffer();
     console.log('File converted to buffer.');
 
-    // Parse the PDF buffer
-    // pdf-parse is a Node.js library and may not work perfectly in Deno.
-    // However, for this simple case, esm.sh's polyfills might make it work.
-    const pdfData = await pdf(buffer);
-    console.log(`PDF parsed successfully. Extracted ${pdfData.text.length} characters.`);
+    // Parse the PDF buffer using pdf.js
+    const textContent = await getTextFromPdf(buffer);
+    console.log(`PDF parsed successfully. Extracted ${textContent.length} characters.`);
     console.log('--- PARSED TEXT (First 500 chars) ---');
-    console.log(pdfData.text.substring(0, 500) + '...');
+    console.log(textContent.substring(0, 500) + '...');
     console.log('--- END PARSED TEXT ---');
 
     // Return the parsed content
-    return new Response(JSON.stringify({ content: pdfData.text }), {
+    return new Response(JSON.stringify({ content: textContent }), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
@@ -66,7 +81,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error('Error in Edge Function:', error);
+    console.error('Error in Edge Function:', error.message, error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: {
         'Content-Type': 'application/json',
