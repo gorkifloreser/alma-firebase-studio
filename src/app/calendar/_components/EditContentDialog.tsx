@@ -142,7 +142,6 @@ export function EditContentDialog({
         return null; // No visual content
     };
 
-  const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
   const postUser = profile?.full_name || 'Your Brand';
   const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -150,7 +149,7 @@ export function EditContentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Scheduled Post</DialogTitle>
           <DialogDescription>
@@ -158,94 +157,62 @@ export function EditContentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4 pr-6">
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                    <CardTitle className="text-lg">{primaryLangName} Post</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                    <Textarea 
+        <div className="flex items-center justify-center py-4">
+             <Card className="w-full max-w-md mx-auto">
+                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                    {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
+                        <Avatar>
+                            <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                            <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    )}
+                    <div className="grid gap-0.5">
+                        {isLoadingProfile ? (
+                            <>
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-3 w-16 mt-1" />
+                            </>
+                        ) : (
+                            <>
+                                <span className="font-semibold">{postUser}</span>
+                                <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                            </>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="relative aspect-square w-full overflow-hidden bg-secondary">
+                       {renderVisualContent()}
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                    <div className="flex justify-between w-full">
+                        <div className="flex gap-4">
+                            <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                            <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                        <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                    </div>
+                     <Textarea 
                         value={editableContent?.primary || ''}
                         onChange={(e) => handleContentChange('primary', e.target.value)}
-                        className="h-48 resize-none"
-                        placeholder="Primary content..."
+                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                        placeholder="Your post copy will appear here..."
                     />
-                    </CardContent>
-                </Card>
-                {secondaryLangName && (
-                    <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">{secondaryLangName} Post</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Textarea 
-                        value={editableContent?.secondary || ''}
-                        onChange={(e) => handleContentChange('secondary', e.target.value)}
-                        className="h-48 resize-none"
-                        placeholder="Secondary content..."
-                        />
-                    </CardContent>
-                    </Card>
-                )}
-                 {contentItem.landing_page_html && (
-                     <Card>
-                        <CardHeader><CardTitle className="text-lg">Landing Page HTML</CardTitle></CardHeader>
-                        <CardContent className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-md">
-                            <code className="h-48 overflow-y-auto block">{contentItem.landing_page_html}</code>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
-
-            <div className="flex items-center justify-center">
-                 <Card className="w-full max-w-md mx-auto">
-                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
-                            <Avatar>
-                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        )}
-                        <div className="grid gap-0.5">
-                            {isLoadingProfile ? (
-                                <>
-                                    <Skeleton className="h-4 w-24" />
-                                    <Skeleton className="h-3 w-16 mt-1" />
-                                </>
-                            ) : (
-                                <>
-                                    <span className="font-semibold">{postUser}</span>
-                                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                                </>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="relative aspect-square w-full overflow-hidden bg-secondary">
-                           {renderVisualContent()}
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                        <div className="flex justify-between w-full">
-                            <div className="flex gap-4">
-                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
-                            </div>
-                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                         <p className="text-sm pt-2 w-full">{editableContent?.primary}</p>
-                         {secondaryLangName && editableContent?.secondary && (
-                            <>
-                                <Separator className="my-2"/>
-                                 <p className="text-sm w-full text-muted-foreground">{editableContent?.secondary}</p>
-                            </>
-                         )}
-                    </CardFooter>
-                </Card>
-            </div>
-
+                     {secondaryLangName && (
+                        <>
+                            <Separator className="my-2"/>
+                            <Textarea 
+                                value={editableContent?.secondary || ''}
+                                onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent text-muted-foreground"
+                                placeholder={`Your ${secondaryLangName} post copy...`}
+                            />
+                        </>
+                     )}
+                </CardFooter>
+            </Card>
         </div>
 
         <DialogFooter>
