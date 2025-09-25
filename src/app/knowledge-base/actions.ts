@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -76,16 +75,12 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
  * @returns {Promise<{ chunkCount: number; chunks: string[] }>} The number of text chunks created and the chunks themselves.
  */
 export async function parseDocument(filePath: string): Promise<{ chunkCount: number; chunks: string[] }> {
-    console.log(`[parseDocument] Starting parsing for: ${filePath}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-
-    console.log('[parseDocument] User authenticated:', user.id);
     
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
     
-    console.log(`[parseDocument] Downloading file from bucket: ${bucketName}`);
     const { data: fileData, error: downloadError } = await supabase.storage
       .from(bucketName)
       .download(filePath);
@@ -99,36 +94,30 @@ export async function parseDocument(filePath: string): Promise<{ chunkCount: num
         throw new Error("Downloaded file data is null.");
     }
 
-    console.log('[parseDocument] File downloaded successfully. Size:', fileData.size);
-
     const buffer = await fileData.arrayBuffer();
 
     const loadingTask = pdfjsLib.getDocument(buffer as DocumentInitParameters);
     const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
     let textContent = "";
 
-    console.log(`[parseDocument] PDF has ${pdfDoc.numPages} pages. Extracting text...`);
     for (let i = 1; i <= pdfDoc.numPages; i++) {
         const page = await pdfDoc.getPage(i);
         const text = await page.getTextContent();
         textContent += (text.items ?? []).map((item: any) => item.str).join(" ") + "\n";
     }
-    console.log(`[parseDocument] Text extraction complete. Total length: ${textContent.length}`);
 
     // Step 1: Chunking the text
-    console.log('[parseDocument] Starting text chunking...');
+    // Regex to split by titles (at least 5 consecutive uppercase letters and maybe spaces) or by multiple newlines
     const chunks = textContent
-        .split(/\n\s*\n/) // Split by one or more empty lines (paragraphs)
+        .split(/(\n\s*\n)|(^[A-Z\s]{5,}[A-Z]$)/m)
         .map(chunk => chunk.trim())
-        .filter(chunk => chunk.length > 50); // Filter out very short or empty chunks
+        .filter(chunk => chunk && chunk.length > 50); // Filter out very short or empty chunks
 
     console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
-    console.log('[parseDocument] --- Start of Chunk Content ---');
     chunks.forEach((chunk, index) => {
         console.log(`Chunk ${index + 1}:`, chunk);
     });
-    console.log('[parseDocument] --- End of Chunk Content ---');
-    
+
     return { chunkCount: chunks.length, chunks };
 }
 
