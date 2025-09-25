@@ -21,7 +21,6 @@ const GenerateCreativeInputSchema = z.object({
   aspectRatio: z.string().optional().describe('The desired aspect ratio, e.g., "1:1", "4:5", "9:16", "16:9".'),
   creativePrompt: z.string().optional().describe('A specific prompt to use for generation, bypassing the default prompts.'),
   referenceImageUrl: z.string().optional().describe('The URL of an existing image to use as a reference for image-to-image or image-to-video generation.'),
-  artStyleId: z.string().optional().describe('The ID of a saved art style to apply.'),
 });
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
@@ -84,7 +83,6 @@ const masterImagePrompt = ai.definePrompt({
             offering: z.any(),
             basePrompt: z.string(),
             aspectRatio: z.string().optional(),
-            artStyleSuffix: z.string().optional(),
         })
     },
     output: { schema: z.object({ text: z.string() }) },
@@ -94,29 +92,22 @@ Your task is to combine all the information below to create a single, detailed, 
 
 **RULE: DO NOT include any text, letters, or words in the visual description for the image. The final image must be purely visual.**
 
-**1. THE BRAND's SOUL (Tone & Keywords):**
+**1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
-- Visual Keywords: Soulful, minimalist, calm, authentic, organic.
+- **Visual Identity:** {{brandHeart.visual_identity.primary}}
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
 
-**3. THE CREATIVE BRIEF (The Scene & Style):**
+**3. THE CREATIVE BRIEF (The Scene):**
 - Your main instruction is: "{{basePrompt}}"
 
-**4. THE ART STYLE (The Suffix):**
-{{#if artStyleSuffix}}
-- Apply this specific art style: {{artStyleSuffix}}
-{{else}}
-- Use a photo-realistic, soft, and natural style.
-{{/if}}
-
 **FINAL TASK:**
-Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, the specific Creative Brief, and the art style suffix.
+Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, and the specific Creative Brief.
 
-**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, earthy tones, soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Output only the final prompt string.`,
 });
@@ -129,7 +120,6 @@ const carouselPrompt = ai.definePrompt({
             brandHeart: z.any(),
             offering: z.any(),
             basePrompt: z.string().optional(),
-            artStyleSuffix: z.string().optional(),
             aspectRatio: z.string().optional(),
         })
     },
@@ -147,10 +137,10 @@ const carouselPrompt = ai.definePrompt({
 **Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt**.
 
 ---
-**1. THE BRAND's SOUL (Tone & Keywords):**
+**1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
-- Visual Keywords: Soulful, minimalist, calm, creative, authentic, organic.
+- **Visual Identity:** {{brandHeart.visual_identity.primary}}
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
@@ -163,22 +153,17 @@ const carouselPrompt = ai.definePrompt({
 - Create a carousel that tells a story about the offering, starting with the problem or desire, showing the transformation, and ending with a call to action.
 {{/if}}
 
-**4. THE ART STYLE (The Suffix):**
-{{#if artStyleSuffix}}
-- Apply this specific art style: {{artStyleSuffix}}
-{{else}}
-- Use a photo-realistic, soft, and natural style.
-{{/if}}
-
 ---
 **YOUR TASK:**
 
 Based on all the information above, create a 3-5 slide carousel script. For each slide:
 1.  **title:** A short, punchy title.
 2.  **body:** Brief, engaging body text.
-3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual keywords, the specified art style, and the aspect ratio if provided. Do NOT include placeholders.
+3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual identity, and the aspect ratio if provided. Do NOT include placeholders.
 
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, pastel colors, soft natural light, photo-realistic, vintage film photography, grainy texture, muted colors{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+   **CRUCIAL RULE:** You MUST base each slide's \`creativePrompt\` directly on the corresponding instructions found in the user's 'Creative Brief'. If the user's brief describes 'Slide 1' as 'a close-up of a cup', your \`creativePrompt\` for the first slide MUST describe a close-up of a cup, enhanced with the brand's aesthetic. Do NOT invent new scenarios.
+
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist flat-lay of a journal and a steaming mug of cacao on a rustic wooden table, embodying a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Generate the carousel slides in the specified JSON format.`,
 });
@@ -194,7 +179,7 @@ export const generateCreativeFlow = ai.defineFlow(
     inputSchema: GenerateCreativeInputSchema,
     outputSchema: GenerateCreativeOutputSchema,
   },
-  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl, artStyleId }) => {
+  async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl }) => {
     
     async function downloadVideo(video: MediaPart): Promise<string> {
         const fetch = (await import('node-fetch')).default;
@@ -227,9 +212,6 @@ export const generateCreativeFlow = ai.defineFlow(
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');
     if (offeringError || !offering) throw new Error('Offering not found.');
     if (profileError || !profile) throw new Error('User profile not found.');
-
-    const { data: artStyle } = artStyleId ? await supabase.from('art_styles').select('prompt_suffix').eq('id', artStyleId).single() : { data: null };
-
 
     let output: GenerateCreativeOutput = {};
 
@@ -280,7 +262,7 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('image')) {
         const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
 
-        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio, artStyleSuffix: artStyle?.prompt_suffix }).then(async ({ output: promptOutput }) => {
+        visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio }).then(async ({ output: promptOutput }) => {
             if (!promptOutput) {
                 throw new Error('Master image prompt generation failed.');
             }
@@ -309,7 +291,6 @@ export const generateCreativeFlow = ai.defineFlow(
             brandHeart, 
             offering, 
             basePrompt: carouselBasePrompt,
-            artStyleSuffix: artStyle?.prompt_suffix,
             aspectRatio,
         }).then(async ({ output: carouselOutput }) => {
             if (carouselOutput?.slides) {

@@ -6,7 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
 import { getBrandHeart, updateBrandHeart, translateText } from '../brand-heart/actions';
 import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag } from '../knowledge-base/actions';
-import { getArtStyles, createArtStyle, updateArtStyle, deleteArtStyle } from '../art-styles/actions';
 import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
 
@@ -17,11 +16,10 @@ export default async function BrandPage() {
         redirect('/login');
     }
 
-    const [profile, brandHeart, documents, artStyles] = await Promise.all([
+    const [profile, brandHeart, documents] = await Promise.all([
         getProfile(),
         getBrandHeart(),
         getBrandDocuments(),
-        getArtStyles(),
     ]);
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -41,14 +39,6 @@ export default async function BrandPage() {
             uploadBrandDocumentAction: uploadBrandDocument,
             askRagAction: askRag,
         },
-        artStyles: {
-            initialArtStyles: artStyles,
-            actions: {
-                createArtStyle,
-                updateArtStyle,
-                deleteArtStyle,
-            },
-        }
     };
 
     return (

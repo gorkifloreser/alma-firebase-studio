@@ -19,7 +19,7 @@ type TranslateTextAction = typeof translateText;
 
 type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name'>;
 
-interface BrandHeartFormProps {
+export interface BrandHeartFormProps {
     profile: Profile | null;
     brandHeart: BrandHeartData | null;
     languageNames: Map<string, string>;
@@ -35,6 +35,7 @@ const initialBrandHeartState: BrandHeartData = {
     vision: { primary: '', secondary: '' },
     values: { primary: '', secondary: '' },
     tone_of_voice: { primary: '', secondary: '' },
+    visual_identity: { primary: '', secondary: '' },
 };
 
 
@@ -206,6 +207,16 @@ export function BrandHeartForm({
                 id="tone_of_voice" 
                 label="Tone of Voice" 
                 value={brandHeart.tone_of_voice}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating} 
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+            />
+            <BilingualFormField 
+                id="visual_identity" 
+                label="Visual Identity" 
+                value={brandHeart.visual_identity}
                 onFieldChange={handleFieldChange}
                 profile={profile} 
                 isTranslating={isTranslating} 

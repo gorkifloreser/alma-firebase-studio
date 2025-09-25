@@ -22,6 +22,7 @@ type BrandHeartData = {
   vision: { primary: string | null; secondary: string | null };
   values: { primary: string | null; secondary: string | null };
   tone_of_voice: { primary: string | null; secondary: string | null };
+  visual_identity: { primary: string | null; secondary: string | null };
 };
 
 /**
@@ -123,6 +124,10 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
       primary: (formData.get('tone_of_voice_primary') as string) || null,
       secondary: (formData.get('tone_of_voice_secondary') as string) || null,
     },
+    visual_identity: {
+      primary: (formData.get('visual_identity_primary') as string) || null,
+      secondary: (formData.get('visual_identity_secondary') as string) || null,
+    },
     updated_at: new Date().toISOString(),
   };
 
@@ -135,7 +140,7 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
     throw new Error('Could not update brand heart. Please try again.');
   }
 
-  revalidatePath('/brand-heart');
+  revalidatePath('/brand');
   return { message: 'Brand Heart updated successfully!' };
 }
 

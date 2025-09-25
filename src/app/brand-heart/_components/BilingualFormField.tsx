@@ -13,7 +13,7 @@ type BrandHeartData = NonNullable<Awaited<ReturnType<typeof getBrandHeart>>>;
 type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name'>;
 
 
-interface BilingualFormFieldProps {
+export interface BilingualFormFieldProps {
     id: keyof BrandHeartFields;
     label: string;
     value: { primary: string | null; secondary: string | null; };

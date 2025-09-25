@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
 import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
-import { getArtStyles, ArtStyle } from '../art-styles/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -998,7 +997,6 @@ export default function ArtisanPage() {
     const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
     const [totalCampaignItems, setTotalCampaignItems] = useState(0);
-    const [artStyles, setArtStyles] = useState<ArtStyle[]>([]);
 
     // Workflow State
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -1011,7 +1009,6 @@ export default function ArtisanPage() {
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
     const [channelFilter, setChannelFilter] = useState<string>('all');
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
-    const [selectedArtStyleId, setSelectedArtStyleId] = useState<string>('none');
     const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
 
 
@@ -1082,29 +1079,23 @@ export default function ArtisanPage() {
         if (workflowMode === 'custom') {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
-            setSelectedArtStyleId('none');
             return;
         }
 
         if (!queueItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
-            setSelectedArtStyleId('none');
             return;
         }
 
         const item = allQueueItems.find(q => q.id === queueItemId);
         if (item && item.media_plan_items) {
-            const planItem = item.media_plan_items;
+            const planItem = item.media_plan_items as any;
             
             console.log("DEBUG: Selected Queue Item's Plan Item:", planItem);
 
             const promptValue = planItem.creative_prompt || '';
             setCreativePrompt(promptValue);
-            
-            const artStyleId = (planItem as any).art_style_id || 'none';
-            console.log("DEBUG: Art Style ID from planItem:", artStyleId);
-            setSelectedArtStyleId(artStyleId);
 
             setSelectedOfferingId(item.offering_id);
 
@@ -1139,19 +1130,17 @@ export default function ArtisanPage() {
         async function fetchData() {
             try {
                 setIsLoading(true);
-                const [profileData, queueData, offeringsData, mediaPlansData, stylesData] = await Promise.all([
+                const [profileData, queueData, offeringsData, mediaPlansData] = await Promise.all([
                     getProfile(),
                     getQueueItems(),
                     getOfferings(),
                     getMediaPlans(),
-                    getArtStyles(),
                 ]);
 
                 setProfile(profileData);
                 setAllQueueItems(queueData);
                 setOfferings(offeringsData);
                 setMediaPlans(mediaPlansData);
-                setArtStyles(stylesData);
                 
                 // Don't auto-select here, wait for user action in dialog
             } catch (error: any) {
@@ -1251,7 +1240,6 @@ export default function ArtisanPage() {
                             offeringId: selectedOfferingId,
                             basePrompt: regeneratePrompt,
                             aspectRatio: dimension,
-                            artStyleId: selectedArtStyleId !== 'none' ? selectedArtStyleId : undefined,
                         });
 
                         setCreative(prev => {
@@ -1292,7 +1280,6 @@ export default function ArtisanPage() {
                 aspectRatio: dimension,
                 creativePrompt: regeneratePrompt || creativePrompt,
                 referenceImageUrl: referenceImageUrl || undefined,
-                artStyleId: selectedArtStyleId !== 'none' ? selectedArtStyleId : undefined,
             });
 
             setCreative(result);
@@ -1729,21 +1716,6 @@ export default function ArtisanPage() {
                                                 />
                                             </div>
                                             
-                                            <div className="space-y-2">
-                                                <Label htmlFor="art-style-select">Art Style</Label>
-                                                <Select value={selectedArtStyleId} onValueChange={setSelectedArtStyleId}>
-                                                    <SelectTrigger id="art-style-select">
-                                                        <SelectValue placeholder="Select an art style..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">None (Default)</SelectItem>
-                                                        {artStyles.map(style => (
-                                                            <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
                                             {(selectedCreativeType === 'image' || selectedCreativeType === 'video') && (
                                                 <div className="space-y-2">
                                                     <Button variant="outline" className="w-full" onClick={() => setIsMediaSelectorOpen(true)} disabled={!selectedOfferingId}>
@@ -1952,6 +1924,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
