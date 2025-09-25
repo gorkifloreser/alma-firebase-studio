@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import pdf from 'https://esm.sh/pdf-parse@1.1.1';
 
-const BUCKET_NAME = 'Alma'; // Ensure this matches your bucket name
+const BUCKET_NAME = Deno.env.get('SUPABASE_STORAGE_BUCKET_NAME') || 'Alma';
 
 console.log('Parse Document Edge Function Initialized');
 
@@ -48,6 +48,8 @@ serve(async (req) => {
     console.log('File converted to buffer.');
 
     // Parse the PDF buffer
+    // pdf-parse is a Node.js library and may not work perfectly in Deno.
+    // However, for this simple case, esm.sh's polyfills might make it work.
     const pdfData = await pdf(buffer);
     console.log(`PDF parsed successfully. Extracted ${pdfData.text.length} characters.`);
     console.log('--- PARSED TEXT (First 500 chars) ---');
@@ -64,7 +66,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error('Error in Edge Function:', error.message);
+    console.error('Error in Edge Function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: {
         'Content-Type': 'application/json',
