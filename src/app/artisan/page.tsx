@@ -610,12 +610,16 @@ const ImageChatDialog = ({
     isOpen,
     onOpenChange,
     imageUrl,
-    onImageUpdate
+    onImageUpdate,
+    originalPrompt,
+    onRegenerate
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     imageUrl: string | null;
     onImageUpdate: (newImageUrl: string) => void;
+    originalPrompt: string | null;
+    onRegenerate: (newPrompt: string) => void;
 }) => {
     const [history, setHistory] = useState<Array<{ role: 'user' | 'bot'; content: string | { imageUrl: string } }>>([]);
     const [input, setInput] = useState('');
@@ -624,11 +628,13 @@ const ImageChatDialog = ({
     const [currentImage, setCurrentImage] = useState(imageUrl);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [zoom, setZoom] = useState<'contain' | 'cover'>('contain');
+    const [editablePrompt, setEditablePrompt] = useState(originalPrompt || '');
 
     useEffect(() => {
         setCurrentImage(imageUrl);
         setHistory([]);
-    }, [imageUrl]);
+        setEditablePrompt(originalPrompt || '');
+    }, [imageUrl, originalPrompt]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -695,9 +701,23 @@ const ImageChatDialog = ({
                                 </>
                             )}
                         </div>
+                        <div className="space-y-2 flex-shrink-0">
+                            <Label htmlFor="original-prompt">Original Prompt</Label>
+                            <Textarea id="original-prompt" value={editablePrompt} onChange={(e) => setEditablePrompt(e.target.value)} className="h-24 font-mono text-xs" />
+                            <Button onClick={() => onRegenerate(editablePrompt)} size="sm" className="w-full">
+                                <RefreshCw className="mr-2 h-4 w-4"/>
+                                Regenerate with this prompt
+                            </Button>
+                        </div>
                     </div>
                      <div className="flex flex-col h-full bg-background rounded-lg border">
                         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {history.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-full text-center">
+                                    <Bot className="w-12 h-12 text-muted-foreground" />
+                                    <p className="mt-4 text-muted-foreground">Ask me anything about your image!</p>
+                                </div>
+                            )}
                             {history.map((msg, index) => (
                                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                                     {msg.role === 'bot' && <Avatar className="w-8 h-8"><AvatarFallback><Bot className="w-5 h-5"/></AvatarFallback></Avatar>}
@@ -754,8 +774,14 @@ const RegenerateDialog = ({
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     originalPrompt: string | null;
-    onRegenerate: () => void;
+    onRegenerate: (newPrompt: string) => void;
 }) => {
+    const [editablePrompt, setEditablePrompt] = useState(originalPrompt || '');
+
+    useEffect(() => {
+        setEditablePrompt(originalPrompt || '');
+    }, [originalPrompt, isOpen]);
+    
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -767,11 +793,11 @@ const RegenerateDialog = ({
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <Label>Original Prompt</Label>
-                    <Textarea readOnly value={originalPrompt || 'No prompt available.'} className="h-48 font-mono text-xs bg-muted" />
+                    <Textarea value={editablePrompt} onChange={(e) => setEditablePrompt(e.target.value)} className="h-48 font-mono text-xs bg-muted" />
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={() => { onRegenerate(); onOpenChange(false); }}>
+                    <Button onClick={() => { onRegenerate(editablePrompt); onOpenChange(false); }}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Regenerate
                     </Button>
@@ -1320,14 +1346,19 @@ export default function ArtisanPage() {
                 onOpenChange={setIsImageChatOpen}
                 imageUrl={imageToChat?.url || null}
                 onImageUpdate={handleImageUpdate}
+                originalPrompt={finalPromptForCurrentVisual}
+                onRegenerate={(newPrompt) => {
+                    setIsImageChatOpen(false);
+                    handleGenerate(newPrompt);
+                }}
             />
 
             <RegenerateDialog
                 isOpen={isRegenerateOpen}
                 onOpenChange={setIsRegenerateOpen}
                 originalPrompt={finalPromptForCurrentVisual}
-                onRegenerate={() => {
-                    handleGenerate(finalPromptForCurrentVisual || creativePrompt);
+                onRegenerate={(newPrompt) => {
+                    handleGenerate(newPrompt);
                 }}
             />
 
