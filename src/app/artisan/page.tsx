@@ -39,6 +39,7 @@ import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ImageUpload } from '../offerings/_components/ImageUpload';
 import { getFormatsForChannel } from '@/lib/media-formats';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 type Profile = {
@@ -87,6 +88,7 @@ const PostPreview = ({
     handleContentChange,
     handleCarouselSlideChange,
     onImageEdit,
+    onRegenerateClick,
     onCurrentSlideChange,
 }: {
     profile: Profile,
@@ -101,6 +103,7 @@ const PostPreview = ({
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
     handleCarouselSlideChange: (index: number, newText: string) => void,
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
+    onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
@@ -142,7 +145,7 @@ const PostPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
     
-    const canEditImage = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl);
+    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl);
     const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.imageUrl : creative?.imageUrl;
 
 
@@ -227,143 +230,193 @@ const PostPreview = ({
 
     if (isStory) {
         return (
-            <>
-            <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
-                 <div className="absolute inset-0 bg-black">
-                    {renderVisualContent()}
-                </div>
-                
-                 {canEditImage && imageUrlToEdit && (
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        className="absolute top-16 right-4 h-10 w-10 rounded-full shadow-lg z-10 pointer-events-auto"
-                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                    >
-                        <Edit className="h-5 w-5" />
-                    </Button>
-                )}
-                
-                {/* Content Overlay */}
-                 <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
-                    {/* Header */}
-                    <div className="flex-shrink-0">
-                         <div className="flex items-center gap-1 mb-2">
-                             {[...Array(progressCount)].map((_, i) => (
-                                <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full">
-                                    <div className={cn("h-full rounded-full bg-white transition-all duration-500", i === current ? "w-full" : "w-0")}></div>
-                                </div>
-                             ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-bold">{postUserHandle}</span>
-                            <span className="text-xs text-white/70">1h</span>
-                             <MoreHorizontal className="ml-auto h-5 w-5 pointer-events-auto cursor-pointer" />
-                            <X className="h-5 w-5 pointer-events-auto cursor-pointer" />
-                        </div>
+            <TooltipProvider>
+                <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
+                    <div className="absolute inset-0 bg-black">
+                        {renderVisualContent()}
                     </div>
                     
-                    {/* Editable Text Area */}
-                    <div className="flex-1 flex items-center justify-center p-4">
-                       <Textarea
-                            value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
+                    {hasVisuals && imageUrlToEdit && (
+                        <div className="absolute top-16 right-4 flex flex-col gap-2 z-10 pointer-events-auto">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full shadow-lg"
+                                        onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                                    >
+                                        <Edit className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Retouch Image</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-10 w-10 rounded-full shadow-lg"
+                                        onClick={onRegenerateClick}
+                                    >
+                                        <RefreshCw className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Regenerate Image</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
+                    )}
+                    
+                    {/* Content Overlay */}
+                    <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
+                        {/* Header */}
+                        <div className="flex-shrink-0">
+                            <div className="flex items-center gap-1 mb-2">
+                                {[...Array(progressCount)].map((_, i) => (
+                                    <div key={i} className="flex-1 h-0.5 bg-white/30 rounded-full">
+                                        <div className={cn("h-full rounded-full bg-white transition-all duration-500", i === current ? "w-full" : "w-0")}></div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                    <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs font-bold">{postUserHandle}</span>
+                                <span className="text-xs text-white/70">1h</span>
+                                <MoreHorizontal className="ml-auto h-5 w-5 pointer-events-auto cursor-pointer" />
+                                <X className="h-5 w-5 pointer-events-auto cursor-pointer" />
+                            </div>
+                        </div>
+                        
+                        {/* Editable Text Area */}
+                        <div className="flex-1 flex items-center justify-center p-4">
+                        <Textarea
+                                value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
+                                onChange={(e) => {
+                                    if (currentSlideData) {
+                                        handleCarouselSlideChange(current, e.target.value)
+                                    } else {
+                                        handleContentChange('primary', e.target.value)
+                                    }
+                                }}
+                                className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
+                                placeholder="Your story text..."
+                            />
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto">
+                            <input
+                                type="text"
+                                placeholder="Send message"
+                                className="flex-1 bg-black/30 backdrop-blur-sm border border-white/40 rounded-full px-4 py-2 text-sm placeholder:text-white/70 focus:ring-1 focus:ring-white outline-none"
+                            />
+                            <Heart className="h-6 w-6 cursor-pointer" />
+                            <Send className="h-6 w-6 cursor-pointer" />
+                        </div>
+                    </div>
+                </div>
+            </TooltipProvider>
+        );
+    }
+
+    return (
+        <TooltipProvider>
+            <div className="relative">
+                <Card className="w-full max-w-md mx-auto">
+                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                        <Avatar>
+                            <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                            <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="grid gap-0.5">
+                            <span className="font-semibold">{postUser}</span>
+                            <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
+                            <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
+                                {renderVisualContent()}
+                            </div>
+                            {hasVisuals && imageUrlToEdit && (
+                                <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="secondary"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full shadow-lg"
+                                                onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left">
+                                            <p>Retouch Image</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="secondary"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full shadow-lg"
+                                                onClick={onRegenerateClick}
+                                            >
+                                                <RefreshCw className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left">
+                                            <p>Regenerate Image</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                        <div className="flex justify-between w-full">
+                            <div className="flex gap-4">
+                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            </div>
+                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                        <Textarea
+                            value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
                             onChange={(e) => {
-                                if (currentSlideData) {
+                                if (selectedCreativeType === 'carousel' && currentSlideData) {
                                     handleCarouselSlideChange(current, e.target.value)
                                 } else {
                                     handleContentChange('primary', e.target.value)
                                 }
                             }}
-                            className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
-                            placeholder="Your story text..."
+                            className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                            placeholder="Your post copy will appear here..."
                         />
-                    </div>
-                    
-                    {/* Footer */}
-                     <div className="flex-shrink-0 flex items-center gap-2 pointer-events-auto">
-                        <input
-                            type="text"
-                            placeholder="Send message"
-                            className="flex-1 bg-black/30 backdrop-blur-sm border border-white/40 rounded-full px-4 py-2 text-sm placeholder:text-white/70 focus:ring-1 focus:ring-white outline-none"
-                        />
-                         <Heart className="h-6 w-6 cursor-pointer" />
-                        <Send className="h-6 w-6 cursor-pointer" />
-                    </div>
-                </div>
-            </div>
-            </>
-        );
-    }
-
-    return (
-        <div className="relative">
-            <Card className="w-full max-w-md mx-auto">
-                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                    <Avatar>
-                        <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                        <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid gap-0.5">
-                        <span className="font-semibold">{postUser}</span>
-                        <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
-                        <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
-                            {renderVisualContent()}
-                        </div>
-                         {canEditImage && imageUrlToEdit && (
-                            <Button
-                                variant="secondary"
-                                size="icon"
-                                className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg z-10"
-                                onClick={() => onImageEdit(imageUrlToEdit, selectedCreativeType === 'carousel' ? current : undefined)}
-                            >
-                                <Edit className="h-4 w-4" />
-                            </Button>
+                        {secondaryLangName && editableContent?.secondary && (
+                            <>
+                                <Separator className="my-2"/>
+                                <Textarea
+                                    value={editableContent?.secondary || ''}
+                                    onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                    placeholder="Your secondary language post copy..."
+                                />
+                            </>
                         )}
-                    </div>
-                </CardContent>
-                <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                    <div className="flex justify-between w-full">
-                        <div className="flex gap-4">
-                            <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                            <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                            <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                        <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                    </div>
-                    <Textarea
-                        value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
-                        onChange={(e) => {
-                            if (selectedCreativeType === 'carousel' && currentSlideData) {
-                                handleCarouselSlideChange(current, e.target.value)
-                            } else {
-                                handleContentChange('primary', e.target.value)
-                            }
-                        }}
-                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                        placeholder="Your post copy will appear here..."
-                    />
-                    {secondaryLangName && editableContent?.secondary && (
-                        <>
-                            <Separator className="my-2"/>
-                            <Textarea
-                                value={editableContent?.secondary || ''}
-                                onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                placeholder="Your secondary language post copy..."
-                            />
-                        </>
-                    )}
-                </CardFooter>
-            </Card>
-        </div>
+                    </CardFooter>
+                </Card>
+            </div>
+        </TooltipProvider>
     );
 }
 
@@ -557,16 +610,12 @@ const ImageChatDialog = ({
     isOpen,
     onOpenChange,
     imageUrl,
-    onImageUpdate,
-    originalPrompt,
-    onRegenerate
+    onImageUpdate
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     imageUrl: string | null;
     onImageUpdate: (newImageUrl: string) => void;
-    originalPrompt: string | null;
-    onRegenerate: (prompt: string) => void;
 }) => {
     const [history, setHistory] = useState<Array<{ role: 'user' | 'bot'; content: string | { imageUrl: string } }>>([]);
     const [input, setInput] = useState('');
@@ -646,15 +695,6 @@ const ImageChatDialog = ({
                                 </>
                             )}
                         </div>
-                        {originalPrompt && (
-                             <div className="space-y-2 flex-shrink-0">
-                                <Label>Original Prompt</Label>
-                                <Textarea readOnly value={originalPrompt} className="h-24 font-mono text-xs" />
-                                <Button variant="secondary" size="sm" onClick={() => onRegenerate(originalPrompt)} disabled={isEditing}>
-                                    <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
-                                </Button>
-                             </div>
-                        )}
                     </div>
                      <div className="flex flex-col h-full bg-background rounded-lg border">
                         <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -704,6 +744,42 @@ const ImageChatDialog = ({
         </Dialog>
     );
 };
+
+const RegenerateDialog = ({
+    isOpen,
+    onOpenChange,
+    originalPrompt,
+    onRegenerate
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    originalPrompt: string | null;
+    onRegenerate: () => void;
+}) => {
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Regenerate Image</DialogTitle>
+                    <DialogDescription>
+                        Use the original prompt to generate a new variation of this image.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <Label>Original Prompt</Label>
+                    <Textarea readOnly value={originalPrompt || 'No prompt available.'} className="h-48 font-mono text-xs bg-muted" />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={() => { onRegenerate(); onOpenChange(false); }}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Regenerate
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 
 
@@ -762,6 +838,7 @@ export default function ArtisanPage() {
 
     const [isImageChatOpen, setIsImageChatOpen] = useState(false);
     const [imageToChat, setImageToChat] = useState<{url: string, slideIndex?: number} | null>(null);
+    const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
 
 
 
@@ -1052,8 +1129,17 @@ export default function ArtisanPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
         }
-        if (!editableContent && !creative && !editableHtml) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No content to save.' });
+        
+        const isTextOnly = ['text', 'landing_page'].includes(selectedCreativeType);
+        const hasVisuals = creative?.imageUrl || (creative?.carouselSlides?.every(s => s.imageUrl)) || creative?.videoUrl;
+        const hasContent = !!(editableContent?.primary || editableHtml);
+
+        if (!hasContent || (!isTextOnly && !hasVisuals)) {
+             toast({
+                variant: 'destructive',
+                title: 'Cannot Save',
+                description: 'Please generate both text and visuals before saving.',
+            });
             return;
         }
         
@@ -1134,10 +1220,10 @@ export default function ArtisanPage() {
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
     
-    const hasVisualContent = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl || creative?.landingPageHtml;
-    const isTextOnlyCreative = selectedCreativeType === 'text' || selectedCreativeType === 'landing_page';
-    const canSave = (isTextOnlyCreative && !!editableContent) || (!!editableContent && hasVisualContent);
-    const hasContentToSave = canSave;
+    const isTextOnlyCreative = ['text', 'landing_page'].includes(selectedCreativeType);
+    const hasVisualContent = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl;
+    const hasContentToSave = (isTextOnlyCreative && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisualContent);
+
 
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
@@ -1234,9 +1320,14 @@ export default function ArtisanPage() {
                 onOpenChange={setIsImageChatOpen}
                 imageUrl={imageToChat?.url || null}
                 onImageUpdate={handleImageUpdate}
+            />
+
+            <RegenerateDialog
+                isOpen={isRegenerateOpen}
+                onOpenChange={setIsRegenerateOpen}
                 originalPrompt={finalPromptForCurrentVisual}
-                onRegenerate={(prompt) => {
-                    handleGenerate(prompt);
+                onRegenerate={() => {
+                    handleGenerate(finalPromptForCurrentVisual || creativePrompt);
                 }}
             />
 
@@ -1270,7 +1361,6 @@ export default function ArtisanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <aside className="space-y-8">
                         <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
-                            {/* @functional: This component and its related features (creative controls) are considered functionally complete. */}
                              <AccordionItem value="creative-controls" className="border-none">
                                 <Card>
                                      <AccordionTrigger className="p-6">
@@ -1481,7 +1571,7 @@ export default function ArtisanPage() {
                                 </Card>
                             </AccordionItem>
                              {creative && (selectedCreativeType === 'image' || selectedCreativeType === 'carousel') && (
-                                 <AccordionItem value="refinement-controls" className="border-none">
+                                <AccordionItem value="refinement-controls" className="border-none">
                                     <Card>
                                         <AccordionTrigger className="p-6">
                                             <CardHeader className="p-0">
@@ -1549,6 +1639,7 @@ export default function ArtisanPage() {
                             handleContentChange={handleContentChange}
                             handleCarouselSlideChange={handleCarouselSlideChange}
                             onImageEdit={handleOpenImageChat}
+                            onRegenerateClick={() => setIsRegenerateOpen(true)}
                             onCurrentSlideChange={setCurrentCarouselSlide}
                         />
                     </main>
@@ -1557,8 +1648,4 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
-
-
-
-
 
