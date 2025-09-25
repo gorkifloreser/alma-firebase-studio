@@ -118,3 +118,8 @@ export const regenerateCarouselSlideFlow = ai.defineFlow(
     return { imageUrl: media.url, finalPrompt };
   }
 );
+
+
+export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
+    return regenerateCarouselSlideFlow(input);
+}
