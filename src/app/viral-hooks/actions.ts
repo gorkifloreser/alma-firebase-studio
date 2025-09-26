@@ -1,8 +1,11 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { rankViralHooks as rankViralHooksFlow } from '@/ai/flows/rank-viral-hooks-flow';
+import type { RankedHook } from '@/ai/flows/rank-viral-hooks-flow';
 
 export type ViralHook = {
     id: number;
@@ -116,4 +119,36 @@ export async function deleteViralHook(id: number): Promise<{ message: string }> 
 
     revalidatePath('/funnels');
     return { message: "Viral hook deleted successfully." };
+}
+
+/**
+ * Ranks all available viral hooks for the current user's brand.
+ */
+export async function rankViralHooks(): Promise<RankedHook[]> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("User not authenticated.");
+
+  const [
+    { data: brandHeart, error: brandHeartError },
+    { data: viralHooks, error: hooksError },
+  ] = await Promise.all([
+    supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
+    supabase.from('viral_hooks').select('*').or(`user_id.is.null,user_id.eq.${user.id}`)
+  ]);
+
+  if (brandHeartError || !brandHeart) {
+    throw new Error('Brand Heart not found. Please define your brand heart first.');
+  }
+  if (hooksError || !viralHooks) {
+    throw new Error('Could not fetch viral hooks to rank.');
+  }
+
+  try {
+    const result = await rankViralHooksFlow({ brandHeart, viralHooks });
+    return result.rankedHooks;
+  } catch (error: any) {
+    console.error('Error in rankViralHooks server action:', error);
+    throw new Error(`AI ranking failed: ${error.message}`);
+  }
 }

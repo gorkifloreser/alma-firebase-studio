@@ -11,3 +11,4 @@ import './flows/generate-image-description-flow';
 import './flows/generate-creative-prompt-flow';
 import './flows/edit-image-flow';
 import './flows/regenerate-carousel-slide-flow';
+import './flows/rank-viral-hooks-flow';
