@@ -35,24 +35,32 @@ import { CustomizePresetDialog } from './CustomizePresetDialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
+import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
+import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook } from '@/app/viral-hooks/actions';
 
 
 interface FunnelsClientPageProps {
     initialFunnels: Funnel[];
     initialFunnelPresets: FunnelPreset[];
+    initialViralHooks: ViralHook[];
     offeringIdFilter: string | undefined;
     actions: {
         getFunnels: typeof getFunnels;
         deleteFunnel: typeof deleteFunnel;
         getFunnelPresets: typeof getFunnelPresets;
         deleteCustomFunnelPreset: typeof deleteCustomFunnelPreset;
+        getViralHooks: typeof getViralHooks;
+        createViralHook: typeof createViralHook;
+        updateViralHook: typeof updateViralHook;
+        deleteViralHook: typeof deleteViralHook;
     }
 }
 
 export function FunnelsClientPage({
     initialFunnels,
     initialFunnelPresets,
+    initialViralHooks,
     offeringIdFilter,
     actions,
 }: FunnelsClientPageProps) {
@@ -227,7 +235,7 @@ export function FunnelsClientPage({
                 <div>
                     <h1 className="text-3xl font-bold">AI Strategist</h1>
                     <p className="text-muted-foreground">
-                        Create, manage, and orchestrate strategic marketing funnels.
+                        Create, manage, and orchestrate strategic marketing funnels and viral hooks.
                     </p>
                 </div>
                 <Button onClick={handleOpenCreateDialog} className="gap-2">
@@ -240,9 +248,21 @@ export function FunnelsClientPage({
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
+                        <TabsTrigger value="viral-hooks">Viral Hooks Library</TabsTrigger>
                         <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
                     </TabsList>
                 </div>
+                 <TabsContent value="viral-hooks" className="mt-6">
+                    <ViralHooksManager
+                        initialViralHooks={initialViralHooks}
+                        actions={{
+                            getViralHooks: actions.getViralHooks,
+                            createViralHook: actions.createViralHook,
+                            updateViralHook: actions.updateViralHook,
+                            deleteViralHook: actions.deleteViralHook,
+                        }}
+                    />
+                </TabsContent>
                 <TabsContent value="templates" className="mt-6">
                     <div className="space-y-8">
                         {customPresets.length > 0 && (
