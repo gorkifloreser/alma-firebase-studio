@@ -38,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
-import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks } from '@/app/viral-hooks/actions';
+import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
 
@@ -60,6 +60,9 @@ interface FunnelsClientPageProps {
         rankViralHooks: typeof rankViralHooks;
         getAdaptedHooks: typeof getAdaptedHooks;
         generateAndGetAdaptedHooks: typeof generateAndGetAdaptedHooks;
+        createAdaptedHook: typeof createAdaptedHook;
+        updateAdaptedHook: typeof updateAdaptedHook;
+        deleteAdaptedHook: typeof deleteAdaptedHook;
     }
 }
 
@@ -263,15 +266,7 @@ export function FunnelsClientPage({
                     <ViralHooksManager
                         initialViralHooks={initialViralHooks}
                         initialAdaptedHooks={initialAdaptedHooks}
-                        actions={{
-                            getViralHooks: actions.getViralHooks,
-                            createViralHook: actions.createViralHook,
-                            updateViralHook: actions.updateViralHook,
-                            deleteViralHook: actions.deleteViralHook,
-                            rankViralHooks: actions.rankViralHooks,
-                            getAdaptedHooks: actions.getAdaptedHooks,
-                            generateAndGetAdaptedHooks: actions.generateAndGetAdaptedHooks,
-                        }}
+                        actions={actions}
                     />
                 </TabsContent>
                 <TabsContent value="templates" className="mt-6">
