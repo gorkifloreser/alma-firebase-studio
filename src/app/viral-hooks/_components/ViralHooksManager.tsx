@@ -6,7 +6,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash, MoreVertical, Copy, User, Wand2, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles, BrainCircuit, Star } from 'lucide-react';
+import { PlusCircle, Edit, Trash, MoreVertical, Copy, User, Wand2, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles, BrainCircuit, Star, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -35,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 
-import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks } from '../actions';
+import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '../actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
 
@@ -56,6 +56,9 @@ interface ViralHooksManagerProps {
         rankViralHooks: typeof rankViralHooks;
         getAdaptedHooks: typeof getAdaptedHooks;
         generateAndGetAdaptedHooks: typeof generateAndGetAdaptedHooks;
+        createAdaptedHook: typeof createAdaptedHook;
+        updateAdaptedHook: typeof updateAdaptedHook;
+        deleteAdaptedHook: typeof deleteAdaptedHook;
     }
 }
 
@@ -158,11 +161,14 @@ function HookDialog({
 
 export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, actions }: ViralHooksManagerProps) {
     const [hooks, setHooks] = useState<RankedViralHook[]>(initialViralHooks);
-    const [adaptedHooks, setAdaptedHooks] = useState<AdaptedHook[] | null>(initialAdaptedHooks);
+    const [adaptedHooks, setAdaptedHooks] = useState<(AdaptedHook & { id: number })[] | null>(initialAdaptedHooks as (AdaptedHook & { id: number })[]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [hookToEdit, setHookToEdit] = useState<ViralHook | null>(null);
     const [isDeleting, startDeleting] = useTransition();
     const [isGenerating, startGenerating] = useTransition();
+    const [isSaving, startSaving] = useTransition();
+    const [dirtyAdaptedHooks, setDirtyAdaptedHooks] = useState<Set<number>>(new Set());
+
     const { toast } = useToast();
     
     const handleDataRefresh = async () => {
@@ -172,8 +178,9 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                 actions.getAdaptedHooks()
             ]);
             setHooks(freshHooks);
-            setAdaptedHooks(freshAdapted);
+            setAdaptedHooks(freshAdapted as (AdaptedHook & { id: number })[]);
             setIsDialogOpen(false);
+            setDirtyAdaptedHooks(new Set());
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error refreshing data', description: error.message });
         }
@@ -183,7 +190,7 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
         startGenerating(async () => {
             try {
                 const result = await actions.generateAndGetAdaptedHooks();
-                setAdaptedHooks(result);
+                setAdaptedHooks(result as (AdaptedHook & { id: number })[]);
                 toast({ title: "Strategy Generated!", description: "The AI has created and saved a custom Top 10 strategy for your brand."});
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
@@ -213,6 +220,45 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
             }
         });
     };
+
+    const handleAdaptedHookChange = (id: number, field: keyof AdaptedHook, value: string) => {
+        setAdaptedHooks(prev => 
+            prev!.map(h => h.id === id ? { ...h, [field]: value } : h)
+        );
+        setDirtyAdaptedHooks(prev => new Set(prev).add(id));
+    };
+
+    const handleSaveAdaptedHook = (id: number) => {
+        const hookToSave = adaptedHooks?.find(h => h.id === id);
+        if (!hookToSave) return;
+        
+        startSaving(async () => {
+            try {
+                await actions.updateAdaptedHook(id, hookToSave);
+                setDirtyAdaptedHooks(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(id);
+                    return newSet;
+                });
+                toast({ title: "Strategy Updated", description: "Your changes have been saved." });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+            }
+        });
+    };
+    
+     const handleDeleteAdaptedHook = (id: number) => {
+        startDeleting(async () => {
+            try {
+                await actions.deleteAdaptedHook(id);
+                setAdaptedHooks(prev => prev!.filter(h => h.id !== id));
+                toast({ title: 'Hook Deleted', description: 'The adapted hook has been removed from your strategy.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+            }
+        });
+    };
+
 
     const HookCard = ({ hook, isCustom }: { hook: RankedViralHook, isCustom: boolean }) => {
         const Icon = categoryIcons[hook.category] || categoryIcons['Default'];
@@ -270,30 +316,74 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
     };
 
 
-    const AdaptedHookCard = ({ hook }: { hook: AdaptedHook }) => (
+    const AdaptedHookCard = ({ hook }: { hook: AdaptedHook & { id: number } }) => (
         <Card className="bg-muted/30">
             <CardHeader>
-                <div className="flex justify-between items-center">
-                     <CardTitle className="text-lg">“{hook.adapted_hook}”</CardTitle>
-                     <div className="flex gap-2">
+                <div className="flex justify-between items-start">
+                    <Textarea 
+                        value={hook.adapted_hook}
+                        onChange={e => handleAdaptedHookChange(hook.id, 'adapted_hook', e.target.value)}
+                        className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1"
+                    />
+                    <div className="flex gap-2 flex-shrink-0 ml-4">
                         <Badge variant="outline" className="text-blue-600 border-blue-600/50">{hook.relevance_score}/10 Relevance</Badge>
                         <Badge variant="outline" className="text-green-600 border-green-600/50">{hook.virality_score}/10 Virality</Badge>
-                     </div>
+                    </div>
                 </div>
                  <CardDescription>Original: "{hook.original_text}"</CardDescription>
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible>
+                <Accordion type="single" collapsible defaultValue="strategy">
                     <AccordionItem value="strategy">
                         <AccordionTrigger>Storytelling Strategy</AccordionTrigger>
-                        <AccordionContent className="text-sm text-muted-foreground">{hook.strategy}</AccordionContent>
+                        <AccordionContent>
+                             <Textarea
+                                value={hook.strategy}
+                                onChange={e => handleAdaptedHookChange(hook.id, 'strategy', e.target.value)}
+                                className="text-sm text-muted-foreground w-full"
+                                rows={3}
+                            />
+                        </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="visual">
                         <AccordionTrigger>Visual Prompt</AccordionTrigger>
-                        <AccordionContent className="text-sm font-mono text-muted-foreground bg-secondary p-2 rounded-md">{hook.visual_prompt}</AccordionContent>
+                        <AccordionContent>
+                            <Textarea
+                                value={hook.visual_prompt}
+                                onChange={e => handleAdaptedHookChange(hook.id, 'visual_prompt', e.target.value)}
+                                className="text-sm font-mono text-muted-foreground bg-secondary w-full"
+                                rows={4}
+                            />
+                        </AccordionContent>
                     </AccordionItem>
                 </Accordion>
             </CardContent>
+             <CardFooter className="flex justify-end gap-2">
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                            <Trash className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this adapted hook?</AlertDialogTitle>
+                            <AlertDialogDescription>This will permanently remove this strategy from your list. This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteAdaptedHook(hook.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+                {dirtyAdaptedHooks.has(hook.id) && (
+                     <Button size="sm" onClick={() => handleSaveAdaptedHook(hook.id)} disabled={isSaving}>
+                        <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                )}
+            </CardFooter>
         </Card>
     );
 
@@ -316,8 +406,6 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                     </Button>
                 </div>
             </header>
-
-            {isGenerating && <div className="space-y-4"><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>}
             
             {(adaptedHooks && adaptedHooks.length > 0) && (
                 <div className="space-y-6">
@@ -326,10 +414,12 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                         Top 10 Hooks for Your Brand
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {adaptedHooks.map(hook => <AdaptedHookCard key={hook.original_id} hook={hook} />)}
+                        {adaptedHooks.map(hook => <AdaptedHookCard key={hook.id} hook={hook} />)}
                     </div>
                 </div>
             )}
+
+            {isGenerating && <div className="space-y-4"><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>}
             
             <Separator />
 

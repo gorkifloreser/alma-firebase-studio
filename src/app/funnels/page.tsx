@@ -1,11 +1,10 @@
 
-
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from './actions';
-import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks } from '../viral-hooks/actions';
+import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
@@ -45,6 +44,9 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                     rankViralHooks,
                     generateAndGetAdaptedHooks,
                     getAdaptedHooks,
+                    createAdaptedHook,
+                    updateAdaptedHook,
+                    deleteAdaptedHook,
                 }}
             />
         </DashboardLayout>

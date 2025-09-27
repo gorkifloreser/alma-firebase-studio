@@ -188,5 +188,77 @@ export async function getAdaptedHooks(): Promise<AdaptedHook[]> {
         return [];
     }
 
-    return data;
+    return data as unknown as AdaptedHook[];
+}
+
+
+/**
+ * Creates a new custom adapted hook for the current user.
+ */
+export async function createAdaptedHook(hookData: Omit<AdaptedHook, 'id'>): Promise<AdaptedHook> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { data, error } = await supabase
+        .from('adapted_viral_hooks')
+        .insert({ ...hookData, user_id: user.id })
+        .select()
+        .single();
+    
+    if (error) {
+        console.error("Error creating adapted hook:", error);
+        throw new Error("Could not create the adapted hook.");
+    }
+    
+    revalidatePath('/funnels');
+    return data as unknown as AdaptedHook;
+}
+
+/**
+ * Updates an adapted hook owned by the current user.
+ */
+export async function updateAdaptedHook(id: number, hookData: Partial<AdaptedHook>): Promise<AdaptedHook> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { data, error } = await supabase
+        .from('adapted_viral_hooks')
+        .update(hookData)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error updating adapted hook:", error);
+        throw new Error("Could not update the adapted hook.");
+    }
+
+    revalidatePath('/funnels');
+    return data as unknown as AdaptedHook;
+}
+
+/**
+ * Deletes an adapted hook owned by the current user.
+ */
+export async function deleteAdaptedHook(id: number): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { error } = await supabase
+        .from('adapted_viral_hooks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+    
+    if (error) {
+        console.error("Error deleting adapted hook:", error);
+        throw new Error("Could not delete the adapted hook.");
+    }
+    
+    revalidatePath('/funnels');
+    return { message: "Adapted hook deleted successfully." };
 }
