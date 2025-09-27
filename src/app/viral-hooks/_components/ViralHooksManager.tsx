@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -161,6 +160,93 @@ function HookDialog({
     )
 }
 
+const AdaptedHookCard = ({ 
+    hook,
+    dirtyAdaptedHooks,
+    isSaving,
+    isDeleting,
+    handleAdaptedHookChange,
+    handleSaveAdaptedHook,
+    handleDeleteAdaptedHook
+}: { 
+    hook: AdaptedHook & { id: number },
+    dirtyAdaptedHooks: Set<number>,
+    isSaving: boolean,
+    isDeleting: boolean,
+    handleAdaptedHookChange: (id: number, field: keyof AdaptedHook, value: string) => void;
+    handleSaveAdaptedHook: (id: number) => void;
+    handleDeleteAdaptedHook: (id: number) => void;
+}) => (
+    <Card className="bg-muted/30">
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <Textarea 
+                    value={hook.adapted_hook}
+                    onChange={e => handleAdaptedHookChange(hook.id, 'adapted_hook', e.target.value)}
+                    className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1"
+                />
+                <div className="flex gap-2 flex-shrink-0 ml-4">
+                    <Badge variant="outline" className="text-blue-600 border-blue-600/50">{hook.relevance_score}/10 Relevance</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-600/50">{hook.virality_score}/10 Virality</Badge>
+                </div>
+            </div>
+             <CardDescription>Original: "{hook.original_text}"</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Accordion type="single" collapsible defaultValue="strategy">
+                <AccordionItem value="strategy">
+                    <AccordionTrigger>Storytelling Strategy</AccordionTrigger>
+                    <AccordionContent>
+                         <Textarea
+                            value={hook.strategy}
+                            onChange={e => handleAdaptedHookChange(hook.id, 'strategy', e.target.value)}
+                            className="text-sm text-muted-foreground w-full"
+                            rows={3}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="visual">
+                    <AccordionTrigger>Visual Prompt</AccordionTrigger>
+                    <AccordionContent>
+                        <Textarea
+                            value={hook.visual_prompt}
+                            onChange={e => handleAdaptedHookChange(hook.id, 'visual_prompt', e.target.value)}
+                            className="text-sm font-mono text-muted-foreground bg-secondary w-full"
+                            rows={4}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </CardContent>
+         <CardFooter className="flex justify-end gap-2">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                        <Trash className="mr-2 h-4 w-4" /> Delete
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this adapted hook?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently remove this strategy from your list. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteAdaptedHook(hook.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {dirtyAdaptedHooks.has(hook.id) && (
+                 <Button size="sm" onClick={() => handleSaveAdaptedHook(hook.id)} disabled={isSaving}>
+                    <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+            )}
+        </CardFooter>
+    </Card>
+);
+
 export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, actions }: ViralHooksManagerProps) {
     const [hooks, setHooks] = useState<RankedViralHook[]>(initialViralHooks);
     const [adaptedHooks, setAdaptedHooks] = useState<(AdaptedHook & { id: number })[] | null>(initialAdaptedHooks as (AdaptedHook & { id: number })[]);
@@ -317,78 +403,6 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
         )
     };
 
-
-    const AdaptedHookCard = ({ hook }: { hook: AdaptedHook & { id: number } }) => (
-        <Card className="bg-muted/30">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <Textarea 
-                        value={hook.adapted_hook}
-                        onChange={e => handleAdaptedHookChange(hook.id, 'adapted_hook', e.target.value)}
-                        className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1"
-                    />
-                    <div className="flex gap-2 flex-shrink-0 ml-4">
-                        <Badge variant="outline" className="text-blue-600 border-blue-600/50">{hook.relevance_score}/10 Relevance</Badge>
-                        <Badge variant="outline" className="text-green-600 border-green-600/50">{hook.virality_score}/10 Virality</Badge>
-                    </div>
-                </div>
-                 <CardDescription>Original: "{hook.original_text}"</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Accordion type="single" collapsible defaultValue="strategy">
-                    <AccordionItem value="strategy">
-                        <AccordionTrigger>Storytelling Strategy</AccordionTrigger>
-                        <AccordionContent>
-                             <Textarea
-                                value={hook.strategy}
-                                onChange={e => handleAdaptedHookChange(hook.id, 'strategy', e.target.value)}
-                                className="text-sm text-muted-foreground w-full"
-                                rows={3}
-                            />
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="visual">
-                        <AccordionTrigger>Visual Prompt</AccordionTrigger>
-                        <AccordionContent>
-                            <Textarea
-                                value={hook.visual_prompt}
-                                onChange={e => handleAdaptedHookChange(hook.id, 'visual_prompt', e.target.value)}
-                                className="text-sm font-mono text-muted-foreground bg-secondary w-full"
-                                rows={4}
-                            />
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </CardContent>
-             <CardFooter className="flex justify-end gap-2">
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash className="mr-2 h-4 w-4" /> Delete
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this adapted hook?</AlertDialogTitle>
-                            <AlertDialogDescription>This will permanently remove this strategy from your list. This action cannot be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteAdaptedHook(hook.id)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting ? 'Deleting...' : 'Delete'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                {dirtyAdaptedHooks.has(hook.id) && (
-                     <Button size="sm" onClick={() => handleSaveAdaptedHook(hook.id)} disabled={isSaving}>
-                        <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                )}
-            </CardFooter>
-        </Card>
-    );
-
     return (
         <div className="space-y-8">
              <header className="flex items-center justify-between">
@@ -416,7 +430,18 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                         Top 10 Hooks for Your Brand
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {adaptedHooks.map(hook => <AdaptedHookCard key={hook.id} hook={hook} />)}
+                        {adaptedHooks.map(hook => 
+                            <AdaptedHookCard 
+                                key={hook.id} 
+                                hook={hook} 
+                                dirtyAdaptedHooks={dirtyAdaptedHooks}
+                                isSaving={isSaving}
+                                isDeleting={isDeleting}
+                                handleAdaptedHookChange={handleAdaptedHookChange}
+                                handleSaveAdaptedHook={handleSaveAdaptedHook}
+                                handleDeleteAdaptedHook={handleDeleteAdaptedHook}
+                            />
+                        )}
                     </div>
                 </div>
             )}
