@@ -38,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
-import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '@/app/viral-hooks/actions';
+import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '@/app/viral-hooks/actions';
 
 
 interface FunnelsClientPageProps {
