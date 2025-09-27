@@ -223,9 +223,13 @@ export async function updateAdaptedHook(id: number, hookData: Partial<AdaptedHoo
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
+    // Only allow updating the fields that should be editable
+    const { adapted_hook, strategy, visual_prompt } = hookData;
+    const updatePayload = { adapted_hook, strategy, visual_prompt };
+
     const { data, error } = await supabase
         .from('adapted_viral_hooks')
-        .update(hookData)
+        .update(updatePayload)
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
