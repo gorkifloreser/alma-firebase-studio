@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
 import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '../actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
@@ -177,7 +178,7 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
         startGenerating(async () => {
             try {
                 const result = await actions.getAdaptedHooks();
-                setTopAdaptedHooks(result);
+                setTopAdaptedHooks(result.topHooks);
                 toast({ title: "Strategy Generated!", description: "The AI has created a custom Top 10 strategy for your brand."});
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
