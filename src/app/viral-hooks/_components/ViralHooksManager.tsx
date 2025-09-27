@@ -7,7 +7,7 @@ import { useState, useTransition, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash, MoreVertical, Copy, User, Wand2, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles, BrainCircuit } from 'lucide-react';
+import { PlusCircle, Edit, Trash, MoreVertical, Copy, User, Wand2, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles, BrainCircuit, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -33,7 +33,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks } from '../actions';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '../actions';
+import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
+
 
 type RankedViralHook = ViralHook & {
     relevance_score?: number;
@@ -49,6 +53,7 @@ interface ViralHooksManagerProps {
         updateViralHook: typeof updateViralHook;
         deleteViralHook: typeof deleteViralHook;
         rankViralHooks: typeof rankViralHooks;
+        getAdaptedHooks: typeof getAdaptedHooks;
     }
 }
 
@@ -151,11 +156,11 @@ function HookDialog({
 
 export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksManagerProps) {
     const [hooks, setHooks] = useState<RankedViralHook[]>(initialViralHooks);
+    const [topAdaptedHooks, setTopAdaptedHooks] = useState<AdaptedHook[] | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [hookToEdit, setHookToEdit] = useState<ViralHook | null>(null);
     const [isDeleting, startDeleting] = useTransition();
-    const [isRanking, startRanking] = useTransition();
-    const [sortOrder, setSortOrder] = useState<'default' | 'relevance' | 'virality'>('default');
+    const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
 
     const handleDataRefresh = async () => {
@@ -168,41 +173,23 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
         }
     };
     
-    const handleRankHooks = () => {
-        startRanking(async () => {
+    const handleGenerateStrategy = () => {
+        startGenerating(async () => {
             try {
-                const ranked = await actions.rankViralHooks();
-                const rankedMap = new Map(ranked.map(h => [h.id, h]));
-                
-                setHooks(prevHooks => prevHooks.map(hook => {
-                    const rankedHook = rankedMap.get(hook.id);
-                    return rankedHook ? { ...hook, ...rankedHook } : hook;
-                }));
-
-                setSortOrder('relevance');
-                toast({ title: "Hooks Ranked!", description: "The AI has analyzed and ranked the hooks for your brand."});
+                const result = await actions.getAdaptedHooks();
+                setTopAdaptedHooks(result);
+                toast({ title: "Strategy Generated!", description: "The AI has created a custom Top 10 strategy for your brand."});
             } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Ranking Failed', description: error.message });
+                toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
             }
         });
     };
 
-    const sortedHooks = useMemo(() => {
-        const hooksToSort = [...hooks];
-        if (sortOrder === 'relevance') {
-            hooksToSort.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
-        } else if (sortOrder === 'virality') {
-            hooksToSort.sort((a, b) => (b.virality_score || 0) - (a.virality_score || 0));
-        }
-        return hooksToSort;
-    }, [hooks, sortOrder]);
-
-
     const { globalHooks, customHooks } = useMemo(() => {
-        const global = sortedHooks.filter(h => h.user_id === null);
-        const custom = sortedHooks.filter(h => h.user_id !== null);
+        const global = hooks.filter(h => h.user_id === null);
+        const custom = hooks.filter(h => h.user_id !== null);
         return { globalHooks: global, customHooks: custom };
-    }, [sortedHooks]);
+    }, [hooks]);
 
     const handleOpenDialog = (hook: ViralHook | null) => {
         setHookToEdit(hook);
@@ -220,19 +207,6 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
             }
         });
     };
-    
-    const RatingBadge = ({ score, label, colorClass }: { score?: number, label: string, colorClass: string }) => {
-        if (score === undefined) return null;
-        return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger>
-                        <Badge className={`${colorClass} text-white`}>{label}: {score}/10</Badge>
-                    </TooltipTrigger>
-                </Tooltip>
-            </TooltipProvider>
-        );
-    }
 
     const HookCard = ({ hook, isCustom }: { hook: RankedViralHook, isCustom: boolean }) => {
         const Icon = categoryIcons[hook.category] || categoryIcons['Default'];
@@ -248,19 +222,12 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
                 </CardHeader>
                 <CardContent className="flex-grow">
                     <p className="text-lg font-medium">“{hook.hook_text}”</p>
-                    {hook.justification && (
-                        <p className="text-xs text-muted-foreground mt-2 italic">AI: "{hook.justification}"</p>
-                    )}
                 </CardContent>
                 <CardFooter className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                        <RatingBadge score={hook.relevance_score} label="Relevance" colorClass="bg-blue-500" />
-                        <RatingBadge score={hook.virality_score} label="Virality" colorClass="bg-green-500" />
-                    </div>
                      {isCustom && (
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto">
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -297,18 +264,45 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
     };
 
 
+    const AdaptedHookCard = ({ hook }: { hook: AdaptedHook }) => (
+        <Card className="bg-muted/30">
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                     <CardTitle className="text-lg">“{hook.adapted_hook}”</CardTitle>
+                     <div className="flex gap-2">
+                        <Badge variant="outline" className="text-blue-600 border-blue-600/50">{hook.relevance_score}/10 Relevance</Badge>
+                        <Badge variant="outline" className="text-green-600 border-green-600/50">{hook.virality_score}/10 Virality</Badge>
+                     </div>
+                </div>
+                 <CardDescription>Original: "{hook.original_text}"</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Accordion type="single" collapsible>
+                    <AccordionItem value="strategy">
+                        <AccordionTrigger>Storytelling Strategy</AccordionTrigger>
+                        <AccordionContent className="text-sm text-muted-foreground">{hook.strategy}</AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="visual">
+                        <AccordionTrigger>Visual Prompt</AccordionTrigger>
+                        <AccordionContent className="text-sm font-mono text-muted-foreground bg-secondary p-2 rounded-md">{hook.visual_prompt}</AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="space-y-8">
              <header className="flex items-center justify-between">
                 <div className="max-w-2xl">
                     <h2 className="text-2xl font-bold">Viral Hooks Library</h2>
                     <p className="text-muted-foreground mt-1">
-                       Manage the hooks used by the AI to generate attention-grabbing content. Add your own or customize the global library.
+                       Manage the hooks used by the AI to generate attention-grabbing content and get a custom strategy for your brand.
                     </p>
                 </div>
                 <div className="flex gap-2">
-                     <Button onClick={handleRankHooks} variant="outline" className="gap-2" disabled={isRanking}>
-                        {isRanking ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Ranking...</> : <><BrainCircuit className="h-5 w-5"/> Rank with AI</>}
+                     <Button onClick={handleGenerateStrategy} variant="outline" className="gap-2" disabled={isGenerating}>
+                        {isGenerating ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Strategy</>}
                     </Button>
                     <Button onClick={() => handleOpenDialog(null)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
@@ -316,44 +310,43 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
                     </Button>
                 </div>
             </header>
-            
-            <div className="flex items-center gap-4">
-                <Label>Sort by:</Label>
-                <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as any)}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Sort order" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="default">Default</SelectItem>
-                        <SelectItem value="relevance">Brand Relevance</SelectItem>
-                        <SelectItem value="virality">Virality Potential</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-            
-             {isRanking && <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
 
-            {!isRanking && (
-                 <>
-                     <div>
-                         <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Hooks</h3>
-                         {customHooks.length > 0 ? (
-                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {customHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={true} />)}
-                            </div>
-                         ) : (
-                            <p className="text-muted-foreground text-center py-8">You haven't created any custom hooks yet.</p>
-                         )}
+            {isGenerating && <div className="space-y-4"><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>}
+            
+            {topAdaptedHooks && (
+                <div className="space-y-6">
+                    <h3 className="text-2xl font-bold flex items-center gap-2">
+                        <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
+                        Top 10 Hooks for Your Brand
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {topAdaptedHooks.map(hook => <AdaptedHookCard key={hook.original_id} hook={hook} />)}
                     </div>
-
-                     <div>
-                        <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Hooks</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {globalHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={false} />)}
-                        </div>
-                    </div>
-                </>
+                </div>
             )}
+            
+            <Separator />
+
+             <>
+                 <div>
+                     <h3 className="text-xl font-semibold mb-4 border-b pb-2">Your Custom Hooks</h3>
+                     {customHooks.length > 0 ? (
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {customHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={true} />)}
+                        </div>
+                     ) : (
+                        <p className="text-muted-foreground text-center py-8">You haven't created any custom hooks yet.</p>
+                     )}
+                </div>
+
+                 <div>
+                    <h3 className="text-xl font-semibold mb-4 border-b pb-2">Global Hooks</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {globalHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={false} />)}
+                    </div>
+                </div>
+            </>
+
 
             <HookDialog
                 isOpen={isDialogOpen}

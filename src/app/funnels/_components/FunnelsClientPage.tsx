@@ -6,6 +6,7 @@
 
 'use client';
 
+import * as React from 'react';
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -37,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
-import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks } from '@/app/viral-hooks/actions';
+import type { ViralHook, getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '@/app/viral-hooks/actions';
 
 
 interface FunnelsClientPageProps {
@@ -55,6 +56,7 @@ interface FunnelsClientPageProps {
         updateViralHook: typeof updateViralHook;
         deleteViralHook: typeof deleteViralHook;
         rankViralHooks: typeof rankViralHooks;
+        getAdaptedHooks: typeof getAdaptedHooks;
     }
 }
 
@@ -262,6 +264,7 @@ export function FunnelsClientPage({
                             updateViralHook: actions.updateViralHook,
                             deleteViralHook: actions.deleteViralHook,
                             rankViralHooks: actions.rankViralHooks,
+                            getAdaptedHooks: actions.getAdaptedHooks,
                         }}
                     />
                 </TabsContent>
@@ -288,7 +291,7 @@ export function FunnelsClientPage({
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {funnels.map(funnel => (
-                                    <Card key={funnel.id} className="flex flex-col">
+                                    <Card key={funnel.id} className="flex flex-col group">
                                         <CardHeader>
                                             <div className="flex items-start justify-between">
                                                 <div>
@@ -356,9 +359,9 @@ export function FunnelsClientPage({
                             </div>
                         </>
                     ) : (
-                        <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                        <div className="text-center py-16 border-2 border-dashed rounded-lg col-span-full">
                             <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="mt-4 text-xl font-semibold">No Strategies Yet</h3>
+                            <h3 className="text-xl font-semibold">No Strategies Yet</h3>
                             <p className="text-muted-foreground mt-2">
                                 Click 'Create Strategy' to generate your first one from a template.
                             </p>

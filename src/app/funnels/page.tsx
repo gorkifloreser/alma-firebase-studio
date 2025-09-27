@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from './actions';
-import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks } from '../viral-hooks/actions';
+import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
@@ -41,6 +41,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                     updateViralHook,
                     deleteViralHook,
                     rankViralHooks,
+                    getAdaptedHooks,
                 }}
             />
         </DashboardLayout>

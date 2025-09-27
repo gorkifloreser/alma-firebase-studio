@@ -5,7 +5,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { rankViralHooks as rankViralHooksFlow } from '@/ai/flows/rank-viral-hooks-flow';
+import { adaptViralHooks as adaptViralHooksFlow } from '@/ai/flows/adapt-viral-hooks-flow';
+import { getBrandHeart } from '@/app/brand-heart/actions';
 import type { RankedHook } from '@/ai/flows/rank-viral-hooks-flow';
+import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
 export type ViralHook = {
     id: number;
@@ -150,5 +153,18 @@ export async function rankViralHooks(): Promise<RankedHook[]> {
   } catch (error: any) {
     console.error('Error in rankViralHooks server action:', error);
     throw new Error(`AI ranking failed: ${error.message}`);
+  }
+}
+
+/**
+ * Gets the top 10 adapted viral hooks for the user's brand.
+ */
+export async function getAdaptedHooks(): Promise<AdaptedHook[]> {
+   try {
+    const result = await adaptViralHooksFlow();
+    return result.topHooks;
+  } catch (error: any) {
+    console.error('Error in getAdaptedHooks server action:', error);
+    throw new Error(`AI adaptation failed: ${error.message}`);
   }
 }

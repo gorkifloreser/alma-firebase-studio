@@ -1,3 +1,4 @@
+
 // Flows will be imported for their side effects in this file.
 import './flows/translate-flow';
 import './flows/rag-flow';
@@ -12,3 +13,4 @@ import './flows/generate-creative-prompt-flow';
 import './flows/edit-image-flow';
 import './flows/regenerate-carousel-slide-flow';
 import './flows/rank-viral-hooks-flow';
+import './flows/adapt-viral-hooks-flow';
