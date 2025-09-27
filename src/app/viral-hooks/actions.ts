@@ -1,11 +1,10 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { rankViralHooks as rankViralHooksFlow } from '@/ai/flows/rank-viral-hooks-flow';
-import { adaptViralHooks as adaptViralHooksFlow } from '@/ai/flows/adapt-viral-hooks-flow';
+import { adaptAndSaveViralHooks as adaptAndSaveViralHooksFlow } from '@/ai/flows/adapt-viral-hooks-flow';
 import { getBrandHeart } from '@/app/brand-heart/actions';
 import type { RankedHook } from '@/ai/flows/rank-viral-hooks-flow';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
@@ -157,14 +156,37 @@ export async function rankViralHooks(): Promise<RankedHook[]> {
 }
 
 /**
- * Gets the top 10 adapted viral hooks for the user's brand.
+ * Generates and saves the top 10 adapted hooks, then returns them.
  */
-export async function getAdaptedHooks(): Promise<AdaptedHook[]> {
+export async function generateAndGetAdaptedHooks(): Promise<AdaptedHook[]> {
    try {
-    const result = await adaptViralHooksFlow();
+    const result = await adaptAndSaveViralHooksFlow();
     return result.topHooks;
   } catch (error: any) {
-    console.error('Error in getAdaptedHooks server action:', error);
-    throw new Error(`AI adaptation failed: ${error.message}`);
+    console.error('Error in adaptAndSaveViralHooks server action:', error);
+    throw new Error(`AI adaptation and saving failed: ${error.message}`);
   }
+}
+
+/**
+ * Fetches the user's already-saved adapted hooks from the database.
+ */
+export async function getAdaptedHooks(): Promise<AdaptedHook[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+        .from('adapted_viral_hooks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('virality_score', { ascending: false })
+        .order('relevance_score', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching adapted hooks:', error);
+        return [];
+    }
+
+    return data;
 }

@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import * as React from 'react';
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 
-import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '../actions';
+import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks } from '../actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
 
@@ -48,6 +47,7 @@ type RankedViralHook = ViralHook & {
 
 interface ViralHooksManagerProps {
     initialViralHooks: ViralHook[];
+    initialAdaptedHooks: AdaptedHook[];
     actions: {
         getViralHooks: typeof getViralHooks;
         createViralHook: typeof createViralHook;
@@ -55,6 +55,7 @@ interface ViralHooksManagerProps {
         deleteViralHook: typeof deleteViralHook;
         rankViralHooks: typeof rankViralHooks;
         getAdaptedHooks: typeof getAdaptedHooks;
+        generateAndGetAdaptedHooks: typeof generateAndGetAdaptedHooks;
     }
 }
 
@@ -94,7 +95,7 @@ function HookDialog({
         } else {
             setFormData({ category: hookCategories[0], hook_text: '' });
         }
-    }, [hookToEdit]);
+    }, [hookToEdit, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string, name?: string) => {
         if (typeof e === 'string') {
@@ -155,31 +156,35 @@ function HookDialog({
     )
 }
 
-export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksManagerProps) {
+export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, actions }: ViralHooksManagerProps) {
     const [hooks, setHooks] = useState<RankedViralHook[]>(initialViralHooks);
-    const [topAdaptedHooks, setTopAdaptedHooks] = useState<AdaptedHook[] | null>(null);
+    const [adaptedHooks, setAdaptedHooks] = useState<AdaptedHook[] | null>(initialAdaptedHooks);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [hookToEdit, setHookToEdit] = useState<ViralHook | null>(null);
     const [isDeleting, startDeleting] = useTransition();
     const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
-
+    
     const handleDataRefresh = async () => {
         try {
-            const freshHooks = await actions.getViralHooks();
+            const [freshHooks, freshAdapted] = await Promise.all([
+                actions.getViralHooks(),
+                actions.getAdaptedHooks()
+            ]);
             setHooks(freshHooks);
+            setAdaptedHooks(freshAdapted);
             setIsDialogOpen(false);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error refreshing hooks', description: error.message });
+            toast({ variant: 'destructive', title: 'Error refreshing data', description: error.message });
         }
     };
     
     const handleGenerateStrategy = () => {
         startGenerating(async () => {
             try {
-                const result = await actions.getAdaptedHooks();
-                setTopAdaptedHooks(result);
-                toast({ title: "Strategy Generated!", description: "The AI has created a custom Top 10 strategy for your brand."});
+                const result = await actions.generateAndGetAdaptedHooks();
+                setAdaptedHooks(result);
+                toast({ title: "Strategy Generated!", description: "The AI has created and saved a custom Top 10 strategy for your brand."});
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
             }
@@ -314,14 +319,14 @@ export function ViralHooksManager({ initialViralHooks, actions }: ViralHooksMana
 
             {isGenerating && <div className="space-y-4"><Skeleton className="h-48 w-full" /><Skeleton className="h-48 w-full" /></div>}
             
-            {topAdaptedHooks && (
+            {(adaptedHooks && adaptedHooks.length > 0) && (
                 <div className="space-y-6">
                     <h3 className="text-2xl font-bold flex items-center gap-2">
                         <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
                         Top 10 Hooks for Your Brand
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {topAdaptedHooks.map(hook => <AdaptedHookCard key={hook.original_id} hook={hook} />)}
+                        {adaptedHooks.map(hook => <AdaptedHookCard key={hook.original_id} hook={hook} />)}
                     </div>
                 </div>
             )}

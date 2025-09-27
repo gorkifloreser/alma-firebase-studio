@@ -7,8 +7,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getBrandHeart } from '@/app/brand-heart/actions';
+import { getBrandHeart, BrandHeartData } from '@/app/brand-heart/actions';
 import { getViralHooks, type ViralHook } from '@/app/viral-hooks/actions';
+import { createClient } from '@/lib/supabase/server';
 
 
 const AdaptedHookSchema = z.object({
@@ -76,27 +77,58 @@ Your final output must be a JSON object containing a 'topHooks' array with exact
 });
 
 
-export const adaptViralHooks = ai.defineFlow(
+export const adaptAndSaveViralHooks = ai.defineFlow(
   {
-    name: 'adaptViralHooksFlow',
+    name: 'adaptAndSaveViralHooksFlow',
     outputSchema: AdaptHooksOutputSchema,
   },
   async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const [brandHeart, viralHooks] = await Promise.all([
+        getBrandHeart(),
+        getViralHooks(),
+    ]);
     
-    const brandHeart = await getBrandHeart();
     if (!brandHeart) {
         throw new Error('Brand Heart not found. Please define your brand heart first.');
     }
-    
-    const viralHooks = await getViralHooks();
      if (!viralHooks || viralHooks.length === 0) {
         throw new Error('No viral hooks found in the database.');
     }
     
     const { output } = await adapterPrompt({ brandHeart, viralHooks });
 
-    if (!output) {
+    if (!output?.topHooks) {
       throw new Error('The AI model did not return a response for the adaptation task.');
+    }
+
+    // Delete old adapted hooks for the user
+    const { error: deleteError } = await supabase
+        .from('adapted_viral_hooks')
+        .delete()
+        .eq('user_id', user.id);
+    
+    if (deleteError) {
+        console.error("Error deleting old adapted hooks:", deleteError);
+        throw new Error("Could not clear old strategy data.");
+    }
+    
+    // Save the new ones
+    const recordsToInsert = output.topHooks.map(hook => ({
+        ...hook,
+        user_id: user.id
+    }));
+
+    const { error: insertError } = await supabase
+        .from('adapted_viral_hooks')
+        .insert(recordsToInsert);
+
+    if (insertError) {
+        console.error("Error inserting new adapted hooks:", insertError);
+        throw new Error("Could not save the new AI-generated strategy.");
     }
 
     return output;

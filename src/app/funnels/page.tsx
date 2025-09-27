@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from './actions';
-import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks } from '../viral-hooks/actions';
+import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
@@ -17,10 +17,11 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
 
     const offeringIdFilter = typeof searchParams.offeringId === 'string' ? searchParams.offeringId : undefined;
 
-    const [funnels, funnelPresets, viralHooks] = await Promise.all([
+    const [funnels, funnelPresets, viralHooks, adaptedHooks] = await Promise.all([
         getFunnels(offeringIdFilter),
         getFunnelPresets(),
         getViralHooks(),
+        getAdaptedHooks(),
     ]);
 
     return (
@@ -30,6 +31,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                 initialFunnels={funnels}
                 initialFunnelPresets={funnelPresets}
                 initialViralHooks={viralHooks}
+                initialAdaptedHooks={adaptedHooks}
                 offeringIdFilter={offeringIdFilter}
                 actions={{
                     getFunnels,
@@ -41,6 +43,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                     updateViralHook,
                     deleteViralHook,
                     rankViralHooks,
+                    generateAndGetAdaptedHooks,
                     getAdaptedHooks,
                 }}
             />
