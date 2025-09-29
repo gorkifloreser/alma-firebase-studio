@@ -1,11 +1,18 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 
+export type ContactInfo = {
+  id: string; // Add a UUID for React keys
+  type: 'phone' | 'whatsapp' | 'email' | 'url' | 'location';
+  label: string;
+  value: string;
+  address?: string;
+  google_maps_url?: string;
+};
 
 /**
  * Defines the shape of the Brand Heart data, including the nested structure
@@ -24,6 +31,7 @@ export type BrandHeartData = {
   values: { primary: string | null; secondary: string | null };
   tone_of_voice: { primary: string | null; secondary: string | null };
   visual_identity: { primary: string | null; secondary: string | null };
+  contact_info: ContactInfo[];
 };
 
 /**
@@ -51,6 +59,14 @@ export async function getBrandHeart(): Promise<BrandHeartData | null> {
         return null;
     }
     
+    // Add client-side IDs to contact_info if they don't exist
+    if (data && data.contact_info) {
+        data.contact_info = data.contact_info.map((contact: any) => ({
+            ...contact,
+            id: contact.id || crypto.randomUUID(),
+        }));
+    }
+
     return data;
 }
 
@@ -100,6 +116,9 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
       }
   }
 
+  const contactInfoString = formData.get('contact_info') as string;
+  const contactInfo = JSON.parse(contactInfoString || '[]');
+
 
   const payload = {
     user_id: user.id,
@@ -129,6 +148,7 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
       primary: (formData.get('visual_identity_primary') as string) || null,
       secondary: (formData.get('visual_identity_secondary') as string) || null,
     },
+    contact_info: contactInfo,
     updated_at: new Date().toISOString(),
   };
 

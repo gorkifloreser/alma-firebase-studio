@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -10,15 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
-import type { getProfile, getBrandHeart, updateBrandHeart, translateText } from '../actions';
+import { MultiContactEditor } from './MultiContactEditor';
+import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo } from '../actions';
 
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
-type BrandHeartData = NonNullable<Awaited<ReturnType<typeof getBrandHeart>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
 
-type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity'>;
+type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info'>;
 
 export interface BrandHeartFormProps {
     profile: Profile | null;
@@ -37,6 +36,7 @@ const initialBrandHeartState: BrandHeartData = {
     values: { primary: '', secondary: '' },
     tone_of_voice: { primary: '', secondary: '' },
     visual_identity: { primary: '', secondary: '' },
+    contact_info: [],
 };
 
 
@@ -71,6 +71,10 @@ export function BrandHeartForm({
     const handleBrandNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setBrandHeart(prev => ({ ...prev, brand_name: e.target.value }));
     };
+
+    const handleContactInfoChange = (newContactInfo: ContactInfo[]) => {
+        setBrandHeart(prev => ({ ...prev, contact_info: newContactInfo }));
+    };
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -78,7 +82,9 @@ export function BrandHeartForm({
         
         formData.append('brand_name', brandHeart.brand_name || '');
         (Object.keys(brandHeart) as Array<keyof BrandHeartData>).forEach(key => {
-            if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
+            if (key === 'contact_info') {
+                 formData.append('contact_info', JSON.stringify(brandHeart.contact_info));
+            } else if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
                 const bilingualValue = brandHeart[key] as { primary: string | null, secondary: string | null };
                 if (bilingualValue.primary) {
                     formData.append(`${key}_primary`, bilingualValue.primary);
@@ -223,6 +229,11 @@ export function BrandHeartForm({
                 isTranslating={isTranslating} 
                 languageNames={languageNames} 
                 handleAutoTranslate={handleAutoTranslate}
+            />
+
+            <MultiContactEditor 
+                contacts={brandHeart.contact_info}
+                onContactsChange={handleContactInfoChange}
             />
             
             <Button type="submit" disabled={isSaving}>
