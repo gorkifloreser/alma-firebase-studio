@@ -89,14 +89,14 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader className="mb-4 pr-12 relative">
                     <DialogTitle className="text-3xl">{title.primary}</DialogTitle>
-                    <DialogDescription className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-1 text-muted-foreground">
                         <Badge variant="secondary">{type}</Badge>
                          {price && currency && (
                             <span className="text-lg font-semibold text-foreground">
                                 {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: currency }).format(price)}
                             </span>
                         )}
-                    </DialogDescription>
+                    </div>
                     <div className="absolute top-0 right-0">
                          <Button variant="ghost" size="icon" onClick={onEdit}>
                             <Edit className="h-5 w-5" />
