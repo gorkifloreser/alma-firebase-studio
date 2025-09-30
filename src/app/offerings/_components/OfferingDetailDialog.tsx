@@ -133,39 +133,41 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                         <>
                             <Separator />
                             <div className="space-y-4">
-                                <h3 className="font-semibold text-lg">Schedules & Pricing</h3>
+                                 <h3 className="font-semibold text-lg">{type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
                                 <div className="space-y-4">
                                     {offering_schedules.map((schedule, index) => (
                                         <div key={schedule.id || index} className="p-4 border rounded-lg space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                                                {schedule.event_date && (
-                                                    <DetailItem icon={Calendar} label="Date & Time">
-                                                        {format(parseISO(schedule.event_date as unknown as string), 'PPP p')}
-                                                    </DetailItem>
-                                                )}
-                                                {schedule.duration && (
-                                                    <DetailItem icon={Clock} label="Duration">
-                                                        {schedule.duration}
-                                                    </DetailItem>
-                                                )}
-                                                {schedule.frequency && (
-                                                    <DetailItem icon={Repeat} label="Frequency">
-                                                        {schedule.frequency}
-                                                    </DetailItem>
-                                                )}
-                                                {schedule.location_label && (
-                                                    <DetailItem icon={MapPin} label="Location">
-                                                         <div className="flex flex-col">
-                                                            <span>{schedule.location_label}</span>
-                                                            {schedule.location_address && <span className="text-sm text-muted-foreground">{schedule.location_address}</span>}
-                                                            {schedule.location_gmaps_url && <a href={schedule.location_gmaps_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">View on Map</a>}
-                                                        </div>
-                                                    </DetailItem>
-                                                )}
-                                            </div>
+                                            {type === 'Event' && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+                                                    {schedule.event_date && (
+                                                        <DetailItem icon={Calendar} label="Date & Time">
+                                                            {format(parseISO(schedule.event_date as unknown as string), 'PPP p')}
+                                                        </DetailItem>
+                                                    )}
+                                                    {schedule.duration && (
+                                                        <DetailItem icon={Clock} label="Duration">
+                                                            {schedule.duration}
+                                                        </DetailItem>
+                                                    )}
+                                                    {schedule.frequency && (
+                                                        <DetailItem icon={Repeat} label="Frequency">
+                                                            {schedule.frequency}
+                                                        </DetailItem>
+                                                    )}
+                                                    {schedule.location_label && (
+                                                        <DetailItem icon={MapPin} label="Location">
+                                                            <div className="flex flex-col">
+                                                                <span>{schedule.location_label}</span>
+                                                                {schedule.location_address && <span className="text-sm text-muted-foreground">{schedule.location_address}</span>}
+                                                                {schedule.location_gmaps_url && <a href={schedule.location_gmaps_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">View on Map</a>}
+                                                            </div>
+                                                        </DetailItem>
+                                                    )}
+                                                </div>
+                                            )}
                                             {schedule.prices && schedule.prices.length > 0 && (
                                                 <>
-                                                    <Separator />
+                                                    {type === 'Event' && <Separator />}
                                                     <div className="space-y-2">
                                                         <h4 className="text-sm font-semibold">Pricing Tiers</h4>
                                                         {schedule.prices.map((price, pIndex) => (

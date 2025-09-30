@@ -309,8 +309,10 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                // Ensure all schedules have the latest frequency
-                const finalSchedules = offering.offering_schedules.map(s => ({...s, frequency: eventFrequency}));
+                // Ensure all schedules have the latest frequency, if it's an event
+                const finalSchedules = offering.type === 'Event' 
+                    ? offering.offering_schedules.map(s => ({...s, frequency: eventFrequency}))
+                    : offering.offering_schedules;
 
                 const payload = {
                     title: offering.title,
@@ -423,9 +425,17 @@ export function CreateOfferingDialog({
         });
     };
 
-    const scheduleButtonText = offering.type === 'Product' || offering.type === 'Service'
-        ? 'Add Price Point'
-        : 'Add Schedule / Price Point';
+    const getButtonText = () => {
+        if (offering.type === 'Product' || offering.type === 'Service') {
+            return 'Add Price Point';
+        }
+        if (offering.type === 'Event' && eventFrequency === 'One-time') {
+            return 'Add One-time Date';
+        }
+        return 'Add Schedule'; // Should not be visible in recurring event mode
+    };
+
+    const shouldShowAddScheduleButton = (offering.type !== 'Event' && offering.offering_schedules.length === 0) || (offering.type === 'Event' && eventFrequency === 'One-time');
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -511,8 +521,7 @@ export function CreateOfferingDialog({
                             </div>
                         )}
                         
-                        {/* Render one schedule form for recurring, multiple for one-time */}
-                        {(eventFrequency === 'One-time' || offering.type !== 'Event' ? offering.offering_schedules : offering.offering_schedules.slice(0, 1)).map((schedule, scheduleIndex) => (
+                        {(offering.type === 'Event' && eventFrequency !== 'One-time' ? offering.offering_schedules.slice(0, 1) : offering.offering_schedules).map((schedule, scheduleIndex) => (
                             <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
                                {offering.offering_schedules.length > 1 && (
                                 <Button
@@ -549,7 +558,7 @@ export function CreateOfferingDialog({
                                     </>
                                 )}
 
-                                 <h4 className="font-medium text-md">Pricing for this Schedule</h4>
+                                 <h4 className="font-medium text-md">Pricing for this {offering.type === 'Event' ? 'Schedule' : 'Item'}</h4>
                                  <div className="space-y-3">
                                     {schedule.prices.map((price, priceIndex) => (
                                         <div key={price.id || priceIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-3 border bg-secondary/30 rounded-md relative">
@@ -569,14 +578,14 @@ export function CreateOfferingDialog({
                                         </div>
                                     ))}
                                     <Button type="button" variant="outline" size="sm" onClick={() => addPriceToSchedule(scheduleIndex)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Price Point
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Price Tier
                                     </Button>
                                  </div>
                             </div>
                         ))}
-                        {(eventFrequency === 'One-time' || (offering.type !== 'Event' && offering.offering_schedules.length === 0)) && (
+                         {shouldShowAddScheduleButton && (
                             <Button type="button" variant="outline" onClick={addSchedule}>
-                               {scheduleButtonText}
+                               <PlusCircle className="mr-2 h-4 w-4" /> {getButtonText()}
                             </Button>
                         )}
                     </div>
