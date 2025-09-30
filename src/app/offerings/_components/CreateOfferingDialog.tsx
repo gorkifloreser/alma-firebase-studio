@@ -392,6 +392,8 @@ export function CreateOfferingDialog({
         });
     };
 
+    const scheduleButtonText = offering.type === 'Event' ? 'Add Schedule / Price Point' : 'Add Price Point';
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[800px]">
@@ -458,7 +460,7 @@ export function CreateOfferingDialog({
                     />
                     
                     <div className="space-y-4">
-                        <h3 className="font-semibold text-lg">Schedules & Pricing</h3>
+                        <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
                         {offering.offering_schedules.map((schedule, index) => {
                             const eventTime = schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, 'HH:mm') : '';
                             return (
@@ -517,7 +519,9 @@ export function CreateOfferingDialog({
                                 </div>
                             )
                         })}
-                        <Button type="button" variant="outline" onClick={addSchedule}>Add Schedule / Price Point</Button>
+                        <Button type="button" variant="outline" onClick={addSchedule}>
+                            {scheduleButtonText}
+                        </Button>
                     </div>
 
                     <div className="space-y-2">
