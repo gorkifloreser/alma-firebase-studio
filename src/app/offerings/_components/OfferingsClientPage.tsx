@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
 import {
@@ -77,6 +77,19 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
 
     const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
+        setIsCreateDialogOpen(true);
+    };
+    
+    const handleOpenCloneDialog = (offering: OfferingWithMedia) => {
+        const clonedOffering = {
+            ...offering,
+            id: undefined, // Remove ID to indicate it's a new offering
+            title: {
+                ...offering.title,
+                primary: `${offering.title.primary} (Copy)`
+            }
+        };
+        setOfferingToEdit(clonedOffering as OfferingWithMedia);
         setIsCreateDialogOpen(true);
     };
 
@@ -185,6 +198,11 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                                                     <Edit className="mr-2 h-4 w-4" />
                                                     <span>Edit</span>
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleOpenCloneDialog(offering)}>
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    <span>Clone</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
