@@ -83,3 +83,16 @@ When a build or test fails, a precise and methodical "surgical" debugging approa
 *   **ALWAYS** write a new test that captures the bug before fixing it. This ensures the bug will not be reintroduced.
 *   **ALWAYS** write code to get the best performance on the website, no actions should take more than 2 seconds.
 *   If a fix is not found after three focused attempts, **HALT** and escalate with a summary of the actions taken.
+
+## 5. Social Media & Third-Party API Integration Workflow
+
+* Authentication MUST use OAuth 2.0: The authentication flow must be server-driven. The client redirects the user to the provider, but the exchange of the temporary code for an access token (which requires a client_secret) MUST happen in a server-side Next.js API Route (e.g., /app/api/auth/callback/meta).
+
+* Tokens MUST be Stored Securely: All user-specific credentials (access tokens, refresh tokens) for third-party services must be stored in a dedicated social_connections table in Supabase. These tokens MUST be encrypted in the database before storage, preferably using pgsodium. RLS policies must ensure a user can only ever access their own connection data.
+
+* API Calls MUST be Server-Side in Next.js: Direct API calls from the Next.js client to a social media platform are strictly forbidden. All interactions (e.g., publishing a post, fetching data) MUST be encapsulated directly within Next.js Server Actions. The Server Action will retrieve the user's encrypted token from Supabase, decrypt it (if necessary), and then make the API call to the third-party service.
+
+* Frontend Invocation MUST use Server Actions: The Next.js frontend will use Server Actions to execute all backend logic. The Server Action is the final destination for the logic, handling everything from data validation to fetching tokens and calling the external API.
+
+API Keys MUST be in Next.js Environment Variables: All platform-specific credentials (App ID, App Secret, API Key) must be stored as environment variables for the Next.js runtime. For production, these MUST be managed in the hosting provider's secret management system (e.g., Vercel Environment Variables, AWS Secrets Manager). They must never be hardcoded or exposed to the client.
+
