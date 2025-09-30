@@ -62,7 +62,7 @@ const DetailItem = ({ icon, label, children }: { icon: React.ElementType, label:
             </div>
         </div>
     );
-}
+};
 
 export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, onEdit, onDelete, isDeleting }: OfferingDetailDialogProps) {
     if (!offering) return null;
@@ -107,6 +107,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                         </div>
                                     </CarouselItem>
                                 ))}
+                             </CarouselContent>
                              {offering_media.length > 1 && (
                                 <>
                                     <CarouselPrevious className="left-2" />
