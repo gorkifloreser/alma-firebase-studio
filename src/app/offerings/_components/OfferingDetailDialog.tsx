@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import {
@@ -134,16 +133,11 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                         <>
                             <Separator />
                             <div className="space-y-4">
-                                <h3 className="font-semibold text-lg">Schedules & Details</h3>
+                                <h3 className="font-semibold text-lg">Schedules & Pricing</h3>
                                 <div className="space-y-4">
                                     {offering_schedules.map((schedule, index) => (
                                         <div key={schedule.id || index} className="p-4 border rounded-lg space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
-                                                {schedule.price && schedule.currency && (
-                                                    <DetailItem icon={Tag} label={schedule.price_label || 'Price'}>
-                                                        {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: schedule.currency }).format(schedule.price)}
-                                                    </DetailItem>
-                                                )}
                                                 {schedule.event_date && (
                                                     <DetailItem icon={Calendar} label="Date & Time">
                                                         {format(parseISO(schedule.event_date as unknown as string), 'PPP p')}
@@ -169,6 +163,20 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                                     </DetailItem>
                                                 )}
                                             </div>
+                                            {schedule.prices && schedule.prices.length > 0 && (
+                                                <>
+                                                    <Separator />
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-sm font-semibold">Pricing Tiers</h4>
+                                                        {schedule.prices.map((price, pIndex) => (
+                                                            <div key={pIndex} className="flex justify-between items-center text-sm">
+                                                                <span>{price.label || 'Standard Price'}</span>
+                                                                <span className="font-semibold">{new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: price.currency || 'USD' }).format(price.price || 0)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

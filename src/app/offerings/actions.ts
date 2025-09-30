@@ -18,18 +18,23 @@ export type OfferingMedia = {
     description: string | null;
 }
 
+export type PricePoint = {
+    id?: string;
+    price: number | null;
+    label: string | null;
+    currency: string | null;
+};
+
 export type OfferingSchedule = {
     id?: string; // Optional because it won't exist for new schedules
     offering_id?: string;
-    price: number | null;
-    price_label: string | null;
-    currency: string | null;
     event_date: Date | null;
     duration: string | null;
     frequency: string | null;
     location_label: string | null;
     location_address: string | null;
     location_gmaps_url: string | null;
+    prices: PricePoint[];
 };
 
 export type Offering = {
@@ -92,15 +97,13 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
             ),
             offering_schedules (
                 id,
-                price,
-                price_label,
-                currency,
                 event_date,
                 duration,
                 frequency,
                 location_label,
                 location_address,
-                location_gmaps_url
+                location_gmaps_url,
+                prices
             )
         `)
         .eq('user_id', user.id)
@@ -148,6 +151,7 @@ export async function createOffering(offeringData: UpsertOfferingPayload): Promi
   if (schedules && schedules.length > 0) {
     const schedulesPayload = schedules.map(s => ({
         ...s,
+        prices: s.prices,
         offering_id: newOffering.id,
         user_id: user.id,
         event_date: s.event_date ? s.event_date.toISOString() : null,
@@ -206,9 +210,10 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     // Update existing schedules
     if (schedulesToUpdate.length > 0) {
         const updates = schedulesToUpdate.map(async (s) => {
+            const { id, ...updateData } = s;
             return supabase
                 .from('offering_schedules')
-                .update({ ...s, event_date: s.event_date?.toISOString() })
+                .update({ ...updateData, event_date: s.event_date?.toISOString(), prices: s.prices })
                 .eq('id', s.id!);
         });
         const results = await Promise.all(updates);
@@ -224,6 +229,7 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
             offering_id: offeringId,
             user_id: user.id,
             event_date: s.event_date?.toISOString(),
+            prices: s.prices,
         }));
         const { error: createError } = await supabase.from('offering_schedules').insert(creates);
         if (createError) console.error("Error creating new schedules:", createError.message);
@@ -387,7 +393,6 @@ export async function deleteOfferingMedia(mediaId: string): Promise<{ message: s
  * Invokes the Genkit translation flow.
  * @param {TranslateInput} input The text and target language for translation.
  * @returns {Promise<TranslateOutput>} The translated text.
- * @throws {Error} If the translation fails.
  */
 export async function translateText(input: TranslateInput): Promise<TranslateOutput> {
     try {
@@ -413,7 +418,6 @@ export async function generateContentForOffering(input: GenerateContentInput): P
  * Invokes the Genkit creative generation flow.
  * @param {GenerateCreativeInput} input The offering ID and creative type.
  * @returns {Promise<GenerateCreativeOutput>} The generated creative.
- * @throws {Error} If the generation fails.
  */
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
     try {
