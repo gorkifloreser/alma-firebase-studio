@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useEffect, useCallback } from 'react';
+import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -383,7 +383,7 @@ export function CreateOfferingDialog({
         }
     };
 
-    const handleGenerateDraft = () => {
+    const handleGenerateDraft = async () => {
         if (!aiPrompt.trim()) {
             toast({ variant: 'destructive', title: 'Please provide a prompt for the AI.' });
             return;
@@ -430,27 +430,30 @@ export function CreateOfferingDialog({
             return 'Add Price Point';
         }
         if (offering.type === 'Event') {
-            return 'Add Schedule / Price Point';
+            return 'Add Recurring Date';
         }
         return 'Add Schedule';
     };
 
     const schedulesToShow = useMemo(() => {
-        // For recurring events, show only the first schedule form.
+        // If it's a recurring event, we only show the first schedule entry as a template
         if (offering.type === 'Event' && eventFrequency !== 'One-time') {
             return offering.offering_schedules.length > 0 ? [offering.offering_schedules[0]] : [];
         }
-        // For all other cases, show all schedules.
+        // For one-time events, products, and services, show all entries.
         return offering.offering_schedules;
     }, [offering.type, eventFrequency, offering.offering_schedules]);
 
+    // Effect to manage the initial state of the schedule form
+    useEffect(() => {
+        if (!isOpen) return;
 
-     useEffect(() => {
-        if (isOpen && (offering.type === 'Product' || offering.type === 'Service' || (offering.type === 'Event' && eventFrequency !== 'One-time')) && offering.offering_schedules.length === 0) {
+        // If it's a recurring event and there's no schedule, add one.
+        if (offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length === 0) {
             addSchedule();
         }
-         // For one-time events, if there are no schedules, add one to show the form.
-        if (isOpen && offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length === 0) {
+        // If it's a product or service and there are no schedules, add one.
+        if ((offering.type === 'Product' || offering.type === 'Service') && offering.offering_schedules.length === 0) {
             addSchedule();
         }
     }, [isOpen, offering.type, offering.offering_schedules.length, eventFrequency]);
@@ -530,7 +533,7 @@ export function CreateOfferingDialog({
                                 <Select value={eventFrequency} onValueChange={setEventFrequency}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="One-time">One-time (separate, unique events)</SelectItem>
+                                        <SelectItem value="One-time">One-time</SelectItem>
                                         <SelectItem value="Weekly">Recurring (Weekly)</SelectItem>
                                         <SelectItem value="Bi-weekly">Recurring (Bi-weekly)</SelectItem>
                                         <SelectItem value="Monthly">Recurring (Monthly)</SelectItem>
@@ -542,7 +545,7 @@ export function CreateOfferingDialog({
                         
                         {schedulesToShow.map((schedule, scheduleIndex) => (
                             <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
-                               {offering.offering_schedules.length > 1 && (offering.type !== 'Event' || eventFrequency === 'One-time') && (
+                               {offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length > 1 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -602,11 +605,11 @@ export function CreateOfferingDialog({
                                  </div>
                             </div>
                         ))}
-                        {offering.type === 'Event' && eventFrequency === 'One-time' ? null : (
-                             <Button type="button" variant="outline" onClick={addSchedule}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> {getButtonText()}
+                        {offering.type === 'Event' && eventFrequency === 'One-time' &&
+                            <Button type="button" variant="outline" onClick={addSchedule}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add a One-time Date
                             </Button>
-                        )}
+                        }
                     </div>
 
                     <div className="space-y-2">
