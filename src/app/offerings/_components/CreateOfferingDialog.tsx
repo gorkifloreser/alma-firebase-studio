@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect, useCallback } from 'react';
@@ -363,24 +362,28 @@ export function CreateOfferingDialog({
         startGenerating(async () => {
             try {
                 const result = await generateOfferingDraft({ prompt: aiPrompt });
+                
+                const newSchedules = (result.schedules || []).map(s => ({
+                    price: s.price ?? null,
+                    price_label: s.price_label ?? '',
+                    currency: s.currency ?? 'USD',
+                    event_date: s.event_date && isValid(parseISO(s.event_date)) ? parseISO(s.event_date) : null,
+                    duration: s.duration ?? null,
+                    frequency: s.frequency ?? (result.type === 'Event' ? 'One-time' : null),
+                    location_label: null,
+                    location_address: null,
+                    location_gmaps_url: null,
+                }));
+
                 setOffering(prev => ({
                     ...prev,
                     title: { ...prev.title, primary: result.title },
                     description: { ...prev.description, primary: result.description },
                     type: result.type,
                     contextual_notes: result.contextual_notes ?? prev.contextual_notes,
-                    offering_schedules: result.price ? [{
-                        price: result.price,
-                        price_label: '',
-                        currency: result.currency ?? 'USD',
-                        event_date: result.event_date && isValid(parseISO(result.event_date)) ? parseISO(result.event_date) : null,
-                        duration: result.duration,
-                        frequency: result.frequency ?? 'One-time',
-                        location_label: null,
-                        location_address: null,
-                        location_gmaps_url: null
-                    }] : prev.offering_schedules,
+                    offering_schedules: newSchedules,
                 }));
+
                 toast({ title: 'Draft Generated!', description: 'Review the generated content below.'});
             } catch (error: any) {
                 toast({

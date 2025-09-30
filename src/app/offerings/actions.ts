@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -479,18 +478,6 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
  */
 export async function generateOfferingDraft(input: GenerateOfferingDraftInput): Promise<OfferingDraft> {
     const result = await genOfferingDraftFlow(input);
-    
-    // Add the price_label field to schedules if a price exists
-    if (result.price) {
-        (result as any).schedules = [{
-            price: result.price,
-            price_label: null,
-            currency: result.currency,
-            event_date: result.event_date,
-            duration: result.duration,
-            frequency: result.frequency,
-        }];
-    }
     return result;
 }
 
