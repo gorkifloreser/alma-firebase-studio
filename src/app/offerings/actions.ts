@@ -8,7 +8,8 @@ import { generateContentForOffering as genContentFlow, GenerateContentInput, Gen
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
 import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionInput, GenerateImageDescriptionOutput } from '@/ai/flows/generate-image-description-flow';
-import { generateValueContent as genValueContentFlow, GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-flow';
+import { generateValueContent as genValueContentFlow } from '@/ai/flows/generate-value-content-flow';
+import type { GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-types';
 
 export type OfferingMedia = {
     id: string;
