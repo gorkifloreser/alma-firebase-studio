@@ -424,18 +424,21 @@ export function CreateOfferingDialog({
             }
         });
     };
-
+    
     const getButtonText = () => {
         if (offering.type === 'Product' || offering.type === 'Service') {
             return 'Add Price Point';
         }
-        if (offering.type === 'Event' && eventFrequency === 'One-time') {
+        if (offering.type === 'Event') {
             return 'Add One-time Date';
         }
-        return 'Add Schedule'; // Should not be visible in recurring event mode
+        return 'Add Schedule';
     };
 
-    const shouldShowAddScheduleButton = (offering.type !== 'Event' && offering.offering_schedules.length === 0) || (offering.type === 'Event' && eventFrequency === 'One-time');
+    const shouldShowAddScheduleButton = offering.type !== 'Event' || eventFrequency === 'One-time';
+    const schedulesToShow = offering.type === 'Event' && eventFrequency !== 'One-time'
+        ? offering.offering_schedules.slice(0, 1)
+        : offering.offering_schedules;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -521,9 +524,9 @@ export function CreateOfferingDialog({
                             </div>
                         )}
                         
-                        {(offering.type === 'Event' && eventFrequency !== 'One-time' ? offering.offering_schedules.slice(0, 1) : offering.offering_schedules).map((schedule, scheduleIndex) => (
+                        {schedulesToShow.map((schedule, scheduleIndex) => (
                             <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
-                               {offering.offering_schedules.length > 1 && (
+                               {offering.offering_schedules.length > 1 && shouldShowAddScheduleButton && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -623,3 +626,5 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
+
+    
