@@ -157,7 +157,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                         </>
                     )}
                     
-                     {offering_schedules && offering_schedules.length > 0 && (
+                     {offering_schedules && offering_schedules.length > 0 && offering.type !== 'Value Content' && (
                         <>
                             <Separator />
                             <div className="space-y-4">

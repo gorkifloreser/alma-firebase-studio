@@ -53,7 +53,7 @@ export type Offering = {
     updated_at: string;
     title: { primary: string | null; secondary: string | null };
     description: { primary: string | null; secondary: string | null };
-    type: 'Product' | 'Service' | 'Event';
+    type: 'Product' | 'Service' | 'Event' | 'Value Content';
     contextual_notes: string | null;
     value_content: ValueContentBlock[] | null;
     offering_schedules: OfferingSchedule[];
@@ -130,7 +130,7 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
 type UpsertOfferingPayload = {
     title: { primary: string | null; secondary: string | null };
     description: { primary: string | null; secondary: string | null };
-    type: 'Product' | 'Service' | 'Event';
+    type: 'Product' | 'Service' | 'Event' | 'Value Content';
     contextual_notes: string | null;
     value_content: ValueContentBlock[] | null;
     schedules?: OfferingSchedule[]; // Optional for create/update logic

@@ -495,12 +495,10 @@ export function CreateOfferingDialog({
         if (!isOpen) return;
         if ((offering.type === 'Product' || offering.type === 'Service') && offering.offering_schedules.length === 0) {
             addSchedule();
-        } else if (offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length === 0) {
-            addSchedule();
-        } else if (offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length === 0) {
-            addSchedule();
+        } else if (offering.type === 'Event' && offering.offering_schedules.length === 0) {
+             addSchedule();
         }
-    }, [isOpen, offering.type, offering.offering_schedules.length, eventFrequency]);
+    }, [isOpen, offering.type, offering.offering_schedules.length]);
 
 
     return (
@@ -542,6 +540,7 @@ export function CreateOfferingDialog({
                                 <SelectItem value="Service">Service</SelectItem>
                                 <SelectItem value="Product">Product</SelectItem>
                                 <SelectItem value="Event">Event</SelectItem>
+                                <SelectItem value="Value Content">Value Content</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -619,93 +618,95 @@ export function CreateOfferingDialog({
 
                     <Separator />
                     
-                    <div className="space-y-4">
-                        <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
+                    {offering.type !== 'Value Content' && (
+                        <div className="space-y-4">
+                            <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
 
-                        {offering.type === 'Event' && (
-                            <div className="space-y-2 max-w-xs">
-                                <Label>Frequency</Label>
-                                <Select value={eventFrequency} onValueChange={setEventFrequency}>
-                                    <SelectTrigger><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="One-time">One-time</SelectItem>
-                                        <SelectItem value="Weekly">Recurring (Weekly)</SelectItem>
-                                        <SelectItem value="Bi-weekly">Recurring (Bi-weekly)</SelectItem>
-                                        <SelectItem value="Monthly">Recurring (Monthly)</SelectItem>
-                                        <SelectItem value="Yearly">Recurring (Yearly)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        
-                        {schedulesToShow.map((schedule, scheduleIndex) => (
-                            <div key={schedule.id || scheduleIndex} className="p-4 border rounded-lg space-y-4 relative">
-                               {offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length > 1 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-2 right-2 h-7 w-7"
-                                    onClick={() => removeSchedule(scheduleIndex)}
-                                >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                               )}
-                                
-                                {offering.type === 'Event' && (
-                                    <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Event Date</Label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !schedule.event_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={schedule.event_date ?? undefined} onSelect={(date) => handleScheduleChange(scheduleIndex, 'event_date', date as Date)} initialFocus /></PopoverContent>
-                                                </Popover>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Event Time</Label>
-                                                <Select value={schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, 'HH:mm') : ''} onValueChange={v => handleScheduleChange(scheduleIndex, 'event_time', v)}><SelectTrigger className="pl-10"><div className="absolute left-3 top-1/2 -translate-y-1/2"><Clock className="h-4 w-4 text-muted-foreground" /></div><SelectValue placeholder="Select time" /></SelectTrigger><SelectContent>{timeOptions.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Duration</Label>
-                                                <Input value={schedule.duration || ''} onChange={e => handleScheduleChange(scheduleIndex, 'duration', e.target.value)} placeholder="e.g., 2 hours" />
-                                            </div>
-                                        </div>
-                                        <Separator/>
-                                    </>
-                                )}
-
-                                 <h4 className="font-medium text-md">{offering.type === 'Service' ? 'Pricing Tiers' : 'Pricing'}</h4>
-                                 <div className="space-y-3">
-                                    {schedule.prices.map((price, priceIndex) => (
-                                        <div key={price.id || priceIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-3 border bg-secondary/30 rounded-md relative">
-                                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePriceFromSchedule(scheduleIndex, priceIndex)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            <div className="space-y-2">
-                                                <Label>Price Label (Optional)</Label>
-                                                <Input value={price.label || ''} onChange={e => handlePriceChange(scheduleIndex, priceIndex, 'label', e.target.value)} placeholder="e.g., Community Price" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Price</Label>
-                                                <Input type="number" value={price.price ?? ''} onChange={e => handlePriceChange(scheduleIndex, priceIndex, 'price', e.target.value === '' ? null : Number(e.target.value))} placeholder="e.g., 99.99" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Currency</Label>
-                                                <Select value={price.currency || 'USD'} onValueChange={v => handlePriceChange(scheduleIndex, priceIndex, 'currency', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{currencies.map(c=><SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}</SelectContent></Select>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => addPriceToSchedule(scheduleIndex)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Price Tier
+                            {offering.type === 'Event' && (
+                                <div className="space-y-2 max-w-xs">
+                                    <Label>Frequency</Label>
+                                    <Select value={eventFrequency} onValueChange={setEventFrequency}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="One-time">One-time</SelectItem>
+                                            <SelectItem value="Weekly">Recurring (Weekly)</SelectItem>
+                                            <SelectItem value="Bi-weekly">Recurring (Bi-weekly)</SelectItem>
+                                            <SelectItem value="Monthly">Recurring (Monthly)</SelectItem>
+                                            <SelectItem value="Yearly">Recurring (Yearly)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            
+                            {schedulesToShow.map((schedule, scheduleIndex) => (
+                                <div key={schedule.id || scheduleIndex} className="p-4 border rounded-lg space-y-4 relative">
+                                {offering.type === 'Event' && eventFrequency === 'One-time' && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute top-2 right-2 h-7 w-7"
+                                        onClick={() => removeSchedule(scheduleIndex)}
+                                    >
+                                        <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
-                                 </div>
-                            </div>
-                        ))}
-                        {offering.type === 'Event' && eventFrequency === 'One-time' &&
-                            <Button type="button" variant="outline" onClick={addSchedule}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add a One-time Date
-                            </Button>
-                        }
-                    </div>
+                                )}
+                                    
+                                    {offering.type === 'Event' && (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Event Date</Label>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !schedule.event_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={schedule.event_date ?? undefined} onSelect={(date) => handleScheduleChange(scheduleIndex, 'event_date', date as Date)} initialFocus /></PopoverContent>
+                                                    </Popover>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Event Time</Label>
+                                                    <Select value={schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, 'HH:mm') : ''} onValueChange={v => handleScheduleChange(scheduleIndex, 'event_time', v)}><SelectTrigger className="pl-10"><div className="absolute left-3 top-1/2 -translate-y-1/2"><Clock className="h-4 w-4 text-muted-foreground" /></div><SelectValue placeholder="Select time" /></SelectTrigger><SelectContent>{timeOptions.map(o=><SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Duration</Label>
+                                                    <Input value={schedule.duration || ''} onChange={e => handleScheduleChange(scheduleIndex, 'duration', e.target.value)} placeholder="e.g., 2 hours" />
+                                                </div>
+                                            </div>
+                                            <Separator/>
+                                        </>
+                                    )}
+
+                                    <h4 className="font-medium text-md">{offering.type === 'Service' ? 'Pricing Tiers' : 'Pricing'}</h4>
+                                    <div className="space-y-3">
+                                        {schedule.prices.map((price, priceIndex) => (
+                                            <div key={price.id || priceIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-3 border bg-secondary/30 rounded-md relative">
+                                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePriceFromSchedule(scheduleIndex, priceIndex)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                <div className="space-y-2">
+                                                    <Label>Price Label (Optional)</Label>
+                                                    <Input value={price.label || ''} onChange={e => handlePriceChange(scheduleIndex, priceIndex, 'label', e.target.value)} placeholder="e.g., Community Price" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Price</Label>
+                                                    <Input type="number" value={price.price ?? ''} onChange={e => handlePriceChange(scheduleIndex, priceIndex, 'price', e.target.value === '' ? null : Number(e.target.value))} placeholder="e.g., 99.99" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Currency</Label>
+                                                    <Select value={price.currency || 'USD'} onValueChange={v => handlePriceChange(scheduleIndex, priceIndex, 'currency', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{currencies.map(c=><SelectItem key={c.value} value={c.value}>{c.value}</SelectItem>)}</SelectContent></Select>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <Button type="button" variant="outline" size="sm" onClick={() => addPriceToSchedule(scheduleIndex)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Add Price Tier
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                            {offering.type === 'Event' && eventFrequency === 'One-time' && (
+                                <Button type="button" variant="outline" onClick={addSchedule}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add a One-time Date
+                                </Button>
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                          <Label className="text-md font-semibold">Offering Media</Label>
