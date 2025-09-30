@@ -80,7 +80,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader className="mb-4 pr-12 relative">
                     <DialogTitle className="text-3xl">{title.primary}</DialogTitle>
-                    <div className="flex items-center gap-2 pt-1 text-muted-foreground">
+                    <div className="flex items-center gap-2 pt-1">
                         <Badge variant="secondary">{type}</Badge>
                     </div>
                     <div className="absolute top-0 right-0">
@@ -167,12 +167,12 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                             )}
                                             {schedule.prices && schedule.prices.length > 0 && (
                                                 <>
-                                                    {type === 'Event' && <Separator />}
-                                                    <div className="space-y-2">
-                                                        <h4 className="text-sm font-semibold">Pricing Tiers</h4>
+                                                    {(type === 'Event' || type === 'Product') && <Separator />}
+                                                     <div className="space-y-2">
+                                                        {type === 'Service' && <h4 className="text-sm font-semibold">Pricing Tiers</h4>}
                                                         {schedule.prices.map((price, pIndex) => (
-                                                            <div key={pIndex} className="flex justify-between items-center text-sm">
-                                                                <span>{price.label || 'Standard Price'}</span>
+                                                            <div key={pIndex} className="flex justify-between items-center text-sm p-3 rounded-md bg-muted/50">
+                                                                <span>{price.label || (type === 'Product' ? 'Standard' : 'Standard Price')}</span>
                                                                 <span className="font-semibold">{new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: price.currency || 'USD' }).format(price.price || 0)}</span>
                                                             </div>
                                                         ))}
