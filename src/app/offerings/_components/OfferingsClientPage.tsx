@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
 import {
@@ -31,10 +31,12 @@ import {
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import type { Offering, OfferingMedia } from '../actions';
+import type { Offering, OfferingMedia, ValueContentBlock } from '../actions';
 import type { getOfferings, deleteOffering } from '../actions';
 import type { Funnel } from '@/app/funnels/actions';
 import type { getProfile } from '@/app/settings/actions';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -129,6 +131,8 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         return offering.type.toLowerCase() === activeTab;
     });
 
+    const offeringsWithValueContent = offerings.filter(offering => offering.value_content && offering.value_content.length > 0);
+
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header className="flex items-center justify-between">
@@ -149,100 +153,135 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                         <TabsTrigger value="service">Services</TabsTrigger>
                         <TabsTrigger value="product">Products</TabsTrigger>
                         <TabsTrigger value="event">Events</TabsTrigger>
+                        <TabsTrigger value="value-content">Value Content</TabsTrigger>
                     </TabsList>
                 </div>
                  <div className="mt-6">
-                    {filteredOfferings.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredOfferings.map(offering => (
-                                <Card key={offering.id} className="flex flex-col group">
-                                     <div className="overflow-hidden cursor-pointer" onClick={() => handleOpenDetailDialog(offering)}>
-                                        <CardHeader className="p-0">
-                                            <div className="relative aspect-video">
-                                                {offering.offering_media && offering.offering_media.length > 0 ? (
-                                                    <Image 
-                                                        src={offering.offering_media[0].media_url}
-                                                        alt={offering.title.primary || 'Offering image'}
-                                                        fill
-                                                        className="object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-                                                        <ShoppingBag className="w-12 h-12 text-muted-foreground" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <CardTitle className="group-hover:text-primary transition-colors">{offering.title.primary}</CardTitle>
-                                            <CardDescription>{offering.type}</CardDescription>
-                                            <p className="text-muted-foreground line-clamp-3 mt-2">
-                                                {offering.description.primary}
-                                            </p>
-                                        </CardContent>
-                                    </div>
-                                    <CardFooter className="mt-auto pt-0 flex justify-end items-center">
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleManageFunnels(offering.id)}>
-                                                    <GitBranch className="mr-2 h-4 w-4" />
-                                                    <span>Manage Funnels</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    <span>Edit</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleOpenCloneDialog(offering)}>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    <span>Clone</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            <span>Delete</span>
-                                                        </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete your
-                                                                offering and all associated media.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleOfferingDelete(offering.id!)}
-                                                                disabled={isDeleting}
-                                                                className="bg-destructive hover:bg-destructive/90"
-                                                            >
-                                                                {isDeleting ? 'Deleting...' : 'Delete'}
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </CardFooter>
+                    <TabsContent value={activeTab} className="mt-0">
+                        {filteredOfferings.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredOfferings.map(offering => (
+                                    <Card key={offering.id} className="flex flex-col group">
+                                         <div className="overflow-hidden cursor-pointer" onClick={() => handleOpenDetailDialog(offering)}>
+                                            <CardHeader className="p-0">
+                                                <div className="relative aspect-video">
+                                                    {offering.offering_media && offering.offering_media.length > 0 ? (
+                                                        <Image 
+                                                            src={offering.offering_media[0].media_url}
+                                                            alt={offering.title.primary || 'Offering image'}
+                                                            fill
+                                                            className="object-cover rounded-t-lg transition-transform duration-300 group-hover:scale-105"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-secondary rounded-t-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+                                                            <ShoppingBag className="w-12 h-12 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="pt-6">
+                                                <CardTitle className="group-hover:text-primary transition-colors">{offering.title.primary}</CardTitle>
+                                                <CardDescription>{offering.type}</CardDescription>
+                                                <p className="text-muted-foreground line-clamp-3 mt-2">
+                                                    {offering.description.primary}
+                                                </p>
+                                            </CardContent>
+                                        </div>
+                                        <CardFooter className="mt-auto pt-0 flex justify-end items-center">
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onSelect={() => handleManageFunnels(offering.id)}>
+                                                        <GitBranch className="mr-2 h-4 w-4" />
+                                                        <span>Manage Funnels</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(offering)}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        <span>Edit</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleOpenCloneDialog(offering)}>
+                                                        <Copy className="mr-2 h-4 w-4" />
+                                                        <span>Clone</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This action cannot be undone. This will permanently delete your
+                                                                    offering and all associated media.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleOfferingDelete(offering.id!)}
+                                                                    disabled={isDeleting}
+                                                                    className="bg-destructive hover:bg-destructive/90"
+                                                                >
+                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center py-16 border-2 border-dashed rounded-lg col-span-full">
+                                <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="text-xl font-semibold mt-4">No {activeTab !== 'all' ? activeTab : ''} Offerings Found</h3>
+                                <p className="text-muted-foreground mt-2">Click "New Offering" to add one.</p>
+                            </div>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="value-content" className="mt-0 space-y-6">
+                        {offeringsWithValueContent.length > 0 ? (
+                            offeringsWithValueContent.map(offering => (
+                                <Card key={offering.id}>
+                                    <CardHeader>
+                                        <CardTitle>{offering.title.primary}</CardTitle>
+                                        <CardDescription>{offering.type}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Accordion type="multiple" className="w-full">
+                                            {(offering.value_content || []).map((block, index) => (
+                                                <AccordionItem value={`item-${index}`} key={block.id}>
+                                                    <AccordionTrigger>{block.type}</AccordionTrigger>
+                                                    <AccordionContent className="whitespace-pre-wrap text-sm text-muted-foreground">
+                                                        {block.content}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                    </CardContent>
                                 </Card>
-                            ))}
-                        </div>
-                    ) : (
-                         <div className="text-center py-16 border-2 border-dashed rounded-lg col-span-full">
-                            <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <h3 className="text-xl font-semibold mt-4">No {activeTab !== 'all' ? activeTab : ''} Offerings Found</h3>
-                            <p className="text-muted-foreground mt-2">Click "New Offering" to add one.</p>
-                        </div>
-                    )}
+                            ))
+                        ) : (
+                            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                                <BookHeart className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="text-xl font-semibold mt-4">No Value Content Found</h3>
+                                <p className="text-muted-foreground mt-2">
+                                    Edit an offering to add value content for the AI to use.
+                                </p>
+                            </div>
+                        )}
+                    </TabsContent>
                 </div>
             </Tabs>
              <CreateOfferingDialog
