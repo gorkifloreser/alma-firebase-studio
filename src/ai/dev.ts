@@ -14,3 +14,4 @@ import './flows/edit-image-flow';
 import './flows/regenerate-carousel-slide-flow';
 import './flows/rank-viral-hooks-flow';
 import './flows/adapt-viral-hooks-flow';
+import './flows/generate-value-content-flow';

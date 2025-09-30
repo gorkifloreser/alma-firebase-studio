@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createOffering, updateOffering, translateText, uploadSingleOfferingMedia, deleteOfferingMedia, generateOfferingDraft, getOffering } from '../actions';
+import { createOffering, updateOffering, translateText, uploadSingleOfferingMedia, deleteOfferingMedia, generateOfferingDraft, getOffering, generateValueContent } from '../actions';
 import type { Offering, OfferingMedia, OfferingSchedule, PricePoint, ValueContentBlock } from '../actions';
 import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Trash2, PlusCircle, BookHeart } from 'lucide-react';
 import { languages } from '@/lib/languages';
@@ -147,6 +147,7 @@ export function CreateOfferingDialog({
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
+    const [developingBlockId, setDevelopingBlockId] = useState<string | null>(null);
     const { toast } = useToast();
     const [eventFrequency, setEventFrequency] = useState('One-time');
 
@@ -307,17 +308,44 @@ export function CreateOfferingDialog({
         }));
     };
 
-    const handleValueContentChange = (index: number, field: 'type' | 'content', value: string) => {
+    const handleValueContentChange = (index: number, field: 'type' | 'concept' | 'developed_content', value: string) => {
         const newBlocks = [...(offering.value_content || [])];
         newBlocks[index] = { ...newBlocks[index], [field]: value };
         setOffering(prev => ({ ...prev, value_content: newBlocks }));
     };
+    
+    const handleDevelopContent = (index: number) => {
+        const block = offering.value_content?.[index];
+        if (!block?.concept) {
+            toast({ variant: 'destructive', title: 'Please provide a concept first.' });
+            return;
+        }
+
+        setDevelopingBlockId(block.id);
+        startGenerating(async () => {
+            try {
+                const result = await generateValueContent({
+                    offeringTitle: offering.title.primary || '',
+                    offeringDescription: offering.description.primary || '',
+                    contentType: block.type,
+                    concept: block.concept,
+                });
+                handleValueContentChange(index, 'developed_content', result.developedContent);
+                toast({ title: 'Content Developed!', description: 'The AI has generated a draft for you.' });
+            } catch (error: any) {
+                 toast({ variant: 'destructive', title: 'Development Failed', description: error.message });
+            } finally {
+                setDevelopingBlockId(null);
+            }
+        });
+    }
 
     const addValueContentBlock = () => {
         const newBlock: ValueContentBlock = {
             id: crypto.randomUUID(),
             type: valueContentTypes[0],
-            content: '',
+            concept: '',
+            developed_content: '',
         };
         setOffering(prev => ({ ...prev, value_content: [...(prev.value_content || []), newBlock] }));
     };
@@ -340,7 +368,6 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
-                // Ensure all schedules have the latest frequency, if it's an event
                 const finalSchedules = offering.type === 'Event' 
                     ? offering.offering_schedules.map(s => ({...s, frequency: eventFrequency}))
                     : offering.offering_schedules;
@@ -468,6 +495,8 @@ export function CreateOfferingDialog({
         if (!isOpen) return;
         if ((offering.type === 'Product' || offering.type === 'Service') && offering.offering_schedules.length === 0) {
             addSchedule();
+        } else if (offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length === 0) {
+            addSchedule();
         } else if (offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length === 0) {
             addSchedule();
         }
@@ -561,8 +590,24 @@ export function CreateOfferingDialog({
                                         </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label>Content</Label>
-                                        <Textarea value={block.content} onChange={(e) => handleValueContentChange(index, 'content', e.target.value)} rows={3} placeholder="Tell a story, list a benefit..." />
+                                        <Label>Concept / Idea</Label>
+                                        <Textarea value={block.concept || ''} onChange={(e) => handleValueContentChange(index, 'concept', e.target.value)} rows={2} placeholder="e.g., Explain the origin of our ceremonial cacao." />
+                                    </div>
+                                    <div className="flex justify-center">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDevelopContent(index)}
+                                            disabled={isGenerating && developingBlockId === block.id}
+                                        >
+                                            <Sparkles className={`mr-2 h-4 w-4 ${isGenerating && developingBlockId === block.id ? 'animate-spin' : ''}`} />
+                                            {isGenerating && developingBlockId === block.id ? 'Developing...' : 'Develop with AI'}
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Developed Content</Label>
+                                        <Textarea value={block.developed_content || ''} onChange={(e) => handleValueContentChange(index, 'developed_content', e.target.value)} rows={5} placeholder="The AI will generate content here..." />
                                     </div>
                                 </div>
                             ))}
@@ -594,7 +639,7 @@ export function CreateOfferingDialog({
                         )}
                         
                         {schedulesToShow.map((schedule, scheduleIndex) => (
-                            <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
+                            <div key={schedule.id || scheduleIndex} className="p-4 border rounded-lg space-y-4 relative">
                                {offering.type === 'Event' && eventFrequency === 'One-time' && offering.offering_schedules.length > 1 && (
                                 <Button
                                     type="button"
@@ -695,5 +740,3 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
-
-  

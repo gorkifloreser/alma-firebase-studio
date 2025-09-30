@@ -8,6 +8,7 @@ import { generateContentForOffering as genContentFlow, GenerateContentInput, Gen
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
 import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionInput, GenerateImageDescriptionOutput } from '@/ai/flows/generate-image-description-flow';
+import { generateValueContent as genValueContentFlow, GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-flow';
 
 export type OfferingMedia = {
     id: string;
@@ -40,7 +41,8 @@ export type OfferingSchedule = {
 export type ValueContentBlock = {
     id: string;
     type: string;
-    content: string;
+    concept: string;
+    developed_content: string;
 };
 
 export type Offering = {
@@ -502,4 +504,12 @@ export async function generateImageDescription(input: GenerateImageDescriptionIn
     return genImageDescFlow(input);
 }
 
-  
+
+/**
+ * Invokes the Genkit flow to develop a value content block.
+ * @param {GenerateValueContentInput} input The context and concept for the content.
+ * @returns {Promise<GenerateValueContentOutput>} The developed content.
+ */
+export async function generateValueContent(input: GenerateValueContentInput): Promise<GenerateValueContentOutput> {
+    return genValueContentFlow(input);
+}

@@ -140,8 +140,15 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                     {value_content.map((block) => (
                                         <AccordionItem value={block.id} key={block.id}>
                                             <AccordionTrigger>{block.type}</AccordionTrigger>
-                                            <AccordionContent className="whitespace-pre-wrap text-sm text-muted-foreground">
-                                                {block.content}
+                                            <AccordionContent className="space-y-4">
+                                                <div>
+                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Concept</p>
+                                                    <p className="whitespace-pre-wrap text-sm italic">"{block.concept}"</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Developed Content</p>
+                                                    <p className="whitespace-pre-wrap text-sm">{block.developed_content}</p>
+                                                </div>
                                             </AccordionContent>
                                         </AccordionItem>
                                     ))}
@@ -188,7 +195,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                             )}
                                             {schedule.prices && schedule.prices.length > 0 && (
                                                 <>
-                                                    {(type === 'Event' || (type === 'Product' && offering_schedules.length > 1)) && <Separator />}
+                                                    {(type === 'Event') && <Separator />}
                                                      <div className="space-y-2">
                                                         {type === 'Service' && <h4 className="text-sm font-semibold">Pricing Tiers</h4>}
                                                         {schedule.prices.map((price, pIndex) => (
@@ -244,5 +251,3 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
         </Dialog>
     );
 }
-
-  
