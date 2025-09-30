@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -14,6 +15,7 @@ const OfferingDraftSchema = z.object({
   description: z.string().describe("A compelling and authentic description of the offering, embodying the brand's tone."),
   type: z.enum(['Product', 'Service', 'Event']).describe("Infer the type of offering from the prompt."),
   price: z.number().optional().describe("A suggested price for the offering, as a number."),
+  price_label: z.string().optional().describe("A descriptive label for the price, if mentioned (e.g., 'Community Price', 'Early Bird')."),
   currency: z.string().optional().describe("The 3-letter currency code (e.g., USD, EUR, MXN) if mentioned. Default to USD if a price is mentioned but no currency is specified."),
   event_date: z.string().optional().describe("If the offering is an event and a date is mentioned, extract it and return it in YYYY-MM-DDTHH:mm:ss.sssZ ISO 8601 format. Assume current year if not specified."),
   duration: z.string().optional().describe("If the offering is an event, extract its duration if mentioned (e.g., '90 minutes', '2 hours', '3 days')."),
@@ -56,11 +58,12 @@ Based on the user's idea and their Brand Heart, generate the following:
 2.  **description**: A compelling and authentic description. Embody the brand's tone of voice. Clearly explain what the offering is, who it's for, and the transformation or value it provides.
 3.  **type**: Infer the offering type ('Product', 'Service', or 'Event') from the prompt.
 4.  **price**: A suggested price for the offering. Base this on the type of offering (e.g., a digital product might be cheaper than a full-day workshop). Suggest a reasonable, whole number price.
-5.  **currency**: If a currency (e.g., Mexican Pesos, MXN, EUR, USD) is mentioned, provide the standard 3-letter ISO code. If a price is mentioned but no currency, default to 'USD'.
-6.  **contextual_notes**: If the user's idea contains any special context for the campaign (like 'pre-sale', 'for beginners', 'limited spots'), extract and summarize it here.
-7.  **event_date**: If it's an event with a date (e.g., "next Friday at 7pm", "December 21st"), provide it in YYYY-MM-DDTHH:mm:ss.sssZ ISO format. Assume the current year if not specified.
-8.  **duration**: If a duration is mentioned (e.g., "90-minute", "3 days"), extract it.
-9.  **frequency**: If it's a recurring event (e.g., "monthly circle"), extract the frequency. If it's an event with no recurrence mentioned, default to "One-time".
+5.  **price_label**: If the user's prompt includes a descriptive label for the price (like 'early bird price', 'community discount', 'tourist rate'), extract and include it here.
+6.  **currency**: If a currency (e.g., Mexican Pesos, MXN, EUR, USD) is mentioned, provide the standard 3-letter ISO code. If a price is mentioned but no currency, default to 'USD'.
+7.  **contextual_notes**: If the user's idea contains any special context for the campaign (like 'pre-sale', 'for beginners', 'limited spots'), extract and summarize it here.
+8.  **event_date**: If it's an event with a date (e.g., "next Friday at 7pm", "December 21st"), provide it in YYYY-MM-DDTHH:mm:ss.sssZ ISO format. Assume the current year if not specified.
+9.  **duration**: If a duration is mentioned (e.g., "90-minute", "3 days"), extract it.
+10. **frequency**: If it's a recurring event (e.g., "monthly circle"), extract the frequency. If it's an event with no recurrence mentioned, default to "One-time".
 
 Return the result in the specified JSON format.`,
 });

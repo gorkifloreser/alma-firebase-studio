@@ -23,6 +23,7 @@ export type OfferingSchedule = {
     id?: string; // Optional because it won't exist for new schedules
     offering_id?: string;
     price: number | null;
+    price_label: string | null;
     currency: string | null;
     event_date: Date | null;
     duration: string | null;
@@ -93,6 +94,7 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
             offering_schedules (
                 id,
                 price,
+                price_label,
                 currency,
                 event_date,
                 duration,
@@ -476,7 +478,20 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
  * @returns {Promise<OfferingDraft>} The AI-generated draft.
  */
 export async function generateOfferingDraft(input: GenerateOfferingDraftInput): Promise<OfferingDraft> {
-    return genOfferingDraftFlow(input);
+    const result = await genOfferingDraftFlow(input);
+    
+    // Add the price_label field to schedules if a price exists
+    if (result.price) {
+        (result as any).schedules = [{
+            price: result.price,
+            price_label: null,
+            currency: result.currency,
+            event_date: result.event_date,
+            duration: result.duration,
+            frequency: result.frequency,
+        }];
+    }
+    return result;
 }
 
 /**

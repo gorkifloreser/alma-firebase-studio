@@ -140,7 +140,7 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                         <div key={schedule.id || index} className="p-4 border rounded-lg space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
                                                 {schedule.price && schedule.currency && (
-                                                    <DetailItem icon={Tag} label="Price">
+                                                    <DetailItem icon={Tag} label={schedule.price_label || 'Price'}>
                                                         {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: schedule.currency }).format(schedule.price)}
                                                     </DetailItem>
                                                 )}
