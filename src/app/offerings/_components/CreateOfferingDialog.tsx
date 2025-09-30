@@ -430,15 +430,15 @@ export function CreateOfferingDialog({
             return 'Add Price Point';
         }
         if (offering.type === 'Event') {
-            return 'Add One-time Date';
+            return eventFrequency === 'One-time' ? 'Add One-time Date' : 'Add Recurring Date';
         }
         return 'Add Schedule';
     };
 
-    const shouldShowAddScheduleButton = offering.type !== 'Event' || eventFrequency === 'One-time';
-    const schedulesToShow = offering.type === 'Event' && eventFrequency !== 'One-time'
+    const schedulesToShow = offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length > 1
         ? offering.offering_schedules.slice(0, 1)
         : offering.offering_schedules;
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -526,7 +526,7 @@ export function CreateOfferingDialog({
                         
                         {schedulesToShow.map((schedule, scheduleIndex) => (
                             <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
-                               {offering.offering_schedules.length > 1 && shouldShowAddScheduleButton && (
+                               {offering.offering_schedules.length > 1 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -586,7 +586,12 @@ export function CreateOfferingDialog({
                                  </div>
                             </div>
                         ))}
-                         {shouldShowAddScheduleButton && (
+                         {(offering.type === 'Event') && (
+                            <Button type="button" variant="outline" onClick={addSchedule} disabled={eventFrequency === 'One-time'}>
+                               <PlusCircle className="mr-2 h-4 w-4" /> {getButtonText()}
+                            </Button>
+                        )}
+                        {(offering.type !== 'Event') && (
                             <Button type="button" variant="outline" onClick={addSchedule}>
                                <PlusCircle className="mr-2 h-4 w-4" /> {getButtonText()}
                             </Button>
