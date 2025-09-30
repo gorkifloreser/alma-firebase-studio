@@ -137,12 +137,16 @@ export function CreateOfferingDialog({
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
     const { toast } = useToast();
+    const [eventFrequency, setEventFrequency] = useState('One-time');
 
     const isEditMode = !!offering.id;
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     const resetState = useCallback(() => {
         if (offeringToEdit) {
+            const firstScheduleFrequency = offeringToEdit.offering_schedules?.[0]?.frequency || 'One-time';
+            setEventFrequency(firstScheduleFrequency);
+
             setOffering({
                 ...initialOfferingState,
                 ...offeringToEdit,
@@ -153,6 +157,7 @@ export function CreateOfferingDialog({
             });
         } else {
             setOffering(initialOfferingState);
+            setEventFrequency('One-time');
         }
         setAiPrompt('');
     }, [offeringToEdit]);
@@ -192,7 +197,7 @@ export function CreateOfferingDialog({
     
     const handleScheduleChange = (
         index: number,
-        field: keyof OfferingSchedule,
+        field: keyof Omit<OfferingSchedule, 'id'>,
         value: string | number | null | Date
     ) => {
         const newSchedules = [...offering.offering_schedules];
@@ -217,6 +222,9 @@ export function CreateOfferingDialog({
         } else {
              (schedule as any)[field] = value;
         }
+        
+        // Also update frequency for this schedule
+        schedule.frequency = eventFrequency;
 
         newSchedules[index] = schedule;
         setOffering(prev => ({ ...prev, offering_schedules: newSchedules }));
@@ -229,13 +237,37 @@ export function CreateOfferingDialog({
             currency: 'USD',
             event_date: null,
             duration: null,
-            frequency: 'One-time',
+            frequency: eventFrequency,
             location_label: null,
             location_address: null,
             location_gmaps_url: null,
         };
         setOffering(prev => ({ ...prev, offering_schedules: [...prev.offering_schedules, newSchedule] }));
     };
+    
+    const handleFrequencyChange = (newFrequency: string) => {
+        setEventFrequency(newFrequency);
+        if (newFrequency !== 'One-time') {
+             if (offering.offering_schedules.length > 1) {
+                 toast({
+                    title: "Schedules Simplified",
+                    description: "Recurring events use a single schedule. We've kept the first one.",
+                    variant: "default"
+                });
+            }
+            // For recurring events, we only manage a single schedule definition.
+            setOffering(prev => ({
+                ...prev,
+                offering_schedules: (prev.offering_schedules.length > 0 ? [prev.offering_schedules[0]] : []).map(s => ({...s, frequency: newFrequency}))
+            }));
+        } else {
+             setOffering(prev => ({
+                ...prev,
+                offering_schedules: prev.offering_schedules.map(s => ({...s, frequency: newFrequency}))
+            }));
+        }
+    };
+
 
     const removeSchedule = (index: number) => {
         setOffering(prev => ({ ...prev, offering_schedules: prev.offering_schedules.filter((_, i) => i !== index) }));
@@ -285,12 +317,15 @@ export function CreateOfferingDialog({
 
         startSaving(async () => {
             try {
+                // Ensure all schedules have the latest frequency
+                const finalSchedules = offering.offering_schedules.map(s => ({...s, frequency: eventFrequency}));
+
                 const payload = {
                     title: offering.title,
                     description: offering.description,
                     type: offering.type,
                     contextual_notes: offering.contextual_notes,
-                    schedules: offering.offering_schedules,
+                    schedules: finalSchedules,
                 };
 
                 if (isEditMode) {
@@ -363,6 +398,9 @@ export function CreateOfferingDialog({
             try {
                 const result = await generateOfferingDraft({ prompt: aiPrompt });
                 
+                const firstScheduleFrequency = result.schedules?.[0]?.frequency || 'One-time';
+                setEventFrequency(firstScheduleFrequency);
+                
                 const newSchedules = (result.schedules || []).map(s => ({
                     price: s.price ?? null,
                     price_label: s.price_label ?? '',
@@ -395,7 +433,11 @@ export function CreateOfferingDialog({
         });
     };
 
-    const scheduleButtonText = offering.type === 'Event' ? 'Add Schedule / Price Point' : 'Add Price Point';
+    const scheduleButtonText = offering.type === 'Event' ? 'Add a One-time Date' : 'Add Price Point';
+    const schedulesToShow = offering.type === 'Event' && eventFrequency !== 'One-time' 
+        ? (offering.offering_schedules.length > 0 ? [offering.offering_schedules[0]] : []) 
+        : offering.offering_schedules;
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -464,10 +506,27 @@ export function CreateOfferingDialog({
                     
                     <div className="space-y-4">
                         <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
-                        {offering.offering_schedules.map((schedule, index) => {
+
+                        {offering.type === 'Event' && (
+                             <div className="space-y-2 max-w-xs">
+                                <Label>Frequency</Label>
+                                <Select value={eventFrequency} onValueChange={handleFrequencyChange}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="One-time">One-time (add multiple dates)</SelectItem>
+                                        <SelectItem value="Weekly">Weekly</SelectItem>
+                                        <SelectItem value="Bi-weekly">Bi-weekly</SelectItem>
+                                        <SelectItem value="Monthly">Monthly</SelectItem>
+                                        <SelectItem value="Yearly">Yearly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {schedulesToShow.map((schedule, index) => {
                             const eventTime = schedule.event_date && isValid(schedule.event_date) ? format(schedule.event_date, 'HH:mm') : '';
                             return (
-                                <div key={index} className="p-4 border rounded-md space-y-4 relative">
+                                <div key={schedule.id || index} className="p-4 border rounded-md space-y-4 relative">
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -512,19 +571,17 @@ export function CreateOfferingDialog({
                                                 <Label>Duration</Label>
                                                 <Input value={schedule.duration || ''} onChange={e => handleScheduleChange(index, 'duration', e.target.value)} placeholder="e.g., 2 hours" />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Frequency</Label>
-                                                <Select value={schedule.frequency || 'One-time'} onValueChange={v => handleScheduleChange(index, 'frequency', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="One-time">One-time</SelectItem><SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="Bi-weekly">Bi-weekly</SelectItem><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Yearly">Yearly</SelectItem></SelectContent></Select>
-                                            </div>
                                         </div>
                                         </>
                                     )}
                                 </div>
                             )
                         })}
-                        <Button type="button" variant="outline" onClick={addSchedule}>
-                            {scheduleButtonText}
-                        </Button>
+                         { (offering.type !== 'Event' || eventFrequency === 'One-time') && (
+                            <Button type="button" variant="outline" onClick={addSchedule}>
+                                {scheduleButtonText}
+                            </Button>
+                        )}
                     </div>
 
                     <div className="space-y-2">
