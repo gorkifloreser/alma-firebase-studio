@@ -17,8 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { createOffering, updateOffering, translateText, uploadSingleOfferingMedia, deleteOfferingMedia, generateOfferingDraft, getOffering } from '../actions';
-import type { Offering, OfferingMedia, OfferingSchedule, PricePoint } from '../actions';
-import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Trash2, PlusCircle } from 'lucide-react';
+import type { Offering, OfferingMedia, OfferingSchedule, PricePoint, ValueContentBlock } from '../actions';
+import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Trash2, PlusCircle, BookHeart } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -46,9 +46,20 @@ const initialOfferingState: OfferingFormData = {
     description: { primary: '', secondary: '' },
     type: 'Service',
     contextual_notes: '',
+    value_content: [],
     offering_schedules: [],
     offering_media: [],
 };
+
+const valueContentTypes = [
+    'Key Benefit',
+    'Customer Story',
+    'Common Objection & Response',
+    'How It Works',
+    'Unique Feature',
+    'Founder\'s Note',
+    'Interesting Fact',
+];
 
 type BilingualFieldProps = {
     id: 'title' | 'description';
@@ -150,6 +161,7 @@ export function CreateOfferingDialog({
             setOffering({
                 ...initialOfferingState,
                 ...offeringToEdit,
+                 value_content: (offeringToEdit.value_content || []).map(vc => ({ ...vc, id: vc.id || crypto.randomUUID() })),
                 offering_schedules: (offeringToEdit.offering_schedules || []).map(s => ({
                     ...s,
                     event_date: s.event_date ? parseISO(s.event_date as unknown as string) : null,
@@ -294,6 +306,25 @@ export function CreateOfferingDialog({
             offering_media: [...prev.offering_media, newMedia]
         }));
     };
+
+    const handleValueContentChange = (index: number, field: 'type' | 'content', value: string) => {
+        const newBlocks = [...(offering.value_content || [])];
+        newBlocks[index] = { ...newBlocks[index], [field]: value };
+        setOffering(prev => ({ ...prev, value_content: newBlocks }));
+    };
+
+    const addValueContentBlock = () => {
+        const newBlock: ValueContentBlock = {
+            id: crypto.randomUUID(),
+            type: valueContentTypes[0],
+            content: '',
+        };
+        setOffering(prev => ({ ...prev, value_content: [...(prev.value_content || []), newBlock] }));
+    };
+
+    const removeValueContentBlock = (id: string) => {
+        setOffering(prev => ({ ...prev, value_content: (prev.value_content || []).filter(block => block.id !== id) }));
+    };
     
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -319,6 +350,7 @@ export function CreateOfferingDialog({
                     description: offering.description,
                     type: offering.type,
                     contextual_notes: offering.contextual_notes,
+                    value_content: offering.value_content,
                     schedules: finalSchedules,
                 };
 
@@ -425,35 +457,18 @@ export function CreateOfferingDialog({
         });
     };
     
-    const getButtonText = () => {
-        if (offering.type === 'Product' || offering.type === 'Service') {
-            return 'Add Price Point';
-        }
-        if (offering.type === 'Event') {
-            return 'Add Recurring Date';
-        }
-        return 'Add Schedule';
-    };
-
     const schedulesToShow = useMemo(() => {
-        // If it's a recurring event, we only show the first schedule entry as a template
         if (offering.type === 'Event' && eventFrequency !== 'One-time') {
             return offering.offering_schedules.length > 0 ? [offering.offering_schedules[0]] : [];
         }
-        // For one-time events, products, and services, show all entries.
         return offering.offering_schedules;
     }, [offering.type, eventFrequency, offering.offering_schedules]);
 
-    // Effect to manage the initial state of the schedule form
     useEffect(() => {
         if (!isOpen) return;
-
-        // If it's a recurring event and there's no schedule, add one.
-        if (offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length === 0) {
-            addSchedule();
-        }
-        // If it's a product or service and there are no schedules, add one.
         if ((offering.type === 'Product' || offering.type === 'Service') && offering.offering_schedules.length === 0) {
+            addSchedule();
+        } else if (offering.type === 'Event' && eventFrequency !== 'One-time' && offering.offering_schedules.length === 0) {
             addSchedule();
         }
     }, [isOpen, offering.type, offering.offering_schedules.length, eventFrequency]);
@@ -523,6 +538,41 @@ export function CreateOfferingDialog({
                         handleFormChange={handleFormChange} 
                         handleAutoTranslate={handleAutoTranslate}
                     />
+
+                    <Separator />
+                     <div className="space-y-4">
+                        <h3 className="font-semibold text-lg flex items-center gap-2"><BookHeart className="h-5 w-5 text-primary" /> Value Content (for AI)</h3>
+                        <p className="text-sm text-muted-foreground">Add specific details, stories, or benefits that the AI can use to create more authentic and effective marketing content for this offering.</p>
+                        <div className="space-y-4">
+                            {(offering.value_content || []).map((block, index) => (
+                                <div key={block.id} className="p-4 border rounded-md space-y-3 relative">
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7" onClick={() => removeValueContentBlock(block.id)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <Label>Content Type</Label>
+                                            <Select value={block.type} onValueChange={(value) => handleValueContentChange(index, 'type', value)}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {valueContentTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Content</Label>
+                                        <Textarea value={block.content} onChange={(e) => handleValueContentChange(index, 'content', e.target.value)} rows={3} placeholder="Tell a story, list a benefit..." />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <Button type="button" variant="outline" onClick={addValueContentBlock}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Content Block
+                        </Button>
+                    </div>
+
+                    <Separator />
                     
                     <div className="space-y-4">
                         <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
@@ -645,3 +695,5 @@ export function CreateOfferingDialog({
         </Dialog>
     );
 }
+
+  

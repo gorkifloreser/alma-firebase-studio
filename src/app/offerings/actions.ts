@@ -37,6 +37,12 @@ export type OfferingSchedule = {
     prices: PricePoint[];
 };
 
+export type ValueContentBlock = {
+    id: string;
+    type: string;
+    content: string;
+};
+
 export type Offering = {
     id: string;
     user_id: string;
@@ -46,6 +52,7 @@ export type Offering = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
     contextual_notes: string | null;
+    value_content: ValueContentBlock[] | null;
     offering_schedules: OfferingSchedule[];
 };
 
@@ -122,6 +129,7 @@ type UpsertOfferingPayload = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
     contextual_notes: string | null;
+    value_content: ValueContentBlock[] | null;
     schedules?: OfferingSchedule[]; // Optional for create/update logic
 }
 
@@ -133,9 +141,9 @@ export async function createOffering(offeringData: UpsertOfferingPayload): Promi
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { title, description, type, contextual_notes, schedules } = offeringData;
+  const { title, description, type, contextual_notes, value_content, schedules } = offeringData;
 
-  const offeringPayload = { user_id: user.id, title, description, type, contextual_notes };
+  const offeringPayload = { user_id: user.id, title, description, type, contextual_notes, value_content };
 
   const { data: newOffering, error } = await supabase
     .from('offerings')
@@ -177,10 +185,10 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, schedules = [] } = offeringData;
+    const { title, description, type, contextual_notes, value_content, schedules = [] } = offeringData;
 
     // 1. Update the main offering details
-    const offeringPayload = { title, description, type, contextual_notes, updated_at: new Date().toISOString() };
+    const offeringPayload = { title, description, type, contextual_notes, value_content, updated_at: new Date().toISOString() };
     const { error: offeringError } = await supabase
         .from('offerings')
         .update(offeringPayload)
@@ -493,3 +501,5 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
     return genImageDescFlow(input);
 }
+
+  
