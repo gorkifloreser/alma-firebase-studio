@@ -24,12 +24,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import type { Offering, OfferingMedia } from '../actions';
+import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
-import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2, Repeat } from 'lucide-react';
+import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2, Repeat, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 type Profile = {
@@ -50,13 +50,12 @@ interface OfferingDetailDialogProps {
 }
 
 const languageNames = new Map(languages.map(l => [l.value, l.label]));
-const currencyLabels = new Map(currencies.map(c => [c.value, c.label]));
 
 const DetailItem = ({ icon, label, children }: { icon: React.ElementType, label: string, children: React.ReactNode }) => {
     const Icon = icon;
     return (
         <div className="flex items-start gap-4">
-            <Icon className="h-5 w-5 text-muted-foreground mt-1" />
+            <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
             <div className="flex-1">
                 <p className="text-sm font-semibold text-muted-foreground">{label}</p>
                 <div className="text-md text-foreground">{children}</div>
@@ -72,17 +71,10 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
         title,
         description,
         type,
-        price,
-        currency,
-        event_date,
-        duration,
-        frequency,
         contextual_notes,
         offering_media,
+        offering_schedules,
     } = offering;
-
-    const formattedDate = event_date ? format(parseISO(event_date), 'PPP') : null;
-    const formattedTime = event_date ? format(parseISO(event_date), 'p') : null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -91,11 +83,6 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                     <DialogTitle className="text-3xl">{title.primary}</DialogTitle>
                     <div className="flex items-center gap-2 pt-1 text-muted-foreground">
                         <Badge variant="secondary">{type}</Badge>
-                         {price && currency && (
-                            <span className="text-lg font-semibold text-foreground">
-                                {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: currency }).format(price)}
-                            </span>
-                        )}
                     </div>
                     <div className="absolute top-0 right-0">
                          <Button variant="ghost" size="icon" onClick={onEdit}>
@@ -120,7 +107,6 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                         </div>
                                     </CarouselItem>
                                 ))}
-                            </CarouselContent>
                              {offering_media.length > 1 && (
                                 <>
                                     <CarouselPrevious className="left-2" />
@@ -143,40 +129,51 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                         )}
                     </div>
                     
-                    <Separator />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
-                         <DetailItem icon={Package} label="Type">
-                           <Badge variant="outline">{type}</Badge>
-                        </DetailItem>
-                        
-                        {price && currency && (
-                            <DetailItem icon={Tag} label="Price">
-                                {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: currency }).format(price)}
-                            </DetailItem>
-                        )}
-
-                        {type === 'Event' && formattedDate && (
-                             <DetailItem icon={Calendar} label="Event Date">
-                                {formattedDate}
-                            </DetailItem>
-                        )}
-                         {type === 'Event' && formattedTime && (
-                             <DetailItem icon={Clock} label="Event Time">
-                                {formattedTime}
-                            </DetailItem>
-                        )}
-                        {type === 'Event' && duration && (
-                             <DetailItem icon={Globe} label="Duration">
-                                {duration}
-                            </DetailItem>
-                        )}
-                        {type === 'Event' && frequency && (
-                            <DetailItem icon={Repeat} label="Frequency">
-                                {frequency}
-                            </DetailItem>
-                        )}
-                    </div>
+                     {offering_schedules && offering_schedules.length > 0 && (
+                        <>
+                            <Separator />
+                            <div className="space-y-4">
+                                <h3 className="font-semibold text-lg">Schedules & Details</h3>
+                                <div className="space-y-4">
+                                    {offering_schedules.map((schedule, index) => (
+                                        <div key={schedule.id || index} className="p-4 border rounded-lg space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
+                                                {schedule.price && schedule.currency && (
+                                                    <DetailItem icon={Tag} label="Price">
+                                                        {new Intl.NumberFormat(profile?.primary_language || 'en-US', { style: 'currency', currency: schedule.currency }).format(schedule.price)}
+                                                    </DetailItem>
+                                                )}
+                                                {schedule.event_date && (
+                                                    <DetailItem icon={Calendar} label="Date & Time">
+                                                        {format(parseISO(schedule.event_date as unknown as string), 'PPP p')}
+                                                    </DetailItem>
+                                                )}
+                                                {schedule.duration && (
+                                                    <DetailItem icon={Clock} label="Duration">
+                                                        {schedule.duration}
+                                                    </DetailItem>
+                                                )}
+                                                {schedule.frequency && (
+                                                    <DetailItem icon={Repeat} label="Frequency">
+                                                        {schedule.frequency}
+                                                    </DetailItem>
+                                                )}
+                                                {schedule.location_label && (
+                                                    <DetailItem icon={MapPin} label="Location">
+                                                         <div className="flex flex-col">
+                                                            <span>{schedule.location_label}</span>
+                                                            {schedule.location_address && <span className="text-sm text-muted-foreground">{schedule.location_address}</span>}
+                                                            {schedule.location_gmaps_url && <a href={schedule.location_gmaps_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">View on Map</a>}
+                                                        </div>
+                                                    </DetailItem>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                     )}
 
                     {contextual_notes && (
                         <>

@@ -19,6 +19,19 @@ export type OfferingMedia = {
     description: string | null;
 }
 
+export type OfferingSchedule = {
+    id?: string; // Optional because it won't exist for new schedules
+    offering_id?: string;
+    price: number | null;
+    currency: string | null;
+    event_date: Date | null;
+    duration: string | null;
+    frequency: string | null;
+    location_label: string | null;
+    location_address: string | null;
+    location_gmaps_url: string | null;
+};
+
 export type Offering = {
     id: string;
     user_id: string;
@@ -28,11 +41,7 @@ export type Offering = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event';
     contextual_notes: string | null;
-    price: number | null;
-    currency: string | null;
-    event_date: string | null; // ISO 8601 string
-    duration: string | null;
-    frequency: string | null;
+    offering_schedules: OfferingSchedule[];
 };
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -44,7 +53,7 @@ export async function getOffering(offeringId: string): Promise<OfferingWithMedia
     
     const { data, error } = await supabase
         .from('offerings')
-        .select('*, offering_media (*)')
+        .select('*, offering_media (*), offering_schedules (*)')
         .eq('id', offeringId)
         .eq('user_id', user.id)
         .single();
@@ -80,6 +89,17 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
                 media_type,
                 created_at,
                 description
+            ),
+            offering_schedules (
+                id,
+                price,
+                currency,
+                event_date,
+                duration,
+                frequency,
+                location_label,
+                location_address,
+                location_gmaps_url
             )
         `)
         .eq('user_id', user.id)
@@ -93,116 +113,128 @@ export async function getOfferings(): Promise<OfferingWithMedia[]> {
     return data as OfferingWithMedia[];
 }
 
+type UpsertOfferingPayload = {
+    title: { primary: string | null; secondary: string | null };
+    description: { primary: string | null; secondary: string | null };
+    type: 'Product' | 'Service' | 'Event';
+    contextual_notes: string | null;
+    schedules?: OfferingSchedule[]; // Optional for create/update logic
+}
+
 /**
- * Creates a new offering for the currently authenticated user.
- * @param {Omit<Offering, 'id' | 'user_id' | 'created_at' | 'updated_at'>} offeringData The data for the new offering.
- * @returns {Promise<OfferingWithMedia>} A promise that resolves to the newly created offering.
- * @throws {Error} If the user is not authenticated or if the database operation fails.
+ * Creates a new offering and its associated schedules.
  */
-export async function createOffering(offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<OfferingWithMedia> {
+export async function createOffering(offeringData: UpsertOfferingPayload): Promise<OfferingWithMedia> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { title, description, type, contextual_notes, price, currency, event_date, duration, frequency } = offeringData;
+  const { title, description, type, contextual_notes, schedules } = offeringData;
 
-  const payload = {
-    user_id: user.id,
-    title,
-    description,
-    type,
-    contextual_notes,
-    price: price || null,
-    currency: price ? currency || 'USD' : null,
-    event_date,
-    duration: type === 'Event' ? duration : null,
-    frequency: type === 'Event' ? frequency : null,
-  };
+  const offeringPayload = { user_id: user.id, title, description, type, contextual_notes };
 
-  const { data, error } = await supabase
+  const { data: newOffering, error } = await supabase
     .from('offerings')
-    .insert(payload)
-    .select(`
-        *,
-        offering_media (
-            id,
-            offering_id,
-            media_url,
-            media_type,
-            created_at,
-            description
-        )
-    `)
+    .insert(offeringPayload)
+    .select()
     .single();
 
-  if (error) {
-    console.error('Error creating offering:', error.message);
-    throw new Error('Could not create the offering. Please try again.');
+  if (error || !newOffering) {
+    console.error('Error creating offering:', error?.message);
+    throw new Error('Could not create the offering.');
+  }
+
+  if (schedules && schedules.length > 0) {
+    const schedulesPayload = schedules.map(s => ({
+        ...s,
+        offering_id: newOffering.id,
+        user_id: user.id,
+        event_date: s.event_date ? s.event_date.toISOString() : null,
+    }));
+    const { error: scheduleError } = await supabase.from('offering_schedules').insert(schedulesPayload);
+    if (scheduleError) {
+      console.error('Error creating schedules:', scheduleError.message);
+      // Rollback offering creation
+      await supabase.from('offerings').delete().eq('id', newOffering.id);
+      throw new Error('Could not create offering schedules.');
+    }
   }
 
   revalidatePath('/offerings');
-  return data as OfferingWithMedia;
+  return getOffering(newOffering.id).then(o => o!);
 }
 
 /**
- * Updates an existing offering for the currently authenticated user.
- * @param {string} offeringId The ID of the offering to update.
- * @param {Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>} offeringData The data to update.
- * @returns {Promise<OfferingWithMedia>} A promise that resolves to the updated offering.
- * @throws {Error} If the user is not authenticated or if the database operation fails.
+ * Updates an existing offering and manages its schedules (create, update, delete).
  */
-export async function updateOffering(offeringId: string, offeringData: Partial<Omit<Offering, 'id' | 'user_id' | 'created_at'>>): Promise<OfferingWithMedia> {
+export async function updateOffering(offeringId: string, offeringData: UpsertOfferingPayload): Promise<OfferingWithMedia> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, price, currency, event_date, duration, frequency } = offeringData;
+    const { title, description, type, contextual_notes, schedules = [] } = offeringData;
 
-    const payload = {
-      title,
-      description,
-      type,
-      contextual_notes,
-      price: price || null,
-      currency: price ? currency || 'USD' : null,
-      event_date,
-      duration: type === 'Event' ? duration : null,
-      frequency: type === 'Event' ? frequency : null,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase
+    // 1. Update the main offering details
+    const offeringPayload = { title, description, type, contextual_notes, updated_at: new Date().toISOString() };
+    const { error: offeringError } = await supabase
         .from('offerings')
-        .update(payload)
+        .update(offeringPayload)
         .eq('id', offeringId)
-        .eq('user_id', user.id)
-        .select(`
-            *,
-            offering_media (
-                id,
-                offering_id,
-                media_url,
-                media_type,
-                created_at,
-                description
-            )
-        `)
-        .single();
+        .eq('user_id', user.id);
 
-    if (error) {
-        console.error('Error updating offering:', error.message);
-        throw new Error('Could not update the offering. Please try again.');
+    if (offeringError) {
+        console.error('Error updating offering:', offeringError.message);
+        throw new Error('Could not update the offering.');
     }
 
+    // 2. Manage schedules
+    const schedulesToUpdate = schedules.filter(s => s.id);
+    const schedulesToCreate = schedules.filter(s => !s.id);
+    const scheduleIdsToKeep = schedulesToUpdate.map(s => s.id);
+
+    // Delete schedules that are no longer present
+    const { error: deleteError } = await supabase
+        .from('offering_schedules')
+        .delete()
+        .eq('offering_id', offeringId)
+        .not('id', 'in', `(${scheduleIdsToKeep.join(',')})`);
+    
+    if (deleteError && scheduleIdsToKeep.length > 0) console.error("Error deleting old schedules:", deleteError.message);
+
+
+    // Update existing schedules
+    if (schedulesToUpdate.length > 0) {
+        const updates = schedulesToUpdate.map(async (s) => {
+            return supabase
+                .from('offering_schedules')
+                .update({ ...s, event_date: s.event_date?.toISOString() })
+                .eq('id', s.id!);
+        });
+        const results = await Promise.all(updates);
+        results.forEach(res => {
+            if (res.error) console.error("Error updating a schedule:", res.error.message);
+        });
+    }
+
+    // Create new schedules
+    if (schedulesToCreate.length > 0) {
+        const creates = schedulesToCreate.map(s => ({
+            ...s,
+            offering_id: offeringId,
+            user_id: user.id,
+            event_date: s.event_date?.toISOString(),
+        }));
+        const { error: createError } = await supabase.from('offering_schedules').insert(creates);
+        if (createError) console.error("Error creating new schedules:", createError.message);
+    }
+    
     revalidatePath('/offerings');
-    return data as OfferingWithMedia;
+    return getOffering(offeringId).then(o => o!);
 }
 
 /**
  * Deletes an offering for the currently authenticated user, including its media from storage.
- * @param {string} offeringId The ID of the offering to delete.
- * @returns {Promise<{ message: string }>} A success message.
- * @throws {Error} If the user is not authenticated or if the database operation fails.
+ * The database will cascade delete schedules.
  */
 export async function deleteOffering(offeringId: string): Promise<{ message: string }> {
     const supabase = createClient();
