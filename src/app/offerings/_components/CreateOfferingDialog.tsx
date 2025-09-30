@@ -423,7 +423,9 @@ export function CreateOfferingDialog({
         });
     };
 
-    const scheduleButtonText = offering.type === 'Event' ? 'Add a Schedule' : 'Add a Price Schedule';
+    const scheduleButtonText = offering.type === 'Product' || offering.type === 'Service'
+        ? 'Add Price Point'
+        : 'Add Schedule / Price Point';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -494,23 +496,25 @@ export function CreateOfferingDialog({
                         <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
 
                         {offering.type === 'Event' && (
-                             <div className="space-y-2 max-w-xs">
+                            <div className="space-y-2 max-w-xs">
                                 <Label>Frequency</Label>
                                 <Select value={eventFrequency} onValueChange={setEventFrequency}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="One-time">One-time (multiple unique dates)</SelectItem>
-                                        <SelectItem value="Weekly">Weekly</SelectItem>
-                                        <SelectItem value="Bi-weekly">Bi-weekly</SelectItem>
-                                        <SelectItem value="Monthly">Monthly</SelectItem>
-                                        <SelectItem value="Yearly">Yearly</SelectItem>
+                                        <SelectItem value="One-time">One-time (separate, unique events)</SelectItem>
+                                        <SelectItem value="Weekly">Recurring (Weekly)</SelectItem>
+                                        <SelectItem value="Bi-weekly">Recurring (Bi-weekly)</SelectItem>
+                                        <SelectItem value="Monthly">Recurring (Monthly)</SelectItem>
+                                        <SelectItem value="Yearly">Recurring (Yearly)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         )}
-
-                        {offering.offering_schedules.map((schedule, scheduleIndex) => (
+                        
+                        {/* Render one schedule form for recurring, multiple for one-time */}
+                        {(eventFrequency === 'One-time' || offering.type !== 'Event' ? offering.offering_schedules : offering.offering_schedules.slice(0, 1)).map((schedule, scheduleIndex) => (
                             <div key={schedule.id || scheduleIndex} className="p-4 border rounded-md space-y-4 relative">
+                               {offering.offering_schedules.length > 1 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -520,6 +524,7 @@ export function CreateOfferingDialog({
                                 >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
+                               )}
                                 
                                 {offering.type === 'Event' && (
                                     <>
@@ -569,9 +574,11 @@ export function CreateOfferingDialog({
                                  </div>
                             </div>
                         ))}
-                        <Button type="button" variant="outline" onClick={addSchedule}>
-                           {scheduleButtonText}
-                        </Button>
+                        {(eventFrequency === 'One-time' || (offering.type !== 'Event' && offering.offering_schedules.length === 0)) && (
+                            <Button type="button" variant="outline" onClick={addSchedule}>
+                               {scheduleButtonText}
+                            </Button>
+                        )}
                     </div>
 
                     <div className="space-y-2">
