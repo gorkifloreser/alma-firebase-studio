@@ -20,8 +20,8 @@ const PlanItemSchema = z.object({
   format: z.string().describe("The specific visual format for the content, chosen from the provided list."),
   copy: z.string().describe("The full ad copy for the post, including a headline, body text, and a call to action."),
   hashtags: z.string().describe("A space-separated list of relevant hashtags."),
-  creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
-  stageName: z.string().describe("The strategy stage this item belongs to (e.g., 'Awareness', 'Consideration')."),
+  creative_prompt: z.string().describe("A detailed, ready-to-use prompt for an AI image or video generator to create the visual for this content piece."),
+  stage_name: z.string().describe("The strategy stage this item belongs to (e.g., 'Awareness', 'Consideration')."),
   objective: z.string().describe("The specific purpose or objective of this individual content piece. This should be a new, specific goal for the copy written."),
   concept: z.string().describe("The core concept or idea for this content piece. This should be a new, specific idea for the content generated."),
   suggested_post_at: z.string().optional().describe("A suggested date and time for posting this content in ISO 8601 format (e.g., '2025-10-26T14:30:00Z'). Base this on the campaign dates and channel best practices."),
@@ -67,6 +67,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
           brandHeart: z.any(),
           offering: z.any(),
           strategy: z.any(),
+          topAdaptedHooks: z.array(z.any()), // New input for viral hooks
           channel: z.string(),
           validFormats: z.array(z.string()),
           bestPractices: z.string().optional(),
@@ -75,58 +76,66 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert direct response copywriter and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
+  prompt: `You are an expert viral marketing copywriter and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
 
-**Your most important instruction is to embody the brand's unique identity. Every word you write must be infused with the brand's soul.**
+**HIERARCHY OF IMPORTANCE (Your 4-Step Thought Process):**
+1.  **Lead with a Viral Hook**: Start with a hook from the provided Top 10 list.
+2.  **Infuse Brand Soul**: Adapt the hook to the brand's unique tone and values.
+3.  **Showcase the Offering**: Ensure the content clearly communicates the value of the offering.
+4.  **Adapt to Channel & Strategy**: Refine the final output based on the channel's best practices and the strategic goal of the funnel stage.
 
 **CRITICAL INSTRUCTION: You must generate the entire output in the following language: {{campaignLanguage}}**
 
 ---
-**THE BRAND'S SOUL (The "Who"): This is your guide for TONE and VOICE.**
+**INPUT #1: THE TOP 10 ADAPTED VIRAL HOOKS (Your Primary Inspiration)**
+{{#each topAdaptedHooks}}
+- **Hook**: "{{this.adapted_hook}}" (Strategy: {{this.strategy}}, Visuals: {{this.visual_prompt}})
+{{/each}}
+---
+**INPUT #2: THE BRAND'S SOUL (The "Who" - Your Guide for TONE and VOICE)**
 - Brand Name: {{brandHeart.brand_name}}
 - **Tone of Voice:** {{brandHeart.tone_of_voice.primary}}
 - **Values & Mission:** {{brandHeart.values.primary}} & {{brandHeart.mission.primary}}
 - Brand Brief ({{primaryLanguage}}): {{brandHeart.brand_brief.primary}}
 {{#if brandHeart.brand_brief.secondary}}- Brand Brief ({{secondaryLanguage}}): {{brandHeart.brand_brief.secondary}}{{/if}}
+- **Visual Identity:** {{brandHeart.visual_identity.primary}}
+- **Contact Info:** {{#each brandHeart.contact_info}} {{this.type}}: {{this.value}} {{/each}}
 ---
-
-**THE STRATEGY BLUEPRINT (The "How"):**
-- Offering: "{{offering.title.primary}}" (ID: {{offering.id}})
-- Goal: {{strategy.goal}}
-- Funnel Model: **{{strategy.strategy_brief.funnelType}}**
-- Blueprint Stages:
-{{#each strategy.strategy_brief.strategy}}
-  - **Stage: {{this.stageName}}** (Objective: {{this.objective}})
-{{/each}}
----
-
-**OFFERING DETAILS (The "What"):**
+**INPUT #3: THE OFFERING (The "What")**
 - Title ({{primaryLanguage}}): {{offering.title.primary}}
 {{#if offering.title.secondary}}- Title ({{secondaryLanguage}}): {{offering.title.secondary}}{{/if}}
 - Description ({{primaryLanguage}}): {{offering.description.primary}}
 {{#if offering.description.secondary}}- Description ({{secondaryLanguage}}): {{offering.description.secondary}}{{/if}}
 - Contextual Notes: {{offering.contextual_notes}}
+- **Value Content (Key Talking Points):** 
+{{#each offering.value_content}}
+    - **Type**: {{this.type}}, **Concept**: {{this.concept}}, **Developed Content**: {{this.developed_content}}
+{{/each}}
 ---
-
-**CAMPAIGN & CHANNEL (The "When" and "Where"):**
+**INPUT #4: STRATEGIC CONTEXT (The "How", "When", and "Where")**
+- Strategy Blueprint Stages:
+{{#each strategy.strategy_brief.strategy}}
+  - **Stage: {{this.stageName}}** (Objective: {{this.objective}})
+{{/each}}
 - Campaign Dates: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}} to {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
 - Channel for this plan: **'{{channel}}'**
 - Best practices for '{{channel}}': "{{bestPractices}}"
 ---
 
-**YOUR TASK: Create Authentic, Connected Content**
+**YOUR TASK: Create Authentic, VIRAL Content Packages**
 
-Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint. Each package MUST contain:
+Based on all the provided context and following the hierarchy of importance, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint, making sure to use a **different viral hook** from the list for each stage to ensure variety.
 
+Each package MUST contain:
 1.  **offering_id**: '{{offering.id}}'.
 2.  **user_channel_settings**: { "channel_name": '{{channel}}' }.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy. **This is crucial: The copy MUST perfectly embody the brand's specific TONE OF VOICE.** It should feel authentic and connected, not like generic marketing.
-5.  **hashtags**: A space-separated list of 5-10 relevant hashtags that align with the brand's values.
-6.  **creativePrompt**: A detailed, visually rich prompt for an AI image/video generator that aligns with the brand's aesthetic.
-7.  **stageName**: The name of the blueprint stage this item belongs to.
-8.  **objective**: **Generate a NEW, specific goal for THIS content piece.** Example: "To build social proof by highlighting a customer transformation."
-9.  **concept**: **Generate a NEW, specific concept for THIS content piece.** Example: "Feature a powerful customer quote as the hero image with copy that expands on their story."
+4.  **copy**: Write compelling, direct-response ad copy. **This is crucial:** Start with a hook from the provided list, then seamlessly weave in the Brand's Soul, the Offering's value (using the Value Content talking points), and a clear call to action that aligns with the channel and funnel stage.
+5.  **hashtags**: A space-separated list of 5-10 relevant hashtags.
+6.  **creative_prompt**: A detailed, visually rich prompt for an AI image/video generator. This prompt MUST be inspired by the chosen hook's visual strategy and infused with the brand's specific visual identity.
+7.  **stage_name**: The name of the blueprint stage this item belongs to.
+8.  **objective**: **Generate a NEW, specific goal for THIS content piece** that aligns with the stage's objective. Example: "To build immediate trust by showcasing a powerful customer transformation story."
+9.  **concept**: **Generate a NEW, specific concept for THIS content piece** based on the chosen viral hook and the offering's value content. Example: "Hook: 'This shouldn't have worked... but it did.' Concept: Tell the story of a customer who was skeptical about [Offering Benefit] but got [Specific Result]."
 10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
 
 Generate this entire plan in the **{{campaignLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
@@ -172,8 +181,8 @@ This content package MUST contain:
 3.  **format**: Suggest a NEW, DIFFERENT visual format from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
 4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
-6.  **creativePrompt**: A NEW, DIFFERENT, detailed prompt for an AI image/video generator.
-7.  **stageName**: '{{stageName}}'.
+6.  **creative_prompt**: A NEW, DIFFERENT, detailed prompt for an AI image/video generator.
+7.  **stage_name**: '{{stageName}}'.
 8.  **objective**: **Generate a NEW, specific goal for this content piece.**
 9.  **concept**: **Generate a NEW, specific concept for this content piece.**
 10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
@@ -211,11 +220,13 @@ const generateMediaPlanFlow = ai.defineFlow(
         { data: profile, error: profileError },
         { data: strategy, error: strategyError },
         { data: channelSettings, error: channelSettingsError },
+        { data: adaptedHooks, error: adaptedHooksError }, // Fetch adapted hooks
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single(),
         supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
         supabase.from('user_channel_settings').select('channel_name, best_practices').eq('user_id', user.id),
+        supabase.from('adapted_viral_hooks').select('*').eq('user_id', user.id).limit(10),
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found. Please define your brand heart first.');
@@ -223,6 +234,9 @@ const generateMediaPlanFlow = ai.defineFlow(
     if (strategyError || !strategy) throw new Error('Could not fetch the specified strategy.');
     if (!strategy.offerings) throw new Error('The selected strategy is not linked to a valid offering.');
     if (channelSettingsError) throw new Error('Could not fetch channel settings.');
+    if (adaptedHooksError || !adaptedHooks || adaptedHooks.length === 0) {
+        throw new Error('No adapted viral hooks found. Please generate a Top 10 strategy from the Viral Hooks Library first.');
+    }
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
     const channels = requestedChannels || strategyBrief?.channels || [];
@@ -250,6 +264,7 @@ const generateMediaPlanFlow = ai.defineFlow(
             brandHeart,
             offering,
             strategy,
+            topAdaptedHooks: adaptedHooks, // Pass the hooks to the prompt
             channel,
             validFormats,
             bestPractices,
