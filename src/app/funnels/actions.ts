@@ -461,9 +461,9 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const { id: itemId, ...restOfItem } = item;
+            const { id: itemId, creativePrompt, stageName, ...restOfItem } = item as any;
             
-            const channelName = (item as any).user_channel_settings?.channel_name || '';
+            const channelName = item.user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
 
             return {
@@ -473,6 +473,8 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 user_id: user.id,
                 user_channel_id: userChannelId,
                 status: 'draft',
+                creative_prompt: creativePrompt,
+                stage_name: stageName,
             };
         });
 
