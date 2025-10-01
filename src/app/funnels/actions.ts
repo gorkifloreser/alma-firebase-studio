@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -451,7 +452,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const { user_channel_settings, ...restOfItem } = item;
+            const { user_channel_settings, creativePrompt, stageName, ...restOfItem } = item;
             const channelName = user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
             if (!userChannelId) {
@@ -464,8 +465,8 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
                 user_channel_id: userChannelId,
-                creative_prompt: item.creativePrompt, 
-                stage_name: item.stageName,
+                creative_prompt: creativePrompt,
+                stage_name: stageName,
                 status: 'draft',
             };
         });
@@ -700,6 +701,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
