@@ -1,5 +1,5 @@
 
-import { type Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
 
@@ -7,7 +7,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   // This column will store an array of price objects.
   await db.schema
     .alterTable('offering_schedules')
-    .addColumn('prices', 'jsonb', (col) => col.defaultTo('[]'::any).notNull())
+    .addColumn('prices', 'jsonb', (col) => col.defaultTo(sql`'[]'`).notNull())
     .execute();
   
   // Step 2: (Migration logic) Copy existing price data into the new JSONB column

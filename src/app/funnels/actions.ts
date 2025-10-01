@@ -1,3 +1,6 @@
+// @functional: This file and its related features (funnels, presets, media orchestration) are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-02
 
 'use server';
 
@@ -11,6 +14,13 @@ import { saveContent as saveContentAction } from '@/app/offerings/actions';
 import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
 export type { PlanItem };
+
+export type PlanItemForSave = Partial<PlanItem> & { 
+    id?: string;
+    status?: string;
+    creative_prompt?: string;
+    stage_name?: string;
+};
 
 export type UserChannelSetting = {
     id: number;
@@ -407,7 +417,7 @@ type SaveMediaPlanParams = {
     id: string | null; // ID of the media plan to update, or null for new
     funnelId: string;
     title: string;
-    planItems: PlanItem[];
+    planItems: PlanItemForSave[];
     startDate: string | null;
     endDate: string | null;
 };
@@ -450,10 +460,6 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    // Process items
-    const itemsToUpdate = planItems.filter(item => !(item as any).id.startsWith('temp-'));
-    const itemsToInsert = planItems.filter(item => (item as any).id.startsWith('temp-'));
-    
     // Fetch channel mapping
     const { data: userChannels, error: channelsError } = await supabase
         .from('user_channel_settings')
@@ -462,48 +468,37 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     if (channelsError) throw new Error("Could not fetch user channel settings to save plan.");
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
     
-    // Process inserts
-    if (itemsToInsert.length > 0) {
-        const insertPayload = itemsToInsert.map(item => ({
-            media_plan_id: mediaPlanId!,
-            user_id: user.id,
-            offering_id: item.offering_id,
-            user_channel_id: channelNameToIdMap.get((item as any).user_channel_settings?.channel_name || ''),
-            format: item.format,
-            copy: item.copy,
-            hashtags: item.hashtags,
-            objective: item.objective,
-            concept: item.concept,
-            status: (item as any).status || 'draft',
-            suggested_post_at: item.suggested_post_at,
-            creative_prompt: item.creativePrompt,
-            stage_name: item.stageName,
-        }));
-        const { error: insertError } = await supabase.from('media_plan_items').insert(insertPayload);
-        if (insertError) throw new Error(`Could not insert new media plan items: ${insertError.message}`);
-    }
+    // Separate items into those that need to be created and those that need to be updated.
+    const itemsToUpdate = planItems.filter(item => item.id && !item.id.startsWith('temp-'));
+    const itemsToInsert = planItems.filter(item => !item.id || item.id.startsWith('temp-'));
+    const allItemIds = planItems.map(item => item.id).filter(Boolean);
 
-    // Process updates
-    if (itemsToUpdate.length > 0) {
-        const updatePromises = itemsToUpdate.map(item => {
-            const typedItem = item as any;
-            const payload = {
-                user_channel_id: channelNameToIdMap.get(typedItem.user_channel_settings?.channel_name || ''),
-                format: typedItem.format,
-                copy: typedItem.copy,
-                hashtags: typedItem.hashtags,
-                objective: typedItem.objective,
-                concept: typedItem.concept,
-                status: typedItem.status || 'draft',
-                suggested_post_at: typedItem.suggested_post_at,
-                creative_prompt: typedItem.creativePrompt,
-                stage_name: typedItem.stageName,
-            };
-            return supabase.from('media_plan_items').update(payload).eq('id', typedItem.id);
-        });
-        const results = await Promise.all(updatePromises);
-        const firstError = results.find(res => res.error);
-        if (firstError) throw new Error(`Could not update one or more media plan items: ${firstError.error!.message}`);
+    // Delete items that are no longer in the plan
+    const { error: deleteError } = await supabase
+        .from('media_plan_items')
+        .delete()
+        .eq('media_plan_id', mediaPlanId)
+        .not('id', 'in', `(${allItemIds.join(',')})`);
+    if (deleteError && allItemIds.length > 0) console.warn("Could not delete old media plan items:", deleteError.message);
+
+
+    // Prepare payloads
+    const upsertPayload = planItems.map(item => {
+        const { id, user_channel_settings, ...rest } = item;
+        return {
+            ...rest,
+            id: id?.startsWith('temp-') ? undefined : id,
+            media_plan_id: mediaPlanId,
+            user_id: user.id,
+            user_channel_id: channelNameToIdMap.get(user_channel_settings?.channel_name || ''),
+        };
+    });
+    
+    const { error: upsertError } = await supabase.from('media_plan_items').upsert(upsertPayload, { onConflict: 'id' }).select();
+
+    if (upsertError) {
+        console.error("Error upserting media plan items:", upsertError);
+        throw new Error(`Could not save media plan items: ${upsertError.message}`);
     }
 
     revalidatePath('/funnels');

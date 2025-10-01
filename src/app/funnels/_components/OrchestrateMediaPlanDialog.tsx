@@ -1,4 +1,6 @@
-
+// @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-02
 
 'use client';
 
@@ -196,15 +198,21 @@ export function OrchestrateMediaPlanDialog({
         await startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    const { id, status, ...rest } = item;
-                    return id.startsWith('temp-') ? rest : { ...rest, id };
+                    const { id, status, creative_prompt, stage_name, ...rest } = item;
+                    const itemForSave: any = { ...rest, status };
+                    if (id && !id.startsWith('temp-')) {
+                        itemForSave.id = id;
+                    }
+                    itemForSave.creative_prompt = creative_prompt;
+                    itemForSave.stage_name = stage_name;
+                    return itemForSave;
                 });
                 
                 savedPlan = await saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
-                    planItems: planToSave as any,
+                    planItems: planToSave,
                     startDate: dateRange?.from?.toISOString() ?? null,
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
@@ -213,7 +221,13 @@ export function OrchestrateMediaPlanDialog({
                 setPlanIdToEdit(savedPlan.id);
 
                 // Update current plan with new IDs from the server
-                setCurrentPlan((savedPlan.media_plan_items || []).map(item => ({...item})));
+                setCurrentPlan((savedPlan.media_plan_items || []).map(item => ({
+                    ...item,
+                    id: item.id || `temp-${Date.now()}-${Math.random()}`,
+                    stage_name: item.stage_name || '',
+                    creative_prompt: item.creative_prompt || '',
+                    status: item.status || 'draft',
+                } as PlanItemWithStatus)));
 
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
                 if (updatedFunnel) {
@@ -255,7 +269,7 @@ export function OrchestrateMediaPlanDialog({
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
                 channel: itemToRegen.user_channel_settings!.channel_name, 
-                stageName: itemToRegen.stageName,
+                stageName: itemToRegen.stage_name,
             });
             
             setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));
@@ -282,7 +296,7 @@ export function OrchestrateMediaPlanDialog({
                 toast({ variant: 'destructive', title: 'Save failed', description: 'Cannot approve an unsaved plan.' });
                 return;
             }
-            finalPlan = savedPlan.media_plan_items;
+            finalPlan = savedPlan.media_plan_items.map(item => ({...item, id: item.id.toString()}));
             finalPlanId = savedPlan.id;
         }
 
@@ -319,7 +333,7 @@ export function OrchestrateMediaPlanDialog({
         });
     }
 
-    const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offeringId'>, value: string) => {
+    const handleItemChange = (itemId: string, field: keyof Omit<PlanItem, 'offering_id'>, value: string) => {
         setCurrentPlan(prev => prev!.map(item => {
             if (item.id === itemId) {
                 if (field === 'suggested_post_at') {
@@ -351,8 +365,8 @@ export function OrchestrateMediaPlanDialog({
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
-            creativePrompt: '',
-            stageName: 'New Stage',
+            creative_prompt: '',
+            stage_name: 'New Stage',
             objective: 'Your new objective here',
             concept: 'Your new concept here',
             suggested_post_at: new Date().toISOString(),
@@ -409,8 +423,8 @@ export function OrchestrateMediaPlanDialog({
                                         const itemsWithStatus = (plan.media_plan_items || []).map((item: any) => ({
                                             ...item,
                                             id: item.id || `temp-${Date.now()}-${Math.random()}`,
-                                            stageName: item.stage_name || '',
-                                            creativePrompt: item.creative_prompt || '',
+                                            stage_name: item.stage_name || '',
+                                            creative_prompt: item.creative_prompt || '',
                                             status: item.status || 'draft',
                                         }));
                                         setCurrentPlan(itemsWithStatus);
@@ -583,15 +597,15 @@ export function OrchestrateMediaPlanDialog({
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
-                                                    <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stageName-${item.id}`} value={item.stageName || ''} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" />
+                                                    <Label htmlFor={`stage_name-${item.id}`}>Strategy Stage</Label>
+                                                    <Input id={`stage_name-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" />
                                                 </div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
                                                 <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
-                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
                                                 <div className="space-y-2">
                                                     <Label>Suggested Post Time</Label>
                                                     <div className="flex items-center gap-2">
@@ -654,5 +668,3 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
-
-    

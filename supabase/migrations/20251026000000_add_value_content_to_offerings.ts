@@ -1,12 +1,12 @@
 
-import { type Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
   // Add the new value_content column to the offerings table
   // It's a JSONB column to hold an array of content blocks.
   await db.schema
     .alterTable('offerings')
-    .addColumn('value_content', 'jsonb', (col) => col.defaultTo('[]'::any))
+    .addColumn('value_content', 'jsonb', (col) => col.defaultTo(sql`'[]'`))
     .execute();
 
   // Add a comment for clarity in the database schema

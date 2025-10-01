@@ -1,12 +1,12 @@
 
-import { type Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
   // Add the new visual_identity column to the brand_hearts table
   // It's a JSONB column to hold bilingual text, similar to other fields.
   await db.schema
     .alterTable('brand_hearts')
-    .addColumn('visual_identity', 'jsonb', (col) => col.defaultTo('{}'::any))
+    .addColumn('visual_identity', 'jsonb', (col) => col.defaultTo(sql`'{}'`))
     .execute();
 }
 

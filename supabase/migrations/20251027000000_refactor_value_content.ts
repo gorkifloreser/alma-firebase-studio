@@ -1,11 +1,11 @@
 
-import { type Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
   // Step 1: Add the new 'concept' column
   await db.schema
     .alterTable('offerings')
-    .addColumn('concept', 'jsonb', (col) => col.defaultTo('[]'::any))
+    .addColumn('concept', 'jsonb', (col) => col.defaultTo(sql`'[]'`))
     .execute();
 
   // Step 2: Rename the existing 'value_content' column to 'developed_content'
