@@ -89,7 +89,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
 
     if (error) {
         console.error('[actions.ts:getFunnels] Error fetching funnels:', error.message);
-        throw new Error(`Could not fetch funnels: "${error.message}"`);
+        throw new Error(`Could not fetch funnels: "${'\"'}${error.message}${'\"'}"`);
     }
 
     return data as Funnel[];
@@ -458,15 +458,16 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
             if (!userChannelId) {
                 console.warn(`Could not find channel ID for "${channelName}". This item may not be linked correctly.`);
             }
-            const { creative_prompt, stage_name, user_channel_settings, ...restOfItem } = item as any;
+            // Correctly map camelCase from AI to snake_case for DB
+            const { creativePrompt, stageName, ...restOfItem } = item as any;
             return {
                 ...restOfItem,
                 id: item.id?.startsWith('temp-') ? undefined : item.id,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
                 user_channel_id: userChannelId,
-                creative_prompt: creative_prompt,
-                stage_name: stage_name,
+                creative_prompt: creativePrompt, 
+                stage_name: stageName,
                 status: 'draft',
             };
         });
@@ -701,6 +702,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
