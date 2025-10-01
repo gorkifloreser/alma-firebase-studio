@@ -11,6 +11,7 @@ import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarousel
 
 
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
+import type { ContentItem } from '../calendar/actions';
 
 export type QueueItem = {
     id: string;
@@ -103,9 +104,9 @@ type SaveContentInput = {
 /**
  * Saves or updates content for an offering.
  * @param {SaveContentInput} input - The content data to save.
- * @returns {Promise<{ message: string }>} A success message.
+ * @returns {Promise<ContentItem>} The saved content item.
  */
-export async function saveContent(input: SaveContentInput): Promise<{ message: string }> {
+export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -125,7 +126,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
         scheduled_at: scheduledAt || null,
     };
 
-    const { error } = await supabase.from('content').insert(payload);
+    const { data, error } = await supabase.from('content').insert(payload).select(`*, offerings(*), media_plan_items(*, user_channel_settings(channel_name))`).single();
 
     if (error) {
         console.error('Error saving content:', error.message);
@@ -134,7 +135,7 @@ export async function saveContent(input: SaveContentInput): Promise<{ message: s
     
     revalidatePath('/calendar');
     revalidatePath('/artisan');
-    return { message: 'Content approved and saved successfully.' };
+    return data as ContentItem;
 }
 
 /**
@@ -181,3 +182,4 @@ export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInpu
     return regenerateSlideFlow(input);
 }
     
+

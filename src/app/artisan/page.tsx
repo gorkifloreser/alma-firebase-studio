@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
 import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
+import { updateContent } from '../calendar/actions';
+import type { ContentItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { QueueItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -39,6 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ImageUpload } from '../offerings/_components/ImageUpload';
 import { getFormatsForChannel } from '@/lib/media-formats';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { EditContentDialog } from '@/app/calendar/_components/EditContentDialog';
 
 
 type Profile = {
@@ -92,6 +95,8 @@ const PostPreview = ({
     onDownload,
     onSelectReferenceImage,
     onAddText,
+    onEditPost,
+    isSaved,
 }: {
     profile: Profile,
     dimension: keyof typeof dimensionMap,
@@ -103,13 +108,15 @@ const PostPreview = ({
     isCodeEditorOpen: boolean,
     onCodeEditorToggle: () => void,
     handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
-    handleCarouselSlideChange: (index: number, newText: string) => void,
+    handleCarouselSlideChange: (index: number, field: 'title' | 'body', value: string) => void;
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
     onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
     onDownload: (url: string, filename: string) => void;
     onSelectReferenceImage: () => void;
     onAddText: (imageUrl: string, slideIndex?: number) => void;
+    onEditPost: () => void;
+    isSaved: boolean;
 }) => {
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -242,6 +249,14 @@ const PostPreview = ({
                         {renderVisualContent()}
                     </div>
                     
+                    <div className="absolute top-4 right-4 z-10">
+                        {isSaved && (
+                            <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onEditPost}>
+                                <Edit className="h-5 w-5" />
+                            </Button>
+                        )}
+                    </div>
+
                     {(hasVisuals || selectedCreativeType === 'video') && (
                         <div className="absolute top-16 right-4 flex flex-col gap-2 z-10 pointer-events-auto">
                             {imageUrlToEdit && (
@@ -324,7 +339,7 @@ const PostPreview = ({
                                 value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
                                 onChange={(e) => {
                                     if (currentSlideData) {
-                                        handleCarouselSlideChange(current, e.target.value)
+                                        handleCarouselSlideChange(current, 'body', e.target.value)
                                     } else {
                                         handleContentChange('primary', e.target.value)
                                     }
@@ -353,6 +368,13 @@ const PostPreview = ({
     return (
         <TooltipProvider>
             <div className="relative">
+                {isSaved && (
+                    <div className="absolute top-2 right-2 z-10">
+                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onEditPost}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
                 <Card className="w-full max-w-md mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         <Avatar>
@@ -416,7 +438,7 @@ const PostPreview = ({
                             value={(selectedCreativeType === 'carousel' && currentSlideData) ? currentSlideData.body : (editableContent?.primary || '')}
                             onChange={(e) => {
                                 if (selectedCreativeType === 'carousel' && currentSlideData) {
-                                    handleCarouselSlideChange(current, e.target.value)
+                                    handleCarouselSlideChange(current, 'body', e.target.value)
                                 } else {
                                     handleContentChange('primary', e.target.value)
                                 }
@@ -997,6 +1019,7 @@ export default function ArtisanPage() {
     const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
     const [totalCampaignItems, setTotalCampaignItems] = useState(0);
+    const [savedContent, setSavedContent] = useState<ContentItem | null>(null);
 
     // Workflow State
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -1037,7 +1060,8 @@ export default function ArtisanPage() {
     const [imageToChat, setImageToChat] = useState<{url: string, slideIndex?: number} | null>(null);
     const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
     const [isAddTextOpen, setIsAddTextOpen] = useState(false);
-
+    
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
 
     // Filter available channels based on selected campaign
@@ -1075,6 +1099,7 @@ export default function ArtisanPage() {
         setScheduledAt(null);
         setReferenceImageUrl(null);
         setSelectedQueueItemId(queueItemId);
+        setSavedContent(null);
 
         if (workflowMode === 'custom') {
             setSelectedOfferingId(undefined);
@@ -1318,11 +1343,13 @@ export default function ArtisanPage() {
         });
     };
 
-    const handleCarouselSlideChange = (index: number, newText: string) => {
+    const handleCarouselSlideChange = (index: number, field: 'title' | 'body', value: string) => {
         setCreative(prev => {
             if (!prev || !prev.carouselSlides) return prev;
             const newSlides = [...prev.carouselSlides];
-            newSlides[index] = { ...newSlides[index], body: newText };
+            const slideToUpdate = { ...newSlides[index] };
+            (slideToUpdate as any)[field] = value;
+            newSlides[index] = slideToUpdate;
             return { ...prev, carouselSlides: newSlides };
         });
     };
@@ -1380,7 +1407,7 @@ export default function ArtisanPage() {
             try {
                 const currentQueueItem = allQueueItems.find(item => item.id === selectedQueueItemId) || null;
                 
-                await saveContent({
+                const newContent = await saveContent({
                     offeringId: selectedOfferingId,
                     contentBody: editableContent,
                     imageUrl: creative?.imageUrl || null,
@@ -1391,6 +1418,8 @@ export default function ArtisanPage() {
                     mediaPlanItemId: currentQueueItem?.media_plan_item_id || null,
                     scheduledAt: scheduleDate?.toISOString(),
                 });
+
+                setSavedContent(newContent);
                 
                 if (currentQueueItem) {
                     await updateQueueItemStatus(currentQueueItem.id, 'completed');
@@ -1450,6 +1479,24 @@ export default function ArtisanPage() {
                 toast({ variant: 'destructive', title: 'Remix Failed', description: error.message });
             }
         });
+    };
+    
+    const handleContentUpdated = (updatedItem: ContentItem) => {
+        setSavedContent(updatedItem);
+        
+        // Also update the preview state if the edited item is being shown
+        if (savedContent?.id === updatedItem.id) {
+             setEditableContent(updatedItem.content_body);
+             setCreative(prev => ({
+                ...prev,
+                imageUrl: updatedItem.image_url,
+                carouselSlides: updatedItem.carousel_slides,
+                videoUrl: updatedItem.video_url,
+             }));
+             setEditableHtml(updatedItem.landing_page_html);
+        }
+        
+        toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
     };
 
     const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
@@ -1538,6 +1585,14 @@ export default function ArtisanPage() {
     return (
         <DashboardLayout>
             <Toaster />
+            {savedContent && (
+                <EditContentDialog 
+                    isOpen={isEditDialogOpen} 
+                    onOpenChange={setIsEditDialogOpen} 
+                    contentItem={savedContent}
+                    onContentUpdated={handleContentUpdated}
+                />
+            )}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -1905,6 +1960,8 @@ export default function ArtisanPage() {
                             onDownload={handleDownload}
                             onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
                             onAddText={handleOpenAddText}
+                            onEditPost={() => setIsEditDialogOpen(true)}
+                            isSaved={!!savedContent}
                         />
                     </main>
                 </div>
@@ -1924,6 +1981,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 

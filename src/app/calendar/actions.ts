@@ -4,6 +4,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { CarouselSlide } from '@/ai/flows/generate-creative-flow';
+
 
 export type ContentItem = {
     id: string;
@@ -14,7 +16,7 @@ export type ContentItem = {
     content_body: { primary: string | null; secondary: string | null; } | null;
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     image_url: string | null;
-    carousel_slides: any | null;
+    carousel_slides: CarouselSlide[] | null;
     video_url: string | null;
     landing_page_html: string | null;
     scheduled_at: string | null;
@@ -106,17 +108,26 @@ export async function unscheduleContent(contentId: string): Promise<{ message: s
 }
 
 
-export async function updateContent(contentId: string, newContentBody: { primary: string | null; secondary: string | null; }): Promise<ContentItem> {
+export async function updateContent(contentId: string, updates: Partial<Pick<ContentItem, 'content_body' | 'carousel_slides'>>): Promise<ContentItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
+    const payload: { [key: string]: any } = {
+        updated_at: new Date().toISOString(),
+    };
+    
+    if (updates.content_body) {
+        payload.content_body = updates.content_body;
+    }
+    if (updates.carousel_slides) {
+        payload.carousel_slides = updates.carousel_slides;
+    }
+
+
     const { data, error } = await supabase
         .from('content')
-        .update({
-            content_body: newContentBody,
-            updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('id', contentId)
         .eq('user_id', user.id)
         .select(`
@@ -137,5 +148,7 @@ export async function updateContent(contentId: string, newContentBody: { primary
     }
 
     revalidatePath('/calendar');
+    revalidatePath('/artisan');
     return data as ContentItem;
 }
+
