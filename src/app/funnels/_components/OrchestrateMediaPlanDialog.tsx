@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel, archiveMediaPlan } from '../actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy } from 'lucide-react';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy, CircleDashed, CheckCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -347,14 +347,14 @@ export function OrchestrateMediaPlanDialog({
             finalPlanId = savedPlan.id;
         }
 
-        const itemsForChannel = finalPlan.filter(item => item.user_channel_settings?.channel_name === activeTab);
-        const itemIds = itemsForChannel.map(item => item.id);
-        
+        const itemsToApprove = finalPlan.filter(item => item.user_channel_settings?.channel_name === activeTab && item.status !== 'approved' && item.status !== 'scheduled');
+        const itemIds = itemsToApprove.map(item => item.id);
+
         if (itemIds.length === 0) {
-            toast({ title: 'No items to approve', description: `There are no items for the ${activeTab} channel.` });
+            toast({ title: 'No new items to approve', description: `All items for the ${activeTab} channel are already approved or scheduled.` });
             return;
         }
-
+        
         startSaving(async () => {
             try {
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
@@ -454,7 +454,7 @@ export function OrchestrateMediaPlanDialog({
                         
                         const approvedChannelsCount = uniqueChannels.reduce((count, channel) => {
                             const channelItems = allItems.filter(item => item.user_channel_settings?.channel_name === channel);
-                            const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
+                            const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved' || item.status === 'scheduled');
                             return areAllApproved ? count + 1 : count;
                         }, 0);
                         
@@ -591,10 +591,10 @@ export function OrchestrateMediaPlanDialog({
                             <TabsList>
                                 {channelsForTabs.map(c => {
                                     const channelItems = groupedByChannel[c] || [];
-                                    const isApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
+                                    const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved' || item.status === 'scheduled');
                                     return (
                                         <TabsTrigger key={c} value={c} className="capitalize flex items-center gap-2">
-                                            {isApproved && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                                            {areAllApproved && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                                             {c.replace(/_/g, ' ')}
                                         </TabsTrigger>
                                     );
@@ -607,9 +607,16 @@ export function OrchestrateMediaPlanDialog({
                                     <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
                                         const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
                                         const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
+                                        const StatusIcon = item.status === 'approved' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                        const statusColor = item.status === 'approved' ? 'text-green-500' : item.status === 'scheduled' ? 'text-blue-500' : 'text-muted-foreground';
+
                                         return (
                                         <div key={item.id} className="p-4 border rounded-lg space-y-4 relative transition-all">
                                             <div className="absolute top-2 right-2 flex items-center gap-2">
+                                                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                                                  <StatusIcon className={cn("h-4 w-4", statusColor)} />
+                                                  <span className={statusColor}>{item.status}</span>
+                                                </div>
                                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
                                                 <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
@@ -676,8 +683,8 @@ export function OrchestrateMediaPlanDialog({
                                 disabled={isSaving || isGenerating || !activeTab}
                                 className="bg-green-600 hover:bg-green-700 text-white"
                             >
-                                <Check className="mr-2 h-4 w-4" />
-                                {isCurrentChannelApproved ? `Update '${activeTab}' Plan` : `Approve '${activeTab}' Plan`}
+                                <CheckCheck className="mr-2 h-4 w-4" />
+                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
                             </Button>
                         </>
                     )}
