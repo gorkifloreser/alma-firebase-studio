@@ -51,6 +51,7 @@ export type MediaPlan = {
     funnel_id: string;
     created_at: string;
     title: string;
+    status: 'active' | 'archived';
     campaign_start_date: string | null;
     campaign_end_date: string | null;
     media_plan_items: MediaPlanItem[] | null;
@@ -442,49 +443,34 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     if (channelsError) throw new Error("Could not fetch user channel settings.");
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
 
-    const itemsToUpdate = planItems.filter(item => item.id && !item.id.startsWith('temp-'));
-    const itemsToInsert = planItems.filter(item => !item.id || item.id.startsWith('temp-'));
-    const existingItemIds = itemsToUpdate.map(item => item.id);
+    const itemsToUpsert = planItems.map(item => {
+        const { id: itemId, ...restOfItem } = item as any;
+        const channelId = channelNameToIdMap.get(item.user_channel_settings?.channel_name || '');
+        const payload = {
+            id: itemId?.startsWith('temp-') ? undefined : itemId,
+            media_plan_id: mediaPlanId,
+            user_id: user.id,
+            offering_id: funnel.offering_id,
+            user_channel_id: channelId,
+            format: item.format,
+            copy: item.copy,
+            hashtags: item.hashtags,
+            objective: item.objective,
+            concept: item.concept,
+            status: item.status,
+            suggested_post_at: item.suggested_post_at,
+            creative_prompt: item.creative_prompt,
+            stage_name: item.stage_name,
+        };
+        return payload;
+    });
 
-    if (existingItemIds.length > 0) {
-        const { error: deleteError } = await supabase.from('media_plan_items').delete().eq('media_plan_id', mediaPlanId).not('id', 'in', `(${existingItemIds.join(',')})`);
-        if (deleteError) console.warn("Could not delete old media plan items:", deleteError.message);
-    } else if (planItems.length === 0) {
-        const { error: deleteAllError } = await supabase.from('media_plan_items').delete().eq('media_plan_id', mediaPlanId);
-        if (deleteAllError) console.warn("Could not clear all media plan items:", deleteAllError.message);
-    }
-    
-    if (itemsToUpdate.length > 0) {
-        const updates = itemsToUpdate.map(item => {
-            const { id: itemId, ...rest } = item;
-            const channelId = channelNameToIdMap.get((rest as any).user_channel_settings?.channel_name || '');
-            const payload = {
-                ...rest,
-                media_plan_id: mediaPlanId,
-                user_id: user.id,
-                user_channel_id: channelId,
-            };
-            delete (payload as any).user_channel_settings;
-            return supabase.from('media_plan_items').update(payload).eq('id', itemId!);
-        });
-        await Promise.all(updates);
-    }
+    const { error: upsertError } = await supabase
+        .from('media_plan_items')
+        .upsert(itemsToUpsert, { onConflict: 'id' });
 
-    if (itemsToInsert.length > 0) {
-        const inserts = itemsToInsert.map(item => {
-            const { id: _, ...rest } = item;
-            const channelId = channelNameToIdMap.get((rest as any).user_channel_settings?.channel_name || '');
-            const payload = {
-                ...rest,
-                media_plan_id: mediaPlanId,
-                user_id: user.id,
-                user_channel_id: channelId,
-            };
-            delete (payload as any).user_channel_settings;
-            return payload;
-        });
-        const { error: insertError } = await supabase.from('media_plan_items').insert(inserts);
-        if (insertError) throw new Error(`Could not insert new media plan items: ${insertError.message}`);
+    if (upsertError) {
+        throw new Error(`Could not save media plan items: ${upsertError.message}`);
     }
 
     revalidatePath('/funnels');
@@ -494,6 +480,29 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     return finalPlan as MediaPlan;
 }
+
+export async function archiveMediaPlan(planId: string): Promise<MediaPlan> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    
+    const { data, error } = await supabase
+        .from('media_plans')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('id', planId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+        
+    if (error) {
+        console.error('Error archiving media plan:', error);
+        throw new Error('Could not archive the media plan.');
+    }
+    
+    revalidatePath('/funnels');
+    return data as MediaPlan;
+}
+
 
 export async function deleteMediaPlan(planId: string): Promise<{ message: string }> {
     const supabase = createClient();

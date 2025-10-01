@@ -30,8 +30,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel } from '../actions';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check } from 'lucide-react';
+import { Funnel, MediaPlan, generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel, archiveMediaPlan } from '../actions';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
-import { addDays, format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
+import { addDays, format, parseISO, setHours, setMinutes, isValid, isPast } from 'date-fns';
 import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getProfile } from '@/app/settings/actions';
@@ -87,6 +87,7 @@ export function OrchestrateMediaPlanDialog({
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isDeleting, startDeleting] = useTransition();
+    const [isArchiving, startArchiving] = useTransition();
     const [isRegenerating, setIsRegenerating] = useState<RegeneratingState>({});
     const [activeTab, setActiveTab] = useState('');
     const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
@@ -97,6 +98,7 @@ export function OrchestrateMediaPlanDialog({
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('');
+    const [planStatusFilter, setPlanStatusFilter] = useState<'active' | 'archived'>('active');
     
     const { toast } = useToast();
     
@@ -105,7 +107,6 @@ export function OrchestrateMediaPlanDialog({
     useEffect(() => {
         setFunnel(initialFunnel);
         if (isOpen) {
-            // Fetch profile on open
             getProfile().then(p => {
                 setProfile(p);
                 setSelectedLanguage(p?.primary_language || 'en');
@@ -197,22 +198,23 @@ export function OrchestrateMediaPlanDialog({
         let savedPlan: MediaPlan | null = null;
         await startSaving(async () => {
             try {
-                const planToSave = currentPlan.map(item => {
-                    const { id, status, creative_prompt, stage_name, ...rest } = item;
-                    const itemForSave: any = { ...rest, status };
-                    if (id && !id.startsWith('temp-')) {
-                        itemForSave.id = id;
-                    }
-                    itemForSave.creative_prompt = creative_prompt;
-                    itemForSave.stage_name = stage_name;
-                    return itemForSave;
+                const itemsToUpsert = currentPlan.map(item => {
+                    const { id, user_channel_settings, ...rest } = item;
+                    const payload = {
+                        ...rest,
+                        id: id.startsWith('temp-') ? undefined : id,
+                        media_plan_id: planIdToEdit,
+                        user_id: funnel.user_id,
+                        offering_id: funnel.offering_id
+                    };
+                    return payload;
                 });
                 
                 savedPlan = await saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
-                    planItems: planToSave,
+                    planItems: itemsToUpsert as any, // Cast because of temp ID
                     startDate: dateRange?.from?.toISOString() ?? null,
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
@@ -220,7 +222,6 @@ export function OrchestrateMediaPlanDialog({
                 toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
 
-                // Update current plan with new IDs from the server
                 setCurrentPlan((savedPlan.media_plan_items || []).map(item => ({
                     ...item,
                     id: item.id || `temp-${Date.now()}-${Math.random()}`,
@@ -241,6 +242,53 @@ export function OrchestrateMediaPlanDialog({
         });
         return savedPlan;
     };
+
+    const handleArchivePlan = (planId: string) => {
+        startArchiving(async () => {
+            try {
+                await archiveMediaPlan(planId);
+                toast({ title: "Plan Archived", description: "The media plan has been moved to the archive." });
+                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                if (updatedFunnel) {
+                    onPlanSaved(updatedFunnel);
+                    setFunnel(updatedFunnel);
+                }
+            } catch (error: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Archive Failed',
+                    description: error.message,
+                });
+            }
+        });
+    };
+    
+    const handleClonePlan = (plan: MediaPlan) => {
+        const clonedItems = (plan.media_plan_items || []).map(item => ({
+            ...item,
+            id: `temp-${Date.now()}-${Math.random()}`,
+            status: 'draft',
+        }));
+        
+        setCurrentPlan(clonedItems as PlanItemWithStatus[]);
+        setPlanTitle(`${plan.title} (Copy)`);
+        setPlanIdToEdit(null); // It's a new plan
+        
+        const newStartDate = new Date();
+        const oldStartDate = plan.campaign_start_date ? parseISO(plan.campaign_start_date) : new Date();
+        const oldEndDate = plan.campaign_end_date ? parseISO(plan.campaign_end_date) : new Date();
+        const duration = oldEndDate.getTime() - oldStartDate.getTime();
+        const newEndDate = new Date(newStartDate.getTime() + duration);
+        
+        setDateRange({ from: newStartDate, to: newEndDate });
+        
+        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.user_channel_settings?.channel_name).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+        setSelectedChannels(channelsInPlan);
+        
+        setView('generate');
+        toast({ title: 'Plan Cloned!', description: 'A copy of the plan has been created. Adjust the dates and save.' });
+    };
+
 
     const handleDeletePlan = (planId: string) => {
         startDeleting(async () => {
@@ -287,7 +335,6 @@ export function OrchestrateMediaPlanDialog({
         let finalPlan = currentPlan;
         let finalPlanId = planIdToEdit;
         
-        // Step 1: Save the plan if it's not saved yet.
         const isUnsaved = finalPlan.some(item => item.id.startsWith('temp-'));
         if (!finalPlanId || isUnsaved) {
             toast({ title: 'Saving plan before approval...', description: 'This will only take a moment.' });
@@ -300,7 +347,6 @@ export function OrchestrateMediaPlanDialog({
             finalPlanId = savedPlan.id;
         }
 
-        // Step 2: Proceed with approval
         const itemsForChannel = finalPlan.filter(item => item.user_channel_settings?.channel_name === activeTab);
         const itemIds = itemsForChannel.map(item => item.id);
         
@@ -319,7 +365,6 @@ export function OrchestrateMediaPlanDialog({
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
                 ));
 
-                // Refresh the main funnel data
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
@@ -384,15 +429,23 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const renderListView = () => {
-        const plans = funnel.media_plans || [];
+        const plans = (funnel.media_plans || []).filter(plan => (plan.status || 'active') === planStatusFilter);
 
         return (
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                <Button onClick={() => setView('generate')} className="w-full">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create New Media Plan
-                </Button>
-                <h3 className="text-lg font-semibold">Previous Media Plans</h3>
+             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                 <div className="flex justify-between items-center">
+                    <Tabs value={planStatusFilter} onValueChange={(value) => setPlanStatusFilter(value as 'active' | 'archived')} className="w-full">
+                        <TabsList>
+                            <TabsTrigger value="active">Active</TabsTrigger>
+                            <TabsTrigger value="archived">Archived</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <Button onClick={() => setView('generate')} className="flex-shrink-0">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Media Plan
+                    </Button>
+                 </div>
+                
                 {plans.length > 0 ? (
                     plans.map(plan => {
                         const allItems = plan.media_plan_items || [];
@@ -404,55 +457,58 @@ export function OrchestrateMediaPlanDialog({
                             const areAllApproved = channelItems.length > 0 && channelItems.every(item => item.status === 'approved');
                             return areAllApproved ? count + 1 : count;
                         }, 0);
+                        
+                        const isFinished = plan.campaign_end_date && isPast(parseISO(plan.campaign_end_date));
 
                         return (
                             <Card key={plan.id}>
                                 <CardHeader>
                                     <div className="flex justify-between items-start">
                                         <CardTitle>{plan.title}</CardTitle>
-                                        {totalChannels > 0 && (
-                                            <Badge className={approvedChannelsCount === totalChannels ? "bg-green-100 text-green-800 hover:bg-green-100/80" : "bg-blue-100 text-blue-800 hover:bg-blue-100/80"}>
-                                                {approvedChannelsCount}/{totalChannels} Approved
-                                            </Badge>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {isFinished && <Badge variant="secondary">Finished</Badge>}
+                                            {totalChannels > 0 && (
+                                                <Badge className={approvedChannelsCount === totalChannels ? "bg-green-100 text-green-800 hover:bg-green-100/80" : "bg-blue-100 text-blue-800 hover:bg-blue-100/80"}>
+                                                    {approvedChannelsCount}/{totalChannels} Approved
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                     <CardDescription>Created on {plan.created_at ? format(parseISO(plan.created_at), 'PPP') : 'N/A'}</CardDescription>
                                 </CardHeader>
                                 <CardFooter className="flex justify-end gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                        const itemsWithStatus = (plan.media_plan_items || []).map((item: any) => ({
-                                            ...item,
-                                            id: item.id || `temp-${Date.now()}-${Math.random()}`,
-                                            stage_name: item.stage_name || '',
-                                            creative_prompt: item.creative_prompt || '',
-                                            status: item.status || 'draft',
-                                        }));
-                                        setCurrentPlan(itemsWithStatus);
-                                        setPlanTitle(plan.title);
-                                        setPlanIdToEdit(plan.id);
-                                        setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
-                                        
-                                        const channelsInPlan = plan.media_plan_items?.map((i: any) => i.user_channel_settings?.channel_name).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
-                                        setSelectedChannels(channelsInPlan);
-
-                                        setView('generate');
-                                    }}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit
-                                    </Button>
+                                     {plan.status === 'archived' ? (
+                                        <Button size="sm" onClick={() => handleClonePlan(plan)}>
+                                            <Copy className="mr-2 h-4 w-4" /> Clone Plan
+                                        </Button>
+                                    ) : isFinished ? (
+                                        <Button variant="outline" size="sm" onClick={() => handleArchivePlan(plan.id)} disabled={isArchiving}>
+                                            <Archive className="mr-2 h-4 w-4" /> {isArchiving ? 'Archiving...' : 'Archive'}
+                                        </Button>
+                                    ) : (
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                            const itemsWithStatus = (plan.media_plan_items || []).map((item: any) => ({ ...item, id: item.id || `temp-${Date.now()}-${Math.random()}`, stage_name: item.stage_name || '', creative_prompt: item.creative_prompt || '', status: item.status || 'draft' }));
+                                            setCurrentPlan(itemsWithStatus);
+                                            setPlanTitle(plan.title);
+                                            setPlanIdToEdit(plan.id);
+                                            setDateRange({ from: plan.campaign_start_date ? parseISO(plan.campaign_start_date) : undefined, to: plan.campaign_end_date ? parseISO(plan.campaign_end_date) : undefined });
+                                            const channelsInPlan = plan.media_plan_items?.map((i: any) => i.user_channel_settings?.channel_name).filter(Boolean).filter((v: any, i: any, a: any) => a.indexOf(v) === i) || [];
+                                            setSelectedChannels(channelsInPlan);
+                                            setView('generate');
+                                        }}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </Button>
+                                    )}
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <Button variant="destructive" size="sm">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
                                             </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This will permanently delete the media plan titled "{plan.title}". This action cannot be undone.
-                                                </AlertDialogDescription>
+                                                <AlertDialogDescription>This will permanently delete the media plan titled "{plan.title}". This action cannot be undone.</AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -467,7 +523,7 @@ export function OrchestrateMediaPlanDialog({
                         )
                     })
                 ) : (
-                    <p className="text-muted-foreground text-center py-4">No media plans created for this strategy yet.</p>
+                    <p className="text-muted-foreground text-center py-4">No {planStatusFilter} media plans created for this strategy yet.</p>
                 )}
             </div>
         );
@@ -494,65 +550,27 @@ export function OrchestrateMediaPlanDialog({
                             <Label htmlFor="dates">Campaign Dates</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                <Button
-                                    id="dates"
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !dateRange && "text-muted-foreground"
-                                    )}
-                                >
+                                <Button id="dates" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {dateRange?.from ? (
-                                    dateRange.to ? (
-                                        <>
-                                        {format(dateRange.from, "LLL dd, y")} -{" "}
-                                        {format(dateRange.to, "LLL dd, y")}
-                                        </>
-                                    ) : (
-                                        format(dateRange.from, "LLL dd, y")
-                                    )
-                                    ) : (
-                                    <span>Pick a date range</span>
-                                    )}
+                                    {dateRange?.from ? (dateRange.to ? (<>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={dateRange?.from}
-                                    selected={dateRange}
-                                    onSelect={setDateRange}
-                                    numberOfMonths={2}
-                                />
+                                <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
                                 </PopoverContent>
                             </Popover>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="language-select">Campaign Language</Label>
                             <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                                <SelectTrigger id="language-select">
-                                    <SelectValue placeholder="Select a language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {languageList.map((lang) => (
-                                        <SelectItem key={lang.value} value={lang.value}>
-                                            {lang.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
+                                <SelectTrigger id="language-select"><SelectValue placeholder="Select a language" /></SelectTrigger>
+                                <SelectContent>{languageList.map((lang) => (<SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>))}</SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <Label>Select Target Channels</Label>
                             <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
-                                {availableChannels.map(c => (
-                                    <div key={c} className="flex items-center space-x-2">
-                                        <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
-                                        <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
-                                    </div>
-                                ))}
+                                {availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}
                             </div>
                             {availableChannels.length === 0 && <p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>}
                         </div>
