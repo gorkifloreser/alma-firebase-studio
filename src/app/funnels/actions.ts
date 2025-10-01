@@ -426,6 +426,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 title: title,
                 campaign_start_date: startDate,
                 campaign_end_date: endDate,
+                updated_at: new Date().toISOString(),
             })
             .eq('id', mediaPlanId)
             .eq('user_id', user.id);
@@ -449,49 +450,71 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    if (planItems && planItems.length > 0) {
-        
-        const { data: userChannels, error: channelsError } = await supabase
-            .from('user_channel_settings')
-            .select('id, channel_name')
-            .eq('user_id', user.id);
+    // Separate items into those that need to be created and those that need to be updated.
+    const itemsToInsert = [];
+    const itemsToUpdate = [];
 
-        if (channelsError) throw new Error("Could not fetch user channel settings to save plan.");
-        const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
-        
-        const itemsToUpsert = planItems.map(item => {
-            const channelName = item.user_channel_settings?.channel_name || '';
-            const userChannelId = channelNameToIdMap.get(channelName);
-
-            // Explicitly build the payload with snake_case keys
-            const payload = {
-                id: (item as any).id?.startsWith('temp-') ? undefined : (item as any).id,
-                media_plan_id: mediaPlanId,
+    for (const item of planItems) {
+        if ((item as any).id?.startsWith('temp-')) {
+            itemsToInsert.push(item);
+        } else {
+            itemsToUpdate.push(item);
+        }
+    }
+    
+    // Fetch channel mapping
+    const { data: userChannels, error: channelsError } = await supabase
+        .from('user_channel_settings')
+        .select('id, channel_name')
+        .eq('user_id', user.id);
+    if (channelsError) throw new Error("Could not fetch user channel settings to save plan.");
+    const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
+    
+    // Process inserts
+    if (itemsToInsert.length > 0) {
+        const insertPayload = itemsToInsert.map(item => {
+            const channelName = (item as any).user_channel_settings?.channel_name || '';
+            return {
+                media_plan_id: mediaPlanId!,
                 user_id: user.id,
                 offering_id: item.offering_id,
-                user_channel_id: userChannelId,
+                user_channel_id: channelNameToIdMap.get(channelName),
                 format: item.format,
                 copy: item.copy,
                 hashtags: item.hashtags,
                 objective: item.objective,
                 concept: item.concept,
-                status: item.status || 'draft',
+                status: (item as any).status || 'draft',
                 suggested_post_at: item.suggested_post_at,
-                creative_prompt: item.creativePrompt,
-                stage_name: item.stageName,
+                creative_prompt: item.creative_prompt,
+                stage_name: item.stage_name,
             };
-
-            return payload;
         });
+        const { error: insertError } = await supabase.from('media_plan_items').insert(insertPayload);
+        if (insertError) throw new Error(`Could not insert new media plan items: ${insertError.message}`);
+    }
 
-        const { error: itemsError } = await supabase
-            .from('media_plan_items')
-            .upsert(itemsToUpsert, { onConflict: 'id', defaultToNull: false });
-        
-        if (itemsError) {
-            console.error("Error saving media plan items:", itemsError);
-            throw new Error(`Could not save the media plan items. DB Error: ${itemsError.message}`);
-        }
+    // Process updates
+    if (itemsToUpdate.length > 0) {
+        const updatePromises = itemsToUpdate.map(item => {
+            const channelName = (item as any).user_channel_settings?.channel_name || '';
+            const payload = {
+                user_channel_id: channelNameToIdMap.get(channelName),
+                format: item.format,
+                copy: item.copy,
+                hashtags: item.hashtags,
+                objective: item.objective,
+                concept: item.concept,
+                status: (item as any).status || 'draft',
+                suggested_post_at: item.suggested_post_at,
+                creative_prompt: item.creative_prompt,
+                stage_name: item.stage_name,
+            };
+            return supabase.from('media_plan_items').update(payload).eq('id', (item as any).id);
+        });
+        const results = await Promise.all(updatePromises);
+        const firstError = results.find(res => res.error);
+        if (firstError) throw new Error(`Could not update one or more media plan items: ${firstError.error!.message}`);
     }
 
     revalidatePath('/funnels');
@@ -702,3 +725,5 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
 
     return data as MediaPlanItem[];
 }
+
+    
