@@ -460,15 +460,14 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 // This case should be rare if UI is populated correctly, but it's a good safeguard.
                 console.warn(`Could not find channel ID for "${channelName}". This item may not be linked correctly.`);
             }
-            const { offering_id, ...restOfItem } = item;
+            const { creativePrompt, ...restOfItem } = item;
             return {
                 ...restOfItem,
                 id: item.id?.startsWith('temp-') ? undefined : item.id,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
-                offering_id: item.offering_id,
                 user_channel_id: userChannelId, // Use the relational ID
-                creative_prompt: item.creativePrompt,
+                creative_prompt: creativePrompt,
                 stage_name: item.stageName,
                 status: 'draft',
             };
@@ -704,6 +703,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
