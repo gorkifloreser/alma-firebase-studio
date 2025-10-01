@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -166,7 +167,7 @@ export function OrchestrateMediaPlanDialog({
                 });
                 const validatedItems = result.plan.map(item => ({
                     ...item,
-                    id: `temp-${crypto.randomUUID()}`, // Assign temporary IDs for new items
+                    id: `temp-${Date.now()}-${Math.random()}`,
                     status: 'draft',
                 }));
                 setCurrentPlan(validatedItems);
@@ -195,7 +196,7 @@ export function OrchestrateMediaPlanDialog({
         await startSaving(async () => {
             try {
                 const planToSave = currentPlan.map(item => {
-                    const { id, status, ...rest } = item; // Exclude client-side status from DB save
+                    const { id, status, ...rest } = item;
                     return id.startsWith('temp-') ? rest : { ...rest, id };
                 });
                 
@@ -254,7 +255,7 @@ export function OrchestrateMediaPlanDialog({
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
                 channel: itemToRegen.user_channel_settings!.channel_name, 
-                stageName: itemToRegen.stageName,
+                stageName: itemToRegen.stage_name,
             });
             
             setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));
@@ -344,14 +345,14 @@ export function OrchestrateMediaPlanDialog({
 
     const handleAddNewItem = (channel: string) => {
         const newItem: PlanItemWithStatus = {
-            id: `temp-${crypto.randomUUID()}`,
+            id: `temp-${Date.now()}-${Math.random()}`,
             offering_id: funnel.offering_id || '',
             user_channel_settings: { channel_name: channel, id: 0 },
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
-            creativePrompt: '',
-            stageName: 'New Stage',
+            creative_prompt: '',
+            stage_name: 'New Stage',
             objective: 'Your new objective here',
             concept: 'Your new concept here',
             suggested_post_at: new Date().toISOString(),
@@ -407,7 +408,7 @@ export function OrchestrateMediaPlanDialog({
                                     <Button variant="outline" size="sm" onClick={() => {
                                         const itemsWithStatus = (plan.media_plan_items || []).map((item: any) => ({
                                             ...item,
-                                            id: item.id || crypto.randomUUID(),
+                                            id: item.id || `temp-${Date.now()}-${Math.random()}`,
                                             stageName: item.stage_name || '',
                                             creativePrompt: item.creative_prompt || '',
                                             status: item.status || 'draft',
@@ -583,14 +584,14 @@ export function OrchestrateMediaPlanDialog({
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <Label htmlFor={`stageName-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stageName-${item.id}`} value={item.stageName || ''} onChange={(e) => handleItemChange(item.id, 'stageName', e.target.value)} className="font-semibold bg-muted/50" />
+                                                    <Input id={`stageName-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" />
                                                 </div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
                                                 <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
                                                 <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
-                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creativePrompt} onChange={(e) => handleItemChange(item.id, 'creativePrompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
                                                 <div className="space-y-2">
                                                     <Label>Suggested Post Time</Label>
                                                     <div className="flex items-center gap-2">

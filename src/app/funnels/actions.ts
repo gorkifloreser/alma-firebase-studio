@@ -1,14 +1,15 @@
 
+
 'use server';
 
-import { createClient } } from '@/lib/supabase/server';
-import { revalidatePath } } from 'next/cache';
-import type { Data } } from '@measured/puck';
-import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } } from '@/ai/flows/generate-funnel-flow';
-import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } } from '@/ai/flows/generate-media-plan-flow';
-import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } } from '@/ai/flows/generate-media-plan-flow';
-import { saveContent as saveContentAction } } from '@/app/offerings/actions';
-import type { Account } } from '@/app/accounts/_components/AccountsClientPage';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import type { Data } from '@measured/puck';
+import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
+import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
+import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
+import { saveContent as saveContentAction } from '@/app/offerings/actions';
+import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
 export type { PlanItem };
 
@@ -33,7 +34,7 @@ export type MediaPlanItem = {
     concept: string | null;
     status: string; 
     user_channel_id: number | null;
-    user_channel_settings: { channel_name: string } | null; // This comes from the JOIN
+    user_channel_settings: { channel_name: string } | null;
 };
 
 export type MediaPlan = {
@@ -419,9 +420,8 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     let mediaPlanId = id;
 
-    // 1. Create or Update the parent media_plan record
     if (mediaPlanId) { // Update existing plan
-        const { data: updatedPlan, error: updateError } = await supabase
+        const { error: updateError } = await supabase
             .from('media_plans')
             .update({
                 title: title,
@@ -429,9 +429,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 campaign_end_date: endDate,
             })
             .eq('id', mediaPlanId)
-            .eq('user_id', user.id)
-            .select()
-            .single();
+            .eq('user_id', user.id);
         if (updateError) throw new Error(`Could not update media plan: ${updateError.message}`);
 
     } else { // Create new plan
@@ -452,7 +450,6 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    // 2. Prepare and upsert the individual items
     if (planItems && planItems.length > 0) {
         
         const { data: userChannels, error: channelsError } = await supabase
@@ -464,23 +461,17 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const { creativePrompt, stageName, ...restOfItem } = item;
+            const { id: itemId, ...restOfItem } = item;
             
-            // This is the key change. `item.user_channel_settings` does not exist on the base `PlanItem`
-            // Instead, we get the channel name from the parent object which is not passed here.
-            // The item from the client has `item.user_channel_settings: { channel_name: '...' }`
-            // We need to extract this name and find the corresponding ID.
             const channelName = (item as any).user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
 
             return {
                 ...restOfItem,
-                id: item.id?.startsWith('temp-') ? undefined : item.id,
+                id: itemId?.startsWith('temp-') ? undefined : itemId,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
                 user_channel_id: userChannelId,
-                creative_prompt: creativePrompt,
-                stage_name: stageName,
                 status: 'draft',
             };
         });
@@ -703,4 +694,3 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
 
     return data as MediaPlanItem[];
 }
-
