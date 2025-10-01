@@ -461,21 +461,28 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const { id: itemId, creativePrompt, stageName, ...restOfItem } = item as any;
+            const { id: itemId, user_channel_settings, ...restOfItem } = item as any;
             
-            const channelName = item.user_channel_settings?.channel_name || '';
+            const channelName = user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
 
-            return {
+            const payload: any = {
                 ...restOfItem,
                 id: itemId?.startsWith('temp-') ? undefined : itemId,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
                 user_channel_id: userChannelId,
                 status: 'draft',
-                creative_prompt: creativePrompt,
-                stage_name: stageName,
             };
+
+            // Ensure all properties match snake_case from the DB schema.
+            // This is the critical correction.
+            payload.creative_prompt = item.creativePrompt;
+            payload.stage_name = item.stageName;
+            delete payload.creativePrompt;
+            delete payload.stageName;
+
+            return payload;
         });
 
         const { error: itemsError } = await supabase
