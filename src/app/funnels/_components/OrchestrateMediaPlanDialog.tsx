@@ -347,12 +347,12 @@ export function OrchestrateMediaPlanDialog({
         const newItem: PlanItemWithStatus = {
             id: `temp-${Date.now()}-${Math.random()}`,
             offering_id: funnel.offering_id || '',
-            user_channel_settings: { channel_name: channel, id: 0 },
+            user_channel_settings: { channel_name: channel },
             format: getFormatsForChannel(channel)[0] || 'Blog Post',
             copy: '',
             hashtags: '',
-            creative_prompt: '',
-            stage_name: 'New Stage',
+            creativePrompt: '',
+            stageName: 'New Stage',
             objective: 'Your new objective here',
             concept: 'Your new concept here',
             suggested_post_at: new Date().toISOString(),
@@ -654,3 +654,5 @@ export function OrchestrateMediaPlanDialog({
         </Dialog>
     );
 }
+
+    
