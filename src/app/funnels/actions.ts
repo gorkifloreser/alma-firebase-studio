@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -408,7 +407,7 @@ type SaveMediaPlanParams = {
     id: string | null; // ID of the media plan to update, or null for new
     funnelId: string;
     title: string;
-    planItems: (Omit<PlanItem, 'user_channel_settings' | 'id'> & { id?: string })[]; // id is optional for new items
+    planItems: PlanItem[];
     startDate: string | null;
     endDate: string | null;
 };
@@ -461,26 +460,26 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const { id: itemId, user_channel_settings, ...restOfItem } = item as any;
-            
-            const channelName = user_channel_settings?.channel_name || '';
+            const channelName = item.user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
 
-            const payload: any = {
-                ...restOfItem,
-                id: itemId?.startsWith('temp-') ? undefined : itemId,
+            // Explicitly build the payload with snake_case keys
+            const payload = {
+                id: (item as any).id?.startsWith('temp-') ? undefined : (item as any).id,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
+                offering_id: item.offering_id,
                 user_channel_id: userChannelId,
-                status: 'draft',
+                format: item.format,
+                copy: item.copy,
+                hashtags: item.hashtags,
+                objective: item.objective,
+                concept: item.concept,
+                status: item.status || 'draft',
+                suggested_post_at: item.suggested_post_at,
+                creative_prompt: item.creativePrompt,
+                stage_name: item.stageName,
             };
-
-            // Ensure all properties match snake_case from the DB schema.
-            // This is the critical correction.
-            payload.creative_prompt = item.creativePrompt;
-            payload.stage_name = item.stageName;
-            delete payload.creativePrompt;
-            delete payload.stageName;
 
             return payload;
         });
