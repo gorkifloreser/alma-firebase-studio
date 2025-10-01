@@ -453,22 +453,20 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            // The channel is now on the user_channel_settings relation
             const channelName = item.user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
             if (!userChannelId) {
-                // This case should be rare if UI is populated correctly, but it's a good safeguard.
                 console.warn(`Could not find channel ID for "${channelName}". This item may not be linked correctly.`);
             }
-            const { creativePrompt, ...restOfItem } = item;
+            const { creativePrompt, stageName, ...restOfItem } = item;
             return {
                 ...restOfItem,
                 id: item.id?.startsWith('temp-') ? undefined : item.id,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
-                user_channel_id: userChannelId, // Use the relational ID
+                user_channel_id: userChannelId,
                 creative_prompt: creativePrompt,
-                stage_name: item.stageName,
+                stage_name: stageName,
                 status: 'draft',
             };
         });
@@ -703,6 +701,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
