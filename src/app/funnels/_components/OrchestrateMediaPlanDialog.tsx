@@ -255,7 +255,7 @@ export function OrchestrateMediaPlanDialog({
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
                 channel: itemToRegen.user_channel_settings!.channel_name, 
-                stageName: itemToRegen.stage_name,
+                stageName: itemToRegen.stageName,
             });
             
             setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));

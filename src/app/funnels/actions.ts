@@ -450,17 +450,9 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    // Separate items into those that need to be created and those that need to be updated.
-    const itemsToInsert = [];
-    const itemsToUpdate = [];
-
-    for (const item of planItems) {
-        if ((item as any).id?.startsWith('temp-')) {
-            itemsToInsert.push(item);
-        } else {
-            itemsToUpdate.push(item);
-        }
-    }
+    // Process items
+    const itemsToUpdate = planItems.filter(item => !(item as any).id.startsWith('temp-'));
+    const itemsToInsert = planItems.filter(item => (item as any).id.startsWith('temp-'));
     
     // Fetch channel mapping
     const { data: userChannels, error: channelsError } = await supabase
@@ -472,24 +464,21 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     
     // Process inserts
     if (itemsToInsert.length > 0) {
-        const insertPayload = itemsToInsert.map(item => {
-            const channelName = (item as any).user_channel_settings?.channel_name || '';
-            return {
-                media_plan_id: mediaPlanId!,
-                user_id: user.id,
-                offering_id: item.offering_id,
-                user_channel_id: channelNameToIdMap.get(channelName),
-                format: item.format,
-                copy: item.copy,
-                hashtags: item.hashtags,
-                objective: item.objective,
-                concept: item.concept,
-                status: (item as any).status || 'draft',
-                suggested_post_at: item.suggested_post_at,
-                creative_prompt: item.creative_prompt,
-                stage_name: item.stage_name,
-            };
-        });
+        const insertPayload = itemsToInsert.map(item => ({
+            media_plan_id: mediaPlanId!,
+            user_id: user.id,
+            offering_id: item.offering_id,
+            user_channel_id: channelNameToIdMap.get((item as any).user_channel_settings?.channel_name || ''),
+            format: item.format,
+            copy: item.copy,
+            hashtags: item.hashtags,
+            objective: item.objective,
+            concept: item.concept,
+            status: (item as any).status || 'draft',
+            suggested_post_at: item.suggested_post_at,
+            creative_prompt: item.creativePrompt,
+            stage_name: item.stageName,
+        }));
         const { error: insertError } = await supabase.from('media_plan_items').insert(insertPayload);
         if (insertError) throw new Error(`Could not insert new media plan items: ${insertError.message}`);
     }
@@ -497,20 +486,20 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     // Process updates
     if (itemsToUpdate.length > 0) {
         const updatePromises = itemsToUpdate.map(item => {
-            const channelName = (item as any).user_channel_settings?.channel_name || '';
+            const typedItem = item as any;
             const payload = {
-                user_channel_id: channelNameToIdMap.get(channelName),
-                format: item.format,
-                copy: item.copy,
-                hashtags: item.hashtags,
-                objective: item.objective,
-                concept: item.concept,
-                status: (item as any).status || 'draft',
-                suggested_post_at: item.suggested_post_at,
-                creative_prompt: item.creative_prompt,
-                stage_name: item.stage_name,
+                user_channel_id: channelNameToIdMap.get(typedItem.user_channel_settings?.channel_name || ''),
+                format: typedItem.format,
+                copy: typedItem.copy,
+                hashtags: typedItem.hashtags,
+                objective: typedItem.objective,
+                concept: typedItem.concept,
+                status: typedItem.status || 'draft',
+                suggested_post_at: typedItem.suggested_post_at,
+                creative_prompt: typedItem.creativePrompt,
+                stage_name: typedItem.stageName,
             };
-            return supabase.from('media_plan_items').update(payload).eq('id', (item as any).id);
+            return supabase.from('media_plan_items').update(payload).eq('id', typedItem.id);
         });
         const results = await Promise.all(updatePromises);
         const firstError = results.find(res => res.error);
@@ -725,5 +714,3 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
 
     return data as MediaPlanItem[];
 }
-
-    
