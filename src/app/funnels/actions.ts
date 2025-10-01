@@ -429,91 +429,53 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     let mediaPlanId = id;
 
-    if (mediaPlanId) { // Update existing plan
-        const { error: updateError } = await supabase
-            .from('media_plans')
-            .update({
-                title: title,
-                campaign_start_date: startDate,
-                campaign_end_date: endDate,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', mediaPlanId)
-            .eq('user_id', user.id);
-        if (updateError) throw new Error(`Could not update media plan: ${updateError.message}`);
-
-    } else { // Create new plan
-        const { data: newPlan, error: insertError } = await supabase
-            .from('media_plans')
-            .insert({
-                funnel_id: funnelId,
-                user_id: user.id,
-                title: title,
-                campaign_start_date: startDate,
-                campaign_end_date: endDate,
-            })
-            .select()
-            .single();
-        if (insertError || !newPlan) throw new Error(`Could not save media plan: ${insertError?.message}`);
-        mediaPlanId = newPlan.id;
+    // Create or Update Media Plan
+    if (mediaPlanId) {
+        const { error } = await supabase.from('media_plans').update({ title, campaign_start_date: startDate, campaign_end_date: endDate, updated_at: new Date().toISOString() }).eq('id', mediaPlanId);
+        if (error) throw new Error(`Could not update media plan: ${error.message}`);
+    } else {
+        const { data, error } = await supabase.from('media_plans').insert({ funnel_id: funnelId, user_id: user.id, title, campaign_start_date: startDate, campaign_end_date: endDate }).select().single();
+        if (error || !data) throw new Error(`Could not create media plan: ${error?.message}`);
+        mediaPlanId = data.id;
     }
-    
-    if (!mediaPlanId) throw new Error("Failed to get a media plan ID.");
 
-    // Fetch channel mapping
-    const { data: userChannels, error: channelsError } = await supabase
-        .from('user_channel_settings')
-        .select('id, channel_name')
-        .eq('user_id', user.id);
-    if (channelsError) throw new Error("Could not fetch user channel settings to save plan.");
+    // Fetch user channel settings to map names to IDs
+    const { data: userChannels, error: channelsError } = await supabase.from('user_channel_settings').select('id, channel_name').eq('user_id', user.id);
+    if (channelsError) throw new Error("Could not fetch user channel settings.");
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
-    
-    // Separate items into those that need to be created and those that need to be updated.
-    const itemsToUpdate = planItems.filter(item => item.id && !item.id.startsWith('temp-'));
-    const itemsToInsert = planItems.filter(item => !item.id || item.id.startsWith('temp-'));
-    const allItemIds = planItems.map(item => item.id).filter(Boolean);
 
-    // Delete items that are no longer in the plan
-    const { error: deleteError } = await supabase
-        .from('media_plan_items')
-        .delete()
-        .eq('media_plan_id', mediaPlanId)
-        .not('id', 'in', `(${allItemIds.join(',')})`);
-    if (deleteError && allItemIds.length > 0) console.warn("Could not delete old media plan items:", deleteError.message);
-
-
-    // Prepare payloads
-    const upsertPayload = planItems.map(item => {
-        const { id, user_channel_settings, ...rest } = item;
+    // Prepare items for upsert
+    const itemsToUpsert = planItems.map(item => {
+        const { id: itemId, user_channel_settings, ...rest } = item;
+        const channelId = channelNameToIdMap.get(user_channel_settings?.channel_name || '');
         return {
-            ...rest,
-            id: id?.startsWith('temp-') ? undefined : id,
+            id: itemId?.startsWith('temp-') ? undefined : itemId,
             media_plan_id: mediaPlanId,
             user_id: user.id,
-            user_channel_id: channelNameToIdMap.get(user_channel_settings?.channel_name || ''),
+            ...rest,
+            user_channel_id: channelId,
         };
     });
-    
-    const { error: upsertError } = await supabase.from('media_plan_items').upsert(upsertPayload, { onConflict: 'id' }).select();
 
+    const { error: upsertError } = await supabase.from('media_plan_items').upsert(itemsToUpsert, { onConflict: 'id', defaultToNull: false }).select();
     if (upsertError) {
         console.error("Error upserting media plan items:", upsertError);
         throw new Error(`Could not save media plan items: ${upsertError.message}`);
     }
+    
+    // Delete items that are no longer in the plan
+    const currentItemIds = itemsToUpsert.map(item => item.id).filter(Boolean);
+    if (currentItemIds.length > 0) {
+        const { error: deleteError } = await supabase.from('media_plan_items').delete().eq('media_plan_id', mediaPlanId).not('id', 'in', `(${currentItemIds.join(',')})`);
+        if (deleteError) console.warn("Could not delete old media plan items:", deleteError.message);
+    }
 
     revalidatePath('/funnels');
     
-    const { data: newPlanWithItems, error: newPlanError } = await supabase
-        .from('media_plans')
-        .select('*, media_plan_items!media_plan_id (*, user_channel_settings(id, channel_name))')
-        .eq('id', mediaPlanId)
-        .single();
+    const { data: finalPlan, error: finalPlanError } = await supabase.from('media_plans').select('*, media_plan_items!inner(*, user_channel_settings(id, channel_name))').eq('id', mediaPlanId).single();
+    if (finalPlanError) throw new Error("Failed to fetch the updated plan.");
 
-    if (newPlanError || !newPlanWithItems) {
-        throw new Error("Failed to fetch the newly created plan.");
-    }
-
-    return newPlanWithItems as MediaPlan;
+    return finalPlan as MediaPlan;
 }
 
 export async function deleteMediaPlan(planId: string): Promise<{ message: string }> {
