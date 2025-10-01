@@ -1,5 +1,3 @@
-
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -453,21 +451,21 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
         
         const itemsToUpsert = planItems.map(item => {
-            const channelName = item.user_channel_settings?.channel_name || '';
+            const { user_channel_settings, ...restOfItem } = item;
+            const channelName = user_channel_settings?.channel_name || '';
             const userChannelId = channelNameToIdMap.get(channelName);
             if (!userChannelId) {
                 console.warn(`Could not find channel ID for "${channelName}". This item may not be linked correctly.`);
             }
-            // Correctly map camelCase from AI to snake_case for DB
-            const { creativePrompt, stageName, ...restOfItem } = item as any;
+
             return {
                 ...restOfItem,
                 id: item.id?.startsWith('temp-') ? undefined : item.id,
                 media_plan_id: mediaPlanId,
                 user_id: user.id,
                 user_channel_id: userChannelId,
-                creative_prompt: creativePrompt, 
-                stage_name: stageName,
+                creative_prompt: item.creativePrompt, 
+                stage_name: item.stageName,
                 status: 'draft',
             };
         });
@@ -702,6 +700,7 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     
 
     
+
 
 
 
