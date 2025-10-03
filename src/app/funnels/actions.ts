@@ -428,6 +428,16 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    const { data: funnel, error: funnelError } = await supabase
+        .from('funnels')
+        .select('offering_id')
+        .eq('id', funnelId)
+        .single();
+
+    if (funnelError || !funnel) {
+        throw new Error(`Could not retrieve funnel details to save media plan: ${funnelError?.message}`);
+    }
+
     let mediaPlanId = id;
 
     if (mediaPlanId) {
@@ -524,9 +534,9 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
         const ids = itemIds.map(item => item.id);
         
         const { data: content, error: contentError } = await supabase
-            .from('content')
+            .from('media_plan_items')
             .select('id')
-            .in('media_plan_item_id', ids)
+            .in('id', ids)
             .in('status', ['scheduled', 'published'])
             .limit(1);
 
@@ -564,7 +574,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
 
     const { error: statusError } = await supabase
         .from('media_plan_items')
-        .update({ status: 'approved' })
+        .update({ status: 'queued_for_generation' })
         .in('id', mediaPlanItemIds)
         .eq('user_id', user.id);
         
@@ -572,29 +582,8 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
         console.error('Bulk status update failed:', statusError);
         throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
     }
-
-    const recordsToInsert = mediaPlanItemIds.map(itemId => ({
-        user_id: user.id,
-        funnel_id: funnelId,
-        offering_id: offeringId,
-        media_plan_item_id: itemId,
-        status: 'pending' as const,
-    }));
-
-    const { error: queueError } = await supabase
-        .from('content_generation_queue')
-        .upsert(recordsToInsert, { onConflict: 'user_id, media_plan_item_id' });
-
-    if (queueError) {
-        console.error('Bulk add to queue failed:', queueError);
-        await supabase
-            .from('media_plan_items')
-            .update({ status: 'draft' })
-            .in('id', mediaPlanItemIds)
-            .eq('user_id', user.id);
-        throw new Error(`Could not add items to the Artisan Queue. DB Error: ${queueError.message}`);
-    }
     
+    revalidatePath('/artisan');
     return { count: mediaPlanItemIds.length };
 }
 

@@ -8,15 +8,14 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getQueueItems, updateQueueItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
+import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
-import { updateContent } from '../calendar/actions';
-import type { ContentItem } from '../calendar/actions';
+import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
-import type { QueueItem } from './actions';
+import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download, CaseUpper } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download, CaseUpper, CheckCircle2, CircleDashed } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -166,21 +165,20 @@ const PostPreview = ({
         if (isLoading) {
             return <Skeleton className="w-full h-full" />;
         }
+    
         if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
             return (
                 <Carousel setApi={setApi} className="w-full h-full">
                     <CarouselContent>
                         {creative.carouselSlides.map((slide, index) => (
-                             <CarouselItem key={index} className="relative group">
-                                <div className={cn("relative w-full overflow-hidden", aspectRatioClass)}>
-                                    {slide.imageUrl ? (
-                                        <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                            <ImageIcon className="w-24 h-24 text-muted-foreground" />
-                                        </div>
-                                    )}
-                                </div>
+                            <CarouselItem key={index} className="relative group">
+                                {slide.imageUrl ? (
+                                    <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                        <ImageIcon className="w-24 h-24 text-muted-foreground" />
+                                    </div>
+                                )}
                             </CarouselItem>
                         ))}
                     </CarouselContent>
@@ -193,13 +191,11 @@ const PostPreview = ({
                 </Carousel>
             );
         }
+    
         if (creative?.imageUrl) {
-            return (
-                 <div className="relative w-full h-full group">
-                    <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />
-                </div>
-            );
+            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
+    
         if (selectedCreativeType === 'video' && creative?.videoUrl) {
             return (
                  <div className="relative w-full h-full">
@@ -246,7 +242,7 @@ const PostPreview = ({
             <TooltipProvider>
                 <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
                     <div className="absolute inset-0 bg-black">
-                        {renderVisualContent()}
+                         <div className={cn("relative w-full h-full")}>{renderVisualContent()}</div>
                     </div>
                     
                     <div className="absolute top-4 right-4 z-10">
@@ -387,8 +383,8 @@ const PostPreview = ({
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", dimension === '9:16' ? 'aspect-[4/5]' : aspectRatioClass)}>
-                            <div className={cn("relative w-full h-full", dimension === '9:16' ? 'aspect-[9/16]' : '')}>
+                        <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", aspectRatioClass)}>
+                            <div className={cn("relative w-full h-full")}>
                                 {renderVisualContent()}
                             </div>
                             {(hasVisuals || selectedCreativeType === 'video') && (
@@ -1016,10 +1012,10 @@ export default function ArtisanPage() {
     // Core State
     const [profile, setProfile] = useState<Profile>(null);
     const [offerings, setOfferings] = useState<Offering[]>([]);
-    const [allQueueItems, setAllQueueItems] = useState<QueueItem[]>([]);
+    const [allArtisanItems, setAllArtisanItems] = useState<ArtisanItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
     const [totalCampaignItems, setTotalCampaignItems] = useState(0);
-    const [savedContent, setSavedContent] = useState<ContentItem | null>(null);
+    const [savedContent, setSavedContent] = useState<CalendarItem | null>(null);
 
     // Workflow State
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -1027,8 +1023,8 @@ export default function ArtisanPage() {
     const [selectedCampaign, setSelectedCampaign] = useState<MediaPlanSelectItem | null>(null);
     
     // Page Content State
-    const [filteredQueueItems, setFilteredQueueItems] = useState<QueueItem[]>([]);
-    const [selectedQueueItemId, setSelectedQueueItemId] = useState<string | null>(null);
+    const [filteredArtisanItems, setFilteredArtisanItems] = useState<ArtisanItem[]>([]);
+    const [selectedArtisanItemId, setSelectedArtisanItemId] = useState<string | null>(null);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | undefined>();
     const [channelFilter, setChannelFilter] = useState<string>('all');
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -1067,69 +1063,86 @@ export default function ArtisanPage() {
     // Filter available channels based on selected campaign
     const availableChannels = useMemo(() => {
         if (workflowMode !== 'campaign' || !selectedCampaign) return [];
-        const channels = allQueueItems
-            .filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id)
-            .map(item => item.media_plan_items!.user_channel_settings!.channel_name)
+        const channels = allArtisanItems
+            .filter(item => item.media_plan_id === selectedCampaign.id)
+            .map(item => item.user_channel_settings!.channel_name)
             .filter((v, i, a) => a.indexOf(v) === i); // Unique
         return channels;
-    }, [workflowMode, selectedCampaign, allQueueItems]);
+    }, [workflowMode, selectedCampaign, allArtisanItems]);
 
     // Apply channel filter
     useEffect(() => {
         if (workflowMode === 'campaign' && selectedCampaign) {
-            let items = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign.id);
+            let items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
             if (channelFilter !== 'all') {
-                items = items.filter(item => item.media_plan_items?.user_channel_settings?.channel_name === channelFilter);
+                items = items.filter(item => item.user_channel_settings?.channel_name === channelFilter);
             }
-            setFilteredQueueItems(items);
+            setFilteredArtisanItems(items);
             // Auto-select first item if selection becomes invalid
-            if (items.length > 0 && !items.find(i => i.id === selectedQueueItemId)) {
-                handleQueueItemSelect(items[0].id);
+            if (items.length > 0 && !items.find(i => i.id === selectedArtisanItemId)) {
+                handleArtisanItemSelect(items[0].id);
             } else if (items.length === 0) {
-                handleQueueItemSelect(null);
+                handleArtisanItemSelect(null);
             }
         }
-    }, [channelFilter, selectedCampaign, allQueueItems, workflowMode, selectedQueueItemId]);
+    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId]);
 
 
-    const handleQueueItemSelect = useCallback((queueItemId: string | null) => {
+    const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
         setCreative(null);
         setEditableContent(null);
         setEditableHtml(null);
         setScheduledAt(null);
         setReferenceImageUrl(null);
-        setSelectedQueueItemId(queueItemId);
+        setSelectedArtisanItemId(artisanItemId);
         setSavedContent(null);
-
-        if (workflowMode === 'custom') {
+    
+        if (!artisanItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
             return;
         }
-
-        if (!queueItemId) {
-            setSelectedOfferingId(undefined);
-            setCreativePrompt('');
-            return;
-        }
-
-        const item = allQueueItems.find(q => q.id === queueItemId);
-        if (item && item.media_plan_items) {
-            const planItem = item.media_plan_items as any;
-            
-            console.log("DEBUG: Selected Queue Item's Plan Item:", planItem);
-
-            const promptValue = planItem.creative_prompt || '';
+    
+        const item = allArtisanItems.find(q => q.id === artisanItemId);
+        if (item) {
+            setIsLoading(true);
+            const promptValue = item.creative_prompt || '';
             setCreativePrompt(promptValue);
-
-            setSelectedOfferingId(item.offering_id);
-
-            setEditableContent({ primary: planItem.copy || '', secondary: null });
-
-            const formatValue = (planItem.format || '').toLowerCase();
-            const channel = planItem.user_channel_settings?.channel_name || '';
+    
+            setSelectedOfferingId(item.offering_id ?? undefined);
+    
+            // If item is completed, fetch its content
+            if (item.status === 'completed' || item.status === 'scheduled') {
+                try {
+                    const contentItem = await getContentItem(item.id);
+                    if (contentItem) {
+                        setCreative({
+                            imageUrl: contentItem.image_url,
+                            carouselSlides: contentItem.carousel_slides,
+                            videoUrl: contentItem.video_url,
+                            landingPageHtml: contentItem.landing_page_html,
+                        });
+                        setEditableContent(contentItem.content_body);
+                        if (contentItem.landing_page_html) {
+                            setEditableHtml(contentItem.landing_page_html);
+                        }
+                        setSavedContent(contentItem as unknown as CalendarItem);
+                    } else {
+                        // Fallback to item details if full content not found
+                        setEditableContent({ primary: item.copy || '', secondary: null });
+                    }
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
+                    setEditableContent({ primary: item.copy || '', secondary: null });
+                }
+            } else {
+                 setEditableContent({ primary: item.copy || '', secondary: null });
+            }
+    
+            const formatValue = (item.format || '').toLowerCase();
+            const channel = item.user_channel_settings?.channel_name || '';
             const formatsForChannel = getFormatsForChannel(channel);
-
+    
             let newCreativeType: CreativeType = 'image';
             if (formatsForChannel.includes('Text Post')) newCreativeType = 'text';
             if (formatValue.includes('video') || formatValue.includes('reel')) newCreativeType = 'video';
@@ -1137,33 +1150,39 @@ export default function ArtisanPage() {
             else if (formatValue.includes('landing')) newCreativeType = 'landing_page';
             else if (formatValue.includes('text')) newCreativeType = 'text';
             else if (formatsForChannel.some(f => f.toLowerCase().includes('image'))) newCreativeType = 'image';
+            
+            // Only reset creative if type changes
+            if (newCreativeType !== selectedCreativeType) {
+                 setCreative(null);
+            }
             setSelectedCreativeType(newCreativeType);
-
+    
             if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
             else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
             else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
             else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
             else setDimension('1:1');
-
-            if (planItem.suggested_post_at && isValid(parseISO(planItem.suggested_post_at))) {
-                setScheduledAt(parseISO(planItem.suggested_post_at));
+    
+            if (item.suggested_post_at && isValid(parseISO(item.suggested_post_at))) {
+                setScheduledAt(parseISO(item.suggested_post_at));
             }
+            setIsLoading(false);
         }
-    }, [workflowMode, allQueueItems]);
+    }, [allArtisanItems, selectedCreativeType, toast]);
 
     useEffect(() => {
         async function fetchData() {
             try {
                 setIsLoading(true);
-                const [profileData, queueData, offeringsData, mediaPlansData] = await Promise.all([
+                const [profileData, artisanItemsData, offeringsData, mediaPlansData] = await Promise.all([
                     getProfile(),
-                    getQueueItems(),
+                    getArtisanItems(),
                     getOfferings(),
                     getMediaPlans(),
                 ]);
 
                 setProfile(profileData);
-                setAllQueueItems(queueData);
+                setAllArtisanItems(artisanItemsData);
                 setOfferings(offeringsData);
                 setMediaPlans(mediaPlansData);
                 
@@ -1186,12 +1205,12 @@ export default function ArtisanPage() {
     const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
-        const itemsForCampaign = allQueueItems.filter(item => item.media_plan_items?.media_plan_id === campaign.id);
-        setFilteredQueueItems(itemsForCampaign);
+        const itemsForCampaign = allArtisanItems.filter(item => item.media_plan_id === campaign.id);
+        setFilteredArtisanItems(itemsForCampaign);
         if (itemsForCampaign.length > 0) {
-            handleQueueItemSelect(itemsForCampaign[0].id);
+            handleArtisanItemSelect(itemsForCampaign[0].id);
         } else {
-            handleQueueItemSelect(null);
+            handleArtisanItemSelect(null);
         }
         
         try {
@@ -1208,14 +1227,14 @@ export default function ArtisanPage() {
     const startCustomWorkflow = () => {
         setWorkflowMode('custom');
         setSelectedCampaign(null);
-        setFilteredQueueItems([]);
+        setFilteredArtisanItems([]);
         setTotalCampaignItems(0);
-        handleQueueItemSelect(null);
+        handleArtisanItemSelect(null);
         setIsDialogOpen(false);
     };
 
 
-    useEffect(() => {
+     useEffect(() => {
         if (selectedCreativeType === 'video' && (dimension !== '9:16' && dimension !== '16:9')) {
              setDimension('9:16');
             toast({
@@ -1227,7 +1246,12 @@ export default function ArtisanPage() {
             setDimension('9:16');
             handleCodeEditorToggle(false);
         }
-    }, [selectedCreativeType, dimension, toast]);
+         if (creative?.imageUrl && selectedCreativeType !== 'image') setCreative(prev => ({...prev, imageUrl: null}));
+         if (creative?.carouselSlides && selectedCreativeType !== 'carousel') setCreative(prev => ({...prev, carouselSlides: null}));
+         if (creative?.videoUrl && selectedCreativeType !== 'video') setCreative(prev => ({...prev, videoUrl: null}));
+         if (creative?.landingPageHtml && selectedCreativeType !== 'landing_page') setCreative(prev => ({...prev, landingPageHtml: null}));
+
+    }, [selectedCreativeType, dimension, toast, creative]);
 
     useEffect(() => {
         if (creative?.landingPageHtml) {
@@ -1405,37 +1429,56 @@ export default function ArtisanPage() {
         
         startSaving(async () => {
             try {
-                const currentQueueItem = allQueueItems.find(item => item.id === selectedQueueItemId) || null;
-                
-                const newContent = await saveContent({
-                    offeringId: selectedOfferingId,
-                    contentBody: editableContent,
-                    imageUrl: creative?.imageUrl || null,
-                    carouselSlides: creative?.carouselSlides || null,
-                    videoUrl: creative?.videoUrl || null,
-                    landingPageHtml: editableHtml,
-                    status: status,
-                    mediaPlanItemId: currentQueueItem?.media_plan_item_id || null,
-                    scheduledAt: scheduleDate?.toISOString(),
-                });
+                const currentArtisanItem = allArtisanItems.find(item => item.id === selectedArtisanItemId);
+                if (!currentArtisanItem && workflowMode === 'campaign') throw new Error("Could not find the item to save.");
 
-                setSavedContent(newContent);
-                
-                if (currentQueueItem) {
-                    await updateQueueItemStatus(currentQueueItem.id, 'completed');
-                    setAllQueueItems(prev => prev.filter(i => i.id !== currentQueueItem.id));
-                }
+                let updatedItem: CalendarItem;
 
-                toast({
-                    title: status === 'scheduled' ? 'Scheduled!' : 'Approved!',
-                    description: `The content has been saved and is ready for the calendar.`,
-                });
-                
-                const nextItemIndex = filteredQueueItems.findIndex(i => i.id === selectedQueueItemId);
-                if (nextItemIndex !== -1 && nextItemIndex + 1 < filteredQueueItems.length) {
-                    handleQueueItemSelect(filteredQueueItems[nextItemIndex + 1].id);
+                if (currentArtisanItem?.status === 'completed' || savedContent) {
+                    // Update existing content
+                     const contentId = savedContent!.id;
+                     updatedItem = await updateContent(contentId, {
+                        content_body: editableContent,
+                        image_url: creative?.imageUrl || null,
+                        carousel_slides: creative?.carouselSlides || null,
+                        video_url: creative?.videoUrl || null,
+                        landing_page_html: editableHtml,
+                        status: status,
+                        scheduled_at: scheduleDate?.toISOString(),
+                    });
+                     toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
                 } else {
-                    handleQueueItemSelect(null);
+                    // Save new content
+                    updatedItem = await saveContent({
+                        mediaPlanItemId: selectedArtisanItemId,
+                        offeringId: selectedOfferingId,
+                        contentBody: editableContent,
+                        imageUrl: creative?.imageUrl || null,
+                        carouselSlides: creative?.carouselSlides || null,
+                        videoUrl: creative?.videoUrl || null,
+                        landingPageHtml: editableHtml,
+                        status: status,
+                        scheduledAt: scheduleDate?.toISOString(),
+                    });
+                    
+                    if (selectedArtisanItemId) {
+                         await updateMediaPlanItemStatus(selectedArtisanItemId, 'completed');
+                         setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'completed'} : i));
+                    }
+                   
+                    toast({
+                        title: status === 'scheduled' ? 'Scheduled!' : 'Approved!',
+                        description: `The content has been saved and is ready for the calendar.`,
+                    });
+                }
+                
+                setSavedContent(updatedItem as unknown as CalendarItem);
+
+                const nextItemIndex = filteredArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
+                if (nextItemIndex !== -1 && nextItemIndex + 1 < filteredArtisanItems.length) {
+                    handleArtisanItemSelect(filteredArtisanItems[nextItemIndex + 1].id);
+                } else {
+                    handleArtisanItemSelect(null);
                 }
 
             } catch (error: any) {
@@ -1481,7 +1524,7 @@ export default function ArtisanPage() {
         });
     };
     
-    const handleContentUpdated = (updatedItem: ContentItem) => {
+    const handleContentUpdated = (updatedItem: CalendarItem) => {
         setSavedContent(updatedItem);
         
         // Also update the preview state if the edited item is being shown
@@ -1505,13 +1548,14 @@ export default function ArtisanPage() {
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
     
     const isTextOnlyCreative = ['text', 'landing_page'].includes(selectedCreativeType);
-    const hasVisualContent = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl;
-    const hasContentToSave = (isTextOnlyCreative && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisualContent);
+    const hasVisuals = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl;
+    const hasContentToSave = (isTextOnlyCreative && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisuals);
 
 
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
-    const doneCount = totalCampaignItems > 0 ? totalCampaignItems - allQueueItems.filter(item => item.media_plan_items?.media_plan_id === selectedCampaign?.id).length : 0;
+    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && item.status === 'completed').length : 0;
+    const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
 
     const handleNewUpload = (newMedia: OfferingMedia) => {
         setOfferings(prev => prev.map(o => {
@@ -1525,8 +1569,8 @@ export default function ArtisanPage() {
         }));
     };
 
-    const currentChannel = (workflowMode === 'campaign' && selectedQueueItemId)
-        ? allQueueItems.find(i => i.id === selectedQueueItemId)?.media_plan_items?.user_channel_settings?.channel_name
+    const currentChannel = (workflowMode === 'campaign' && selectedArtisanItemId)
+        ? allArtisanItems.find(i => i.id === selectedArtisanItemId)?.user_channel_settings?.channel_name
         : null;
 
     const availableCreativeOptions = useMemo(() => {
@@ -1706,9 +1750,9 @@ export default function ArtisanPage() {
                                                     <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
                                                         <div className="flex justify-center">
                                                             <TabsList>
-                                                                <TabsTrigger value="all">All</TabsTrigger>
+                                                                <TabsTrigger value="all">All ({queueCount})</TabsTrigger>
                                                                 {availableChannels.map(channel => (
-                                                                    <TabsTrigger key={channel} value={channel} className="capitalize">{channel}</TabsTrigger>
+                                                                    <TabsTrigger key={channel} value={channel} className="capitalize">{channel} ({allArtisanItems.filter(i => i.media_plan_id === selectedCampaign.id && i.user_channel_settings?.channel_name === channel).length})</TabsTrigger>
                                                                 ))}
                                                             </TabsList>
                                                         </div>
@@ -1725,16 +1769,24 @@ export default function ArtisanPage() {
                                                         </span>
                                                     )}
                                                 </Label>
-                                                <Select onValueChange={(value) => handleQueueItemSelect(value)} disabled={isLoading} value={selectedQueueItemId || ''}>
+                                                 <Select onValueChange={(value) => handleArtisanItemSelect(value)} disabled={isLoading} value={selectedArtisanItemId || ''}>
                                                     <SelectTrigger id="queue-select">
                                                         <SelectValue placeholder="Select a content idea..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
-                                                        filteredQueueItems.length > 0 ? (
-                                                            filteredQueueItems.map(item => (
-                                                                <SelectItem key={item.id} value={item.id}>{item.media_plan_items?.concept || 'Untitled Concept'}</SelectItem>
-                                                            ))
+                                                        filteredArtisanItems.length > 0 ? (
+                                                            filteredArtisanItems.map(item => {
+                                                                const StatusIcon = item.status === 'completed' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                                                return (
+                                                                    <SelectItem key={item.id} value={item.id}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <StatusIcon className="h-4 w-4 text-muted-foreground" />
+                                                                            <span>{item.concept || 'Untitled Concept'}</span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            })
                                                         ) : (
                                                             <SelectItem value="none" disabled>No pending items.</SelectItem>
                                                         )}
@@ -1981,6 +2033,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 

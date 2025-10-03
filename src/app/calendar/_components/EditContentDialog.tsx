@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type ContentItem } from '../actions';
+import { updateContent, type CalendarItem } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -31,8 +31,8 @@ import { CarouselSlide } from '@/ai/flows/generate-creative-flow';
 interface EditContentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  contentItem: ContentItem | null;
-  onContentUpdated: (contentItem: ContentItem) => void;
+  contentItem: CalendarItem | null;
+  onContentUpdated: (contentItem: CalendarItem) => void;
 }
 
 type Profile = {

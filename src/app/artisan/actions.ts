@@ -10,56 +10,47 @@ import { editImageWithInstruction as editImageFlow, type EditImageInput, type Ed
 import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarouselSlideInput, type RegenerateCarouselSlideOutput } from '@/ai/flows/regenerate-carousel-slide-flow';
 
 
-import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
+import type { MediaPlanItem } from '@/app/funnels/actions';
 import type { ContentItem } from '../calendar/actions';
 
-export type QueueItem = {
-    id: string;
-    created_at: string;
-    status: 'pending' | 'completed' | 'failed';
-    offering_id: string;
-    media_plan_item_id: string;
-    media_plan_items: (PlanItem & { id: string, media_plan_id: string, user_channel_settings: { channel_name: string } | null }) | null;
-}
+export type ArtisanItem = MediaPlanItem & {
+    offerings: {
+        title: { primary: string | null };
+    } | null;
+};
 
 /**
- * Fetches pending items from the content generation queue for the current user.
- * @returns {Promise<QueueItem[]>} A promise that resolves to an array of queue items.
+ * Fetches items for the Artisan view for the current user.
+ * This includes items that are queued for generation, in progress, or ready for review.
+ * @returns {Promise<ArtisanItem[]>} A promise that resolves to an array of artisan items.
  */
-export async function getQueueItems(mediaPlanId?: string): Promise<QueueItem[]> {
+export async function getArtisanItems(mediaPlanId?: string): Promise<ArtisanItem[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     let query = supabase
-        .from('content_generation_queue')
+        .from('media_plan_items')
         .select(`
-            id,
-            created_at,
-            status,
-            offering_id,
-            media_plan_item_id,
-            media_plan_items!inner (
-                *,
-                media_plan_id,
-                user_channel_settings (channel_name)
-            )
+            *,
+            user_channel_settings (channel_name),
+            offerings (title)
         `)
         .eq('user_id', user.id)
-        .eq('status', 'pending');
+        .in('status', ['queued_for_generation', 'generation_in_progress', 'ready_for_review']);
 
     if (mediaPlanId) {
-        query = query.eq('media_plan_items.media_plan_id', mediaPlanId);
+        query = query.eq('media_plan_id', mediaPlanId);
     }
         
     const { data, error } = await query.order('created_at', { ascending: true });
 
     if (error) {
-        console.error("Error fetching queue items:", error);
-        throw new Error("Could not fetch the content generation queue.");
+        console.error("Error fetching artisan items:", error);
+        throw new Error("Could not fetch items for the Artisan view.");
     }
 
-    return data as unknown as QueueItem[];
+    return data as unknown as ArtisanItem[];
 }
 
 
@@ -139,29 +130,29 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
 }
 
 /**
- * Updates the status of a queue item.
- * @param {string} queueItemId - The ID of the queue item to update.
- * @param {'completed' | 'failed'} newStatus - The new status.
+ * Updates the status of a media plan item.
+ * @param {string} mediaPlanItemId - The ID of the media plan item to update.
+ * @param {string} newStatus - The new status from the media_plan_item_status enum.
  * @returns {Promise<{ message: string }>} A success message.
  */
-export async function updateQueueItemStatus(queueItemId: string, newStatus: 'completed' | 'failed'): Promise<{ message: string }> {
+export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStatus: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const { error } = await supabase
-        .from('content_generation_queue')
+        .from('media_plan_items')
         .update({ status: newStatus })
-        .eq('id', queueItemId)
+        .eq('id', mediaPlanItemId)
         .eq('user_id', user.id);
 
     if (error) {
-        console.error('Error updating queue item status:', error);
-        throw new Error('Could not update queue item status.');
+        console.error('Error updating media plan item status:', error);
+        throw new Error('Could not update media plan item status.');
     }
 
     revalidatePath('/artisan');
-    return { message: `Queue item marked as ${newStatus}.` };
+    return { message: `Media plan item status updated to ${newStatus}.` };
 }
 
 /**

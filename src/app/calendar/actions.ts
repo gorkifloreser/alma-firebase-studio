@@ -4,32 +4,25 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import type { MediaPlanItem } from '@/app/funnels/actions';
 
-
-export type ContentItem = {
-    id: string;
-    user_id: string;
-    created_at: string;
-    updated_at: string;
-    offering_id: string;
+export type CalendarItem = MediaPlanItem & {
+    // Fields from the new, consolidated media_plan_items table
     content_body: { primary: string | null; secondary: string | null; } | null;
-    status: 'draft' | 'approved' | 'scheduled' | 'published';
     image_url: string | null;
-    carousel_slides: CarouselSlide[] | null;
     video_url: string | null;
+    carousel_slides: any[] | null; // Consider defining a stricter type for carousel slides
     landing_page_html: string | null;
-    scheduled_at: string | null;
-    offerings: { title: { primary: string | null } } | null;
-    media_plan_item_id: string | null;
-    media_plan_items: { 
-        format: string;
-        user_channel_settings: { channel_name: string } | null;
+    published_at: string | null;
+    
+    // Relational data
+    offerings: { 
+        title: { primary: string | null } 
     } | null;
 };
 
 
-export async function getContent(): Promise<ContentItem[]> {
+export async function getContent(): Promise<CalendarItem[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -38,40 +31,36 @@ export async function getContent(): Promise<ContentItem[]> {
     }
 
     const { data, error } = await supabase
-        .from('content')
+        .from('media_plan_items')
         .select(`
             *,
-            offerings (
-                title
-            ),
-            media_plan_items (
-                format,
-                user_channel_settings (channel_name)
-            )
+            offerings (title),
+            user_channel_settings (channel_name)
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .in('status', ['approved', 'scheduled', 'published']); // Fetch content relevant for the calendar
 
     if (error) {
-        console.error("Error fetching content:", error);
-        throw new Error('Could not fetch content.');
+        console.error("Error fetching calendar content:", error);
+        throw new Error('Could not fetch calendar content.');
     }
 
-    return data as ContentItem[];
+    return data as CalendarItem[];
 }
 
 
-export async function scheduleContent(contentId: string, scheduledAt: Date): Promise<{ message: string }> {
+export async function scheduleContent(mediaPlanItemId: string, scheduledAt: Date): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const { error } = await supabase
-        .from('content')
+        .from('media_plan_items')
         .update({ 
             status: 'scheduled', 
             scheduled_at: scheduledAt.toISOString() 
         })
-        .eq('id', contentId)
+        .eq('id', mediaPlanItemId)
         .eq('user_id', user.id);
 
     if (error) {
@@ -84,18 +73,18 @@ export async function scheduleContent(contentId: string, scheduledAt: Date): Pro
 }
 
 
-export async function unscheduleContent(contentId: string): Promise<{ message: string }> {
+export async function unscheduleContent(mediaPlanItemId: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const { error } = await supabase
-        .from('content')
+        .from('media_plan_items')
         .update({
             status: 'approved',
             scheduled_at: null
         })
-        .eq('id', contentId)
+        .eq('id', mediaPlanItemId)
         .eq('user_id', user.id);
     
     if (error) {
@@ -104,17 +93,17 @@ export async function unscheduleContent(contentId: string): Promise<{ message: s
     }
 
     revalidatePath('/calendar');
-    return { message: "Content unscheduled and returned to drafts." };
+    return { message: "Content unscheduled and returned to the 'approved' list." };
 }
 
 
-export async function updateContent(contentId: string, updates: Partial<Pick<ContentItem, 'content_body' | 'carousel_slides'>>): Promise<ContentItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const payload: { [key: string]: any } = {
-        updated_at: new Date().toISOString(),
+        // updated_at is not a standard column, so we don't update it here
     };
     
     if (updates.content_body) {
@@ -126,19 +115,14 @@ export async function updateContent(contentId: string, updates: Partial<Pick<Con
 
 
     const { data, error } = await supabase
-        .from('content')
+        .from('media_plan_items')
         .update(payload)
-        .eq('id', contentId)
+        .eq('id', mediaPlanItemId)
         .eq('user_id', user.id)
         .select(`
             *,
-            offerings (
-                title
-            ),
-            media_plan_items (
-                format,
-                user_channel_settings (channel_name)
-            )
+            offerings (title),
+            user_channel_settings (channel_name)
         `)
         .single();
     
@@ -149,6 +133,6 @@ export async function updateContent(contentId: string, updates: Partial<Pick<Con
 
     revalidatePath('/calendar');
     revalidatePath('/artisan');
-    return data as ContentItem;
+    return data as CalendarItem;
 }
 

@@ -7,7 +7,7 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays } from 'date-fns';
-import { getContent, scheduleContent, unscheduleContent, type ContentItem } from './actions';
+import { getContent, scheduleContent, unscheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
     return <Sparkles className="h-4 w-4 text-muted-foreground" />;
 }
 
-const DraggableContent = ({ item }: { item: ContentItem }) => {
+const DraggableContent = ({ item }: { item: CalendarItem }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: item.id,
         data: { type: 'contentItem' }
@@ -53,8 +53,8 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
                 <div className="flex-1">
                     <p className="font-medium text-sm line-clamp-2">{item.content_body?.primary || 'Untitled Content'}</p>
                     <div className="flex items-center gap-2 mt-1">
-                         <ChannelIcon channel={item.media_plan_items?.user_channel_settings?.channel_name} />
-                        <p className="text-xs text-muted-foreground">{item.media_plan_items?.format || 'Content'}</p>
+                         <ChannelIcon channel={item.user_channel_settings?.channel_name} />
+                        <p className="text-xs text-muted-foreground">{item.format || 'Content'}</p>
                     </div>
                 </div>
             </div>
@@ -62,7 +62,7 @@ const DraggableContent = ({ item }: { item: ContentItem }) => {
     );
 };
 
-const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }: { day: Date, content: ContentItem[], isCurrentMonth: boolean, onEventClick: (item: ContentItem) => void, heightClass: string }) => {
+const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }: { day: Date, content: CalendarItem[], isCurrentMonth: boolean, onEventClick: (item: CalendarItem) => void, heightClass: string }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: format(day, 'yyyy-MM-dd'),
         data: { type: 'calendarDay', date: day }
@@ -88,7 +88,7 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }
     );
 };
 
-const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => void }) => {
+const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => void }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: item.id,
         data: { type: 'calendarEvent' }
@@ -112,7 +112,7 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
                         <p className="text-xs font-medium truncate">{item.content_body?.primary || 'Untitled'}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
-                                <ChannelIcon channel={item.media_plan_items?.user_channel_settings?.channel_name} />
+                                <ChannelIcon channel={item.user_channel_settings?.channel_name} />
                             </div>
                             <Button
                                 variant="ghost"
@@ -134,7 +134,7 @@ const CalendarEvent = ({ item, onClick }: { item: ContentItem, onClick: () => vo
 }
 
 export default function CalendarPage() {
-    const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+    const [contentItems, setContentItems] = useState<CalendarItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isScheduling, startScheduling] = useTransition();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -143,14 +143,14 @@ export default function CalendarPage() {
 
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
+    const [editingContent, setEditingContent] = useState<CalendarItem | null>(null);
 
-    const handleEventClick = (item: ContentItem) => {
+    const handleEventClick = (item: CalendarItem) => {
         setEditingContent(item);
         setIsEditDialogOpen(true);
     };
 
-    const handleContentUpdated = (updatedContent: ContentItem) => {
+    const handleContentUpdated = (updatedContent: CalendarItem) => {
         setContentItems(prev => prev.map(item => item.id === updatedContent.id ? updatedContent : item));
         setIsEditDialogOpen(false);
         toast({ title: "Content Updated!", description: "Your changes have been saved." });

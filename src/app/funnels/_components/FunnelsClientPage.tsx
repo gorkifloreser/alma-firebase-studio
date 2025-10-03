@@ -40,7 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
 import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
-import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '@/app/viral-hooks/actions';
+import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook, getViralHooks } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
 
@@ -50,12 +50,12 @@ interface FunnelsClientPageProps {
     initialViralHooks: ViralHook[];
     initialAdaptedHooks: AdaptedHook[];
     offeringIdFilter: string | undefined;
+    getViralHooks: typeof getViralHooks;
     actions: {
         getFunnels: typeof getFunnels;
         deleteFunnel: typeof deleteFunnel;
         getFunnelPresets: typeof getFunnelPresets;
         deleteCustomFunnelPreset: typeof deleteCustomFunnelPreset;
-        getViralHooks: typeof getViralHooks;
         createViralHook: typeof createViralHook;
         updateViralHook: typeof updateViralHook;
         deleteViralHook: typeof deleteViralHook;
@@ -268,7 +268,7 @@ export function FunnelsClientPage({
                     <ViralHooksManager
                         initialViralHooks={initialViralHooks}
                         initialAdaptedHooks={initialAdaptedHooks}
-                        actions={actions}
+                        actions={{...actions, getViralHooks}}
                     />
                 </TabsContent>
                 <TabsContent value="templates" className="mt-6">
