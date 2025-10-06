@@ -178,7 +178,7 @@ export default function CalendarPage() {
         };
 
         checkUserAndFetchData();
-    }, [toast]);
+    }, [toast, fetchContent]);
 
     const { unscheduled, scheduled } = useMemo(() => {
         const unscheduled = contentItems.filter(item => item.status === 'approved');

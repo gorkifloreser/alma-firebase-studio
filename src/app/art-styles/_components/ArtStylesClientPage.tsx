@@ -33,6 +33,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 import type { ArtStyle, createArtStyle, updateArtStyle, deleteArtStyle } from '../actions';
@@ -211,7 +212,7 @@ export function ArtStylesClientPage({ initialArtStyles, actions }: ArtStylesClie
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                This will permanently delete the art style "{style.name}". This action cannot be undone.
+                                                This will permanently delete the art style '{style.name}'. This action cannot be undone.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -257,7 +258,7 @@ export function ArtStylesClientPage({ initialArtStyles, actions }: ArtStylesClie
                             <Palette className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="mt-4 text-xl font-semibold">No Custom Styles Yet</h3>
                             <p className="text-muted-foreground mt-2">
-                                Click 'New Art Style' to create your first one.
+                                Click "New Art Style" to create your first one.
                             </p>
                         </div>
                     )}

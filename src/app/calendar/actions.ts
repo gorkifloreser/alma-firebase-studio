@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -46,6 +45,31 @@ export async function getContent(): Promise<CalendarItem[]> {
     }
 
     return data as CalendarItem[];
+}
+
+export async function getContentItem(mediaPlanItemId: string): Promise<CalendarItem | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+        .from('media_plan_items')
+        .select(`
+            *,
+            offerings (title),
+            user_channel_settings (channel_name)
+        `)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (error) {
+        console.error(`Error fetching content item ${mediaPlanItemId}:`, error);
+        // Return null instead of throwing, as the page can handle it
+        return null;
+    }
+
+    return data as CalendarItem;
 }
 
 
@@ -97,22 +121,15 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides' | 'image_url' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const payload: { [key: string]: any } = {
-        // updated_at is not a standard column, so we don't update it here
+        updated_at: new Date().toISOString(),
+        ...updates
     };
-    
-    if (updates.content_body) {
-        payload.content_body = updates.content_body;
-    }
-    if (updates.carousel_slides) {
-        payload.carousel_slides = updates.carousel_slides;
-    }
-
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -135,4 +152,3 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
     revalidatePath('/artisan');
     return data as CalendarItem;
 }
-

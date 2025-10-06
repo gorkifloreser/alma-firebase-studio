@@ -8,9 +8,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem } from './actions';
+import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
-import { updateContent, type CalendarItem } from '../calendar/actions';
+import { updateContent, type CalendarItem, getContentItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -600,7 +600,7 @@ const MediaSelectionDialog = ({
                 <DialogHeader>
                     <DialogTitle>Select a Reference Image</DialogTitle>
                     <DialogDescription>
-                        Choose an image from this offering's media gallery or upload a new one.
+                        Choose an image from this offering"s media gallery or upload a new one.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 max-h-[70vh] overflow-y-auto space-y-6">
@@ -1085,7 +1085,7 @@ export default function ArtisanPage() {
                 handleArtisanItemSelect(null);
             }
         }
-    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId]);
+    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId, handleArtisanItemSelect]);
 
 
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
@@ -1251,8 +1251,7 @@ export default function ArtisanPage() {
          if (creative?.videoUrl && selectedCreativeType !== 'video') setCreative(prev => ({...prev, videoUrl: null}));
          if (creative?.landingPageHtml && selectedCreativeType !== 'landing_page') setCreative(prev => ({...prev, landingPageHtml: null}));
 
-    }, [selectedCreativeType, dimension, toast, creative]);
-
+    }, [selectedCreativeType, dimension, toast, creative, handleCodeEditorToggle]);
     useEffect(() => {
         if (creative?.landingPageHtml) {
             setEditableHtml(creative.landingPageHtml);

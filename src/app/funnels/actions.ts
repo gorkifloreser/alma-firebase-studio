@@ -10,6 +10,7 @@ import type { Data } from '@measured/puck';
 import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type GenerateFunnelOutput } from '@/ai/flows/generate-funnel-flow';
 import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
 import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
+import type { ContentItem } from '../calendar/actions';
 import { saveContent as saveContentAction } from '@/app/offerings/actions';
 import type { Account } from '@/app/accounts/_components/AccountsClientPage';
 
@@ -94,13 +95,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
         .select(`
             *,
             offerings (id, title),
-            media_plans!funnel_id (
-                *,
-                media_plan_items!media_plan_id (
-                    *,
-                    user_channel_settings (id, channel_name)
-                )
-            )
+            media_plans!funnel_id (*)
         `)
         .eq('user_id', user.id);
 
@@ -343,7 +338,7 @@ export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promis
     }
 }
 
-export async function saveContent(input: Parameters<typeof saveContentAction>[0]): Promise<{ message: string }> {
+export async function saveContent(input: Parameters<typeof saveContentAction>[0]): Promise<ContentItem> {
     return saveContentAction(input);
 }
 

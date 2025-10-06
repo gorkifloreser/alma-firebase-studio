@@ -498,7 +498,7 @@ export function CreateOfferingDialog({
         } else if (offering.type === 'Event' && offering.offering_schedules.length === 0) {
              addSchedule();
         }
-    }, [isOpen, offering.type, offering.offering_schedules.length]);
+    }, [isOpen, offering.type, offering.offering_schedules.length, addSchedule]);
 
 
     return (

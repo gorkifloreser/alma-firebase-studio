@@ -80,6 +80,7 @@ export function OrchestrateMediaPlanDialog({
     onPlanSaved,
 }: OrchestrateMediaPlanDialogProps) {
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
+    const [fullFunnelData, setFullFunnelData] = useState<Funnel | null>(null);
     const [view, setView] = useState<ViewState>('list');
     const [currentPlan, setCurrentPlan] = useState<PlanItemWithStatus[] | null>(null);
     const [planIdToEdit, setPlanIdToEdit] = useState<string | null>(null);
@@ -105,15 +106,25 @@ export function OrchestrateMediaPlanDialog({
     const languageNames = new Map(languageList.map(l => [l.value, l.label]));
 
     useEffect(() => {
-        setFunnel(initialFunnel);
         if (isOpen) {
+            getFunnel(funnel.id).then(({ data }) => {
+                if (data) {
+                    setFullFunnelData(data);
+                }
+            });
+        }
+    }, [isOpen, funnel.id]);
+
+
+    useEffect(() => {
+        if (isOpen && fullFunnelData) {
             getProfile().then(p => {
                 setProfile(p);
                 setSelectedLanguage(p?.primary_language || 'en');
             });
 
             if (!planIdToEdit && !currentPlan) {
-                const newViewState = initialFunnel.media_plans && initialFunnel.media_plans.length > 0 ? 'list' : 'generate';
+                const newViewState = fullFunnelData.media_plans && fullFunnelData.media_plans.length > 0 ? 'list' : 'generate';
                 setView(newViewState);
                 setCurrentPlan(null);
                 setPlanIdToEdit(null);
@@ -122,14 +133,14 @@ export function OrchestrateMediaPlanDialog({
             getUserChannels().then(channels => {
                 const channelNames = channels.map(c => c.id);
                 setAvailableChannels(channelNames);
-                setSelectedChannels(initialFunnel.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
+                setSelectedChannels(fullFunnelData.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
             });
 
             if (dateRange?.from && !planIdToEdit) {
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, initialFunnel, planIdToEdit, currentPlan, dateRange?.from]);
+    }, [isOpen, fullFunnelData, planIdToEdit, currentPlan, dateRange?.from]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
@@ -429,7 +440,7 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const renderListView = () => {
-        const plans = (funnel.media_plans || []).filter(plan => (plan.status || 'active') === planStatusFilter);
+        const plans = (fullFunnelData?.media_plans || []).filter(plan => (plan.status || 'active') === planStatusFilter);
 
         return (
              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
@@ -667,7 +678,7 @@ export function OrchestrateMediaPlanDialog({
             <DialogContent className="sm:max-w-7xl">
                 <DialogHeader>
                      <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle>
-                     <DialogDescription>Generate, edit, and approve the tactical content pieces for the '{funnel.name}' strategy.</DialogDescription>
+                     <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
                 </DialogHeader>
                 
                 {view === 'list' ? renderListView() : renderGenerateView()}

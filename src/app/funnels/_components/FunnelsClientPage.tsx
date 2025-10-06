@@ -75,6 +75,7 @@ export function FunnelsClientPage({
     initialAdaptedHooks,
     offeringIdFilter,
     actions,
+    getViralHooks,
 }: FunnelsClientPageProps) {
     const [funnels, setFunnels] = useState(initialFunnels);
     const [funnelPresets, setFunnelPresets] = useState(initialFunnelPresets);
@@ -215,7 +216,7 @@ export function FunnelsClientPage({
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Delete this custom template?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will permanently delete the '{preset.title}' template. This action cannot be undone.
+                                        This will permanently delete the "{preset.title}" template. This action cannot be undone.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -366,7 +367,7 @@ export function FunnelsClientPage({
                             <GitBranch className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="text-xl font-semibold">No Strategies Yet</h3>
                             <p className="text-muted-foreground mt-2">
-                                Click 'Create Strategy' to generate your first one from a template.
+                                Click "Create Strategy" to generate your first one from a template.
                             </p>
                             <Button onClick={handleOpenCreateDialog} className="mt-4 gap-2">
                                 <PlusCircle className="h-5 w-5" />

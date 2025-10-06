@@ -27,6 +27,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -458,7 +464,7 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                             {customHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={true} />)}
                         </div>
                      ) : (
-                        <p className="text-muted-foreground text-center py-8">You haven't created any custom hooks yet.</p>
+                        <p className="text-muted-foreground text-center py-8">You haven&apos;t created any custom hooks yet.</p>
                      )}
                 </div>
 

@@ -1,4 +1,3 @@
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -10,6 +9,17 @@ import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInp
 import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionInput, GenerateImageDescriptionOutput } from '@/ai/flows/generate-image-description-flow';
 import { generateValueContent as genValueContentFlow } from '@/ai/flows/generate-value-content-flow';
 import type { GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-types';
+import { saveContent as saveContentAction } from '@/app/artisan/actions';
+import type { ContentItem } from '@/app/calendar/actions';
+
+// More specific type for the input to this wrapper
+type SaveContentInput = Parameters<typeof saveContentAction>[0];
+
+export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
+    return saveContentAction(input);
+}
+
+
 
 export type OfferingMedia = {
     id: string;
@@ -450,41 +460,6 @@ type SaveContentInput = {
     status: 'draft' | 'approved' | 'scheduled' | 'published';
     mediaPlanItemId?: string | null;
 };
-
-/**
- * Saves or updates content for an offering.
- * @param {SaveContentInput} input - The content data to save.
- * @returns {Promise<{ message: string }>} A success message.
- */
-export async function saveContent(input: SaveContentInput): Promise<{ message: string }> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, status, landingPageHtml, mediaPlanItemId } = input;
-
-    const payload: any = {
-        user_id: user.id,
-        offering_id: offeringId,
-        content_body: contentBody,
-        image_url: imageUrl,
-        carousel_slides: carouselSlides,
-        video_url: videoUrl,
-        landing_page_html: landingPageHtml,
-        status: status,
-        media_plan_item_id: mediaPlanItemId || null
-    };
-
-    const { error } = await supabase.from('content').insert(payload);
-
-    if (error) {
-        console.error('Error saving content:', error.message);
-        throw new Error('Could not save the content. Please try again.');
-    }
-    
-    revalidatePath('/calendar');
-    return { message: 'Content approved and saved successfully.' };
-}
 
 /**
  * Invokes the Genkit flow to generate an offering draft.

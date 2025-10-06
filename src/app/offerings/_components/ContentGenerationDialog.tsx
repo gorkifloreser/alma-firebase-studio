@@ -357,7 +357,7 @@ export function ContentGenerationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="text-primary" />
-            Artisan's Workshop: <span className="font-bold">{offeringTitle}</span>
+            Artisan&apos;s Workshop: <span className="font-bold">{offeringTitle}</span>
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.

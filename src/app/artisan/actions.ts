@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -93,41 +92,67 @@ type SaveContentInput = {
 };
 
 /**
- * Saves or updates content for an offering.
+ * Saves or updates content within a media plan item.
  * @param {SaveContentInput} input - The content data to save.
- * @returns {Promise<ContentItem>} The saved content item.
+ * @returns {Promise<ContentItem>} The updated media plan item, which now doubles as the content item.
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { offeringId, contentBody, imageUrl, carouselSlides, videoUrl, landingPageHtml, status, mediaPlanItemId, scheduledAt } = input;
+    const { 
+        mediaPlanItemId, 
+        contentBody, 
+        imageUrl, 
+        carouselSlides, 
+        videoUrl, 
+        landingPageHtml, 
+        status, 
+        scheduledAt 
+    } = input;
+
+    if (!mediaPlanItemId) {
+        throw new Error('A media_plan_item_id is required to save content.');
+    }
 
     const payload: any = {
-        user_id: user.id,
-        offering_id: offeringId,
+        // user_id and offering_id are already set on the media plan item
+        copy: contentBody?.primary, // Assuming 'copy' is the field for primary content
         content_body: contentBody,
         image_url: imageUrl,
         carousel_slides: carouselSlides,
         video_url: videoUrl,
         landing_page_html: landingPageHtml,
         status: status,
-        media_plan_item_id: mediaPlanItemId || null,
         scheduled_at: scheduledAt || null,
+        updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from('content').insert(payload).select(`*, offerings(*), media_plan_items(*, user_channel_settings(channel_name))`).single();
+    const { data, error } = await supabase
+        .from('media_plan_items')
+        .update(payload)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .select(`
+            *, 
+            offerings(*), 
+            user_channel_settings(channel_name)
+        `)
+        .single();
 
     if (error) {
-        console.error('Error saving content:', error.message);
+        console.error('Error saving content to media_plan_item:', error.message);
         throw new Error('Could not save the content. Please try again.');
     }
     
     revalidatePath('/calendar');
     revalidatePath('/artisan');
-    return data as ContentItem;
+    
+    // The structure of MediaPlanItem should be compatible with ContentItem
+    return data as unknown as ContentItem;
 }
+
 
 /**
  * Updates the status of a media plan item.
@@ -172,5 +197,3 @@ export async function editImageWithInstruction(input: EditImageInput): Promise<E
 export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
     return regenerateSlideFlow(input);
 }
-    
-

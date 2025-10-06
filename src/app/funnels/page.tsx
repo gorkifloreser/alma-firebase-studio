@@ -33,12 +33,12 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                 initialViralHooks={viralHooks}
                 initialAdaptedHooks={adaptedHooks}
                 offeringIdFilter={offeringIdFilter}
+                getViralHooks={getViralHooks}
                 actions={{
                     getFunnels,
                     deleteFunnel,
                     getFunnelPresets,
                     deleteCustomFunnelPreset,
-                    getViralHooks,
                     createViralHook,
                     updateViralHook,
                     deleteViralHook,

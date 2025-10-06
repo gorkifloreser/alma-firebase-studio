@@ -25,7 +25,7 @@ export default async function SignupPage() {
                   Join Us
                 </h1>
                 <p className="mt-4 text-foreground/80">
-                  Create an account to start your journey. It's quick and easy!
+                  Create an account to start your journey. It&apos;s quick and easy!
                 </p>
                  <Button variant="outline" className="mt-6 bg-transparent text-foreground border-foreground/50 hover:bg-foreground/10 hover:text-foreground">
                   Learn More
