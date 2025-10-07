@@ -105,6 +105,7 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
 }
 
 
+// GEMINI_SAFE_START
 /**
  * Publishes a post to a Facebook Page.
  * @param post - The media plan item to publish.
@@ -147,6 +148,8 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
   console.log(`[FB Publish - ${post.id}] Success: Media published.`);
   return data;
 }
+// GEMINI_SAFE_END
+
 
 /**
  * Orchestrates the publishing of a single post based on its channel.
@@ -205,3 +208,5 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
             break;
     }
 }
+
+    
