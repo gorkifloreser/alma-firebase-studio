@@ -7,8 +7,8 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 interface MediaPlanItem {
   id: string;
-  copy: string;
-  image_url: string;
+  copy: string | null;
+  image_url: string | null;
   user_id: string;
   user_channel_settings: {
     channel_name: string;
@@ -22,9 +22,10 @@ interface SocialConnection {
 
 export async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection) {
     const { access_token: pageAccessToken, account_id: igUserId } = connection;
-
+    if (!post.image_url) throw new Error("Instagram posts require an image.");
+    
     // Step 1: Upload image to a container
-    const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${post.image_url}&caption=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
+    const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${post.image_url}&caption=${encodeURIComponent(post.copy || '')}&access_token=${pageAccessToken}`;
     const containerResponse = await fetch(containerUrl, { method: 'POST' });
     const containerData = await containerResponse.json();
 
@@ -60,7 +61,9 @@ export async function publishToInstagram(post: MediaPlanItem, connection: Social
 
 export async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection) {
   const { access_token: pageAccessToken, account_id: pageId } = connection;
-  const url = `https://graph.facebook.com/v19.0/${pageId}/photos?url=${post.image_url}&message=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
+  if (!post.image_url) throw new Error("Facebook posts with images require an image URL.");
+  
+  const url = `https://graph.facebook.com/v19.0/${pageId}/photos?url=${post.image_url}&message=${encodeURIComponent(post.copy || '')}&access_token=${pageAccessToken}`;
 
   const response = await fetch(url, { method: 'POST' });
   const data = await response.json();
@@ -176,5 +179,3 @@ serve(async (req: Request) => {
     });
   }
 });
-
-    
