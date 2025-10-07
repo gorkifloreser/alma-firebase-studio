@@ -210,9 +210,9 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
 
     try {
         if (channel === 'instagram') {
-            await publishToInstagram(post, connection);
+            await publishToInstagram(post as MediaPlanItem, connection);
         } else if (channel === 'facebook') {
-            await publishToFacebook(post, connection);
+            await publishToFacebook(post as MediaPlanItem, connection);
         } else {
             throw new Error(`Publishing to ${channel} is not supported yet.`);
         }
