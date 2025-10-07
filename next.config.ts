@@ -1,8 +1,5 @@
 
 import type {NextConfig} from 'next';
-require('dotenv').config({ path: './.env.local' });
-
-process.env.TURBOPACK_MEMORY_LIMIT = '0.1';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -36,4 +33,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+
+export default () => {
+  require('dotenv').config({ path: './.env.local' });
+  process.env.TURBOPACK_MEMORY_LIMIT = '0.1';
+  return nextConfig;
+};

@@ -4,7 +4,7 @@
 import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Clock, Edit, Save } from 'lucide-react';
+import { Clock, Edit, Save, Link, CheckCircle2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { updateUserChannels, updateChannelBestPractices } from '../actions';
+import type { updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, SocialConnection } from '../actions';
 
 type AccountStatus = 'available' | 'coming_soon';
 
@@ -39,8 +39,11 @@ const initialAccounts: Omit<Account, 'best_practices'>[] = [
 
 interface AccountsClientPageProps {
     initialUserChannels: Account[];
+    socialConnections: SocialConnection[];
     updateUserChannelsAction: typeof updateUserChannels;
     updateChannelBestPracticesAction: typeof updateChannelBestPractices;
+    getMetaOAuthUrl: typeof getMetaOAuthUrl;
+    disconnectMetaAccount: typeof disconnectMetaAccount;
 }
 
 const BestPracticesEditor = ({ channelId, initialValue, onSave, isSaving }: { channelId: string, initialValue: string, onSave: (channelId: string, newValue: string) => void, isSaving: boolean }) => {
@@ -74,8 +77,16 @@ const BestPracticesEditor = ({ channelId, initialValue, onSave, isSaving }: { ch
     )
 }
 
-export function AccountsClientPage({ initialUserChannels, updateUserChannelsAction, updateChannelBestPracticesAction }: AccountsClientPageProps) {
+export function AccountsClientPage({ 
+    initialUserChannels, 
+    socialConnections: initialSocialConnections,
+    updateUserChannelsAction, 
+    updateChannelBestPracticesAction,
+    getMetaOAuthUrl,
+    disconnectMetaAccount,
+}: AccountsClientPageProps) {
     const [userChannels, setUserChannels] = useState<Account[]>(initialUserChannels);
+    const [socialConnections, setSocialConnections] = useState<SocialConnection[]>(initialSocialConnections);
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
     
@@ -132,54 +143,111 @@ export function AccountsClientPage({ initialUserChannels, updateUserChannelsActi
                 });
             }
         });
+    };
+    
+    const handleMetaConnect = async () => {
+        try {
+            const { url } = await getMetaOAuthUrl();
+            window.location.href = url;
+        } catch (error: any) {
+             toast({
+                variant: 'destructive',
+                title: 'Failed to connect to Meta',
+                description: error.message,
+            });
+        }
+    };
+    
+    const handleMetaDisconnect = async () => {
+        startSaving(async () => {
+            try {
+                await disconnectMetaAccount('meta');
+                setSocialConnections(prev => prev.filter(sc => sc.provider !== 'meta'));
+                toast({
+                    title: 'Disconnected from Meta',
+                    description: 'Your Meta account connection has been removed.',
+                });
+            } catch (error: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Failed to disconnect',
+                    description: error.message,
+                });
+            }
+        });
+    };
+    
+    const isMetaConnected = socialConnections.some(sc => sc.provider === 'meta');
+
+    const renderCard = (account: Account) => {
+         const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
+
+        return (
+            <Card key={account.id} className="flex flex-col">
+                <CardHeader className="flex flex-row items-start gap-4">
+                    <div className="relative h-10 w-10 flex-shrink-0">
+                        <Image src={account.icon} alt={`${account.name} logo`} fill />
+                    </div>
+                    <div>
+                        <CardTitle>{account.name}</CardTitle>
+                        <CardDescription>{account.description}</CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-grow space-y-4">
+                     {account.status === 'coming_soon' && (
+                        <div className="flex items-center gap-2 rounded-md bg-secondary p-3">
+                             <Clock className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-sm font-medium text-secondary-foreground">
+                               Coming Soon
+                            </p>
+                        </div>
+                    )}
+
+                    {isMetaAccount && account.status === 'available' && (
+                        isMetaConnected ? (
+                            <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <p className="text-sm font-medium text-green-700 dark:text-green-300">Connected</p>
+                                <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="ml-auto p-0 h-auto text-green-700 dark:text-green-300">Disconnect</Button>
+                            </div>
+                        ) : (
+                             <Button onClick={handleMetaConnect} className="w-full">
+                                <Link className="mr-2 h-4 w-4" /> Connect
+                            </Button>
+                        )
+                    )}
+
+                    {selectedChannels.has(account.id) && account.best_practices !== null && !isMetaAccount && (
+                        <BestPracticesEditor 
+                            channelId={account.id} 
+                            initialValue={account.best_practices}
+                            onSave={handleSaveBestPractices}
+                            isSaving={isSaving}
+                        />
+                    )}
+                </CardContent>
+                {!isMetaAccount && (
+                    <CardFooter>
+                         <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id={`check-${account.id}`}
+                                checked={selectedChannels.has(account.id)}
+                                onCheckedChange={(checked) => handleChannelToggle(account.id, !!checked)}
+                                disabled={account.status === 'coming_soon' || isSaving}
+                            />
+                            <Label
+                                htmlFor={`check-${account.id}`}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                               {selectedChannels.has(account.id) ? 'Enabled' : 'Disabled'}
+                            </Label>
+                        </div>
+                    </CardFooter>
+                )}
+            </Card>
+        );
     }
 
-    const renderCard = (account: Account) => (
-        <Card key={account.id} className="flex flex-col">
-            <CardHeader className="flex flex-row items-start gap-4">
-                <div className="relative h-10 w-10 flex-shrink-0">
-                    <Image src={account.icon} alt={`${account.name} logo`} fill />
-                </div>
-                <div>
-                    <CardTitle>{account.name}</CardTitle>
-                    <CardDescription>{account.description}</CardDescription>
-                </div>
-            </CardHeader>
-            <CardContent className="flex-grow space-y-4">
-                 {account.status === 'coming_soon' ? (
-                    <div className="flex items-center gap-2 rounded-md bg-secondary p-3">
-                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm font-medium text-secondary-foreground">
-                           Coming Soon
-                        </p>
-                    </div>
-                ) : selectedChannels.has(account.id) && account.best_practices !== null ? (
-                    <BestPracticesEditor 
-                        channelId={account.id} 
-                        initialValue={account.best_practices}
-                        onSave={handleSaveBestPractices}
-                        isSaving={isSaving}
-                    />
-                ) : null}
-            </CardContent>
-            <CardFooter>
-                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id={`check-${account.id}`}
-                        checked={selectedChannels.has(account.id)}
-                        onCheckedChange={(checked) => handleChannelToggle(account.id, !!checked)}
-                        disabled={account.status === 'coming_soon' || isSaving}
-                    />
-                    <Label
-                        htmlFor={`check-${account.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                       {selectedChannels.has(account.id) ? 'Enabled' : 'Disabled'}
-                    </Label>
-                </div>
-            </CardFooter>
-        </Card>
-    );
 
     const socialAccounts = accountsWithData.filter(a => a.category === 'social');
     const messagingAccounts = accountsWithData.filter(a => a.category === 'messaging');
@@ -188,7 +256,7 @@ export function AccountsClientPage({ initialUserChannels, updateUserChannelsActi
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header>
-                <h1 className="text-3xl font-bold">Accounts &amp; Integrations</h1>
+                <h1 className="text-3xl font-bold">Accounts & Integrations</h1>
                 <p className="text-muted-foreground">Select your active marketing channels and customize their AI instructions.</p>
             </header>
             <div className="space-y-8">

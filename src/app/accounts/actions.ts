@@ -129,3 +129,68 @@ export async function updateChannelBestPractices(channelName: string, bestPracti
         best_practices: data.best_practices,
     };
 }
+
+
+export type SocialConnection = {
+    id: number;
+    user_id: string;
+    provider: string;
+    access_token: string;
+    refresh_token: string | null;
+    expires_at: string | null;
+    account_id: string | null;
+    account_name: string | null;
+    created_at: string;
+}
+
+export async function getSocialConnections(): Promise<SocialConnection[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+        .from('social_connections')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error fetching social connections:', error);
+        return [];
+    }
+
+    return data;
+}
+
+export async function getMetaOAuthUrl(): Promise<{ url: string }> {
+    const appId = process.env.META_APP_ID;
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/meta`;
+    
+    if (!appId || !redirectUri) {
+        throw new Error("Meta application credentials are not configured in the environment.");
+    }
+
+    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement';
+    const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
+
+    return { url };
+}
+
+export async function disconnectMetaAccount(provider: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { error } = await supabase
+        .from('social_connections')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('provider', provider);
+    
+    if (error) {
+        console.error(`Error disconnecting ${provider} account:`, error);
+        throw new Error(`Failed to disconnect ${provider} account.`);
+    }
+
+    revalidatePath('/accounts');
+    return { message: `${provider} account disconnected successfully.` };
+}
