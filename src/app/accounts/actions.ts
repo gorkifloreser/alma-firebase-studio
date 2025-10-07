@@ -154,11 +154,11 @@ export async function getSocialConnections(): Promise<SocialConnection[]> {
         .eq('user_id', user.id);
 
     if (error) {
-        console.error('Error fetching social connections:', error);
-        return [];
+        console.error('Error fetching social connections:', error.message);
+        throw new Error(`Failed to fetch social connections: ${error.message}`);
     }
 
-    return data;
+    return data || [];
 }
 
 export async function getMetaOAuthUrl(): Promise<{ url: string }> {
