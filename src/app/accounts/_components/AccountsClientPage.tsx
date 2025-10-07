@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, SocialConnection, setActiveConnection, getSocialConnections } from '../actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type AccountStatus = 'available' | 'coming_soon';
@@ -96,7 +97,7 @@ export function AccountsClientPage({
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
 
-    const handleSetAciveConnection = async (connectionId: number) => {
+    const handleSetActiveConnection = async (connectionId: number) => {
         startSaving(async () => {
             try {
                 const newConnections = await setActiveConnection(connectionId);
@@ -225,14 +226,32 @@ export function AccountsClientPage({
 
                     {isMetaAccount && account.status === 'available' && (
                         metaConnections.length > 0 ? (
-                             <div className="flex flex-col items-start gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
-                                <div className="flex items-center gap-2">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
                                     <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                                        Conectado como: <span className="font-bold">@{activeMetaConnection?.account_name || 'N/A'}</span>
+                                        Conectado
                                     </p>
                                 </div>
-                                <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-green-700 dark:text-green-300">Desconectar</Button>
+                                <Select
+                                    value={activeMetaConnection?.id?.toString()}
+                                    onValueChange={(value) => handleSetActiveConnection(Number(value))}
+                                    disabled={isSaving}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an account to post to..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {metaConnections.map(conn => (
+                                            <SelectItem key={conn.id} value={conn.id.toString()}>
+                                                @{conn.account_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                 <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-destructive" disabled={isSaving}>
+                                    Disconnect Meta Account
+                                </Button>
                             </div>
                         ) : (
                              <Button onClick={handleMetaConnect} className="w-full">

@@ -201,6 +201,7 @@ export async function setActiveConnection(connectionId: number): Promise<SocialC
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
+    // Find the provider of the connection being activated
     const { data: connection, error: fetchError } = await supabase
         .from('social_connections')
         .select('provider')
@@ -212,7 +213,7 @@ export async function setActiveConnection(connectionId: number): Promise<SocialC
         throw new Error("Connection not found or you don't have permission to access it.");
     }
     
-    // Deactivate all connections for this provider
+    // Deactivate all connections for this provider for the user
     const { error: deactivateError } = await supabase
         .from('social_connections')
         .update({ is_active: false })
