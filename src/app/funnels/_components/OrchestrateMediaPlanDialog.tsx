@@ -158,7 +158,7 @@ export function OrchestrateMediaPlanDialog({
         if (!currentPlan || !activeTab) return false;
         const itemsForChannel = groupedByChannel[activeTab] || [];
         if (itemsForChannel.length === 0) return false;
-        return itemsForChannel.every(item => item.status === 'approved');
+        return itemsForChannel.every(item => item.status === 'approved' || item.status === 'scheduled');
     }, [activeTab, groupedByChannel, currentPlan]);
     
     useEffect(() => {
@@ -209,23 +209,12 @@ export function OrchestrateMediaPlanDialog({
         let savedPlan: MediaPlan | null = null;
         await startSaving(async () => {
             try {
-                const itemsToUpsert = currentPlan.map(item => {
-                    const { id, user_channel_settings, ...rest } = item;
-                    const payload = {
-                        ...rest,
-                        id: id.startsWith('temp-') ? undefined : id,
-                        media_plan_id: planIdToEdit,
-                        user_id: funnel.user_id,
-                        offering_id: funnel.offering_id
-                    };
-                    return payload;
-                });
                 
                 savedPlan = await saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
-                    planItems: itemsToUpsert as any, // Cast because of temp ID
+                    planItems: currentPlan,
                     startDate: dateRange?.from?.toISOString() ?? null,
                     endDate: dateRange?.to?.toISOString() ?? null
                 });

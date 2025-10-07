@@ -448,35 +448,48 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     if (channelsError) throw new Error("Could not fetch user channel settings.");
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
 
-    const itemsToUpsert = planItems.map(item => {
-        const { id: itemId, ...restOfItem } = item as any;
-        const channelId = channelNameToIdMap.get(item.user_channel_settings?.channel_name || '');
-        const payload = {
-            id: itemId?.startsWith('temp-') ? undefined : itemId,
-            media_plan_id: mediaPlanId,
-            user_id: user.id,
-            offering_id: funnel.offering_id,
-            user_channel_id: channelId,
-            format: item.format,
-            copy: item.copy,
-            hashtags: item.hashtags,
-            objective: item.objective,
-            concept: item.concept,
-            status: item.status,
-            suggested_post_at: item.suggested_post_at,
-            creative_prompt: item.creative_prompt,
-            stage_name: item.stage_name,
-        };
-        return payload;
-    });
+    const itemsToCreate = planItems.filter(item => item.id?.startsWith('temp-'));
+    const itemsToUpdate = planItems.filter(item => !item.id?.startsWith('temp-'));
 
-    const { error: upsertError } = await supabase
-        .from('media_plan_items')
-        .upsert(itemsToUpsert, { onConflict: 'id' });
-
-    if (upsertError) {
-        throw new Error(`Could not save media plan items: ${upsertError.message}`);
+    if (itemsToCreate.length > 0) {
+        const newRecords = itemsToCreate.map(item => {
+            const { id: _, ...restOfItem } = item;
+            const channelName = (item.user_channel_settings as any)?.channel_name || '';
+            const channelId = channelNameToIdMap.get(channelName);
+            if (!channelId) {
+                throw new Error(`Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`);
+            }
+            return {
+                ...restOfItem,
+                media_plan_id: mediaPlanId,
+                user_id: user.id,
+                offering_id: funnel.offering_id,
+                user_channel_id: channelId,
+            };
+        });
+        const { error: insertError } = await supabase.from('media_plan_items').insert(newRecords);
+        if (insertError) throw new Error(`Could not create new media plan items: ${insertError.message}`);
     }
+
+    if (itemsToUpdate.length > 0) {
+        for (const item of itemsToUpdate) {
+            const { id: itemId, ...restOfItem } = item;
+            const channelName = (item.user_channel_settings as any)?.channel_name || '';
+            const channelId = channelNameToIdMap.get(channelName);
+             if (!channelId) {
+                throw new Error(`Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`);
+            }
+            const { error: updateError } = await supabase
+                .from('media_plan_items')
+                .update({ 
+                    ...restOfItem,
+                    user_channel_id: channelId
+                 })
+                .eq('id', itemId!);
+            if (updateError) console.error(`Failed to update item ${itemId}:`, updateError.message);
+        }
+    }
+
 
     revalidatePath('/funnels');
     

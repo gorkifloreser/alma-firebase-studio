@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "supabase db push"
+    "db:push": "supabase db push",
+    "test": "jest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
