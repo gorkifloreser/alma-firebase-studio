@@ -1153,8 +1153,7 @@ export default function ArtisanPage() {
             
             // Only reset creative if type changes
             if (newCreativeType !== selectedCreativeType) {
-                 setCreative(null);
-                 console.log(`[DEBUG] Creative type changed from ${selectedCreativeType} to ${newCreativeType}. Resetting creative state.`);
+                 console.log(`[DEBUG] Creative type changed from ${selectedCreativeType} to ${newCreativeType}.`);
             }
             setSelectedCreativeType(newCreativeType);
     
@@ -1272,12 +1271,12 @@ export default function ArtisanPage() {
             setDimension('9:16');
             handleCodeEditorToggle(false);
         }
-         if (creative?.imageUrl && selectedCreativeType !== 'image') setCreative(prev => ({...prev, imageUrl: null}));
-         if (creative?.carouselSlides && selectedCreativeType !== 'carousel') setCreative(prev => ({...prev, carouselSlides: null}));
-         if (creative?.videoUrl && selectedCreativeType !== 'video') setCreative(prev => ({...prev, videoUrl: null}));
-         if (creative?.landingPageHtml && selectedCreativeType !== 'landing_page') setCreative(prev => ({...prev, landingPageHtml: null}));
-
-    }, [selectedCreativeType, dimension, toast, creative, handleCodeEditorToggle]);
+        if (selectedCreativeType === 'text' || selectedCreativeType === 'landing_page') {
+             if (creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl) {
+                setCreative(prev => ({...prev, imageUrl: null, carouselSlides: null, videoUrl: null}));
+            }
+        }
+    }, [selectedCreativeType, dimension, toast, creative]);
 
      useEffect(() => {
         if (isCodeEditorOpen) {
@@ -2048,6 +2047,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
