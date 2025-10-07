@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
@@ -99,10 +99,32 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
 
     const publicationTime = item.scheduled_at ? format(parseISO(item.scheduled_at), 'p') : 'Unscheduled';
 
+    const getStatusStyles = () => {
+        switch (item.status) {
+            case 'published':
+                return 'bg-green-500/10 border-green-500/20';
+            case 'failed':
+                return 'bg-destructive/10 border-destructive/20';
+            default:
+                return 'bg-secondary/50';
+        }
+    }
+    
+    const getStatusIcon = () => {
+        switch (item.status) {
+            case 'published':
+                return <CheckCheck className="h-4 w-4 text-green-600" />;
+            case 'failed':
+                return <AlertTriangle className="h-4 w-4 text-destructive" />;
+            default:
+                return <ChannelIcon channel={item.user_channel_settings?.channel_name} />;
+        }
+    }
+
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
-             <Card className={cn("p-2 hover:bg-secondary transition-colors", item.status === 'published' ? 'bg-green-500/10 border-green-500/20' : 'bg-secondary/50')}>
+             <Card className={cn("p-2 hover:bg-secondary transition-colors", getStatusStyles())}>
                 <div className="flex flex-col gap-2">
                      {item.image_url && (
                         <div className="relative w-full aspect-square">
@@ -113,11 +135,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         <p className="text-xs font-bold truncate">{publicationTime}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
-                                {item.status === 'published' ? (
-                                    <CheckCheck className="h-4 w-4 text-green-600" />
-                                ) : (
-                                    <ChannelIcon channel={item.user_channel_settings?.channel_name} />
-                                )}
+                                {getStatusIcon()}
                             </div>
                             <Button
                                 variant="ghost"
@@ -193,7 +211,7 @@ export default function CalendarPage() {
     const { unscheduled, scheduledOrPublished } = useMemo(() => {
         console.log('[page.tsx:useMemo] Filtering contentItems. Total count:', contentItems.length);
         const unscheduled = contentItems.filter(item => item.status === 'approved');
-        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published') && item.scheduled_at);
+        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && item.scheduled_at);
         console.log('[page.tsx:useMemo] Filtering result -> Unscheduled:', unscheduled.length, 'Scheduled/Published:', scheduledOrPublished.length);
         return { unscheduled, scheduledOrPublished };
     }, [contentItems]);

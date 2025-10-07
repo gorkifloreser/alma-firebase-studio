@@ -43,7 +43,7 @@ export async function getContent(): Promise<CalendarItem[]> {
             user_channel_settings:user_channel_id (channel_name)
         `)
         .eq('user_id', user.id)
-        .in('status', ['approved', 'scheduled', 'published']);
+        .in('status', ['approved', 'scheduled', 'published', 'failed']);
 
     if (error) {
         console.error("[actions.ts:getContent] ERROR fetching calendar content:", error);
