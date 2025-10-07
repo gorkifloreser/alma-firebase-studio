@@ -5,6 +5,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { MediaPlanItem } from '@/app/funnels/types';
+import { publishPost } from '@/app/services/publisher';
 
 
 export type CalendarItem = MediaPlanItem & {
@@ -182,18 +183,31 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { error: functionError } = await supabase.functions.invoke('post-scheduler', {
-      body: { postId: mediaPlanItemId }
-    });
+    try {
+        await publishPost(mediaPlanItemId, supabase);
 
-    if (functionError) {
-        console.error(`Error invoking post-scheduler for post ${mediaPlanItemId}:`, functionError);
-        throw new Error(`Publishing failed: ${functionError.message}`);
+        // If publishPost succeeds, update the status
+        await supabase
+            .from('media_plan_items')
+            .update({ status: 'published', published_at: new Date().toISOString() })
+            .eq('id', mediaPlanItemId);
+        
+        revalidatePath('/calendar');
+        revalidatePath('/artisan');
+
+        return { message: 'Post has been published successfully.' };
+        
+    } catch (error: any) {
+        console.error(`[publishNow Action] Failed to publish post ${mediaPlanItemId}:`, error.message);
+        // Optionally update the status to 'failed' to prevent retries
+        await supabase
+            .from('media_plan_items')
+            .update({ status: 'failed' })
+            .eq('id', mediaPlanItemId);
+        
+        revalidatePath('/calendar');
+        revalidatePath('/artisan');
+
+        throw new Error(`Publishing failed: ${error.message}`);
     }
-
-    // The function will update the status, but we revalidate to ensure the UI updates.
-    revalidatePath('/calendar');
-    revalidatePath('/artisan');
-
-    return { message: 'Post has been queued for immediate publication.' };
 }
