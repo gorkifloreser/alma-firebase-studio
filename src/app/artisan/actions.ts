@@ -93,15 +93,19 @@ type SaveContentInput = {
 
 
 async function uploadBase64Image(supabase: any, base64: string, userId: string, offeringId: string): Promise<string> {
+    console.log('[uploadBase64Image] Starting upload process.');
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
     const filePath = `${userId}/offerings_media_generated/${offeringId}/${crypto.randomUUID()}.png`;
+    console.log(`[uploadBase64Image] Determined file path: ${filePath}`);
     
     const base64Data = base64.split(';base64,').pop();
     if (!base64Data) {
+        console.error('[uploadBase64Image] Invalid Base64 data string.');
         throw new Error('Invalid Base64 image data');
     }
     
     const buffer = Buffer.from(base64Data, 'base64');
+    console.log(`[uploadBase64Image] Converted base64 to buffer of size: ${buffer.length} bytes.`);
     
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
@@ -111,11 +115,13 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
         });
 
     if (uploadError) {
-        console.error('Base64 Upload Error:', uploadError);
+        console.error('[uploadBase64Image] Supabase storage upload error:', uploadError);
         throw new Error('Failed to upload generated image to storage.');
     }
+    console.log(`[uploadBase64Image] Successfully uploaded image to Supabase storage.`);
 
     const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    console.log(`[uploadBase64Image] Retrieved public URL: ${publicUrl}`);
     return publicUrl;
 }
 
@@ -126,6 +132,7 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
  * @returns {Promise<ContentItem>} The updated media plan item, which now doubles as the content item.
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
+    console.log('[saveContent] Action started with input:', { ...input, imageUrl: input.imageUrl ? input.imageUrl.substring(0, 50) + '...' : null, landingPageHtml: input.landingPageHtml ? '...' : null });
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -143,25 +150,32 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
     } = input;
 
     if (!mediaPlanItemId) {
+        console.error('[saveContent] Error: mediaPlanItemId is missing.');
         throw new Error('A media_plan_item_id is required to save content.');
     }
 
     let finalImageUrl = imageUrl;
     if (imageUrl && imageUrl.startsWith('data:image')) {
+        console.log('[saveContent] Detected base64 image for imageUrl. Starting upload...');
         finalImageUrl = await uploadBase64Image(supabase, imageUrl, user.id, offeringId);
+        console.log(`[saveContent] imageUrl upload complete. Public URL: ${finalImageUrl}`);
     }
     
     let finalCarouselSlides = carouselSlides;
     if (carouselSlides) {
+        console.log(`[saveContent] Processing ${carouselSlides.length} carousel slides.`);
         finalCarouselSlides = await Promise.all(
-            carouselSlides.map(async (slide) => {
+            carouselSlides.map(async (slide, index) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    console.log(`[saveContent] Detected base64 image for carousel slide ${index}. Starting upload...`);
                     const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, offeringId);
+                    console.log(`[saveContent] Carousel slide ${index} upload complete. Public URL: ${newUrl}`);
                     return { ...slide, imageUrl: newUrl };
                 }
                 return slide;
             })
         );
+        console.log('[saveContent] All carousel slides processed.');
     }
 
     const payload: any = {
@@ -176,6 +190,8 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         scheduled_at: scheduledAt || null,
         updated_at: new Date().toISOString(),
     };
+    
+    console.log('[saveContent] Preparing to update media_plan_items table with payload:', payload);
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -190,10 +206,11 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         .single();
 
     if (error) {
-        console.error('Error saving content to media_plan_item:', error.message);
+        console.error('[saveContent] Error saving content to media_plan_item:', error.message);
         throw new Error('Could not save the content. Please try again.');
     }
     
+    console.log('[saveContent] Successfully saved content. Revalidating paths...');
     revalidatePath('/calendar');
     revalidatePath('/artisan');
     
