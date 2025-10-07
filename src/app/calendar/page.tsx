@@ -6,7 +6,7 @@ import React, { useEffect, useState, useMemo, useTransition, useCallback } from 
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays } from 'date-fns';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays, parseISO } from 'date-fns';
 import { getContent, scheduleContent, unscheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -99,6 +99,9 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
         zIndex: 10,
     } : undefined;
 
+    const publicationTime = item.scheduled_at ? format(parseISO(item.scheduled_at), 'p') : 'Unscheduled';
+
+
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
              <Card className="p-2 bg-secondary/50 hover:bg-secondary transition-colors">
@@ -109,7 +112,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         </div>
                      )}
                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{item.content_body?.primary || 'Untitled'}</p>
+                        <p className="text-xs font-bold truncate">{publicationTime}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
                                 <ChannelIcon channel={item.user_channel_settings?.channel_name} />
