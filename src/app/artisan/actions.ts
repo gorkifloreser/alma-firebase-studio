@@ -36,7 +36,7 @@ export async function getArtisanItems(mediaPlanId?: string): Promise<ArtisanItem
             offerings (title)
         `)
         .eq('user_id', user.id)
-        .in('status', ['queued_for_generation', 'generation_in_progress', 'ready_for_review', 'completed', 'scheduled', 'published']);
+        .in('status', ['queued_for_generation', 'generation_in_progress', 'ready_for_review', 'scheduled', 'published']);
 
     if (mediaPlanId) {
         query = query.eq('media_plan_id', mediaPlanId);

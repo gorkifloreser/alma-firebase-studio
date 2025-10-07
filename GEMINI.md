@@ -4,6 +4,8 @@ This document outlines the development, testing, and debugging standards for the
 
 Clarity and Simplicity: Code should be easy to read, understand, and maintain. Avoid overly complex or "clever" solutions.
 
+Reliable: Always add console logs for all of the process and steps of the workflows, and also give detailed error messages while working in development.
+
 Ownership and Accountability: Take pride in your work. Every line of code should be written with the intention of creating a high-quality, robust product.
 
 Async First: As a modern web application, all asynchronous operations must be handled gracefully using async/await patterns. Non-blocking code is the standard.

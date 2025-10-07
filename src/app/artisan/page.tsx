@@ -165,7 +165,7 @@ const PostPreview = ({
           return <Skeleton className="w-full h-full" />;
         }
       
-        if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
+        if (selectedCreativeType === 'carousel' && creative?.carouselSlides && creative.carouselSlides.length > 0) {
           return (
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
@@ -1099,7 +1099,7 @@ export default function ArtisanPage() {
             setSelectedOfferingId(item.offering_id ?? undefined);
     
             // If item is completed, fetch its content
-            if (item.status === 'ready_for_review' || item.status === 'scheduled') {
+            if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
                     const contentItem = await getContentItem(item.id);
                     if (contentItem) {
@@ -1552,7 +1552,7 @@ export default function ArtisanPage() {
 
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
-    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && item.status === 'ready_for_review').length : 0;
+    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published')).length : 0;
     const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
 
     const handleNewUpload = (newMedia: OfferingMedia) => {
@@ -1775,7 +1775,7 @@ export default function ArtisanPage() {
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                                         filteredArtisanItems.length > 0 ? (
                                                             filteredArtisanItems.map(item => {
-                                                                const StatusIcon = item.status === 'ready_for_review' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                                                const StatusIcon = item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published' ? CheckCircle2 : CircleDashed;
                                                                 return (
                                                                     <SelectItem key={item.id} value={item.id}>
                                                                         <div className="flex items-center gap-2">
@@ -2031,6 +2031,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
