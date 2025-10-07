@@ -283,6 +283,7 @@ CREATE TABLE public.media_plan_items (
   carousel_slides jsonb,
   carousel_slides_text text,
   landing_page_html text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT media_plan_items_pkey PRIMARY KEY (id),
   CONSTRAINT media_plan_items_media_plan_id_fkey FOREIGN KEY (media_plan_id) REFERENCES public.media_plans(id),
   CONSTRAINT media_plan_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
@@ -354,6 +355,20 @@ CREATE TABLE public.profiles (
   secondary_language text,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.social_connections (
+  id bigint NOT NULL DEFAULT nextval('social_connections_id_seq'::regclass),
+  user_id uuid NOT NULL,
+  provider text NOT NULL,
+  access_token text NOT NULL,
+  refresh_token text,
+  expires_at timestamp with time zone,
+  account_id text,
+  account_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  is_active boolean NOT NULL DEFAULT false,
+  CONSTRAINT social_connections_pkey PRIMARY KEY (id),
+  CONSTRAINT social_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 CREATE TABLE public.user_channel_settings (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

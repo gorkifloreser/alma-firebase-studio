@@ -10,7 +10,7 @@ import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionI
 import { generateValueContent as genValueContentFlow } from '@/ai/flows/generate-value-content-flow';
 import type { GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-types';
 import { saveContent as saveContentAction } from '@/app/artisan/actions';
-import type { ContentItem } from '@/app/calendar/actions';
+import type { CalendarItem as ContentItem } from '@/app/calendar/actions';
 
 // More specific type for the input to this wrapper
 type SaveContentInput = Parameters<typeof saveContentAction>[0];

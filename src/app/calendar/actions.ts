@@ -4,7 +4,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { MediaPlanItem } from '@/app/funnels/actions';
+import type { MediaPlanItem } from '@/app/funnels/types';
 
 export type CalendarItem = MediaPlanItem & {
     // Fields from the new, consolidated media_plan_items table
@@ -14,6 +14,7 @@ export type CalendarItem = MediaPlanItem & {
     carousel_slides: any[] | null; // Consider defining a stricter type for carousel slides
     landing_page_html: string | null;
     published_at: string | null;
+    scheduled_at: string | null;
     
     // Relational data
     offerings: { 
