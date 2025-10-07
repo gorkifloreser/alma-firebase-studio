@@ -10,7 +10,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('access_token', 'text', (col) => col.notNull()) // Should be encrypted
     .addColumn('refresh_token', 'text') // Should be encrypted
     .addColumn('expires_at', 'timestamp with time zone')
-    .addColumn('account_id', 'text')
+    .addColumn('account_id', 'text') // Facebook Page ID, etc.
+    .addColumn('instagram_account_id', 'text') // Specific for Meta connections
     .addColumn('account_name', 'text')
     .addColumn('is_active', 'boolean', (col) => col.defaultTo(false).notNull())
     .addColumn('created_at', 'timestamp with time zone', (col) => col.defaultTo('now()').notNull())

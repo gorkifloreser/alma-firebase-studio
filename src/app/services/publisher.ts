@@ -15,6 +15,7 @@ interface MediaPlanItem {
 interface SocialConnection {
   access_token: string;
   account_id: string | null;
+  instagram_account_id: string | null; // Added this field
 }
 
 /**
@@ -23,25 +24,37 @@ interface SocialConnection {
  * @param connection - The user's social connection details.
  */
 async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
-    if (!igUserId) throw new Error("Active Instagram connection is missing the Instagram User ID.");
-    if (!post.image_url) throw new Error("Instagram posts require an image.");
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
+    
+    console.log(`[IG Publish - ${post.id}] START`);
+    
+    if (!igUserId) {
+        console.error(`[IG Publish - ${post.id}] ERROR: Active Instagram connection is missing the Instagram User ID.`);
+        throw new Error("Active Instagram connection is missing the Instagram User ID.");
+    }
+    if (!post.image_url) {
+        console.error(`[IG Publish - ${post.id}] ERROR: Instagram posts require an image.`);
+        throw new Error("Instagram posts require an image.");
+    }
     
     // Step 1: Create Media Container
-    console.log(`[IG Publish - ${post.id}] Step 1: Creating media container...`);
+    console.log(`[IG Publish - ${post.id}] Step 1: Creating media container for IG User ${igUserId}...`);
     const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media`;
     const containerParams = new URLSearchParams({
         image_url: post.image_url,
         caption: post.copy || '',
         access_token: pageAccessToken,
     });
+    console.log(`[IG Publish - ${post.id}] Step 1: Request URL: ${containerUrl}`);
+    console.log(`[IG Publish - ${post.id}] Step 1: Request Caption: "${post.copy?.substring(0, 50)}..."`);
+
 
     const containerResponse = await fetch(`${containerUrl}?${containerParams.toString()}`, { method: 'POST' });
     const containerData = await containerResponse.json();
     console.log(`[IG Publish - ${post.id}] Step 1 Response:`, JSON.stringify(containerData, null, 2));
 
-
     if (!containerResponse.ok || containerData.error) {
+         console.error(`[IG Publish - ${post.id}] Step 1 FAILED.`);
         throw new Error(`IG container creation failed: ${JSON.stringify(containerData.error)}`);
     }
     const containerId = containerData.id;
@@ -65,7 +78,10 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
         console.log(`[IG Publish - ${post.id}] Attempt ${i+1}: Container status is ${statusData.status_code}. Retrying...`);
     }
 
-    if (!isContainerReady) throw new Error('IG container processing timed out after 50 seconds.');
+    if (!isContainerReady) {
+        console.error(`[IG Publish - ${post.id}] Step 2 FAILED: Container did not finish processing in time.`);
+        throw new Error('IG container processing timed out after 50 seconds.');
+    }
 
     // Step 3: Publish the container
     console.log(`[IG Publish - ${post.id}] Step 3: Publishing container...`);
@@ -79,8 +95,8 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
     const publishData = await publishResponse.json();
     console.log(`[IG Publish - ${post.id}] Step 3 Response:`, JSON.stringify(publishData, null, 2));
 
-
     if (!publishResponse.ok || publishData.error) {
+        console.error(`[IG Publish - ${post.id}] Step 3 FAILED.`);
         throw new Error(`IG media publish failed: ${JSON.stringify(publishData.error)}`);
     }
     console.log(`[IG Publish - ${post.id}] Step 3 Success: Media published with ID ${publishData.id}`);
@@ -96,8 +112,16 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
  */
 async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
   const { access_token: pageAccessToken, account_id: pageId } = connection;
-  if (!pageId) throw new Error("Active Facebook connection is missing the Page ID.");
-  if (!post.image_url) throw new Error("Facebook posts with images require an image URL.");
+  console.log(`[FB Publish - ${post.id}] START`);
+
+  if (!pageId) {
+      console.error(`[FB Publish - ${post.id}] ERROR: Active Facebook connection is missing the Page ID.`);
+      throw new Error("Active Facebook connection is missing the Page ID.");
+  }
+  if (!post.image_url) {
+      console.error(`[FB Publish - ${post.id}] ERROR: Facebook posts with images require an image URL.`);
+      throw new Error("Facebook posts with images require an image URL.");
+  }
   
   const url = `https://graph.facebook.com/v19.0/${pageId}/photos`;
   const params = new URLSearchParams({
@@ -107,6 +131,9 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
   });
   
   console.log(`[FB Publish - ${post.id}] Publishing to page ${pageId}...`);
+  console.log(`[FB Publish - ${post.id}] Request URL: ${url}`);
+  console.log(`[FB Publish - ${post.id}] Request Message: "${post.copy?.substring(0, 50)}..."`);
+
 
   const response = await fetch(`${url}?${params.toString()}`, { method: 'POST' });
   const data = await response.json();
@@ -114,6 +141,7 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
 
 
   if (!response.ok || data.error) {
+    console.error(`[FB Publish - ${post.id}] FAILED.`);
     throw new Error(`Facebook post failed: ${JSON.stringify(data.error)}`);
   }
   console.log(`[FB Publish - ${post.id}] Success: Media published.`);
@@ -147,7 +175,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
 
     const { data: connection, error: connectionError } = await supabase
         .from('social_connections')
-        .select('access_token, account_id')
+        .select('access_token, account_id, instagram_account_id')
         .eq('user_id', post.user_id)
         .eq('is_active', true)
         .single();
@@ -170,15 +198,10 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
             await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
             break;
         case 'facebook':
-            // For Facebook, we might need a different account_id (the Page ID, not the IG account ID)
-            // Let's assume for now the active connection's account_id is the correct one.
-            // A more robust solution might store both and select based on channel.
             await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
             break;
         default:
             console.log(`Publishing for channel '${channel}' is not yet supported.`);
-            // In a real scenario, you might want to handle this case differently,
-            // e.g., by marking the post as 'unsupported' or logging it.
             break;
     }
 }
