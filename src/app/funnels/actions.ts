@@ -475,7 +475,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     if (itemsToCreate.length > 0) {
         const newRecords = itemsToCreate.map(item => {
-            const { id: _, ...restOfItem } = item;
+            const { id: _, user_channel_settings, ...restOfItem } = item;
             const channelName = (item.user_channel_settings as any)?.channel_name || '';
             console.log(`[SERVER] Processing new item for channel: "${channelName}"`, item);
             const channelId = channelNameToIdMap.get(channelName);
@@ -503,7 +503,7 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
 
     if (itemsToUpdate.length > 0) {
         for (const item of itemsToUpdate) {
-            const { id: itemId, ...restOfItem } = item;
+            const { id: itemId, user_channel_settings, ...restOfItem } = item;
             const channelName = (item.user_channel_settings as any)?.channel_name || '';
             console.log(`[SERVER] Processing update for item ID: ${itemId}, channel: "${channelName}"`, item);
             const channelId = channelNameToIdMap.get(channelName);

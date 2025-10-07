@@ -163,66 +163,74 @@ const PostPreview = ({
 
     const renderVisualContent = () => {
         if (isLoading) {
-            return <Skeleton className="w-full h-full" />;
+          return <Skeleton className="w-full h-full" />;
         }
-    
+      
         if (selectedCreativeType === 'carousel' && creative?.carouselSlides) {
-            return (
-                <Carousel setApi={setApi} className="w-full h-full">
-                    <CarouselContent>
-                        {creative.carouselSlides.map((slide, index) => (
-                            <CarouselItem key={index} className="relative group">
-                                {slide.imageUrl ? (
-                                    <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                        <ImageIcon className="w-24 h-24 text-muted-foreground" />
-                                    </div>
-                                )}
-                            </CarouselItem>
-                        ))}
-                    </CarouselContent>
-                    {(creative.carouselSlides.length > 1) && (
-                        <>
-                           <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
-                            <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
-                        </>
+          return (
+            <Carousel setApi={setApi} className="w-full h-full">
+              <CarouselContent>
+                {creative.carouselSlides.map((slide, index) => (
+                  <CarouselItem key={index} className="relative group">
+                    {slide.imageUrl ? (
+                      <Image
+                        src={slide.imageUrl}
+                        alt={slide.title || `Slide ${index}`}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-secondary flex items-center justify-center">
+                        <ImageIcon className="w-24 h-24 text-muted-foreground" />
+                      </div>
                     )}
-                </Carousel>
-            );
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {creative.carouselSlides.length > 1 && (
+                <>
+                  <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
+                  <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
+                </>
+              )}
+            </Carousel>
+          );
         }
-    
-        if (creative?.imageUrl) {
-            return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
+      
+        if (selectedCreativeType === 'image' && creative?.imageUrl) {
+          return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
-    
+      
         if (selectedCreativeType === 'video' && creative?.videoUrl) {
-            return (
-                 <div className="relative w-full h-full">
-                    <video
-                        ref={videoRef}
-                        src={creative.videoUrl}
-                        className="w-full h-full object-cover"
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        loop
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20" onClick={togglePlay}>
-                        {!isPlaying && (
-                            <div className="p-4 bg-black/50 rounded-full">
-                                <Play className="h-8 w-8 text-white fill-white" />
-                            </div>
-                        )}
-                    </div>
+          return (
+            <div className="relative w-full h-full">
+              <video
+                ref={videoRef}
+                src={creative.videoUrl}
+                className="w-full h-full object-cover"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                loop
+                onClick={togglePlay}
+              />
+              {!isPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                  <div className="p-4 bg-black/50 rounded-full">
+                    <Play className="h-8 w-8 text-white fill-white" />
+                  </div>
                 </div>
-            );
-        }
-        return (
-            <div className="w-full h-full bg-secondary flex items-center justify-center">
-                <ImageIcon className="w-16 h-16 text-muted-foreground" />
+              )}
             </div>
+          );
+        }
+      
+        // Fallback for no visual content or when creative type is text
+        return (
+          <div className="w-full h-full bg-secondary flex items-center justify-center">
+            <ImageIcon className="w-16 h-16 text-muted-foreground" />
+          </div>
         );
-    };
+      };
     
     if (selectedCreativeType === 'landing_page') {
         return (
@@ -242,7 +250,7 @@ const PostPreview = ({
             <TooltipProvider>
                 <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
                     <div className="absolute inset-0 bg-black">
-                         <div className={cn("relative w-full h-full")}>{renderVisualContent()}</div>
+                         {renderVisualContent()}
                     </div>
                     
                     <div className="absolute top-4 right-4 z-10">
@@ -384,9 +392,7 @@ const PostPreview = ({
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", aspectRatioClass)}>
-                            <div className={cn("relative w-full h-full")}>
-                                {renderVisualContent()}
-                            </div>
+                            {renderVisualContent()}
                             {(hasVisuals || selectedCreativeType === 'video') && (
                                 <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
                                     {imageUrlToEdit && (
@@ -1070,24 +1076,6 @@ export default function ArtisanPage() {
         return channels;
     }, [workflowMode, selectedCampaign, allArtisanItems]);
 
-    // Apply channel filter
-    useEffect(() => {
-        if (workflowMode === 'campaign' && selectedCampaign) {
-            let items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
-            if (channelFilter !== 'all') {
-                items = items.filter(item => item.user_channel_settings?.channel_name === channelFilter);
-            }
-            setFilteredArtisanItems(items);
-            // Auto-select first item if selection becomes invalid
-            if (items.length > 0 && !items.find(i => i.id === selectedArtisanItemId)) {
-                handleArtisanItemSelect(items[0].id);
-            } else if (items.length === 0) {
-                handleArtisanItemSelect(null);
-            }
-        }
-    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId, handleArtisanItemSelect]);
-
-
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
         setCreative(null);
         setEditableContent(null);
@@ -1170,6 +1158,23 @@ export default function ArtisanPage() {
         }
     }, [allArtisanItems, selectedCreativeType, toast]);
 
+    // Apply channel filter
+    useEffect(() => {
+        if (workflowMode === 'campaign' && selectedCampaign) {
+            let items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
+            if (channelFilter !== 'all') {
+                items = items.filter(item => item.user_channel_settings?.channel_name === channelFilter);
+            }
+            setFilteredArtisanItems(items);
+            // Auto-select first item if selection becomes invalid
+            if (items.length > 0 && !items.find(i => i.id === selectedArtisanItemId)) {
+                handleArtisanItemSelect(items[0].id);
+            } else if (items.length === 0) {
+                handleArtisanItemSelect(null);
+            }
+        }
+    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId, handleArtisanItemSelect]);
+
     useEffect(() => {
         async function fetchData() {
             try {
@@ -1234,6 +1239,11 @@ export default function ArtisanPage() {
     };
 
 
+    const handleCodeEditorToggle = (forceState?: boolean) => {
+        const newState = forceState ?? !isCodeEditorOpen;
+        setIsCodeEditorOpen(newState);
+    };
+
      useEffect(() => {
         if (selectedCreativeType === 'video' && (dimension !== '9:16' && dimension !== '16:9')) {
              setDimension('9:16');
@@ -1252,16 +1262,6 @@ export default function ArtisanPage() {
          if (creative?.landingPageHtml && selectedCreativeType !== 'landing_page') setCreative(prev => ({...prev, landingPageHtml: null}));
 
     }, [selectedCreativeType, dimension, toast, creative, handleCodeEditorToggle]);
-    useEffect(() => {
-        if (creative?.landingPageHtml) {
-            setEditableHtml(creative.landingPageHtml);
-        }
-    }, [creative?.landingPageHtml]);
-    
-    const handleCodeEditorToggle = (forceState?: boolean) => {
-        const newState = forceState ?? !isCodeEditorOpen;
-        setIsCodeEditorOpen(newState);
-    };
 
      useEffect(() => {
         if (isCodeEditorOpen) {
@@ -2032,6 +2032,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
