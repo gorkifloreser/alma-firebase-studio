@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
@@ -104,7 +104,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
-             <Card className="p-2 bg-secondary/50 hover:bg-secondary transition-colors">
+             <Card className={cn("p-2 hover:bg-secondary transition-colors", item.status === 'published' ? 'bg-green-500/10 border-green-500/20' : 'bg-secondary/50')}>
                 <div className="flex flex-col gap-2">
                      {item.image_url && (
                         <div className="relative w-full aspect-square">
@@ -115,7 +115,11 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         <p className="text-xs font-bold truncate">{publicationTime}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div {...listeners} className="flex items-center gap-1 cursor-grab">
-                                <ChannelIcon channel={item.user_channel_settings?.channel_name} />
+                                {item.status === 'published' ? (
+                                    <CheckCheck className="h-4 w-4 text-green-600" />
+                                ) : (
+                                    <ChannelIcon channel={item.user_channel_settings?.channel_name} />
+                                )}
                             </div>
                             <Button
                                 variant="ghost"
@@ -187,10 +191,10 @@ export default function CalendarPage() {
         checkUserAndFetchData();
     }, [fetchContent]);
 
-    const { unscheduled, scheduled } = useMemo(() => {
+    const { unscheduled, scheduledOrPublished } = useMemo(() => {
         const unscheduled = contentItems.filter(item => item.status === 'approved');
-        const scheduled = contentItems.filter(item => item.status === 'scheduled' && item.scheduled_at);
-        return { unscheduled, scheduled };
+        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published') && item.scheduled_at);
+        return { unscheduled, scheduledOrPublished };
     }, [contentItems]);
 
     const { calendarDays, headerLabel } = useMemo(() => {
@@ -373,7 +377,7 @@ export default function CalendarPage() {
                             </div>
                              <div className="grid grid-cols-7 flex-1 border-b">
                                 {calendarDays.map(day => {
-                                    const dayContent = scheduled.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
+                                    const dayContent = scheduledOrPublished.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
                                     return (
                                         <CalendarDay 
                                             key={day.toString()} 

@@ -181,29 +181,19 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-
-    // This is a placeholder. The actual publishing logic should be triggered
-    // here, perhaps by invoking the Edge Function directly.
-    // For now, we'll just update the status.
     
-    // In a real scenario, you'd invoke the edge function:
-    // const { data: functionData, error: functionError } = await supabase.functions.invoke('post-scheduler', {
-    //   body: { postId: mediaPlanItemId }
-    // });
-    // if (functionError) throw new Error(`Publishing failed: ${functionError.message}`);
+    const { error: functionError } = await supabase.functions.invoke('post-scheduler', {
+      body: { postId: mediaPlanItemId }
+    });
 
-    const { error } = await supabase
-        .from('media_plan_items')
-        .update({ status: 'published', published_at: new Date().toISOString() })
-        .eq('id', mediaPlanItemId);
-
-    if (error) {
-        console.error(`Failed to publish post ${mediaPlanItemId}:`, error);
-        throw new Error(`Publishing failed: ${error.message}`);
+    if (functionError) {
+        console.error(`Error invoking post-scheduler for post ${mediaPlanItemId}:`, functionError);
+        throw new Error(`Publishing failed: ${functionError.message}`);
     }
 
+    // The function will update the status, but we revalidate to ensure the UI updates.
     revalidatePath('/calendar');
     revalidatePath('/artisan');
 
-    return { message: 'Post published successfully.' };
+    return { message: 'Post has been queued for immediate publication.' };
 }
