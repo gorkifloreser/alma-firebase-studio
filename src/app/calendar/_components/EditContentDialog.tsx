@@ -211,6 +211,7 @@ export function EditContentDialog({
         onOpenChange(false);
         toast({ title: 'Published!', description: 'Your content has been published successfully.' });
       } catch (error: any) {
+         console.error('[handlePublishNow] Error publishing post:', error);
          toast({
           variant: 'destructive',
           title: 'Publish Failed',
@@ -478,5 +479,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
-    
