@@ -20,6 +20,58 @@ interface SocialConnection {
   account_id: string;
 }
 
+export async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection) {
+    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+
+    // Step 1: Upload image to a container
+    const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${post.image_url}&caption=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
+    const containerResponse = await fetch(containerUrl, { method: 'POST' });
+    const containerData = await containerResponse.json();
+
+    if (!containerResponse.ok) throw new Error(`IG container creation failed: ${JSON.stringify(containerData)}`);
+    const containerId = containerData.id;
+
+    // Step 2: Check container status (with retries)
+    let isContainerReady = false;
+    for (let i = 0; i < 10; i++) { // Retry up to 10 times
+        const statusUrl = `https://graph.facebook.com/v19.0/${containerId}?fields=status_code&access_token=${pageAccessToken}`;
+        const statusResponse = await fetch(statusUrl);
+        const statusData = await statusResponse.json();
+
+        if (statusData.status_code === 'FINISHED') {
+            isContainerReady = true;
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+    }
+
+    if (!isContainerReady) throw new Error('IG container processing timed out.');
+
+    // Step 3: Publish the container
+    const publishUrl = `https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${containerId}&access_token=${pageAccessToken}`;
+    const publishResponse = await fetch(publishUrl, { method: 'POST' });
+    const publishData = await publishResponse.json();
+
+    if (!publishResponse.ok) throw new Error(`IG media publish failed: ${JSON.stringify(publishData)}`);
+
+    return publishData;
+}
+
+
+export async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection) {
+  const { access_token: pageAccessToken, account_id: pageId } = connection;
+  const url = `https://graph.facebook.com/v19.0/${pageId}/photos?url=${post.image_url}&message=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
+
+  const response = await fetch(url, { method: 'POST' });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Facebook post failed: ${JSON.stringify(data)}`);
+  }
+  return data;
+}
+
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -125,53 +177,4 @@ serve(async (req: Request) => {
   }
 });
 
-async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection) {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
-
-    // Step 1: Upload image to a container
-    const containerUrl = `https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${post.image_url}&caption=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
-    const containerResponse = await fetch(containerUrl, { method: 'POST' });
-    const containerData = await containerResponse.json();
-
-    if (!containerResponse.ok) throw new Error(`IG container creation failed: ${JSON.stringify(containerData)}`);
-    const containerId = containerData.id;
-
-    // Step 2: Check container status (with retries)
-    let isContainerReady = false;
-    for (let i = 0; i < 10; i++) { // Retry up to 10 times
-        const statusUrl = `https://graph.facebook.com/v19.0/${containerId}?fields=status_code&access_token=${pageAccessToken}`;
-        const statusResponse = await fetch(statusUrl);
-        const statusData = await statusResponse.json();
-
-        if (statusData.status_code === 'FINISHED') {
-            isContainerReady = true;
-            break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-    }
-
-    if (!isContainerReady) throw new Error('IG container processing timed out.');
-
-    // Step 3: Publish the container
-    const publishUrl = `https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${containerId}&access_token=${pageAccessToken}`;
-    const publishResponse = await fetch(publishUrl, { method: 'POST' });
-    const publishData = await publishResponse.json();
-
-    if (!publishResponse.ok) throw new Error(`IG media publish failed: ${JSON.stringify(publishData)}`);
-
-    return publishData;
-}
-
-
-async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection) {
-  const { access_token: pageAccessToken, account_id: pageId } = connection;
-  const url = `https://graph.facebook.com/v19.0/${pageId}/photos?url=${post.image_url}&message=${encodeURIComponent(post.copy)}&access_token=${pageAccessToken}`;
-
-  const response = await fetch(url, { method: 'POST' });
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(`Facebook post failed: ${JSON.stringify(data)}`);
-  }
-  return data;
-}
+    

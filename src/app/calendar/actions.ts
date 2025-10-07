@@ -5,6 +5,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { MediaPlanItem } from '@/app/funnels/types';
+import { publishToFacebook, publishToInstagram } from '@/supabase/functions/post-scheduler';
+
 
 export type CalendarItem = MediaPlanItem & {
     // Fields from the new, consolidated media_plan_items table
@@ -154,3 +156,75 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
     revalidatePath('/artisan');
     return data as CalendarItem;
 }
+
+export async function deleteContentItem(mediaPlanItemId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { error } = await supabase
+        .from('media_plan_items')
+        .delete()
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id);
+    
+    if (error) {
+        console.error('Error deleting content item:', error);
+        throw new Error('Could not delete the post.');
+    }
+
+    revalidatePath('/calendar');
+    revalidatePath('/artisan');
+    return { message: 'Post deleted successfully.' };
+}
+
+export async function publishNow(mediaPlanItemId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data: post, error: postError } = await supabase
+        .from('media_plan_items')
+        .select(`*, user_channel_settings (channel_name)`)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (postError || !post) {
+        throw new Error('Could not find the post to publish.');
+    }
+
+    const { data: connection, error: connError } = await supabase
+        .from('social_connections')
+        .select('access_token, account_id, provider')
+        .eq('user_id', user.id)
+        .eq('provider', 'meta')
+        .eq('is_active', true)
+        .single();
+    
+    if (connError || !connection) {
+        throw new Error('No active social media connection found for publishing.');
+    }
+
+    const channel = post.user_channel_settings?.channel_name.toLowerCase();
+
+    try {
+        if (channel === 'instagram') {
+            await publishToInstagram(post, connection);
+        } else if (channel === 'facebook') {
+            await publishToFacebook(post, connection);
+        } else {
+            throw new Error(`Publishing to ${channel} is not supported yet.`);
+        }
+    } catch (e: any) {
+        console.error(`Failed to publish post ${post.id}:`, e.message);
+        throw new Error(`Publishing failed: ${e.message}`);
+    }
+
+    revalidatePath('/calendar');
+    revalidatePath('/artisan');
+
+    return { message: 'Post published successfully.' };
+}
+
+    

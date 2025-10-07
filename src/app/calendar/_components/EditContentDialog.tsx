@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -21,7 +21,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,7 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -38,6 +39,7 @@ interface EditContentDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   contentItem: CalendarItem | null;
   onContentUpdated: (contentItem: CalendarItem) => void;
+  onContentDeleted: (itemId: string) => void;
 }
 
 type Profile = {
@@ -60,18 +62,16 @@ export function EditContentDialog({
   onOpenChange,
   contentItem,
   onContentUpdated,
+  onContentDeleted,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
 
   // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
   const getInitialContent = () => {
-    console.log('[DEBUG] getInitialContent called with contentItem:', contentItem);
     if (!contentItem) return { primary: '', secondary: '' };
     if (contentItem.content_body && (contentItem.content_body.primary || contentItem.content_body.secondary)) {
-        console.log('[DEBUG] Using content_body:', contentItem.content_body);
         return contentItem.content_body;
     }
-    console.log('[DEBUG] Falling back to root copy field:', contentItem.copy);
     return {
         primary: contentItem.copy || '',
         secondary: contentItem.content_body?.secondary || '',
@@ -82,11 +82,11 @@ export function EditContentDialog({
   const [editableSlides, setEditableSlides] = useState(contentItem?.carousel_slides);
   const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
   const [isSaving, startSaving] = useTransition();
+  const [isDeleting, startDeleting] = useTransition();
+  const [isPublishing, startPublishing] = useTransition();
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
-
-  console.log('[DEBUG] EditContentDialog received contentItem:', contentItem);
 
 
   useEffect(() => {
@@ -108,7 +108,6 @@ export function EditContentDialog({
 
   useEffect(() => {
     if (contentItem) {
-        console.log('[DEBUG] contentItem updated. Body:', contentItem.content_body, 'Copy:', contentItem.copy);
         setEditableContent(getInitialContent());
         setEditableSlides(contentItem.carousel_slides);
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
@@ -172,8 +171,6 @@ export function EditContentDialog({
             }
         }
         
-        console.log('[DEBUG] Saving with updates:', updates);
-
         const updatedContent = await updateContent(contentItem.id, updates);
         onContentUpdated(updatedContent);
         onOpenChange(false);
@@ -182,6 +179,41 @@ export function EditContentDialog({
         toast({
           variant: 'destructive',
           title: 'Failed to Save',
+          description: error.message,
+        });
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    startDeleting(async () => {
+      try {
+        await deleteContentItem(contentItem.id);
+        onContentDeleted(contentItem.id);
+        onOpenChange(false);
+        toast({ title: 'Post Deleted', description: 'The content has been permanently removed.' });
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Deletion Failed',
+          description: error.message,
+        });
+      }
+    });
+  };
+
+  const handlePublishNow = () => {
+    startPublishing(async () => {
+      try {
+        const result = await publishNow(contentItem.id);
+        const updatedItem = await updateContent(contentItem.id, { status: 'published', published_at: new Date().toISOString() });
+        onContentUpdated(updatedItem);
+        onOpenChange(false);
+        toast({ title: 'Published!', description: 'Your content has been published successfully.' });
+      } catch (error: any) {
+         toast({
+          variant: 'destructive',
+          title: 'Publish Failed',
           description: error.message,
         });
       }
@@ -289,6 +321,17 @@ export function EditContentDialog({
                 </Card>
             </div>
             <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="channel-select">Channel</Label>
+                    <Select value={contentItem.user_channel_settings?.channel_name || ''} disabled>
+                        <SelectTrigger id="channel-select"><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value={contentItem.user_channel_settings?.channel_name || ''}>
+                                {contentItem.user_channel_settings?.channel_name || 'N/A'}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
                 {secondaryLangName ? (
                     <Tabs defaultValue="primary" className="w-full">
                         <div className="flex justify-center">
@@ -404,15 +447,36 @@ export function EditContentDialog({
             </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
+        <DialogFooter className="justify-between">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                     <Button variant="destructive" disabled={isDeleting}>
+                        {isDeleting ? 'Deleting...' : <Trash2 className="h-4 w-4" />}
+                     </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. This will permanently delete this post.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+          <div className="flex gap-2">
+             <Button variant="secondary" onClick={handlePublishNow} disabled={isPublishing || isSaving}>
+                {isPublishing ? 'Publishing...' : 'Publish Now'}
+             </Button>
+             <Button onClick={handleSave} disabled={isSaving || isPublishing}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+             </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+    

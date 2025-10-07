@@ -159,6 +159,10 @@ export default function CalendarPage() {
         toast({ title: "Content Updated!", description: "Your changes have been saved." });
     };
 
+    const handleContentDeleted = (deletedItemId: string) => {
+        setContentItems(prev => prev.filter(item => item.id !== deletedItemId));
+    };
+
     const fetchContent = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -392,8 +396,11 @@ export default function CalendarPage() {
                     onOpenChange={setIsEditDialogOpen}
                     contentItem={editingContent}
                     onContentUpdated={handleContentUpdated}
+                    onContentDeleted={handleContentDeleted}
                 />
             )}
         </DashboardLayout>
     );
 }
+
+    
