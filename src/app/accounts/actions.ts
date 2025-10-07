@@ -194,3 +194,30 @@ export async function disconnectMetaAccount(provider: string): Promise<{ message
     revalidatePath('/accounts');
     return { message: `${provider} account disconnected successfully.` };
 }
+
+export async function saveMetaConnection(params: { accessToken: string; accountId: string; accountName: string }): Promise<{ message: string }> {
+    const { accessToken, accountId, accountName } = params;
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const connectionData = {
+        user_id: user.id,
+        provider: 'meta',
+        access_token: accessToken, // In a real app, encrypt this token!
+        account_id: accountId,
+        account_name: accountName,
+    };
+
+    const { error: dbError } = await supabase
+        .from('social_connections')
+        .upsert(connectionData, { onConflict: 'user_id, provider' });
+    
+    if (dbError) {
+        console.error('[META AUTH] Database upsert error in saveMetaConnection:', dbError);
+        throw new Error(`Database error while saving connection: ${dbError.message}`);
+    }
+
+    revalidatePath('/accounts');
+    return { message: 'Meta connection saved successfully.' };
+}

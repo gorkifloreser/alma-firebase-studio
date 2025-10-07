@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Clock, Edit, Save, Link, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock, Edit, Save, Link, CheckCircle2, AlertCircle, Instagram, Facebook } from 'lucide-react';
 import Image from 'next/image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import type { updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, SocialConnection } from '../actions';
+import type { updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, SocialConnection, saveMetaConnection } from '../actions';
+import { useSearchParams, useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+
 
 type AccountStatus = 'available' | 'coming_soon';
 
@@ -25,6 +34,14 @@ export interface Account {
     status: AccountStatus;
     best_practices: string | null;
 }
+
+export type MetaPage = {
+    id: string;
+    name: string;
+    instagram_id?: string;
+    instagram_username?: string;
+};
+
 
 const initialAccounts: Omit<Account, 'best_practices'>[] = [
     { id: 'instagram', name: 'Instagram', description: 'Enable Instagram for post generation and analytics.', icon: '/instagram.svg', category: 'social', status: 'available' },
@@ -44,6 +61,7 @@ interface AccountsClientPageProps {
     updateChannelBestPracticesAction: typeof updateChannelBestPractices;
     getMetaOAuthUrl: typeof getMetaOAuthUrl;
     disconnectMetaAccount: typeof disconnectMetaAccount;
+    saveMetaConnection: typeof saveMetaConnection;
 }
 
 const BestPracticesEditor = ({ channelId, initialValue, onSave, isSaving }: { channelId: string, initialValue: string, onSave: (channelId: string, newValue: string) => void, isSaving: boolean }) => {
@@ -84,11 +102,70 @@ export function AccountsClientPage({
     updateChannelBestPracticesAction,
     getMetaOAuthUrl,
     disconnectMetaAccount,
+    saveMetaConnection,
 }: AccountsClientPageProps) {
     const [userChannels, setUserChannels] = useState<Account[]>(initialUserChannels);
     const [socialConnections, setSocialConnections] = useState<SocialConnection[]>(initialSocialConnections);
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // State for the new Meta page selection dialog
+    const [isSelectPageDialogOpen, setIsSelectPageDialogOpen] = useState(false);
+    const [availableMetaPages, setAvailableMetaPages] = useState<MetaPage[]>([]);
+    const [metaAccessToken, setMetaAccessToken] = useState<string | null>(null);
+
+
+    useEffect(() => {
+        const metaAction = searchParams.get('meta_action');
+        if (metaAction === 'select_page') {
+            const pagesData = searchParams.get('pages');
+            const token = searchParams.get('token');
+            if (pagesData && token) {
+                try {
+                    const decodedPages: MetaPage[] = JSON.parse(atob(pagesData));
+                    setAvailableMetaPages(decodedPages);
+                    setMetaAccessToken(token);
+                    setIsSelectPageDialogOpen(true);
+                } catch (error) {
+                    console.error("Failed to parse pages data:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not read available pages from Meta.' });
+                }
+            }
+        }
+    }, [searchParams, toast]);
+
+    const handleSelectMetaPage = (page: MetaPage) => {
+        if (!metaAccessToken) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Authentication token is missing.' });
+            return;
+        }
+
+        startSaving(async () => {
+            try {
+                await saveMetaConnection({
+                    accessToken: metaAccessToken,
+                    accountId: page.instagram_id || page.id,
+                    accountName: page.instagram_username || page.name,
+                });
+
+                // Refresh social connections
+                setSocialConnections(prev => [...prev.filter(sc => sc.provider !== 'meta'), {
+                    provider: 'meta',
+                    account_id: page.instagram_id || page.id,
+                    account_name: page.instagram_username || page.name,
+                } as SocialConnection]);
+                
+                setIsSelectPageDialogOpen(false);
+                router.replace('/accounts'); // Clean URL
+                toast({ title: 'Success!', description: `Connected to @${page.instagram_username || page.name}` });
+
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Connection Failed', description: error.message });
+            }
+        });
+    };
     
     const accountsWithData: Account[] = initialAccounts.map(baseAccount => {
         const userData = userChannels.find(uc => uc.id === baseAccount.id);
@@ -180,7 +257,7 @@ export function AccountsClientPage({
     const metaConnection = socialConnections.find(sc => sc.provider === 'meta');
 
     const renderCard = (account: Account) => {
-         const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
+        const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
 
         return (
             <Card key={account.id} className="flex flex-col">
@@ -216,7 +293,7 @@ export function AccountsClientPage({
                             </div>
                         ) : (
                              <Button onClick={handleMetaConnect} className="w-full">
-                                <Link className="mr-2 h-4 w-4" /> Connect
+                                <Link className="mr-2 h-4 w-4" /> Connect with Meta
                             </Button>
                         )
                     )}
@@ -258,6 +335,37 @@ export function AccountsClientPage({
     const ownedAccounts = accountsWithData.filter(a => a.category === 'owned');
 
     return (
+        <>
+        <Dialog open={isSelectPageDialogOpen} onOpenChange={setIsSelectPageDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Select Page to Connect</DialogTitle>
+                    <DialogDescription>
+                        Choose which Instagram or Facebook page you'd like to connect to Alma.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-96 overflow-y-auto py-4 space-y-2">
+                    {availableMetaPages.map(page => (
+                        <button
+                            key={page.id}
+                            onClick={() => handleSelectMetaPage(page)}
+                            className="w-full text-left p-3 rounded-md hover:bg-accent transition-colors"
+                            disabled={isSaving}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-secondary rounded-full">
+                                    {page.instagram_id ? <Instagram className="h-5 w-5" /> : <Facebook className="h-5 w-5" />}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold">{page.instagram_username ? `@${page.instagram_username}` : page.name}</p>
+                                    <p className="text-sm text-muted-foreground">{page.instagram_id ? 'Instagram Business Account' : 'Facebook Page'}</p>
+                                </div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header>
                 <h1 className="text-3xl font-bold">Accounts & Integrations</h1>
@@ -286,5 +394,6 @@ export function AccountsClientPage({
                 </section>
             </div>
         </div>
+        </>
     );
 }
