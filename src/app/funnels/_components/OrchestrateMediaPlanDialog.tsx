@@ -206,6 +206,8 @@ export function OrchestrateMediaPlanDialog({
             return null;
         }
 
+        console.log("[CLIENT] handleSave triggered. Current plan state before sending to server:", currentPlan);
+        
         let savedPlan: MediaPlan | null = null;
         await startSaving(async () => {
             try {
@@ -417,6 +419,7 @@ export function OrchestrateMediaPlanDialog({
             suggested_post_at: new Date().toISOString(),
             status: 'draft',
         };
+        console.log('[CLIENT] Creating new item for channel:', channel, 'New item object:', newItem);
         setCurrentPlan(prev => [...(prev || []), newItem]);
     };
     
