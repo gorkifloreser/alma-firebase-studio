@@ -177,7 +177,7 @@ export function AccountsClientPage({
         });
     };
     
-    const isMetaConnected = socialConnections.some(sc => sc.provider === 'meta');
+    const metaConnection = socialConnections.find(sc => sc.provider === 'meta');
 
     const renderCard = (account: Account) => {
          const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
@@ -204,11 +204,15 @@ export function AccountsClientPage({
                     )}
 
                     {isMetaAccount && account.status === 'available' && (
-                        isMetaConnected ? (
-                            <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
-                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                <p className="text-sm font-medium text-green-700 dark:text-green-300">Connected</p>
-                                <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="ml-auto p-0 h-auto text-green-700 dark:text-green-300">Disconnect</Button>
+                        metaConnection ? (
+                             <div className="flex flex-col items-start gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                                        Conectado como: <span className="font-bold">@{metaConnection.account_name}</span>
+                                    </p>
+                                </div>
+                                <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-green-700 dark:text-green-300">Desconectar</Button>
                             </div>
                         ) : (
                              <Button onClick={handleMetaConnect} className="w-full">

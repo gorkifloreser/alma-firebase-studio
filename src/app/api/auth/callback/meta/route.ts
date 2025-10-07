@@ -62,7 +62,29 @@ export async function GET(req: NextRequest) {
         const expires_at = new Date();
         expires_at.setSeconds(expires_at.getSeconds() + expires_in);
 
-        // Step 3: Upsert the connection in Supabase
+        // Step 3: Get user's pages
+        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${access_token}`;
+        const pagesRes = await fetch(pagesUrl);
+        const pagesData = await pagesRes.json();
+        if (pagesData.error) throw new Error(`Fetching pages error: ${pagesData.error.message}`);
+        if (!pagesData.data || pagesData.data.length === 0) throw new Error('No Facebook Pages found for this user.');
+
+        // Step 4: Find the first page with a connected Instagram Business Account
+        let igAccountId = null;
+        let igUsername = null;
+        for (const page of pagesData.data) {
+            const igUrl = `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${access_token}`;
+            const igRes = await fetch(igUrl);
+            const igData = await igRes.json();
+            if (igData.instagram_business_account) {
+                igAccountId = igData.instagram_business_account.id;
+                igUsername = igData.instagram_business_account.username;
+                break;
+            }
+        }
+        if (!igAccountId) throw new Error('No Instagram Business Account found linked to any of your Facebook Pages.');
+
+        // Step 5: Upsert the connection in Supabase
         const { error: dbError } = await supabase
             .from('social_connections')
             .upsert({
@@ -70,6 +92,8 @@ export async function GET(req: NextRequest) {
                 provider: 'meta',
                 access_token: access_token, // Encrypt this in a real app
                 expires_at: expires_at.toISOString(),
+                account_id: igAccountId,
+                account_name: igUsername,
             }, { onConflict: 'user_id, provider' });
         
         if (dbError) throw new Error(`Database error: ${dbError.message}`);
