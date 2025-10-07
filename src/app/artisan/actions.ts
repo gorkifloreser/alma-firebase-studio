@@ -36,7 +36,7 @@ export async function getArtisanItems(mediaPlanId?: string): Promise<ArtisanItem
             offerings (title)
         `)
         .eq('user_id', user.id)
-        .in('status', ['queued_for_generation', 'generation_in_progress', 'ready_for_review']);
+        .in('status', ['queued_for_generation', 'generation_in_progress', 'ready_for_review', 'completed', 'scheduled', 'published']);
 
     if (mediaPlanId) {
         query = query.eq('media_plan_id', mediaPlanId);
@@ -91,6 +91,35 @@ type SaveContentInput = {
     scheduledAt?: string | null;
 };
 
+
+async function uploadBase64Image(supabase: any, base64: string, userId: string, offeringId: string): Promise<string> {
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
+    const filePath = `${userId}/offerings_media_generated/${offeringId}/${crypto.randomUUID()}.png`;
+    
+    const base64Data = base64.split(';base64,').pop();
+    if (!base64Data) {
+        throw new Error('Invalid Base64 image data');
+    }
+    
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, buffer, {
+            contentType: 'image/png',
+            upsert: false
+        });
+
+    if (uploadError) {
+        console.error('Base64 Upload Error:', uploadError);
+        throw new Error('Failed to upload generated image to storage.');
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    return publicUrl;
+}
+
+
 /**
  * Saves or updates content within a media plan item.
  * @param {SaveContentInput} input - The content data to save.
@@ -109,19 +138,38 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         videoUrl, 
         landingPageHtml, 
         status, 
-        scheduledAt 
+        scheduledAt,
+        offeringId
     } = input;
 
     if (!mediaPlanItemId) {
         throw new Error('A media_plan_item_id is required to save content.');
     }
 
+    let finalImageUrl = imageUrl;
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+        finalImageUrl = await uploadBase64Image(supabase, imageUrl, user.id, offeringId);
+    }
+    
+    let finalCarouselSlides = carouselSlides;
+    if (carouselSlides) {
+        finalCarouselSlides = await Promise.all(
+            carouselSlides.map(async (slide) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, offeringId);
+                    return { ...slide, imageUrl: newUrl };
+                }
+                return slide;
+            })
+        );
+    }
+
     const payload: any = {
         // user_id and offering_id are already set on the media plan item
         copy: contentBody?.primary, // Assuming 'copy' is the field for primary content
         content_body: contentBody,
-        image_url: imageUrl,
-        carousel_slides: carouselSlides,
+        image_url: finalImageUrl,
+        carousel_slides: finalCarouselSlides,
         video_url: videoUrl,
         landing_page_html: landingPageHtml,
         status: status,
