@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -450,17 +451,6 @@ export async function generateCreativeForOffering(input: GenerateCreativeInput):
     }
 }
 
-type SaveContentInput = {
-    offeringId: string;
-    contentBody: { primary: string | null; secondary: string | null; } | null;
-    imageUrl: string | null;
-    carouselSlides: CarouselSlide[] | null;
-    videoUrl: string | null;
-    landingPageHtml: string | null;
-    status: 'draft' | 'approved' | 'scheduled' | 'published';
-    mediaPlanItemId?: string | null;
-};
-
 /**
  * Invokes the Genkit flow to generate an offering draft.
  * @param {GenerateOfferingDraftInput} input The user's prompt for the new offering.
@@ -489,3 +479,5 @@ export async function generateImageDescription(input: GenerateImageDescriptionIn
 export async function generateValueContent(input: GenerateValueContentInput): Promise<GenerateValueContentOutput> {
     return genValueContentFlow(input);
 }
+
+    

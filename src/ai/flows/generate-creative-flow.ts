@@ -228,7 +228,7 @@ export const generateCreativeFlow = ai.defineFlow(
         })
         : Promise.resolve(null);
     
-    const visualPromises = [];
+    const visualPromises: Promise<Partial<GenerateCreativeOutput>>[] = [];
 
     if (creativeTypes.includes('landing_page')) {
         visualPromises.push(generateLandingPage({ offeringId, creativePrompt: userCreativePrompt || 'Generate a beautiful landing page for this offering.' }).then(r => ({ landingPageHtml: r.htmlContent })));
@@ -331,3 +331,5 @@ export const generateCreativeFlow = ai.defineFlow(
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
     return generateCreativeFlow(input);
 }
+
+    

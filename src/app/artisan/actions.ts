@@ -10,7 +10,7 @@ import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarousel
 
 
 import type { MediaPlanItem } from '@/app/funnels/actions';
-import type { ContentItem } from '../calendar/actions';
+import type { CalendarItem as ContentItem } from '../calendar/actions';
 
 export type ArtisanItem = MediaPlanItem & {
     offerings: {
@@ -56,9 +56,9 @@ export async function getArtisanItems(mediaPlanId?: string): Promise<ArtisanItem
 /**
  * Fetches a single content item by its ID.
  * @param {string} mediaPlanItemId - The ID of the item to fetch.
- * @returns {Promise<CalendarItem | null>} The full content item or null if not found.
+ * @returns {Promise<ContentItem | null>} The full content item or null if not found.
  */
-export async function getContentItem(mediaPlanItemId: string): Promise<CalendarItem | null> {
+export async function getContentItem(mediaPlanItemId: string): Promise<ContentItem | null> {
     console.log(`[ACTION: getContentItem] -- START -- Fetching content for media_plan_item_id: ${mediaPlanItemId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -83,7 +83,7 @@ export async function getContentItem(mediaPlanItemId: string): Promise<CalendarI
     }
     
     console.log(`[ACTION: getContentItem] -- SUCCESS -- Successfully fetched content for ${mediaPlanItemId}. Image URL: ${data?.image_url}`);
-    return data as CalendarItem;
+    return data as ContentItem;
 }
 
 
@@ -120,7 +120,7 @@ type SaveContentInput = {
     carouselSlides: CarouselSlide[] | null;
     videoUrl: string | null;
     landingPageHtml: string | null;
-    status: 'draft' | 'approved' | 'scheduled' | 'published';
+    status: 'draft' | 'ready_for_review' | 'scheduled' | 'published';
     mediaPlanItemId?: string | null;
     scheduledAt?: string | null;
 };
@@ -303,3 +303,5 @@ export async function editImageWithInstruction(input: EditImageInput): Promise<E
 export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
     return regenerateSlideFlow(input);
 }
+
+    
