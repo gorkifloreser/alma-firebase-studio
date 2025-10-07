@@ -38,6 +38,8 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
 
     const containerResponse = await fetch(`${containerUrl}?${containerParams.toString()}`, { method: 'POST' });
     const containerData = await containerResponse.json();
+    console.log(`[IG Publish - ${post.id}] Step 1 Response:`, JSON.stringify(containerData, null, 2));
+
 
     if (!containerResponse.ok || containerData.error) {
         throw new Error(`IG container creation failed: ${JSON.stringify(containerData.error)}`);
@@ -75,6 +77,8 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
     
     const publishResponse = await fetch(`${publishUrl}?${publishParams.toString()}`, { method: 'POST' });
     const publishData = await publishResponse.json();
+    console.log(`[IG Publish - ${post.id}] Step 3 Response:`, JSON.stringify(publishData, null, 2));
+
 
     if (!publishResponse.ok || publishData.error) {
         throw new Error(`IG media publish failed: ${JSON.stringify(publishData.error)}`);
@@ -106,6 +110,8 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
 
   const response = await fetch(`${url}?${params.toString()}`, { method: 'POST' });
   const data = await response.json();
+  console.log(`[FB Publish - ${post.id}] API Response:`, JSON.stringify(data, null, 2));
+
 
   if (!response.ok || data.error) {
     throw new Error(`Facebook post failed: ${JSON.stringify(data.error)}`);
@@ -120,6 +126,7 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
  * @param supabase - An authenticated Supabase client instance.
  */
 export async function publishPost(postId: string, supabase: SupabaseClient): Promise<void> {
+    console.log(`[publishPost] Initiating publish for post ID: ${postId}`);
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
         .select(`
@@ -135,29 +142,37 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
     if (postError || !post) {
         throw new Error(`Post with ID ${postId} not found. Error: ${postError?.message}`);
     }
+    console.log(`[publishPost] Found post:`, post);
+
 
     const { data: connection, error: connectionError } = await supabase
         .from('social_connections')
         .select('access_token, account_id')
         .eq('user_id', post.user_id)
-        .eq('provider', 'meta')
         .eq('is_active', true)
         .single();
 
     if (connectionError || !connection) {
         throw new Error(`No active Meta connection found for user ${post.user_id}.`);
     }
+    console.log(`[publishPost] Found active connection for user.`);
+
 
     const channel = post.user_channel_settings?.channel_name?.toLowerCase();
     if (!channel) {
         throw new Error(`Post ${postId} is missing channel information.`);
     }
+    console.log(`[publishPost] Determined channel is: ${channel}`);
+
 
     switch(channel) {
         case 'instagram':
             await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
             break;
         case 'facebook':
+            // For Facebook, we might need a different account_id (the Page ID, not the IG account ID)
+            // Let's assume for now the active connection's account_id is the correct one.
+            // A more robust solution might store both and select based on channel.
             await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
             break;
         default:

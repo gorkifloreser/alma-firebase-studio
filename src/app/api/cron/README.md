@@ -1,6 +1,6 @@
 # Cron Job Setup for Post Scheduler
 
-This API route (`/api/cron`) is the new endpoint for triggering the automated post scheduler. It replaces the previous Supabase Edge Function.
+This API route (`/api/cron`) is the endpoint for triggering the automated post scheduler.
 
 ## How it Works
 
