@@ -198,6 +198,7 @@ export function EditContentDialog({
         return null; // No visual content
     };
 
+  const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
   const postUser = profile?.full_name || 'Your Brand';
   const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -359,4 +360,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
