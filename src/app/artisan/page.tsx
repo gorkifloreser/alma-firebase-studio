@@ -8,9 +8,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide } from './actions';
+import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
-import { updateContent, type CalendarItem, getContentItem } from '../calendar/actions';
+import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -1076,6 +1076,7 @@ export default function ArtisanPage() {
     }, [workflowMode, selectedCampaign, allArtisanItems]);
 
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
+        console.log(`[DEBUG] handleArtisanItemSelect called with ID: ${artisanItemId}`);
         setCreative(null);
         setEditableContent(null);
         setEditableHtml(null);
@@ -1085,12 +1086,14 @@ export default function ArtisanPage() {
         setSavedContent(null);
     
         if (!artisanItemId) {
+            console.log('[DEBUG] No artisanItemId, resetting state.');
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
             return;
         }
     
         const item = allArtisanItems.find(q => q.id === artisanItemId);
+        console.log('[DEBUG] Found item in allArtisanItems:', item);
         if (item) {
             setIsLoading(true);
             const promptValue = item.creative_prompt || '';
@@ -1101,9 +1104,17 @@ export default function ArtisanPage() {
             // If item is completed, fetch its content
             if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
+                    console.log(`[DEBUG] Item has status '${item.status}', fetching full content...`);
                     const contentItem = await getContentItem(item.id);
+                    console.log('[DEBUG] Fetched contentItem from server:', contentItem);
                     if (contentItem) {
                         setCreative({
+                            imageUrl: contentItem.image_url,
+                            carouselSlides: contentItem.carousel_slides,
+                            videoUrl: contentItem.video_url,
+                            landingPageHtml: contentItem.landing_page_html,
+                        });
+                        console.log('[DEBUG] Set `creative` state with:', {
                             imageUrl: contentItem.image_url,
                             carouselSlides: contentItem.carousel_slides,
                             videoUrl: contentItem.video_url,
@@ -1114,8 +1125,9 @@ export default function ArtisanPage() {
                             setEditableHtml(contentItem.landing_page_html);
                         }
                         setSavedContent(contentItem as unknown as CalendarItem);
+                         console.log('[DEBUG] Set `savedContent` state.');
                     } else {
-                        // Fallback to item details if full content not found
+                        console.log('[DEBUG] getContentItem returned null. Falling back to item details.');
                         setEditableContent({ primary: item.copy || '', secondary: null });
                     }
                 } catch (error: any) {
@@ -1123,6 +1135,7 @@ export default function ArtisanPage() {
                     setEditableContent({ primary: item.copy || '', secondary: null });
                 }
             } else {
+                 console.log(`[DEBUG] Item has status '${item.status}', using basic details for content.`);
                  setEditableContent({ primary: item.copy || '', secondary: null });
             }
     
@@ -1141,6 +1154,7 @@ export default function ArtisanPage() {
             // Only reset creative if type changes
             if (newCreativeType !== selectedCreativeType) {
                  setCreative(null);
+                 console.log(`[DEBUG] Creative type changed from ${selectedCreativeType} to ${newCreativeType}. Resetting creative state.`);
             }
             setSelectedCreativeType(newCreativeType);
     
@@ -1154,6 +1168,9 @@ export default function ArtisanPage() {
                 setScheduledAt(parseISO(item.suggested_post_at));
             }
             setIsLoading(false);
+             console.log('[DEBUG] handleArtisanItemSelect finished.');
+        } else {
+             console.log('[DEBUG] Item not found in allArtisanItems.');
         }
     }, [allArtisanItems, selectedCreativeType, toast]);
 
@@ -2031,6 +2048,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 

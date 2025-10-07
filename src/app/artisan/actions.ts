@@ -54,6 +54,40 @@ export async function getArtisanItems(mediaPlanId?: string): Promise<ArtisanItem
 
 
 /**
+ * Fetches a single content item by its ID.
+ * @param {string} mediaPlanItemId - The ID of the item to fetch.
+ * @returns {Promise<CalendarItem | null>} The full content item or null if not found.
+ */
+export async function getContentItem(mediaPlanItemId: string): Promise<CalendarItem | null> {
+    console.log(`[ACTION: getContentItem] -- START -- Fetching content for media_plan_item_id: ${mediaPlanItemId}`);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+        .from('media_plan_items')
+        .select(`
+            *,
+            offerings (title),
+            user_channel_settings (channel_name)
+        `)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .single();
+    
+    console.log('[ACTION: getContentItem] -- DB_RESPONSE -- Raw data from Supabase:', data);
+    
+    if (error) {
+        console.error(`[ACTION: getContentItem] -- ERROR -- Error fetching content item ${mediaPlanItemId}:`, error);
+        return null;
+    }
+    
+    console.log(`[ACTION: getContentItem] -- SUCCESS -- Successfully fetched content for ${mediaPlanItemId}. Image URL: ${data?.image_url}`);
+    return data as CalendarItem;
+}
+
+
+/**
  * Invokes the Genkit creative generation flow.
  * @param {GenerateCreativeInput} input The offering ID and creative type.
  * @returns {Promise<GenerateCreativeOutput>} The generated creative.
@@ -233,7 +267,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
  * @param {string} newStatus - The new status from the media_plan_item_status enum.
  * @returns {Promise<{ message: string }>} A success message.
  */
-export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStatus: string): Promise<{ message: string }> {
+export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStatus: 'ready_for_review' | 'queued_for_generation' | 'draft' | 'scheduled' | 'published' ): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
