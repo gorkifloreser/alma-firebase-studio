@@ -15,7 +15,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download, CaseUpper, CheckCircle2, CircleDashed } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Video, Layers, Type, Heart, MessageCircle, Send, Bookmark, CornerDownLeft, MoreHorizontal, X, Play, Pause, Globe, Wifi, Battery, ArrowLeft, ArrowRight, Share, ExternalLink, MousePointerClick, Code, Copy, BookOpen, Edit, Calendar as CalendarIcon, Clock, Images, RefreshCw, UploadCloud, Loader2, Palette, Bot, User as UserIcon, Sparkles, ZoomIn, History, Download, CaseUpper, CheckCircle2, CircleDashed, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -33,7 +33,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import * as Popover from '@radix-ui/react-popover';
-import { Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid, addDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1100,7 +1099,7 @@ export default function ArtisanPage() {
             setSelectedOfferingId(item.offering_id ?? undefined);
     
             // If item is completed, fetch its content
-            if (item.status === 'completed' || item.status === 'scheduled') {
+            if (item.status === 'ready_for_review' || item.status === 'scheduled') {
                 try {
                     const contentItem = await getContentItem(item.id);
                     if (contentItem) {
@@ -1415,9 +1414,9 @@ export default function ArtisanPage() {
         
         const isTextOnly = ['text', 'landing_page'].includes(selectedCreativeType);
         const hasVisuals = creative?.imageUrl || (creative?.carouselSlides?.every(s => s.imageUrl)) || creative?.videoUrl;
-        const hasContent = !!(editableContent?.primary || editableHtml);
+        const hasContentToSave = (isTextOnly && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisuals);
 
-        if (!hasContent || (!isTextOnly && !hasVisuals)) {
+        if (!hasContentToSave || (!isTextOnly && !hasVisuals)) {
              toast({
                 variant: 'destructive',
                 title: 'Cannot Save',
@@ -1433,7 +1432,7 @@ export default function ArtisanPage() {
 
                 let updatedItem: CalendarItem;
 
-                if (currentArtisanItem?.status === 'completed' || savedContent) {
+                if (currentArtisanItem?.status === 'ready_for_review' || savedContent) {
                     // Update existing content
                      const contentId = savedContent!.id;
                      updatedItem = await updateContent(contentId, {
@@ -1461,8 +1460,8 @@ export default function ArtisanPage() {
                     });
                     
                     if (selectedArtisanItemId) {
-                         await updateMediaPlanItemStatus(selectedArtisanItemId, 'completed');
-                         setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'completed'} : i));
+                         await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
+                         setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'ready_for_review'} : i));
                     }
                    
                     toast({
@@ -1553,7 +1552,7 @@ export default function ArtisanPage() {
 
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
-    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && item.status === 'completed').length : 0;
+    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && item.status === 'ready_for_review').length : 0;
     const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
 
     const handleNewUpload = (newMedia: OfferingMedia) => {
@@ -1776,7 +1775,7 @@ export default function ArtisanPage() {
                                                         {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
                                                         filteredArtisanItems.length > 0 ? (
                                                             filteredArtisanItems.map(item => {
-                                                                const StatusIcon = item.status === 'completed' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                                                const StatusIcon = item.status === 'ready_for_review' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
                                                                 return (
                                                                     <SelectItem key={item.id} value={item.id}>
                                                                         <div className="flex items-center gap-2">
@@ -2032,6 +2031,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
