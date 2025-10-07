@@ -101,7 +101,7 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
     const base64Data = base64.split(';base64,').pop();
     if (!base64Data) {
         console.error('[uploadBase64Image] -- ERROR -- Datos Base64 inválidos. El string no contiene ";base64,".');
-        throw new Error('Invalid Base64 image data');
+        throw new Error('Invalid Base64 image data. Cannot extract image content.');
     }
     
     const buffer = Buffer.from(base64Data, 'base64');
@@ -117,7 +117,7 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
 
     if (uploadError) {
         console.error('[uploadBase64Image] -- ERROR -- Fallo en la subida a Supabase Storage:', uploadError);
-        throw new Error('Failed to upload generated image to storage.');
+        throw new Error(`Image upload failed: ${uploadError.message}`);
     }
     console.log(`[uploadBase64Image] -- ÉXITO -- Imagen subida con éxito a Supabase Storage.`);
 
@@ -188,25 +188,24 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         console.log('[saveContent] -- ÉXITO -- Todas las diapositivas del carrusel han sido procesadas.');
     }
 
-    const payload: any = {
-        copy: contentBody?.primary,
-        content_body: contentBody,
-        image_url: finalImageUrl,
-        carousel_slides: finalCarouselSlides,
-        video_url: videoUrl,
-        landing_page_html: landingPageHtml,
-        status: status,
-        scheduled_at: scheduledAt || null,
-        updated_at: new Date().toISOString(),
-    };
-    
+        const payload: any = {
+            // user_id and offering_id are already set on the media plan item
+            copy: contentBody?.primary, // Assuming 'copy' is the field for primary content
+            content_body: contentBody ? JSON.stringify(contentBody) : null,
+            image_url: finalImageUrl,
+            carousel_slides: finalCarouselSlides ? JSON.stringify(finalCarouselSlides) : null,
+            video_url: videoUrl,
+            landing_page_html: landingPageHtml,
+            status: status,
+            scheduled_at: scheduledAt || null,
+            updated_at: new Date().toISOString(),
+        };    
     console.log('[saveContent] -- ACCIÓN -- Preparando para actualizar la tabla `media_plan_items`. Payload final:', JSON.stringify(payload, null, 2));
 
     const { data, error } = await supabase
         .from('media_plan_items')
         .update(payload)
         .eq('id', mediaPlanItemId)
-        .eq('user_id', user.id)
         .select(`
             *, 
             offerings(*), 
@@ -216,7 +215,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
 
     if (error) {
         console.error('[saveContent] -- ERROR -- Fallo al guardar el contenido en `media_plan_items`:', error.message);
-        throw new Error('Could not save the content. Please try again.');
+        throw new Error(`Failed to save content to database. DB Error: ${error.message}`);
     }
     
     console.log('[saveContent] -- ÉXITO -- Contenido guardado exitosamente. Revalidando rutas...');
@@ -242,12 +241,11 @@ export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStat
     const { error } = await supabase
         .from('media_plan_items')
         .update({ status: newStatus })
-        .eq('id', mediaPlanItemId)
-        .eq('user_id', user.id);
+        .eq('id', mediaPlanItemId);
 
     if (error) {
         console.error('Error updating media plan item status:', error);
-        throw new Error('Could not update media plan item status.');
+        throw new Error(`Could not update item status. DB Error: ${error.message}`);
     }
 
     revalidatePath('/artisan');
