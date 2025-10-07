@@ -93,20 +93,21 @@ type SaveContentInput = {
 
 
 async function uploadBase64Image(supabase: any, base64: string, userId: string, offeringId: string): Promise<string> {
-    console.log('[uploadBase64Image] Starting upload process.');
+    console.log('[uploadBase64Image] -- INICIO -- Iniciando proceso de subida de imagen Base64.');
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
     const filePath = `${userId}/offerings_media_generated/${offeringId}/${crypto.randomUUID()}.png`;
-    console.log(`[uploadBase64Image] Determined file path: ${filePath}`);
+    console.log(`[uploadBase64Image] -- INFO -- Ruta de archivo determinada: ${filePath}`);
     
     const base64Data = base64.split(';base64,').pop();
     if (!base64Data) {
-        console.error('[uploadBase64Image] Invalid Base64 data string.');
+        console.error('[uploadBase64Image] -- ERROR -- Datos Base64 inválidos. El string no contiene ";base64,".');
         throw new Error('Invalid Base64 image data');
     }
     
     const buffer = Buffer.from(base64Data, 'base64');
-    console.log(`[uploadBase64Image] Converted base64 to buffer of size: ${buffer.length} bytes.`);
+    console.log(`[uploadBase64Image] -- INFO -- Convertido Base64 a buffer. Tamaño: ${buffer.length} bytes.`);
     
+    console.log(`[uploadBase64Image] -- ACCIÓN -- Intentando subir a Supabase Storage en el bucket: ${bucketName}...`);
     const { error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, buffer, {
@@ -115,13 +116,14 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
         });
 
     if (uploadError) {
-        console.error('[uploadBase64Image] Supabase storage upload error:', uploadError);
+        console.error('[uploadBase64Image] -- ERROR -- Fallo en la subida a Supabase Storage:', uploadError);
         throw new Error('Failed to upload generated image to storage.');
     }
-    console.log(`[uploadBase64Image] Successfully uploaded image to Supabase storage.`);
+    console.log(`[uploadBase64Image] -- ÉXITO -- Imagen subida con éxito a Supabase Storage.`);
 
     const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-    console.log(`[uploadBase64Image] Retrieved public URL: ${publicUrl}`);
+    console.log(`[uploadBase64Image] -- INFO -- URL pública obtenida: ${publicUrl}`);
+    console.log('[uploadBase64Image] -- FIN -- Proceso de subida completado.');
     return publicUrl;
 }
 
@@ -132,10 +134,18 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
  * @returns {Promise<ContentItem>} The updated media plan item, which now doubles as the content item.
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
-    console.log('[saveContent] Action started with input:', { ...input, imageUrl: input.imageUrl ? input.imageUrl.substring(0, 50) + '...' : null, landingPageHtml: input.landingPageHtml ? '...' : null });
+    console.log('[saveContent] -- INICIO -- Acción de guardado iniciada. Payload recibido:', { 
+        ...input, 
+        imageUrl: input.imageUrl ? `data:image/... (tamaño: ${input.imageUrl.length})` : null, 
+        landingPageHtml: input.landingPageHtml ? `HTML content (tamaño: ${input.landingPageHtml.length})` : null,
+        carouselSlides: input.carouselSlides ? `[${input.carouselSlides.length} slides]` : null
+    });
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+        console.error('[saveContent] -- ERROR -- Usuario no autenticado. Abortando.');
+        throw new Error('User not authenticated');
+    }
 
     const { 
         mediaPlanItemId, 
@@ -150,37 +160,36 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
     } = input;
 
     if (!mediaPlanItemId) {
-        console.error('[saveContent] Error: mediaPlanItemId is missing.');
+        console.error('[saveContent] -- ERROR -- Falta `mediaPlanItemId`. Es requerido para guardar el contenido.');
         throw new Error('A media_plan_item_id is required to save content.');
     }
 
     let finalImageUrl = imageUrl;
     if (imageUrl && imageUrl.startsWith('data:image')) {
-        console.log('[saveContent] Detected base64 image for imageUrl. Starting upload...');
+        console.log('[saveContent] -- INFO -- Se detectó una imagen `imageUrl` en Base64. Iniciando subida...');
         finalImageUrl = await uploadBase64Image(supabase, imageUrl, user.id, offeringId);
-        console.log(`[saveContent] imageUrl upload complete. Public URL: ${finalImageUrl}`);
+        console.log(`[saveContent] -- ÉXITO -- Subida de \`imageUrl\` completa. Nueva URL pública: ${finalImageUrl}`);
     }
     
     let finalCarouselSlides = carouselSlides;
     if (carouselSlides) {
-        console.log(`[saveContent] Processing ${carouselSlides.length} carousel slides.`);
+        console.log(`[saveContent] -- INFO -- Procesando ${carouselSlides.length} diapositivas de carrusel.`);
         finalCarouselSlides = await Promise.all(
             carouselSlides.map(async (slide, index) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    console.log(`[saveContent] Detected base64 image for carousel slide ${index}. Starting upload...`);
+                    console.log(`[saveContent] -- INFO -- Se detectó una imagen Base64 en la diapositiva del carrusel #${index}. Iniciando subida...`);
                     const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, offeringId);
-                    console.log(`[saveContent] Carousel slide ${index} upload complete. Public URL: ${newUrl}`);
+                    console.log(`[saveContent] -- ÉXITO -- Subida de diapositiva #${index} completa. Nueva URL: ${newUrl}`);
                     return { ...slide, imageUrl: newUrl };
                 }
                 return slide;
             })
         );
-        console.log('[saveContent] All carousel slides processed.');
+        console.log('[saveContent] -- ÉXITO -- Todas las diapositivas del carrusel han sido procesadas.');
     }
 
     const payload: any = {
-        // user_id and offering_id are already set on the media plan item
-        copy: contentBody?.primary, // Assuming 'copy' is the field for primary content
+        copy: contentBody?.primary,
         content_body: contentBody,
         image_url: finalImageUrl,
         carousel_slides: finalCarouselSlides,
@@ -191,7 +200,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         updated_at: new Date().toISOString(),
     };
     
-    console.log('[saveContent] Preparing to update media_plan_items table with payload:', payload);
+    console.log('[saveContent] -- ACCIÓN -- Preparando para actualizar la tabla `media_plan_items`. Payload final:', JSON.stringify(payload, null, 2));
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -206,15 +215,15 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         .single();
 
     if (error) {
-        console.error('[saveContent] Error saving content to media_plan_item:', error.message);
+        console.error('[saveContent] -- ERROR -- Fallo al guardar el contenido en `media_plan_items`:', error.message);
         throw new Error('Could not save the content. Please try again.');
     }
     
-    console.log('[saveContent] Successfully saved content. Revalidating paths...');
+    console.log('[saveContent] -- ÉXITO -- Contenido guardado exitosamente. Revalidando rutas...');
     revalidatePath('/calendar');
     revalidatePath('/artisan');
+    console.log('[saveContent] -- FIN -- Acción completada.');
     
-    // The structure of MediaPlanItem should be compatible with ContentItem
     return data as unknown as ContentItem;
 }
 
