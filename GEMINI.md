@@ -4,7 +4,7 @@ This document outlines the development, testing, and debugging standards for the
 
 Clarity and Simplicity: Code should be easy to read, understand, and maintain. Avoid overly complex or "clever" solutions.
 
-Reliable: Always add console logs for all of the process and steps of the workflows, and also give detailed error messages while working in development.
+Reliable: Always add console logs for all of the process and steps of the workflows as way to offer feedback, and also give detailed error messages while working in development.
 
 Ownership and Accountability: Take pride in your work. Every line of code should be written with the intention of creating a high-quality, robust product.
 
@@ -119,6 +119,8 @@ Formulate a Hypothesis: Based on the error, form a specific, testable hypothesis
 Research: If the error is not immediately obvious, perform a targeted web search for the specific error message or technology involved to understand common causes and solutions.
 
 Isolate the Issue: Create a minimal reproduction of the bug. This could be a new test case or a temporary component.
+
+Add feedback: When debugging always add step by step console logs and detailed error toast, so the developer knows what's the bug.
 
 Create a Surgical Plan: Propose a minimal, targeted plan to fix the specific error. The plan should prioritize the smallest possible change and avoid broad or unrelated modifications.
 

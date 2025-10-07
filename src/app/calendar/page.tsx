@@ -209,7 +209,7 @@ export default function CalendarPage() {
             };
         } else { // week view
             const firstDayOfWeek = startOfWeek(currentDate);
-            const lastDayOfWeek = endOfWeek(lastDayOfMonth);
+            const lastDayOfWeek = endOfWeek(currentDate);
             return {
                 calendarDays: eachDayOfInterval({ start: firstDayOfWeek, end: lastDayOfWeek }),
                 headerLabel: `${format(firstDayOfWeek, 'MMM d')} - ${format(lastDayOfWeek, 'MMM d, yyyy')}`,
@@ -406,6 +406,3 @@ export default function CalendarPage() {
         </DashboardLayout>
     );
 }
-
-    
-    
