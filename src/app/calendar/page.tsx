@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from 'react';
@@ -171,6 +169,7 @@ export default function CalendarPage() {
         setIsLoading(true);
         try {
             const data = await getContent();
+            console.log('[page.tsx:fetchContent] Data received from server action:', data);
             setContentItems(data);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -192,8 +191,10 @@ export default function CalendarPage() {
     }, [fetchContent]);
 
     const { unscheduled, scheduledOrPublished } = useMemo(() => {
+        console.log('[page.tsx:useMemo] Filtering contentItems. Total count:', contentItems.length);
         const unscheduled = contentItems.filter(item => item.status === 'approved');
         const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published') && item.scheduled_at);
+        console.log('[page.tsx:useMemo] Filtering result -> Unscheduled:', unscheduled.length, 'Scheduled/Published:', scheduledOrPublished.length);
         return { unscheduled, scheduledOrPublished };
     }, [contentItems]);
 

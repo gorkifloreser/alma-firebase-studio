@@ -26,10 +26,12 @@ export type CalendarItem = MediaPlanItem & {
 
 
 export async function getContent(): Promise<CalendarItem[]> {
+    console.log('[actions.ts:getContent] START: Fetching calendar content...');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+        console.error('[actions.ts:getContent] ERROR: User not authenticated.');
         throw new Error('User not authenticated.');
     }
 
@@ -38,16 +40,17 @@ export async function getContent(): Promise<CalendarItem[]> {
         .select(`
             *,
             offerings:offering_id (title),
-            user_channel_settings (channel_name)
+            user_channel_settings:user_channel_id (channel_name)
         `)
         .eq('user_id', user.id)
         .in('status', ['approved', 'scheduled', 'published']);
 
     if (error) {
-        console.error("[actions.ts:getContent] Error fetching calendar content:", error);
+        console.error("[actions.ts:getContent] ERROR fetching calendar content:", error);
         throw new Error('Could not fetch calendar content.');
     }
-
+    
+    console.log(`[actions.ts:getContent] SUCCESS: Fetched ${data.length} items from the database.`);
     return data as CalendarItem[];
 }
 

@@ -268,11 +268,6 @@ export async function regeneratePlanItem(input: RegeneratePlanItemInput): Promis
     }
 }
 
-export async function saveContent(input: Parameters<typeof saveContentAction>[0]): Promise<ContentItem> {
-    return saveContentAction(input);
-}
-
-
 export async function getPublicLandingPage(pageId: string): Promise<Data | null> {
     const supabase = createClient();
 
@@ -349,13 +344,15 @@ type SaveMediaPlanParams = {
 };
 
 export async function saveMediaPlan({ id, funnelId, title, planItems, startDate, endDate }: SaveMediaPlanParams): Promise<MediaPlan> {
-    console.log("[SERVER] saveMediaPlan received items:", JSON.stringify(planItems, null, 2));
+    console.log("[SERVER] Step 1: saveMediaPlan action initiated.");
+    console.log("[SERVER] Step 1: Received items:", JSON.stringify(planItems.map(p => ({ id: p.id, status: p.status, channel: p.user_channel_settings?.channel_name })), null, 2));
+
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log('[SERVER] User authenticated:', user.id);
+    console.log('[SERVER] Step 2: User authenticated:', user.id);
 
     const { data: funnel, error: funnelError } = await supabase
         .from('funnels')
@@ -364,54 +361,54 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
         .single();
 
     if (funnelError || !funnel) {
-        console.error('[SERVER] Error fetching funnel:', funnelError?.message);
+        console.error('[SERVER] Step 3 - ERROR: Error fetching funnel details:', funnelError?.message);
         throw new Error(`Could not retrieve funnel details to save media plan: ${funnelError?.message}`);
     }
-    console.log('[SERVER] Funnel details fetched:', funnel);
+    console.log('[SERVER] Step 3: Funnel details fetched successfully. Offering ID:', funnel.offering_id);
 
     let mediaPlanId = id;
 
     if (mediaPlanId) {
-        console.log(`[SERVER] Updating existing media plan with ID: ${mediaPlanId}`);
+        console.log(`[SERVER] Step 4: Updating existing media plan with ID: ${mediaPlanId}`);
         const { error } = await supabase.from('media_plans').update({ title, campaign_start_date: startDate, campaign_end_date: endDate, updated_at: new Date().toISOString() }).eq('id', mediaPlanId);
         if (error) {
-             console.error('[SERVER] Error updating media plan:', error.message);
+             console.error('[SERVER] Step 4 - ERROR: Error updating media plan:', error.message);
              throw new Error(`Could not update media plan: ${error.message}`);
         }
-        console.log(`[SERVER] Media plan ${mediaPlanId} updated.`);
+        console.log(`[SERVER] Step 4: Media plan ${mediaPlanId} main details updated.`);
     } else {
-        console.log(`[SERVER] Creating new media plan with title: ${title}`);
+        console.log(`[SERVER] Step 4: Creating new media plan with title: ${title}`);
         const { data, error } = await supabase.from('media_plans').insert({ funnel_id: funnelId, user_id: user.id, title, campaign_start_date: startDate, campaign_end_date: endDate }).select().single();
         if (error || !data) {
-            console.error('[SERVER] Error creating media plan:', error?.message);
+            console.error('[SERVER] Step 4 - ERROR: Error creating media plan:', error?.message);
             throw new Error(`Could not create media plan: ${error?.message}`);
         }
         mediaPlanId = data.id;
-        console.log(`[SERVER] New media plan created with ID: ${mediaPlanId}`);
+        console.log(`[SERVER] Step 4: New media plan created with ID: ${mediaPlanId}`);
     }
 
+    console.log('[SERVER] Step 5: Fetching user channel settings to map names to IDs.');
     const { data: userChannels, error: channelsError } = await supabase.from('user_channel_settings').select('id, channel_name').eq('user_id', user.id);
     if (channelsError) {
-        console.error('[SERVER] Error fetching user channel settings:', channelsError.message);
+        console.error('[SERVER] Step 5 - ERROR: Error fetching user channel settings:', channelsError.message);
         throw new Error("Could not fetch user channel settings.");
     }
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
-    console.log('[SERVER] Constructed channel name to ID map:', channelNameToIdMap);
+    console.log('[SERVER] Step 5: Channel name-to-ID map constructed:', channelNameToIdMap);
 
     const itemsToCreate = planItems.filter(item => item.id?.startsWith('temp-'));
-    const itemsToUpdate = planItems.filter(item => !item.id?.startsWith('temp-'));
+    const itemsToUpdate = planItems.filter(item => item.id && !item.id.startsWith('temp-'));
 
-    console.log(`[SERVER] Found ${itemsToCreate.length} items to create and ${itemsToUpdate.length} items to update.`);
+    console.log(`[SERVER] Step 6: Found ${itemsToCreate.length} items to create and ${itemsToUpdate.length} items to update.`);
 
     if (itemsToCreate.length > 0) {
         const newRecords = itemsToCreate.map(item => {
             const { id: _, user_channel_settings, ...restOfItem } = item;
             const channelName = (item.user_channel_settings as any)?.channel_name || '';
-            console.log(`[SERVER] Processing new item for channel: "${channelName}"`, item);
             const channelId = channelNameToIdMap.get(channelName);
             if (!channelId) {
                 const errorMsg = `Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`;
-                console.error(`[SERVER] FATAL: ${errorMsg}`);
+                console.error(`[SERVER] Step 6 - FATAL on CREATE: ${errorMsg}`);
                 throw new Error(errorMsg);
             }
             return {
@@ -420,53 +417,54 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
                 user_id: user.id,
                 offering_id: funnel.offering_id,
                 user_channel_id: channelId,
+                status: item.status || 'draft', // Ensure status is set
             };
         });
-        console.log('[SERVER] Preparing to insert new records:', newRecords);
+        console.log('[SERVER] Step 6.1: Preparing to insert new records:', newRecords);
         const { error: insertError } = await supabase.from('media_plan_items').insert(newRecords);
         if (insertError) {
-            console.error('[SERVER] Error inserting new media plan items:', insertError);
+            console.error('[SERVER] Step 6.1 - ERROR: Error inserting new media plan items:', insertError);
             throw new Error(`Could not create new media plan items: ${insertError.message}`);
         }
-        console.log('[SERVER] New records inserted successfully.');
+        console.log('[SERVER] Step 6.1: New records inserted successfully.');
     }
 
     if (itemsToUpdate.length > 0) {
+        console.log('[SERVER] Step 6.2: Preparing to update existing records...');
         for (const item of itemsToUpdate) {
             const { id: itemId, user_channel_settings, ...restOfItem } = item;
             const channelName = (item.user_channel_settings as any)?.channel_name || '';
-            console.log(`[SERVER] Processing update for item ID: ${itemId}, channel: "${channelName}"`, item);
             const channelId = channelNameToIdMap.get(channelName);
              if (!channelId) {
                 const errorMsg = `Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`;
-                console.error(`[SERVER] FATAL: ${errorMsg}`);
+                console.error(`[SERVER] Step 6.2 - FATAL on UPDATE for item ${itemId}: ${errorMsg}`);
                 throw new Error(errorMsg);
             }
             const { error: updateError } = await supabase
                 .from('media_plan_items')
                 .update({ 
                     ...restOfItem,
-                    user_channel_id: channelId
+                    user_channel_id: channelId,
+                    status: item.status || 'draft', // Ensure status is set
                  })
                 .eq('id', itemId!);
             if (updateError) {
-                console.error(`[SERVER] Failed to update item ${itemId}:`, updateError.message);
+                console.error(`[SERVER] Step 6.2 - ERROR: Failed to update item ${itemId}:`, updateError.message);
             } else {
-                console.log(`[SERVER] Successfully updated item ${itemId}.`);
+                console.log(`[SERVER] Step 6.2: Successfully updated item ${itemId}.`);
             }
         }
     }
 
-
+    console.log('[SERVER] Step 7: Revalidating paths and fetching final plan data.');
     revalidatePath('/funnels');
     
-    console.log(`[SERVER] Fetching final plan with ID: ${mediaPlanId}`);
     const { data: finalPlan, error: finalPlanError } = await supabase.from('media_plans').select('*, media_plan_items!inner(*, user_channel_settings(id, channel_name))').eq('id', mediaPlanId).single();
     if (finalPlanError) {
-        console.error('[SERVER] Error fetching final updated plan:', finalPlanError.message);
+        console.error('[SERVER] Step 7 - ERROR: Error fetching final updated plan:', finalPlanError.message);
         throw new Error("Failed to fetch the updated plan.");
     }
-    console.log('[SERVER] saveMediaPlan completed successfully.');
+    console.log('[SERVER] Step 8: saveMediaPlan completed successfully.');
     return finalPlan as MediaPlan;
 }
 
