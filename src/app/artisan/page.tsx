@@ -1151,10 +1151,6 @@ export default function ArtisanPage() {
             else if (formatValue.includes('text')) newCreativeType = 'text';
             else if (formatsForChannel.some(f => f.toLowerCase().includes('image'))) newCreativeType = 'image';
             
-            // Only reset creative if type changes
-            if (newCreativeType !== selectedCreativeType) {
-                 console.log(`[DEBUG] Creative type changed from ${selectedCreativeType} to ${newCreativeType}.`);
-            }
             setSelectedCreativeType(newCreativeType);
     
             if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
@@ -1171,7 +1167,7 @@ export default function ArtisanPage() {
         } else {
              console.log('[DEBUG] Item not found in allArtisanItems.');
         }
-    }, [allArtisanItems, selectedCreativeType, toast]);
+    }, [allArtisanItems, toast]);
 
     // Apply channel filter
     useEffect(() => {
@@ -1422,7 +1418,7 @@ export default function ArtisanPage() {
         }
     };
 
-    const handleSave = (status: 'approved' | 'scheduled', scheduleDate?: Date | null) => {
+    const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
@@ -1432,7 +1428,7 @@ export default function ArtisanPage() {
         const hasVisuals = creative?.imageUrl || (creative?.carouselSlides?.every(s => s.imageUrl)) || creative?.videoUrl;
         const hasContentToSave = (isTextOnly && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisuals);
 
-        if (!hasContentToSave || (!isTextOnly && !hasVisuals)) {
+        if (!hasContentToSave) {
              toast({
                 variant: 'destructive',
                 title: 'Cannot Save',
@@ -1444,14 +1440,12 @@ export default function ArtisanPage() {
         startSaving(async () => {
             try {
                 const currentArtisanItem = allArtisanItems.find(item => item.id === selectedArtisanItemId);
-                if (!currentArtisanItem && workflowMode === 'campaign') throw new Error("Could not find the item to save.");
-
+                
+                // Always treat this as an update to an existing content item if `savedContent` exists,
+                // or a new save if it doesn't.
                 let updatedItem: CalendarItem;
-
-                if (currentArtisanItem?.status === 'ready_for_review' || savedContent) {
-                    // Update existing content
-                     const contentId = savedContent!.id;
-                     updatedItem = await updateContent(contentId, {
+                if (savedContent) {
+                    updatedItem = await updateContent(savedContent.id, {
                         content_body: editableContent,
                         image_url: creative?.imageUrl || null,
                         carousel_slides: creative?.carouselSlides || null,
@@ -1462,7 +1456,8 @@ export default function ArtisanPage() {
                     });
                      toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
                 } else {
-                    // Save new content
+                    if (!currentArtisanItem && workflowMode === 'campaign') throw new Error("Could not find the original campaign item to save.");
+                    
                     updatedItem = await saveContent({
                         mediaPlanItemId: selectedArtisanItemId,
                         offeringId: selectedOfferingId,
@@ -1477,6 +1472,7 @@ export default function ArtisanPage() {
                     
                     if (selectedArtisanItemId) {
                          await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
+                         // Update the local state to reflect the change
                          setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'ready_for_review'} : i));
                     }
                    
@@ -1486,15 +1482,9 @@ export default function ArtisanPage() {
                     });
                 }
                 
+                // After any save, refresh the local state for the current item
                 setSavedContent(updatedItem as unknown as CalendarItem);
-
-                const nextItemIndex = filteredArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
-                if (nextItemIndex !== -1 && nextItemIndex + 1 < filteredArtisanItems.length) {
-                    handleArtisanItemSelect(filteredArtisanItems[nextItemIndex + 1].id);
-                } else {
-                    handleArtisanItemSelect(null);
-                }
-
+                
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
@@ -1561,9 +1551,7 @@ export default function ArtisanPage() {
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
     
-    const isTextOnlyCreative = ['text', 'landing_page'].includes(selectedCreativeType);
-    const hasVisuals = creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.every(s => s.imageUrl)) || creative?.videoUrl;
-    const hasContentToSave = (isTextOnlyCreative && !!(editableContent?.primary || editableHtml)) || (!!editableContent?.primary && hasVisuals);
+    const hasContent = editableContent?.primary || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl;
 
 
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
@@ -1897,7 +1885,6 @@ export default function ArtisanPage() {
                                                                 <Button
                                                                     variant={"outline"}
                                                                     className={cn("w-full justify-start text-left font-normal", !scheduledAt && "text-muted-foreground")}
-                                                                    disabled={!hasContentToSave}
                                                                 >
                                                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                                                     {scheduledAt ? format(scheduledAt, "PPP") : <span>Pick a date</span>}
@@ -1915,7 +1902,6 @@ export default function ArtisanPage() {
                                                         <Select
                                                             value={scheduledAt ? format(scheduledAt, 'HH:mm') : ''}
                                                             onValueChange={(time) => handleDateTimeChange(scheduledAt || new Date(), time)}
-                                                            disabled={!hasContentToSave}
                                                         >
                                                             <SelectTrigger className="w-full">
                                                                 <SelectValue placeholder="Time" />
@@ -1941,10 +1927,10 @@ export default function ArtisanPage() {
                                             <Separator />
 
                                             <div className="w-full grid grid-cols-2 gap-2">
-                                                <Button onClick={() => handleSave('approved')} variant="outline" className="w-full" disabled={isSaving || !hasContentToSave}>
+                                                <Button onClick={() => handleSave('ready_for_review')} variant="outline" className="w-full" disabled={isSaving || !hasContent}>
                                                     {isSaving ? 'Saving...' : 'Save Draft'}
                                                 </Button>
-                                                <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContentToSave || !scheduledAt}>
+                                                <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContent || !scheduledAt}>
                                                     Schedule Post
                                                 </Button>
                                             </div>
@@ -2047,6 +2033,7 @@ export default function ArtisanPage() {
 
 
     
+
 
 
 
