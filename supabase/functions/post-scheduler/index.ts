@@ -101,18 +101,37 @@ serve(async (req: Request) => {
         console.log(`[Direct Invocation] Publishing single post: ${reqBody.postId}`);
         const { data: singlePost, error: singlePostError } = await supabaseAdmin
             .from('media_plan_items')
-            .select(`id, copy, image_url, user_id, user_channel_settings (channel_name)`)
+            .select(`
+                id, 
+                copy, 
+                image_url, 
+                user_id, 
+                user_channel_settings (
+                    channel_name
+                )
+            `)
             .eq('id', reqBody.postId)
             .single();
 
-        if (singlePostError || !singlePost) throw new Error(`Post not found: ${reqBody.postId}`);
+        if (singlePostError || !singlePost) {
+            console.error(`Error fetching single post ${reqBody.postId}:`, singlePostError);
+            throw new Error(`Post not found: ${reqBody.postId}. Error: ${singlePostError?.message}`);
+        }
         postsToPublish.push(singlePost as MediaPlanItem);
 
     } else {
         console.log('[Cron Job] Looking for scheduled posts...');
         const { data: scheduledPosts, error: postsError } = await supabaseAdmin
             .from('media_plan_items')
-            .select(`id, copy, image_url, user_id, user_channel_settings (channel_name)`)
+            .select(`
+                id, 
+                copy, 
+                image_url, 
+                user_id, 
+                user_channel_settings (
+                    channel_name
+                )
+            `)
             .eq('status', 'scheduled')
             .lte('scheduled_at', new Date().toISOString());
 
@@ -147,11 +166,18 @@ serve(async (req: Request) => {
       
       if (connectionError || !socialConnection) {
         console.error(`No active Meta connection for user ${userId}. Skipping ${posts.length} posts.`);
+        // Mark these posts as failed so they don't get re-tried endlessly
+         for (const post of posts) {
+            await supabaseAdmin.from('media_plan_items').update({ status: 'failed' }).eq('id', post.id);
+        }
         return; 
       }
 
       for (const post of posts) {
         try {
+          if (!post.user_channel_settings) {
+              throw new Error(`Post ${post.id} is missing channel information.`);
+          }
           const channel = post.user_channel_settings.channel_name.toLowerCase();
           if (channel === 'instagram') {
             await publishToInstagram(post, socialConnection);
