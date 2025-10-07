@@ -6,7 +6,7 @@ import React, { useEffect, useState, useMemo, useTransition, useCallback } from 
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays, parseISO } from 'date-fns';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays, parseISO, isValid } from 'date-fns';
 import { getContent, scheduleContent, unscheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -171,7 +171,6 @@ export default function CalendarPage() {
         setIsLoading(true);
         try {
             const data = await getContent();
-            console.log('[page.tsx:fetchContent] Data received from server action:', data.map(i => ({ id: i.id, status: i.status, scheduled_at: i.scheduled_at })));
             setContentItems(data);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -193,11 +192,8 @@ export default function CalendarPage() {
     }, [fetchContent]);
 
     const { unscheduled, scheduledOrPublished } = useMemo(() => {
-        console.log('[page.tsx:useMemo] Filtering contentItems. Total count:', contentItems.length);
         const unscheduled = contentItems.filter(item => item.status === 'approved');
         const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published') && item.scheduled_at);
-        console.log('[page.tsx:useMemo] Filtering result -> Unscheduled:', unscheduled.length, 'Scheduled/Published:', scheduledOrPublished.length);
-        
         return { unscheduled, scheduledOrPublished };
     }, [contentItems]);
 

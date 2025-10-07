@@ -38,19 +38,15 @@ export async function getContent(): Promise<CalendarItem[]> {
         .select(`
             *,
             offerings:offering_id (title),
-            user_channel_settings:user_channel_id (channel_name)
+            user_channel_settings (channel_name)
         `)
         .eq('user_id', user.id)
-        .in('status', ['approved', 'scheduled', 'published']); // Fetch content relevant for the calendar
+        .in('status', ['approved', 'scheduled', 'published']);
 
     if (error) {
         console.error("[actions.ts:getContent] Error fetching calendar content:", error);
         throw new Error('Could not fetch calendar content.');
     }
-
-    console.log('[actions.ts:getContent] Successfully fetched data from Supabase. Count:', data?.length);
-    console.log('[actions.ts:getContent] Sample of fetched data:', data?.slice(0, 2).map(i => ({ id: i.id, status: i.status, scheduled_at: i.scheduled_at })));
-
 
     return data as CalendarItem[];
 }
@@ -183,7 +179,6 @@ export async function deleteContentItem(mediaPlanItemId: string): Promise<{ mess
 }
 
 export async function publishNow(mediaPlanItemId: string): Promise<{ message: string }> {
-    console.log(`[publishNow action] Received request for post ID: ${mediaPlanItemId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -192,22 +187,13 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
     }
     
     try {
-        console.log(`[publishNow action] Invoking publisher service for post ID: ${mediaPlanItemId}`);
-        // The `publishPost` function now lives in the Next.js server environment
         await publishPost(mediaPlanItemId, supabase);
-
-        console.log(`[publishNow action] Publisher service successful. Updating post status to 'published'.`);
-        const { error: updateError } = await supabase
+        
+        await supabase
             .from('media_plan_items')
             .update({ status: 'published', published_at: new Date().toISOString() })
             .eq('id', mediaPlanItemId);
 
-        if (updateError) {
-             console.error(`[publishNow action] Failed to update post status after publishing:`, updateError);
-             throw new Error(`Post was published, but failed to update status: ${updateError.message}`);
-        }
-        
-        console.log(`[publishNow action] Post status updated. Revalidating paths.`);
         revalidatePath('/calendar');
         revalidatePath('/artisan');
 
@@ -215,7 +201,6 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
         
     } catch (error: any) {
         console.error(`[publishNow Action] Failed to publish post ${mediaPlanItemId}:`, error.message);
-        // Optionally update the status to 'failed' to prevent retries
         await supabase
             .from('media_plan_items')
             .update({ status: 'failed' })
