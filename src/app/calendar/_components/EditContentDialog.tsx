@@ -30,6 +30,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 interface EditContentDialogProps {
@@ -64,10 +65,13 @@ export function EditContentDialog({
 
   // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
   const getInitialContent = () => {
+    console.log('[DEBUG] getInitialContent called with contentItem:', contentItem);
     if (!contentItem) return { primary: '', secondary: '' };
-    if (contentItem.content_body && contentItem.content_body.primary) {
+    if (contentItem.content_body && (contentItem.content_body.primary || contentItem.content_body.secondary)) {
+        console.log('[DEBUG] Using content_body:', contentItem.content_body);
         return contentItem.content_body;
     }
+    console.log('[DEBUG] Falling back to root copy field:', contentItem.copy);
     return {
         primary: contentItem.copy || '',
         secondary: contentItem.content_body?.secondary || '',
@@ -285,28 +289,51 @@ export function EditContentDialog({
                 </Card>
             </div>
             <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="primary-copy">Primary Copy ({primaryLangName})</Label>
-                    <Textarea 
-                        id="primary-copy"
-                        value={editableContent?.primary || ''}
-                        onChange={(e) => handleContentChange('primary', e.target.value)}
-                        className="w-full text-sm h-24"
-                        placeholder="Your post copy will appear here..."
-                    />
-                </div>
-                 {secondaryLangName && (
+                {secondaryLangName ? (
+                    <Tabs defaultValue="primary" className="w-full">
+                        <div className="flex justify-center">
+                            <TabsList>
+                                <TabsTrigger value="primary">{primaryLangName}</TabsTrigger>
+                                <TabsTrigger value="secondary">{secondaryLangName}</TabsTrigger>
+                            </TabsList>
+                        </div>
+                        <TabsContent value="primary" className="mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="primary-copy">Primary Copy</Label>
+                                <Textarea 
+                                    id="primary-copy"
+                                    value={editableContent?.primary || ''}
+                                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                                    className="w-full text-sm h-24"
+                                    placeholder="Your post copy will appear here..."
+                                />
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="secondary" className="mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="secondary-copy">Secondary Copy</Label>
+                                <Textarea 
+                                    id="secondary-copy"
+                                    value={editableContent?.secondary || ''}
+                                    onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                    className="w-full text-sm h-24"
+                                    placeholder={`Your ${secondaryLangName} post copy...`}
+                                />
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                ) : (
                     <div className="space-y-2">
-                        <Label htmlFor="secondary-copy">Secondary Copy ({secondaryLangName})</Label>
+                        <Label htmlFor="primary-copy">Primary Copy ({primaryLangName})</Label>
                         <Textarea 
-                            id="secondary-copy"
-                            value={editableContent?.secondary || ''}
-                            onChange={(e) => handleContentChange('secondary', e.target.value)}
+                            id="primary-copy"
+                            value={editableContent?.primary || ''}
+                            onChange={(e) => handleContentChange('primary', e.target.value)}
                             className="w-full text-sm h-24"
-                            placeholder={`Your ${secondaryLangName} post copy...`}
+                            placeholder="Your post copy will appear here..."
                         />
                     </div>
-                 )}
+                )}
                  {editableSlides && editableSlides.length > 0 && (
                     <div className="w-full mt-2 space-y-4 pt-4 border-t">
                         <h4 className="font-semibold text-sm">Carousel Slide Text</h4>
