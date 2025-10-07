@@ -21,11 +21,16 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 interface EditContentDialogProps {
@@ -42,6 +47,14 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
+// Generate time options for the select dropdown
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
+});
+
 export function EditContentDialog({
   isOpen,
   onOpenChange,
@@ -51,6 +64,7 @@ export function EditContentDialog({
   const [profile, setProfile] = useState<Profile>(null);
   const [editableContent, setEditableContent] = useState(contentItem?.content_body);
   const [editableSlides, setEditableSlides] = useState(contentItem?.carousel_slides);
+  const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const { toast } = useToast();
@@ -72,6 +86,7 @@ export function EditContentDialog({
     if (contentItem) {
         setEditableContent(contentItem.content_body);
         setEditableSlides(contentItem.carousel_slides);
+        setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
     }
   }, [contentItem]);
 
@@ -97,21 +112,39 @@ export function EditContentDialog({
     });
   };
 
+  const handleDateTimeChange = (date: Date | undefined, time: string) => {
+    if (!date) {
+        setEditableScheduledAt(null);
+        return;
+    }
+    const [hours, minutes] = time.split(':').map(Number);
+    const newDate = new Date(date);
+    if (!isNaN(hours) && !isNaN(minutes)) {
+        newDate.setHours(hours, minutes, 0, 0);
+    }
+    setEditableScheduledAt(newDate);
+  };
+
   const handleSave = () => {
-    if (!editableContent && !editableSlides) return;
-    
     startSaving(async () => {
       try {
-        const updates: {
-            content_body?: typeof editableContent;
-            carousel_slides?: typeof editableSlides;
-        } = {};
+        const updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at'>> = {};
+        
         if (editableContent) updates.content_body = editableContent;
         if (editableSlides) updates.carousel_slides = editableSlides;
+
+        if (editableScheduledAt) {
+            updates.scheduled_at = editableScheduledAt.toISOString();
+            updates.status = 'scheduled';
+        } else {
+            updates.scheduled_at = null;
+            updates.status = 'approved';
+        }
 
         const updatedContent = await updateContent(contentItem.id, updates);
         onContentUpdated(updatedContent);
         onOpenChange(false);
+        toast({ title: 'Success!', description: 'Your post has been updated.' });
       } catch (error: any) {
         toast({
           variant: 'destructive',
@@ -180,89 +213,138 @@ export function EditContentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-center py-4">
-             <Card className="w-full max-w-md mx-auto">
-                <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                    {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
-                        <Avatar>
-                            <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
-                            <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    )}
-                    <div className="grid gap-0.5">
-                        {isLoadingProfile ? (
-                            <>
-                                <Skeleton className="h-4 w-24" />
-                                <Skeleton className="h-3 w-16 mt-1" />
-                            </>
-                        ) : (
-                            <>
-                                <span className="font-semibold">{postUser}</span>
-                                <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                            </>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="flex items-center justify-center">
+                <Card className="w-full max-w-md mx-auto">
+                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
+                            <Avatar>
+                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                            </Avatar>
                         )}
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <div className="relative aspect-square w-full overflow-hidden bg-secondary">
-                       {renderVisualContent()}
-                    </div>
-                </CardContent>
-                <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                    <div className="flex justify-between w-full">
-                        <div className="flex gap-4">
-                            <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                            <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                            <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        <div className="grid gap-0.5">
+                            {isLoadingProfile ? (
+                                <>
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-16 mt-1" />
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-semibold">{postUser}</span>
+                                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                                </>
+                            )}
                         </div>
-                        <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                    </div>
-                     <Textarea 
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="relative aspect-square w-full overflow-hidden bg-secondary">
+                        {renderVisualContent()}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col items-start gap-2 pt-2">
+                        <div className="flex justify-between w-full">
+                            <div className="flex gap-4">
+                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            </div>
+                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                    </CardFooter>
+                </Card>
+            </div>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="primary-copy">Primary Copy ({primaryLangName})</Label>
+                    <Textarea 
+                        id="primary-copy"
                         value={editableContent?.primary || ''}
                         onChange={(e) => handleContentChange('primary', e.target.value)}
-                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                        className="w-full text-sm h-24"
                         placeholder="Your post copy will appear here..."
                     />
-                     {secondaryLangName && (
-                        <>
-                            <Separator className="my-2"/>
-                            <Textarea 
-                                value={editableContent?.secondary || ''}
-                                onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent text-muted-foreground"
-                                placeholder={`Your ${secondaryLangName} post copy...`}
-                            />
-                        </>
-                     )}
-                      {editableSlides && editableSlides.length > 0 && (
-                        <div className="w-full mt-2 space-y-4 pt-4 border-t">
-                            <h4 className="font-semibold text-sm">Carousel Slide Text</h4>
-                            {editableSlides.map((slide, index) => (
-                                <div key={index} className="space-y-2">
-                                    <Label htmlFor={`slide-title-${index}`} className="text-xs font-bold">Slide {index + 1} Title</Label>
-                                    <Textarea
-                                        id={`slide-title-${index}`}
-                                        value={slide.title}
-                                        onChange={(e) => handleCarouselSlideChange(index, 'title', e.target.value)}
-                                        className="w-full text-sm"
-                                        placeholder={`Title for slide ${index + 1}...`}
-                                        rows={1}
-                                    />
-                                    <Label htmlFor={`slide-body-${index}`} className="text-xs font-bold">Slide {index + 1} Body</Label>
-                                    <Textarea
-                                        id={`slide-body-${index}`}
-                                        value={slide.body}
-                                        onChange={(e) => handleCarouselSlideChange(index, 'body', e.target.value)}
-                                        className="w-full text-sm"
-                                        placeholder={`Body text for slide ${index + 1}...`}
-                                        rows={2}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardFooter>
-            </Card>
+                </div>
+                 {secondaryLangName && (
+                    <div className="space-y-2">
+                        <Label htmlFor="secondary-copy">Secondary Copy ({secondaryLangName})</Label>
+                        <Textarea 
+                            id="secondary-copy"
+                            value={editableContent?.secondary || ''}
+                            onChange={(e) => handleContentChange('secondary', e.target.value)}
+                            className="w-full text-sm h-24"
+                            placeholder={`Your ${secondaryLangName} post copy...`}
+                        />
+                    </div>
+                 )}
+                 {editableSlides && editableSlides.length > 0 && (
+                    <div className="w-full mt-2 space-y-4 pt-4 border-t">
+                        <h4 className="font-semibold text-sm">Carousel Slide Text</h4>
+                        {editableSlides.map((slide, index) => (
+                            <div key={index} className="space-y-2">
+                                <Label htmlFor={`slide-title-${index}`} className="text-xs font-bold">Slide {index + 1} Title</Label>
+                                <Textarea
+                                    id={`slide-title-${index}`}
+                                    value={slide.title}
+                                    onChange={(e) => handleCarouselSlideChange(index, 'title', e.target.value)}
+                                    className="w-full text-sm"
+                                    placeholder={`Title for slide ${index + 1}...`}
+                                    rows={1}
+                                />
+                                <Label htmlFor={`slide-body-${index}`} className="text-xs font-bold">Slide {index + 1} Body</Label>
+                                <Textarea
+                                    id={`slide-body-${index}`}
+                                    value={slide.body}
+                                    onChange={(e) => handleCarouselSlideChange(index, 'body', e.target.value)}
+                                    className="w-full text-sm"
+                                    placeholder={`Body text for slide ${index + 1}...`}
+                                    rows={2}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                    <Label>Schedule Publication</Label>
+                    <div className="flex items-center gap-2">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn("w-full justify-start text-left font-normal", !editableScheduledAt && "text-muted-foreground")}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {editableScheduledAt ? format(editableScheduledAt, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={editableScheduledAt || undefined}
+                                    onSelect={(d) => handleDateTimeChange(d, editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : '09:00')}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <Select
+                            value={editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : ''}
+                            onValueChange={(time) => handleDateTimeChange(editableScheduledAt || new Date(), time)}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {timeOptions.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <DialogFooter>
