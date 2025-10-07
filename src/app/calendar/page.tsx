@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useMemo, useTransition } from 'react';
+import React, { useEffect, useState, useMemo, useTransition, useCallback } from 'react';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
@@ -156,7 +156,7 @@ export default function CalendarPage() {
         toast({ title: "Content Updated!", description: "Your changes have been saved." });
     };
 
-    const fetchContent = async () => {
+    const fetchContent = useCallback(async () => {
         setIsLoading(true);
         try {
             const data = await getContent();
@@ -166,7 +166,7 @@ export default function CalendarPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         const checkUserAndFetchData = async () => {
@@ -178,7 +178,7 @@ export default function CalendarPage() {
         };
 
         checkUserAndFetchData();
-    }, [toast, fetchContent]);
+    }, [fetchContent]);
 
     const { unscheduled, scheduled } = useMemo(() => {
         const unscheduled = contentItems.filter(item => item.status === 'approved');
