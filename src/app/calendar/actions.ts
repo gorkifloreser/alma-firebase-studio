@@ -37,8 +37,8 @@ export async function getContent(): Promise<CalendarItem[]> {
         .from('media_plan_items')
         .select(`
             *,
-            offerings (title),
-            user_channel_settings (channel_name)
+            offerings:offering_id (title),
+            user_channel_settings:user_channel_id (channel_name)
         `)
         .eq('user_id', user.id)
         .in('status', ['approved', 'scheduled', 'published']); // Fetch content relevant for the calendar
@@ -60,8 +60,8 @@ export async function getContentItem(mediaPlanItemId: string): Promise<CalendarI
         .from('media_plan_items')
         .select(`
             *,
-            offerings (title),
-            user_channel_settings (channel_name)
+            offerings:offering_id (title),
+            user_channel_settings:user_channel_id (channel_name)
         `)
         .eq('id', mediaPlanItemId)
         .eq('user_id', user.id)
@@ -142,8 +142,8 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
         .eq('user_id', user.id)
         .select(`
             *,
-            offerings (title),
-            user_channel_settings (channel_name)
+            offerings:offering_id (title),
+            user_channel_settings:user_channel_id (channel_name)
         `)
         .single();
     

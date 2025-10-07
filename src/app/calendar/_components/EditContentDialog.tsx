@@ -403,7 +403,7 @@ export function EditContentDialog({
                             </div>
                         ))}
                     </div>
-                )}
+                 )}
                 <Separator className="my-4" />
                 <div className="space-y-2">
                     <Label>Schedule Publication</Label>
