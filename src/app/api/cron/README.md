@@ -1,40 +1,76 @@
 # Cron Job Setup for Post Scheduler
 
-This API route (`/api/cron`) is the endpoint for triggering the automated post scheduler.
+This API route (`/api/cron`) is the endpoint for triggering the automated post scheduler. It's designed to be called by a scheduled task runner (a "cron job").
 
 ## How it Works
 
 1.  A `GET` request is made to this endpoint.
-2.  The endpoint is protected by a secret key (`CRON_SECRET`) which must be passed in the `Authorization` header.
+2.  The endpoint is protected by a secret key (`CRON_SECRET`) which must be passed in the `Authorization` header as a Bearer token.
 3.  The function queries the `media_plan_items` table for any items with a status of `scheduled` where the `scheduled_at` timestamp is in the past.
 4.  For each due post, it invokes the `publishPost` service to handle the actual publishing to social media.
 5.  It logs the results of the operation.
 
+---
+
 ## How to Set Up the Cron Job
 
-To make this function run automatically, you need to use a cron job service to call this API route on a schedule.
+To make this function run automatically, you need to use a cron job service to call this API route on a schedule. **You only need to choose ONE of the following methods.**
 
-**1. Set Your Cron Secret:**
+### Method 1: Supabase `pg_cron` (Recommended)
 
-First, you must set a secret key in your environment variables. This prevents unauthorized users from triggering your cron job.
+This method uses Supabase's built-in scheduler to call your Next.js API route. It's self-contained and efficient.
 
-Add the following to your `.env.local` file (and also to your production environment variables on Vercel/your host):
+**Instructions:**
 
-```
-CRON_SECRET="your_super_secret_and_random_string_here"
-```
+1.  **Set Your Cron Secret:**
+    Add the following to your `.env.local` file and also to your production environment variables on Vercel/your host. This is crucial for security.
+    ```
+    CRON_SECRET="your_super_secret_and_random_string_here"
+    ```
+    *You can generate a strong secret using an online tool.*
 
-**2. Choose a Cron Service:**
+2.  **Run the SQL Setup Script:**
+    Go to the **SQL Editor** in your Supabase dashboard and run the following commands. This script does three things: enables the `pg_cron` scheduler, enables the `pg_net` extension for making HTTP requests, and schedules the job.
 
-You can use any service that can make scheduled HTTP requests. Here are two popular options:
+    ```sql
+    -- 1. Enable extensions if they are not already enabled
+    CREATE EXTENSION IF NOT EXISTS pg_cron;
+    CREATE EXTENSION IF NOT EXISTS pg_net;
 
-### Option A: Vercel Cron Jobs (Recommended if deploying on Vercel)
+    -- 2. Grant permission for the postgres user to use pg_net
+    -- This is required for the cron job to make HTTP requests.
+    GRANT USAGE ON SCHEMA net TO postgres;
 
-If your app is hosted on Vercel, this is the easiest method.
+    -- 3. Schedule the job to run every 15 minutes
+    -- This calls your Next.js API route.
+    -- IMPORTANT: Replace 'https://your-app-url.com' with your actual production app URL.
+    -- IMPORTANT: Replace 'your_super_secret_and_random_string_here' with the same CRON_SECRET you set in your environment variables.
+    SELECT cron.schedule(
+      'invoke_post_scheduler', -- Job name (can be anything)
+      '*/15 * * * *',          -- Schedule: every 15 minutes
+      $$
+      SELECT
+        net.http_post(
+            url:='https://your-app-url.com/api/cron',
+            headers:='{"Content-Type": "application/json", "Authorization": "Bearer your_super_secret_and_random_string_here"}'::jsonb
+        );
+      $$
+    );
 
-1.  **Create a `vercel.json` file** in the root of your project (if you don't have one already).
-2.  **Add the cron job definition** to the file:
+    -- Optional: To see your scheduled job, run:
+    -- SELECT * FROM cron.job;
 
+    -- Optional: To unschedule the job, use its name:
+    -- SELECT cron.unschedule('invoke_post_scheduler');
+    ```
+
+### Method 2: Vercel Cron Jobs (Alternative if deploying on Vercel)
+
+If your app is hosted on Vercel, this is another very easy method.
+
+1.  **Set Your Cron Secret** in your Vercel project's Environment Variables settings.
+2.  **Create a `vercel.json` file** in the root of your project (if you don't have one).
+3.  **Add the cron job definition** to the file:
     ```json
     {
       "crons": [
@@ -45,39 +81,4 @@ If your app is hosted on Vercel, this is the easiest method.
       ]
     }
     ```
-
-3.  **Deploy your application.** Vercel will automatically detect this configuration and start calling your `/api/cron` endpoint every 15 minutes. You don't need to manually configure the `Authorization` header; Vercel handles it securely.
-
-### Option B: GitHub Actions (or any external service)
-
-If you're not using Vercel, you can use a GitHub Action to schedule the job.
-
-1.  **Create a new workflow file** at `.github/workflows/post_scheduler.yml`.
-2.  **Add the following content:**
-
-    ```yml
-    name: Post Scheduler Cron Job
-
-    on:
-      schedule:
-        # Runs every 15 minutes
-        - cron: '*/15 * * * *'
-
-    jobs:
-      cron:
-        runs-on: ubuntu-latest
-        steps:
-          - name: Call the cron endpoint
-            run: |
-              curl --request GET \
-                --url 'https://your-app-url.com/api/cron' \
-                --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'
-    ```
-
-3.  **Set up secrets in GitHub:**
-    *   Go to your GitHub repository's **Settings > Secrets and variables > Actions**.
-    *   Create a new repository secret named `CRON_SECRET`.
-    *   Paste the same secret key you defined in your `.env.local` file as the value.
-    *   Replace `https://your-app-url.com` in the workflow file with your actual application's production URL.
-
-That's it! Your chosen service will now automatically invoke the scheduler function, keeping your content publishing on autopilot.
+4.  **Deploy your application.** Vercel will automatically detect this configuration and start calling your `/api/cron` endpoint. You do not need to manually configure the `Authorization` header; Vercel handles it securely by injecting the `CRON_SECRET` automatically.
