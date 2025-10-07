@@ -51,7 +51,7 @@ const DraggableContent = ({ item }: { item: CalendarItem }) => {
                     <GripVertical className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                    <p className="font-medium text-sm line-clamp-2">{item.content_body?.primary || 'Untitled Content'}</p>
+                    <p className="font-medium text-sm line-clamp-2">{item.copy || 'Untitled Content'}</p>
                     <div className="flex items-center gap-2 mt-1">
                          <ChannelIcon channel={item.user_channel_settings?.channel_name} />
                         <p className="text-xs text-muted-foreground">{item.format || 'Content'}</p>
@@ -171,6 +171,7 @@ export default function CalendarPage() {
         setIsLoading(true);
         try {
             const data = await getContent();
+            console.log('[page.tsx:fetchContent] Data received from server action:', data.map(i => ({ id: i.id, status: i.status, scheduled_at: i.scheduled_at })));
             setContentItems(data);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -192,8 +193,11 @@ export default function CalendarPage() {
     }, [fetchContent]);
 
     const { unscheduled, scheduledOrPublished } = useMemo(() => {
+        console.log('[page.tsx:useMemo] Filtering contentItems. Total count:', contentItems.length);
         const unscheduled = contentItems.filter(item => item.status === 'approved');
         const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published') && item.scheduled_at);
+        console.log('[page.tsx:useMemo] Filtering result -> Unscheduled:', unscheduled.length, 'Scheduled/Published:', scheduledOrPublished.length);
+        
         return { unscheduled, scheduledOrPublished };
     }, [contentItems]);
 

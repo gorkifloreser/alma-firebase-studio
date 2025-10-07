@@ -44,9 +44,13 @@ export async function getContent(): Promise<CalendarItem[]> {
         .in('status', ['approved', 'scheduled', 'published']); // Fetch content relevant for the calendar
 
     if (error) {
-        console.error("Error fetching calendar content:", error);
+        console.error("[actions.ts:getContent] Error fetching calendar content:", error);
         throw new Error('Could not fetch calendar content.');
     }
+
+    console.log('[actions.ts:getContent] Successfully fetched data from Supabase. Count:', data?.length);
+    console.log('[actions.ts:getContent] Sample of fetched data:', data?.slice(0, 2).map(i => ({ id: i.id, status: i.status, scheduled_at: i.scheduled_at })));
+
 
     return data as CalendarItem[];
 }
@@ -179,19 +183,31 @@ export async function deleteContentItem(mediaPlanItemId: string): Promise<{ mess
 }
 
 export async function publishNow(mediaPlanItemId: string): Promise<{ message: string }> {
+    console.log(`[publishNow action] Received request for post ID: ${mediaPlanItemId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+        console.error('[publishNow action] Authentication failed.');
+        throw new Error('User not authenticated');
+    }
     
     try {
+        console.log(`[publishNow action] Invoking publisher service for post ID: ${mediaPlanItemId}`);
+        // The `publishPost` function now lives in the Next.js server environment
         await publishPost(mediaPlanItemId, supabase);
 
-        // If publishPost succeeds, update the status
-        await supabase
+        console.log(`[publishNow action] Publisher service successful. Updating post status to 'published'.`);
+        const { error: updateError } = await supabase
             .from('media_plan_items')
             .update({ status: 'published', published_at: new Date().toISOString() })
             .eq('id', mediaPlanItemId);
+
+        if (updateError) {
+             console.error(`[publishNow action] Failed to update post status after publishing:`, updateError);
+             throw new Error(`Post was published, but failed to update status: ${updateError.message}`);
+        }
         
+        console.log(`[publishNow action] Post status updated. Revalidating paths.`);
         revalidatePath('/calendar');
         revalidatePath('/artisan');
 
