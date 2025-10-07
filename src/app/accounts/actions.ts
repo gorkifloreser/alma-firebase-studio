@@ -140,6 +140,7 @@ export type SocialConnection = {
     expires_at: string | null;
     account_id: string | null;
     account_name: string | null;
+    account_picture_url: string | null;
     created_at: string;
     is_active: boolean;
 }

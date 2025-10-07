@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, SocialConnection, setActiveConnection, getSocialConnections } from '../actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 type AccountStatus = 'available' | 'coming_soon';
@@ -239,12 +240,30 @@ export function AccountsClientPage({
                                     disabled={isSaving}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select an account to post to..." />
+                                        <SelectValue asChild>
+                                             <div className="flex items-center gap-2">
+                                                {activeMetaConnection?.account_picture_url && (
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarImage src={activeMetaConnection.account_picture_url} />
+                                                        <AvatarFallback>{activeMetaConnection.account_name?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                                <span>@{activeMetaConnection?.account_name || 'Select account...'}</span>
+                                            </div>
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {metaConnections.map(conn => (
                                             <SelectItem key={conn.id} value={conn.id.toString()}>
-                                                @{conn.account_name}
+                                                <div className="flex items-center gap-2">
+                                                    {conn.account_picture_url && (
+                                                        <Avatar className="h-6 w-6">
+                                                            <AvatarImage src={conn.account_picture_url} />
+                                                            <AvatarFallback>{conn.account_name?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                    )}
+                                                    <span>@{conn.account_name}</span>
+                                                </div>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

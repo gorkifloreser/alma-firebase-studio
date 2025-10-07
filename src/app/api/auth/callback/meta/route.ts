@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 
         // Step 3: Get user's pages and their connected Instagram accounts
         console.log('[META AUTH] Step 3: Fetching user\'s pages and linked IG accounts...');
-        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,instagram_business_account{id,username}&access_token=${access_token}`;
+        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,picture{url},instagram_business_account{id,username,profile_picture_url}&access_token=${access_token}`;
         console.log('[META AUTH] Step 3: Requesting pages from:', pagesUrl);
         const pagesRes = await fetch(pagesUrl);
         const pagesData = await pagesRes.json();
@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
             account_id: page.id, // Always the Facebook Page ID
             instagram_account_id: page.instagram_business_account?.id || null, // The linked IG Business Account ID
             account_name: page.instagram_business_account?.username || page.name,
+            account_picture_url: page.instagram_business_account?.profile_picture_url || page.picture?.data?.url || null,
             is_active: false, // Default to inactive
         }));
 
