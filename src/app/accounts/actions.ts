@@ -141,6 +141,7 @@ export type SocialConnection = {
     account_id: string | null;
     account_name: string | null;
     created_at: string;
+    is_active: boolean;
 }
 
 export async function getSocialConnections(): Promise<SocialConnection[]> {
@@ -169,7 +170,7 @@ export async function getMetaOAuthUrl(): Promise<{ url: string }> {
         throw new Error("Meta application credentials are not configured in the environment.");
     }
 
-    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement';
+    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,pages_manage_posts';
     const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
 
     return { url };
@@ -195,29 +196,43 @@ export async function disconnectMetaAccount(provider: string): Promise<{ message
     return { message: `${provider} account disconnected successfully.` };
 }
 
-export async function saveMetaConnection(params: { accessToken: string; accountId: string; accountName: string }): Promise<{ message: string }> {
-    const { accessToken, accountId, accountName } = params;
+export async function setActiveConnection(connectionId: number): Promise<SocialConnection[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
-    const connectionData = {
-        user_id: user.id,
-        provider: 'meta',
-        access_token: accessToken, // In a real app, encrypt this token!
-        account_id: accountId,
-        account_name: accountName,
-    };
-
-    const { error: dbError } = await supabase
+    const { data: connection, error: fetchError } = await supabase
         .from('social_connections')
-        .upsert(connectionData, { onConflict: 'user_id, provider' });
+        .select('provider')
+        .eq('id', connectionId)
+        .eq('user_id', user.id)
+        .single();
     
-    if (dbError) {
-        console.error('[META AUTH] Database upsert error in saveMetaConnection:', dbError);
-        throw new Error(`Database error while saving connection: ${dbError.message}`);
+    if (fetchError || !connection) {
+        throw new Error("Connection not found or you don't have permission to access it.");
+    }
+    
+    // Deactivate all connections for this provider
+    const { error: deactivateError } = await supabase
+        .from('social_connections')
+        .update({ is_active: false })
+        .eq('user_id', user.id)
+        .eq('provider', connection.provider);
+
+    if (deactivateError) {
+        throw new Error(`Failed to deactivate other connections: ${deactivateError.message}`);
+    }
+
+    // Activate the selected connection
+    const { error: activateError } = await supabase
+        .from('social_connections')
+        .update({ is_active: true })
+        .eq('id', connectionId);
+        
+    if (activateError) {
+        throw new Error(`Failed to activate selected connection: ${activateError.message}`);
     }
 
     revalidatePath('/accounts');
-    return { message: 'Meta connection saved successfully.' };
+    return getSocialConnections();
 }

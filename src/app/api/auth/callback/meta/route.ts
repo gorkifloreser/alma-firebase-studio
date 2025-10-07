@@ -25,7 +25,6 @@ export async function GET(req: NextRequest) {
     }
     console.log('[META AUTH] Received authorization code:', code.substring(0, 15) + '...');
 
-
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -66,31 +65,56 @@ export async function GET(req: NextRequest) {
         console.log('[META AUTH] Step 2 Response:', JSON.stringify(longLivedData, null, 2));
         if (longLivedData.error) throw new Error(`Long-lived token error: ${longLivedData.error.message}`);
         
-        const { access_token } = longLivedData;
+        const { access_token, expires_in } = longLivedData;
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + (Number(expires_in) || 5184000)); // Default to 60 days
 
         // Step 3: Get user's pages and their connected Instagram accounts
         console.log('[META AUTH] Step 3: Fetching user\'s pages and linked IG accounts...');
-        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,instagram_business_account{id,username}&access_token=${access_token}`;
+        const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token,instagram_business_account{id,username}&access_token=${access_token}`;
         const pagesRes = await fetch(pagesUrl);
         const pagesData = await pagesRes.json();
         console.log('[META AUTH] Step 3 Response:', JSON.stringify(pagesData, null, 2));
         if (pagesData.error) throw new Error(`Fetching pages error: ${pagesData.error.message}`);
-        if (!pagesData.data || pagesData.data.length === 0) throw new Error('No Facebook Pages found for this user.');
+        if (!pagesData.data || pagesData.data.length === 0) throw new Error('No Facebook Pages with Instagram accounts found for this user.');
 
-        const availablePages = pagesData.data.map((page: any) => ({
-            id: page.id,
-            name: page.name,
-            instagram_id: page.instagram_business_account?.id,
-            instagram_username: page.instagram_business_account?.username,
+        const accountsToUpsert = pagesData.data.map((page: any) => ({
+            user_id: user.id,
+            provider: 'meta',
+            access_token: page.access_token, // Use page-specific token
+            expires_at: expiresAt.toISOString(),
+            account_id: page.instagram_business_account?.id || page.id,
+            account_name: page.instagram_business_account?.username || page.name,
+            is_active: false, // Default to inactive
         }));
-        
-        console.log('[META AUTH] Step 4: Redirecting to page selection.');
-        const encodedPages = btoa(JSON.stringify(availablePages));
 
-        redirectUrl.searchParams.set('meta_action', 'select_page');
-        redirectUrl.searchParams.set('pages', encodedPages);
-        redirectUrl.searchParams.set('token', access_token);
+        if (accountsToUpsert.length === 0) {
+            throw new Error('No accounts could be prepared for saving.');
+        }
+
+        // Find the first Instagram account to set as active, otherwise the first Facebook page
+        const firstIgIndex = accountsToUpsert.findIndex((acc: any) => acc.account_name.includes('@'));
+        if (firstIgIndex !== -1) {
+            accountsToUpsert[firstIgIndex].is_active = true;
+        } else {
+            accountsToUpsert[0].is_active = true;
+        }
         
+        console.log(`[META AUTH] Step 4: Upserting ${accountsToUpsert.length} accounts into the database...`);
+
+        // Perform an upsert operation
+        const { error: dbError } = await supabase
+            .from('social_connections')
+            .upsert(accountsToUpsert, { onConflict: 'user_id, account_id, provider' });
+        
+        if (dbError) {
+            console.error('[META AUTH] Database upsert error:', dbError);
+            throw new Error(`Database error while saving connections: ${dbError.message}`);
+        }
+        
+        console.log('[META AUTH] Successfully connected and saved account information.');
+        redirectUrl.searchParams.set('status', 'success');
+        redirectUrl.searchParams.set('message', 'Successfully connected your Meta account.');
         return NextResponse.redirect(redirectUrl);
 
     } catch (e: any) {

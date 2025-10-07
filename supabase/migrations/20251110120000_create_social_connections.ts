@@ -12,9 +12,15 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('expires_at', 'timestamp with time zone')
     .addColumn('account_id', 'text')
     .addColumn('account_name', 'text')
+    .addColumn('is_active', 'boolean', (col) => col.defaultTo(false).notNull())
     .addColumn('created_at', 'timestamp with time zone', (col) => col.defaultTo('now()').notNull())
-    .addUniqueConstraint('social_connections_user_id_provider_key', ['user_id', 'provider'])
+    .addUniqueConstraint('social_connections_user_id_account_id_provider_key', ['user_id', 'account_id', 'provider'])
     .execute();
+
+  // Partial unique index to ensure only one connection can be active per user per provider
+  await db.schema.raw(
+      `CREATE UNIQUE INDEX one_active_connection_per_provider ON social_connections (user_id, provider) WHERE (is_active = true);`
+  ).execute();
 
   // Enable RLS
   await db.schema.alterTable('social_connections').alter((builder) => builder.enableRowLevelSecurity()).execute();
