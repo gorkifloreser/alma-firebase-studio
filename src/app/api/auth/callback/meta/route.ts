@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
         redirectUrl.searchParams.set('message', 'Authorization code not found in callback.');
         return NextResponse.redirect(redirectUrl);
     }
-    console.log('[META AUTH] Received authorization code:', code);
+    console.log('[META AUTH] Received authorization code:', code.substring(0, 15) + '...');
 
 
     const supabase = createClient();
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         const tokenRes = await fetch(tokenUrl);
         const tokenData = await tokenRes.json();
         
-        console.log('[META AUTH] Step 1 Response:', tokenData);
+        console.log('[META AUTH] Step 1 Response:', JSON.stringify(tokenData, null, 2));
         if (tokenData.error) throw new Error(`Token exchange error: ${tokenData.error.message}`);
         const shortLivedToken = tokenData.access_token;
         
@@ -63,12 +63,19 @@ export async function GET(req: NextRequest) {
         const longLivedRes = await fetch(longLivedTokenUrl);
         const longLivedData = await longLivedRes.json();
         
-        console.log('[META AUTH] Step 2 Response:', longLivedData);
+        console.log('[META AUTH] Step 2 Response:', JSON.stringify(longLivedData, null, 2));
         if (longLivedData.error) throw new Error(`Long-lived token error: ${longLivedData.error.message}`);
         
         const { access_token, expires_in } = longLivedData;
         const expires_at = new Date();
-        expires_at.setSeconds(expires_at.getSeconds() + expires_in);
+        // Defensive check for expires_in
+        if (typeof expires_in === 'number') {
+            expires_at.setSeconds(expires_at.getSeconds() + expires_in);
+        } else {
+            // Default to 60 days if not provided
+            console.warn('[META AUTH] expires_in not provided or invalid. Defaulting to 60 days.');
+            expires_at.setDate(expires_at.getDate() + 60);
+        }
 
         // Step 3: Get user's pages
         console.log('[META AUTH] Step 3: Fetching user\'s Facebook pages...');
@@ -87,7 +94,7 @@ export async function GET(req: NextRequest) {
             const igUrl = `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${access_token}`;
             const igRes = await fetch(igUrl);
             const igData = await igRes.json();
-             console.log(`[META AUTH] Checking page ${page.id} for IG account. Response:`, igData);
+             console.log(`[META AUTH] Checking page ${page.id} ("${page.name}") for IG account. Response:`, igData);
             if (igData.instagram_business_account) {
                 igAccountId = igData.instagram_business_account.id;
                 igUsername = igData.instagram_business_account.username;
@@ -102,7 +109,7 @@ export async function GET(req: NextRequest) {
         const connectionData = {
             user_id: user.id,
             provider: 'meta',
-            access_token: access_token, // Encrypt this in a real app
+            access_token: access_token,
             expires_at: expires_at.toISOString(),
             account_id: igAccountId,
             account_name: igUsername,
@@ -131,3 +138,5 @@ export async function GET(req: NextRequest) {
         return NextResponse.redirect(redirectUrl);
     }
 }
+
+    
