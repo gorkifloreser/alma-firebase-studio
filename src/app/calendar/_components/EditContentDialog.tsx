@@ -25,12 +25,11 @@ import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon } from '
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 interface EditContentDialogProps {
@@ -62,7 +61,20 @@ export function EditContentDialog({
   onContentUpdated,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
-  const [editableContent, setEditableContent] = useState(contentItem?.content_body);
+
+  // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
+  const getInitialContent = () => {
+    if (!contentItem) return { primary: '', secondary: '' };
+    if (contentItem.content_body && contentItem.content_body.primary) {
+        return contentItem.content_body;
+    }
+    return {
+        primary: contentItem.copy || '',
+        secondary: contentItem.content_body?.secondary || '',
+    };
+  };
+
+  const [editableContent, setEditableContent] = useState(getInitialContent());
   const [editableSlides, setEditableSlides] = useState(contentItem?.carousel_slides);
   const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
   const [isSaving, startSaving] = useTransition();
@@ -70,13 +82,21 @@ export function EditContentDialog({
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
+  console.log('[DEBUG] EditContentDialog received contentItem:', contentItem);
+
+
   useEffect(() => {
     async function fetchProfile() {
         if(isOpen) {
             setIsLoadingProfile(true);
-            const profileData = await getProfile();
-            setProfile(profileData);
-            setIsLoadingProfile(false);
+            try {
+                const profileData = await getProfile();
+                setProfile(profileData);
+            } catch (error) {
+                console.error("Failed to fetch profile", error);
+            } finally {
+                setIsLoadingProfile(false);
+            }
         }
     }
     fetchProfile();
@@ -84,7 +104,8 @@ export function EditContentDialog({
 
   useEffect(() => {
     if (contentItem) {
-        setEditableContent(contentItem.content_body);
+        console.log('[DEBUG] contentItem updated. Body:', contentItem.content_body, 'Copy:', contentItem.copy);
+        setEditableContent(getInitialContent());
         setEditableSlides(contentItem.carousel_slides);
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
     }
@@ -128,9 +149,12 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at'>> = {};
+        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at'>> = {};
         
-        if (editableContent) updates.content_body = editableContent;
+        if (editableContent) {
+            updates.content_body = editableContent;
+            updates.copy = editableContent.primary; // Also update the flat `copy` field for compatibility
+        }
         if (editableSlides) updates.carousel_slides = editableSlides;
 
         if (editableScheduledAt) {
@@ -138,8 +162,13 @@ export function EditContentDialog({
             updates.status = 'scheduled';
         } else {
             updates.scheduled_at = null;
-            updates.status = 'approved';
+            // If it was scheduled, and now has no date, move it back to 'approved'
+            if (contentItem.status === 'scheduled') {
+                updates.status = 'approved';
+            }
         }
+        
+        console.log('[DEBUG] Saving with updates:', updates);
 
         const updatedContent = await updateContent(contentItem.id, updates);
         onContentUpdated(updatedContent);

@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -117,11 +118,11 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
     }
 
     revalidatePath('/calendar');
-    return { message: "Content unscheduled and returned to the 'approved' list." };
+    return { message: "Content unscheduled and returned to the 'Approved' list." };
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'carousel_slides' | 'image_url' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'image_url' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
