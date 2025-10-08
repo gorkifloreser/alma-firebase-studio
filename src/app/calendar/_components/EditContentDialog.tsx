@@ -31,7 +31,7 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -57,6 +57,21 @@ const timeOptions = Array.from({ length: 48 }, (_, i) => {
   return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
 });
 
+const parseCarouselSlides = (slides: any): any[] | null => {
+    if (!slides) return null;
+    if (Array.isArray(slides)) return slides;
+    if (typeof slides === 'string') {
+        try {
+            const parsed = JSON.parse(slides);
+            return Array.isArray(parsed) ? parsed : null;
+        } catch (e) {
+            console.error("Failed to parse carousel_slides string:", e);
+            return null;
+        }
+    }
+    return null;
+}
+
 export function EditContentDialog({
   isOpen,
   onOpenChange,
@@ -79,7 +94,7 @@ export function EditContentDialog({
   };
 
   const [editableContent, setEditableContent] = useState(getInitialContent());
-  const [editableSlides, setEditableSlides] = useState(contentItem?.carousel_slides);
+  const [editableSlides, setEditableSlides] = useState(() => parseCarouselSlides(contentItem?.carousel_slides));
   const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [isDeleting, startDeleting] = useTransition();
@@ -109,7 +124,7 @@ export function EditContentDialog({
   useEffect(() => {
     if (contentItem) {
         setEditableContent(getInitialContent());
-        setEditableSlides(contentItem.carousel_slides);
+        setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
     }
   }, [contentItem]);
