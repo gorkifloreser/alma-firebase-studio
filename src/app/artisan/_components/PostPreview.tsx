@@ -213,7 +213,7 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => (
-                  <CarouselItem key={index} className="relative group">
+                  <CarouselItem key={index} className={cn("relative group", aspectRatioClass)}>
                     {slide.imageUrl ? (
                       <Image
                         src={slide.imageUrl}
