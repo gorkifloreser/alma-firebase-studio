@@ -8,24 +8,24 @@ body {
 
 @layer base {
   :root {
-    --background: 30 50% 98%; /* Warm Off-white (Linen) */
+    --background: 45 35% 95%; /* Vintage Paper */
     --foreground: 25 55% 20%; /* Dark Coffee Brown */
-    --card: 30 50% 98%;
+    --card: 45 35% 95%;
     --card-foreground: 25 55% 20%;
-    --popover: 30 50% 98%;
+    --popover: 45 35% 95%;
     --popover-foreground: 25 55% 20%;
     --primary: 15 85% 60%; /* Terracotta */
     --primary-foreground: 20 20% 98%;
-    --secondary: 30 50% 94%;
+    --secondary: 45 35% 92%;
     --secondary-foreground: 25 55% 20%;
-    --muted: 30 50% 94%;
+    --muted: 45 35% 92%;
     --muted-foreground: 25 50% 40%;
     --accent: 35 90% 75%; /* Pale Gold */
     --accent-foreground: 25 55% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 30 40% 90%;
-    --input: 30 40% 90%;
+    --border: 45 30% 88%;
+    --input: 45 30% 88%;
     --ring: 15 85% 60%;
     --radius: 0.8rem;
 
@@ -34,9 +34,9 @@ body {
     --sidebar-foreground: 25 55% 20%; /* Dark Coffee Brown */
     --sidebar-primary: 15 85% 60%;
     --sidebar-primary-foreground: 20 20% 98%;
-    --sidebar-accent: 30 50% 94%; /* Light accent for hover */
+    --sidebar-accent: 45 35% 92%; /* Light accent for hover */
     --sidebar-accent-foreground: 25 55% 20%;
-    --sidebar-border: 30 40% 90%;
+    --sidebar-border: 45 30% 88%;
     --sidebar-ring: 15 85% 60%;
   }
 
