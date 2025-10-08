@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { GenerateFunnelOutput, ConceptualStep } from './generate-funnel-flow';
 import { mediaFormatConfig } from '@/lib/media-formats';
+import { googleAI } from '@genkit-ai/googleai';
 
 
 const PlanItemSchema = z.object({
@@ -59,6 +60,7 @@ export type RegeneratePlanItemInput = z.infer<typeof RegeneratePlanItemInputSche
 
 const generateChannelPlanPrompt = ai.definePrompt({
   name: 'generateChannelPlanPrompt',
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash-latest'),
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
@@ -144,6 +146,7 @@ Generate this entire plan in the **{{campaignLanguage}}** language. Return the r
 
 const regeneratePlanItemPrompt = ai.definePrompt({
     name: 'regeneratePlanItemPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash-latest'),
     input: {
         schema: z.object({
             primaryLanguage: z.string(),
