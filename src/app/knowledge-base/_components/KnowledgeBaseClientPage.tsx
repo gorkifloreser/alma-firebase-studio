@@ -162,20 +162,23 @@ export function KnowledgeBaseClientPage({
                     fullText = await file.text();
                 }
                 
-                const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [];
-                const chunks: string[] = [];
-                let currentChunk = '';
-
-                for (const sentence of sentences) {
-                    if (currentChunk.length + sentence.length + 1 <= 1500) {
-                        currentChunk += (currentChunk ? ' ' : '') + sentence;
-                    } else {
-                        if (currentChunk) chunks.push(currentChunk);
-                        currentChunk = sentence;
-                    }
-                }
-                if (currentChunk) chunks.push(currentChunk);
+                console.log('[handleParseDocument] Text extracted. Starting chunking...');
                 
+                const splitTextIntoChunks = (text: string, chunkSize: number, chunkOverlap: number): string[] => {
+                    const chunks: string[] = [];
+                    if (!text) return chunks;
+                    let i = 0;
+                    while (i < text.length) {
+                        const end = i + chunkSize;
+                        chunks.push(text.slice(i, end));
+                        i += chunkSize - chunkOverlap;
+                    }
+                    return chunks;
+                };
+
+                const chunks = splitTextIntoChunks(fullText, 4000, 200);
+                
+                console.log(`[handleParseDocument] Chunking complete. ${chunks.length} chunks created.`);
                 setParsingResult({ chunks, documentGroupId });
                 setIsResultDialogOpen(true);
             } catch (error: any) {
@@ -205,6 +208,7 @@ export function KnowledgeBaseClientPage({
                 setIsResultDialogOpen(false);
                 setParsingResult(null);
             } catch (error: any) {
+                console.error("[handleGenerateEmbeddings] An error occurred:", error);
                 toast({
                     variant: 'destructive',
                     title: 'Embedding Failed',

@@ -98,17 +98,26 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
             input: validChunks,
             task_type: "RETRIEVAL_DOCUMENT",
         });
-    } catch (e) {
-        console.error('[generateAndStoreEmbeddings] CRITICAL: ai.embed() call failed.', e);
-        throw new Error('Failed to generate embeddings from the AI model.');
+    } catch (e: any) {
+        console.error('[generateAndStoreEmbeddings] CRITICAL: ai.embed() call failed. Full error details below:');
+        console.error('Error Object:', JSON.stringify(e, null, 2));
+        console.error('Error Message:', e.message);
+        console.error('Error Stack:', e.stack);
+        if (e.cause) {
+            console.error('Root Cause:', e.cause);
+        }
+        console.error('[generateAndStoreEmbeddings] The specific error message is:', e.message);
+        console.error('[generateAndStoreEmbeddings] Chunks that caused the error:', JSON.stringify(validChunks, null, 2));
+        throw new Error(`Failed to generate embeddings. Original error: ${e.message, e.stack, e.cause}`);
     }
 
     console.log(`[generateAndStoreEmbeddings] Raw embeddings received. Type: ${typeof embeddings}, Length: ${embeddings?.length}`);
-    if (embeddings) {
-        console.log('[generateAndStoreEmbeddings] First embedding:', JSON.stringify(embeddings[0], null, 2));
-    }
+    
+    // ¡LOG CLAVE! Inspecciona la respuesta COMPLETA de la API
+    console.log('[generateAndStoreEmbeddings] Full response from Gemini API:', JSON.stringify(embeddings, null, 2));
 
-    if (!embeddings || embeddings.length !== validChunks.length) {
+    // AÑADE UNA VALIDACIÓN (GUARD CLAUSE)
+    if (!embeddings || !Array.isArray(embeddings) || embeddings.length !== validChunks.length) {
         console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddings?.length}).`);
         throw new Error('The number of embeddings returned does not match the number of chunks.');
     }
