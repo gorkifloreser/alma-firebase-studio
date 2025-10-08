@@ -96,13 +96,11 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
     console.log('[generateAndStoreEmbeddings] Chunks to be embedded:', JSON.stringify(validChunks, null, 2));
     let embeddingResponse;
     try {
-        embeddingResponse = await embed({
-            model: textEmbedding004,
-            content: validChunks,
-            options: {
-                taskType: "RETRIEVAL_DOCUMENT",
-            },
-        });
+        embeddingResponse = await embed(
+            textEmbedding004,
+            validChunks,
+            { taskType: "RETRIEVAL_DOCUMENT" },
+        );
     } catch (e: any) {
         console.error('[generateAndStoreEmbeddings] CRITICAL: embed() call failed. Full error details below:');
         console.error('Error Object:', JSON.stringify(e, null, 2));
@@ -244,3 +242,5 @@ export async function askRag(query: string): Promise<RagOutput> {
     }
     return await askMyDocuments({ query });
 }
+
+    
