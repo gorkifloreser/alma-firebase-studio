@@ -1,12 +1,9 @@
-
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import { processAndEmbedDocument } from './processAndEmbedDocument';
-
-export { processAndEmbedDocument };
+import { ai } from '@/ai/genkit';
 
 export type BrandDocument = {
     id: string;
@@ -16,14 +13,6 @@ export type BrandDocument = {
     file_path: string;
 };
 
-
-/**
- * Uploads a document to Supabase storage. This action only handles the file upload.
- * Parsing is handled by a separate Edge Function.
- * @param {FormData} formData The form data containing the file to upload.
- * @returns {Promise<{ message: string, filePath: string, documentGroupId: string }>} A success message with file details.
- * @throws {Error} If any step of the process fails.
- */
 export async function uploadBrandDocument(formData: FormData): Promise<{ message: string, filePath: string, documentGroupId: string }> {
     const supabase = createClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -56,7 +45,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
             file_name: documentFile.name,
             file_path: filePath,
             document_group_id: documentGroupId,
-            is_file_reference: true, // Mark this as the main file reference
+            is_file_reference: true,
         });
     
      if (dbError) {
@@ -69,11 +58,110 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     return { message: 'Document uploaded successfully!', filePath, documentGroupId };
 }
 
-/**
- * Fetches the list of processed brand documents for the current user.
- * It groups documents by the document_group_id to show one entry per file.
- * @returns {Promise<BrandDocument[]>} A promise that resolves to an array of unique documents.
- */
+export async function generateAndStoreEmbeddings(chunks: string[], documentGroupId: string): Promise<{ message: string }> {
+    console.log(`[generateAndStoreEmbeddings] --- Execution Start ---`);
+    console.log(`[generateAndStoreEmbeddings] Received ${chunks?.length ?? 'undefined'} chunks for documentGroupId: ${documentGroupId}`);
+
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+        console.error('[generateAndStoreEmbeddings] Error: Chunks are not a valid array or are empty.');
+        throw new Error('No valid text chunks provided for embedding.');
+    }
+
+    const validChunks = chunks.map(chunk => chunk.trim()).filter(chunk => chunk.length > 0);
+    console.log(`[generateAndStoreEmbeddings] After filtering, there are ${validChunks.length} valid chunks.`);
+
+    if (validChunks.length === 0) {
+        console.log('[generateAndStoreEmbeddings] No content to embed after filtering. Exiting.');
+        return { message: 'No content to embed after filtering empty chunks.' };
+    }
+    
+    const supabase = createClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+        console.error('[generateAndStoreEmbeddings] Supabase auth error:', authError);
+        throw new Error('User not authenticated due to an error.');
+    }
+    if (!authData?.user) {
+        console.error('[generateAndStoreEmbeddings] Error: User not found.');
+        throw new Error('User not authenticated.');
+    }
+    const user = authData.user;
+    console.log(`[generateAndStoreEmbeddings] Authenticated user ID: ${user.id}`);
+
+    console.log('[generateAndStoreEmbeddings] Calling AI to generate embeddings with RETRIEVAL_DOCUMENT task type...');
+    console.log('[generateAndStoreEmbeddings] Chunks to be embedded:', JSON.stringify(validChunks, null, 2));
+    let embeddings;
+    try {
+        embeddings = await ai.embed({
+            model: 'models/text-embedding-004',
+            input: validChunks,
+            task_type: "RETRIEVAL_DOCUMENT",
+        });
+    } catch (e) {
+        console.error('[generateAndStoreEmbeddings] CRITICAL: ai.embed() call failed.', e);
+        throw new Error('Failed to generate embeddings from the AI model.');
+    }
+
+    console.log(`[generateAndStoreEmbeddings] Raw embeddings received. Type: ${typeof embeddings}, Length: ${embeddings?.length}`);
+    if (embeddings) {
+        console.log('[generateAndStoreEmbeddings] First embedding:', JSON.stringify(embeddings[0], null, 2));
+    }
+
+    if (!embeddings || embeddings.length !== validChunks.length) {
+        console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddings?.length}).`);
+        throw new Error('The number of embeddings returned does not match the number of chunks.');
+    }
+    console.log(`[generateAndStoreEmbeddings] Successfully generated ${embeddings.length} embeddings.`);
+
+    console.log('[generateAndStoreEmbeddings] --- Preparing records for insertion ---');
+    const recordsToInsert = validChunks
+        .map((chunk, index) => {
+            const embedding = embeddings[index];
+            console.log(`[generateAndStoreEmbeddings] Processing chunk ${index}:`);
+            console.log(`  - Chunk content: "${chunk.substring(0, 50)}..."`);
+            console.log(`  - Embedding type: ${typeof embedding}`);
+            console.log(`  - Is embedding an array? ${Array.isArray(embedding)}`);
+
+            if (!Array.isArray(embedding) || embedding.some(isNaN)) {
+                console.warn(`[generateAndStoreEmbeddings] SKIPPING chunk at index ${index} due to invalid embedding.`);
+                return null;
+            }
+
+            const record = {
+                user_id: user.id,
+                document_group_id: documentGroupId,
+                content: chunk,
+                embedding: embedding,
+                is_file_reference: false,
+            };
+            console.log(`  - Record created for chunk ${index}.`);
+            return record;
+        })
+        .filter((record): record is NonNullable<typeof record> => record !== null);
+
+    console.log(`[generateAndStoreEmbeddings] Total records to insert: ${recordsToInsert.length}`);
+
+    if (recordsToInsert.length === 0) {
+        console.log('[generateAndStoreEmbeddings] No valid records to insert. Exiting.');
+        return { message: 'No records to insert after processing and validating embeddings.' };
+    }
+    
+    console.log(`[generateAndStoreEmbeddings] Storing ${recordsToInsert.length} chunks and their embeddings in the database.`);
+    
+    const { error: insertError } = await supabase
+        .from('brand_documents')
+        .insert(recordsToInsert);
+
+    if (insertError) {
+        console.error(`[generateAndStoreEmbeddings] Error inserting batch records:`, insertError);
+        throw new Error(`Failed to store chunks in the knowledge base. DB Error: ${insertError.message}`);
+    }
+
+    console.log('[generateAndStoreEmbeddings] --- Execution End ---');
+    return { message: `${recordsToInsert.length} document chunks added to knowledge base.` };
+}
+
 export async function getBrandDocuments(): Promise<BrandDocument[]> {
     const supabase = createClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -84,7 +172,7 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
         .from('brand_documents')
         .select('id, file_name, created_at, document_group_id, file_path')
         .eq('user_id', user.id)
-        .eq('is_file_reference', true) // Only fetch the main file references
+        .eq('is_file_reference', true)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -95,19 +183,12 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
     return data as BrandDocument[];
 }
 
-/**
- * Deletes all chunks of a brand document from the database and the corresponding file from storage.
- * @param {string} document_group_id The group ID of the document to delete.
- * @returns {Promise<{ message: string }>} A success message.
- * @throws {Error} If the user is not authenticated or the deletion fails.
- */
 export async function deleteBrandDocument(document_group_id: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) throw new Error('User not authenticated');
     const user = authData.user;
 
-    // First, get the file_path from one of the document chunks
     const { data: document, error: fetchError } = await supabase
         .from('brand_documents')
         .select('file_path')
@@ -121,7 +202,6 @@ export async function deleteBrandDocument(document_group_id: string): Promise<{ 
         throw new Error('Could not find the document to delete.');
     }
 
-    // Next, delete all chunks from the database
     const { error: dbError } = await supabase
         .from('brand_documents')
         .delete()
@@ -133,7 +213,6 @@ export async function deleteBrandDocument(document_group_id: string): Promise<{ 
         throw new Error('Could not delete the document records.');
     }
 
-    // Finally, delete the file from storage
     if (document.file_path) {
         const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
         const { error: storageError } = await supabase.storage
@@ -148,11 +227,6 @@ export async function deleteBrandDocument(document_group_id: string): Promise<{ 
     return { message: 'Document deleted successfully!' };
 }
 
-/**
- * Server action to call the RAG AI flow.
- * @param {string} query The user's question.
- * @returns {Promise<RagOutput>} The AI's response.
- */
 export async function askRag(query: string): Promise<RagOutput> {
     if (!query) {
         throw new Error('Query cannot be empty.');

@@ -72,9 +72,9 @@ const ragFlow = ai.defineFlow(
 
     // 1. Generate an embedding for the user's query.
     const embedding = await ai.embed({
-      model: 'googleai/gemini-embedding-001',
+      model: 'models/text-embedding-004',
       input: query,
-      outputDimensionality: 768,
+      task_type: "RETRIEVAL_QUERY",
     });
 
     // 2. Query the database to find relevant document chunks.

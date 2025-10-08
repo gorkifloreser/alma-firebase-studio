@@ -76,6 +76,7 @@ declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {
         deleteBrandDocumentAction: any;
         uploadBrandDocumentAction: any;
         askRagAction: any;
+        generateAndStoreEmbeddingsAction: any;
     }
 }
 
