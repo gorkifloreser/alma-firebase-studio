@@ -585,20 +585,18 @@ export default function ArtisanPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
-                         <div className="space-y-4">
-                             <div
-                                 className="flex items-center gap-3 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
-                                 onClick={startCustomWorkflow}
-                             >
-                                 <Wand2 className="w-8 h-8 text-primary" />
-                                 <div>
-                                     <h3 className="font-semibold">Freestyle Creation</h3>
-                                     <p className="text-sm text-muted-foreground">
-                                         Generate any type of content for any of your offerings on the fly.
-                                     </p>
-                                 </div>
-                             </div>
-                         </div>
+                        <div
+                            className="flex items-center gap-3 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
+                            onClick={startCustomWorkflow}
+                        >
+                            <Wand2 className="w-8 h-8 text-primary" />
+                            <div>
+                                <h3 className="font-semibold">Freestyle Creation</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Generate any type of content for any of your offerings on the fly.
+                                </p>
+                            </div>
+                        </div>
 
                          <div className="space-y-2">
                              <h3 className="font-semibold flex items-center gap-2 text-foreground">
