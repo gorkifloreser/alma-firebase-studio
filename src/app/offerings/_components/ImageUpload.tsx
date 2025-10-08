@@ -142,8 +142,9 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
         toast({ title: 'Upload Successful', description: `"${file.name}" has been uploaded.` });
         
     } catch (error: any) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("Error processing file:", error);
-        setQueue(prev => prev.map(item => item.id === itemId ? { ...item, status: 'failed', error: error.message } : item));
+        setQueue(prev => prev.map(item => item.id === itemId ? { ...item, status: 'failed', error: errorMessage } : item));
     }
   }, [offeringId, toast, onNewMediaUploaded, offeringContext]);
 
@@ -159,7 +160,8 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
     
     fileRejections.forEach(({ file, errors }) => {
       errors.forEach((error: any) => {
-           toast({ variant: 'destructive', title: 'File error', description: `Could not accept "${file.name}": ${error.message}` });
+           const fileName = file?.name || 'unknown file';
+           toast({ variant: 'destructive', title: 'File error', description: `Could not accept "${fileName}": ${error.message}` });
       });
     });
 

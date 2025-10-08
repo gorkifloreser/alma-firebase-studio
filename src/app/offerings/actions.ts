@@ -200,10 +200,10 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, value_content, schedules = [] } = offeringData;
+    const { title, description, type, contextual_notes, schedules = [] } = offeringData;
 
     // 1. Update the main offering details
-    const offeringPayload = { title, description, type, contextual_notes, value_content, updated_at: new Date().toISOString() };
+    const offeringPayload = { title, description, type, contextual_notes, updated_at: new Date().toISOString() };
     const { error: offeringError } = await supabase
         .from('offerings')
         .update(offeringPayload)
@@ -470,7 +470,14 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
  * @returns {Promise<GenerateImageDescriptionOutput>} The AI-generated description.
  */
 export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
-    return genImageDescFlow(input);
+    try {
+        const result = await genImageDescFlow(input);
+        return result;
+    } catch (error: any) {
+        console.error("Genkit image description flow failed:", error);
+        // Ensure a standard, serializable Error object is thrown
+        throw new Error(error.message || 'An unexpected error occurred during image description generation.');
+    }
 }
 
 

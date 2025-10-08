@@ -7,7 +7,7 @@ import { embed } from '@genkit-ai/ai';
 export const textEmbedding004 = googleAI.model('text-embedding-004');
 
 export const ai = genkit({
-  plugins: [googleAI()],
+  plugins: [googleAI({apiKey: process.env.GEMINI_API_KEY})],
 });
 
 
