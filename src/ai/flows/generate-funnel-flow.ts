@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -8,6 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 const ConceptualStepSchema = z.object({
     step: z.number().describe('The step number in the sequence.'),
@@ -46,6 +48,7 @@ export type GenerateFunnelInput = z.infer<typeof GenerateFunnelInputSchema>;
 
 const prompt = ai.definePrompt({
   name: 'generateFunnelPrompt',
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash-latest'),
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
