@@ -13,7 +13,7 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -569,15 +569,15 @@ export default function ArtisanPage() {
             <Toaster />
             {workflowMode === null && (
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                     <DialogContent>
-                         <DialogHeader>
-                             <DialogTitle>Choose Your Creative Workflow</DialogTitle>
-                             <DialogDescription>
-                                 Start by selecting an existing media plan or create content freely.
-                             </DialogDescription>
-                         </DialogHeader>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                             <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Choose Your Creative Workflow</DialogTitle>
+                            <DialogDescription>
+                                Start by selecting an existing media plan or create content freely.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                            <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
                                 <CardHeader>
                                     <Wand2 className="w-8 h-8 text-primary mb-2" />
                                     <CardTitle>Freestyle Creation</CardTitle>
@@ -588,13 +588,13 @@ export default function ArtisanPage() {
                                     </p>
                                 </CardContent>
                             </Card>
-                             <Card>
-                                 <CardHeader>
-                                     <Sparkles className="w-8 h-8 text-primary mb-2" />
-                                     <CardTitle>From a Media Plan</CardTitle>
-                                 </CardHeader>
-                                 <CardContent>
-                                     <p className="text-sm text-muted-foreground mb-4">
+                            <Card>
+                                <CardHeader>
+                                    <Sparkles className="w-8 h-8 text-primary mb-2" />
+                                    <CardTitle>From a Media Plan</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground mb-4">
                                         Select one of your AI-generated media plans to work on its content queue.
                                     </p>
                                     {mediaPlans.length > 0 ? (
@@ -608,10 +608,10 @@ export default function ArtisanPage() {
                                     ) : (
                                         <p className="text-sm text-center text-muted-foreground border p-4 rounded-md">No media plans found. Create one in the AI Strategist.</p>
                                     )}
-                                 </CardContent>
-                             </Card>
-                         </div>
-                     </DialogContent>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </DialogContent>
                  </Dialog>
              )}
             {savedContent && (
@@ -668,6 +668,7 @@ export default function ArtisanPage() {
                                     isSaving={isSaving}
                                     handleSave={handleSave}
                                     hasContent={!!hasContent}
+                                    onSelectCampaign={() => setIsDialogOpen(true)}
                                 />
                              </AccordionItem>
                              {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (

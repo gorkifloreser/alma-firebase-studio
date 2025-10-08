@@ -42,6 +42,7 @@ import {
   Wand2,
   RefreshCw,
   X,
+  GitBranch,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -93,6 +94,7 @@ type CreativeControlsProps = {
     isSaving: boolean;
     handleSave: (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => void;
     hasContent: boolean;
+    onSelectCampaign: () => void;
 };
 
 export const CreativeControls: React.FC<CreativeControlsProps> = ({
@@ -129,6 +131,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     isSaving,
     handleSave,
     hasContent,
+    onSelectCampaign,
 }) => {
     return (
         <Card>
@@ -136,8 +139,18 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                 <CardTitle>Creative Controls</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                {workflowMode === 'campaign' && selectedCampaign && (
-                    <div className="space-y-2">
+                 {workflowMode === 'campaign' && selectedCampaign && (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-secondary/50 rounded-md">
+                            <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                                <GitBranch className="h-4 w-4" />
+                                Working on Campaign
+                            </Label>
+                            <div className="flex items-center justify-between mt-1">
+                                <p className="font-semibold truncate">{selectedCampaign.title}</p>
+                                <Button variant="outline" size="sm" onClick={onSelectCampaign}>Change</Button>
+                            </div>
+                        </div>
                         <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
                             <div className="flex justify-center">
                                 <TabsList>
