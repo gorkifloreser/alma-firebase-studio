@@ -14,7 +14,7 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow, Edit } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -27,6 +27,7 @@ import { CodeEditor } from './_components/CodeEditor';
 import { CreativeControls } from './_components/CreativeControls';
 import { PostPreview } from './_components/PostPreview';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 
 type Profile = {
     full_name: string | null;
@@ -155,7 +156,11 @@ const RegenerateDialog = ({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    {/* Content of the dialog... */}
+                    <Textarea 
+                      value={editablePrompt}
+                      onChange={(e) => setEditablePrompt(e.target.value)}
+                      className="h-40 font-mono"
+                    />
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -470,6 +475,26 @@ export default function ArtisanPage() {
         
         toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
     };
+    
+    const handleContentChange = useCallback((language: 'primary' | 'secondary', value: string) => {
+        setEditableContent(prev => {
+            const newContent = { ...prev, primary: prev?.primary || null, secondary: prev?.secondary || null };
+            newContent[language] = value;
+            return newContent;
+        });
+    }, []);
+
+    const handleCarouselSlideChange = useCallback((index: number, field: 'title' | 'body', value: string) => {
+        setCreative(prev => {
+            if (!prev || !prev.carouselSlides) return prev;
+            const newSlides = [...prev.carouselSlides];
+            const slideToUpdate = { ...newSlides[index] };
+            (slideToUpdate as any)[field] = value;
+            newSlides[index] = slideToUpdate;
+            return { ...prev, carouselSlides: newSlides };
+        });
+    }, []);
+
 
     const handleNewUpload = (newMedia: OfferingMedia) => {
         setOfferings(prev => prev.map(o => {
@@ -636,7 +661,21 @@ export default function ArtisanPage() {
                     onContentDeleted={() => {}}
                 />
             )}
-             {/* All other Dialogs go here... */}
+             <RegenerateDialog 
+                isOpen={isRegenerateOpen}
+                onOpenChange={setIsRegenerateOpen}
+                originalPrompt={finalPromptForCurrentVisual}
+                onRegenerate={handleGenerate}
+             />
+             {imageToChat && (
+                <ImageChatDialog
+                    isOpen={isImageChatOpen}
+                    onOpenChange={setIsImageChatOpen}
+                    imageUrl={imageToChat.url}
+                    onImageUpdate={() => {}}
+                />
+             )}
+
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header>
@@ -660,7 +699,7 @@ export default function ArtisanPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                        {workflowMode === 'campaign' && selectedCampaign && (
+                         {workflowMode === 'campaign' && selectedCampaign && (
                             <Card className="col-span-full">
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <div>
@@ -689,7 +728,7 @@ export default function ArtisanPage() {
                             </Card>
                         )}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <aside className="space-y-8">
+                            <aside className="space-y-8 lg:sticky top-24">
                                 <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
                                     <AccordionItem value="creative-controls" className="border-none">
                                         <CreativeControls
@@ -740,7 +779,7 @@ export default function ArtisanPage() {
                                     )}
                                 </Accordion>
                             </aside>
-                            <main className="sticky top-24">
+                            <main>
                                 <PostPreview
                                     profile={profile}
                                     dimension={dimension}
@@ -754,9 +793,12 @@ export default function ArtisanPage() {
                                     secondaryLangName={secondaryLangName}
                                     isCodeEditorOpen={isCodeEditorOpen}
                                     onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
-                                    handleContentChange={() => {}}
-                                    handleCarouselSlideChange={() => {}}
-                                    onImageEdit={() => {}}
+                                    handleContentChange={handleContentChange}
+                                    handleCarouselSlideChange={handleCarouselSlideChange}
+                                    onImageEdit={(url, slideIndex) => {
+                                        setImageToChat({url, slideIndex});
+                                        setIsImageChatOpen(true);
+                                    }}
                                     onRegenerateClick={() => setIsRegenerateOpen(true)}
                                     onCurrentSlideChange={setCurrentCarouselSlide}
                                     onDownload={handleDownload}
