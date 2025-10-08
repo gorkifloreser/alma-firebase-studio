@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { Send, Package, CheckCircle, Award } from 'lucide-react';
 import type { HarvestItem, updateHarvestItemStatus, requestTestimonial } from '../actions';
 
@@ -65,8 +65,8 @@ export function HarvestList({ initialItems, actions, onDataChange }: HarvestList
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Offering Delivery Status</CardTitle>
-                <CardDescription>Track and manage the post-sale process for your offerings.</CardDescription>
+                <CardTitle>Campaign Harvest</CardTitle>
+                <CardDescription>Manage post-campaign actions like requesting testimonials for recently finished campaigns.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -74,9 +74,12 @@ export function HarvestList({ initialItems, actions, onDataChange }: HarvestList
                         items.map(item => (
                             <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                                 <div className="flex-1">
-                                    <p className="font-semibold">{item.offerings.title.primary}</p>
+                                    <p className="font-semibold">{item.campaign_title}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        Sale Date: {isClient ? format(new Date(item.created_at), 'PPP') : '...'}
+                                        Campaign Ended: {isClient ? format(new Date(item.created_at), 'PPP') : '...'}
+                                    </p>
+                                     <p className="text-xs text-primary">
+                                        Suggested testimonial request: {isClient ? format(addDays(new Date(item.created_at), 1), 'PPP') : '...'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -107,7 +110,7 @@ export function HarvestList({ initialItems, actions, onDataChange }: HarvestList
                             </div>
                         ))
                     ) : (
-                        <p className="text-muted-foreground text-center">No delivery items to display yet.</p>
+                        <p className="text-muted-foreground text-center">No recently completed campaigns to display.</p>
                     )}
                 </div>
             </CardContent>

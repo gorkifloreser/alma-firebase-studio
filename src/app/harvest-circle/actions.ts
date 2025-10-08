@@ -4,16 +4,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { createContentFromTestimonialFlow } from '@/ai/flows/create-content-from-testimonial-flow';
+import { subDays } from 'date-fns';
 
 export type HarvestItem = {
-    id: string;
-    created_at: string;
+    id: string; // This will be the media_plan id
+    created_at: string; // This will be the campaign_end_date
     status: 'to_deliver' | 'in_progress' | 'completed';
-    offerings: {
-        title: {
-            primary: string;
-        }
-    }
+    // The offerings relation is now on the campaign, let's represent that
+    campaign_title: string;
 };
 
 export type Testimonial = {
@@ -29,58 +27,58 @@ export type Testimonial = {
     } | null;
 };
 
-// For now, harvest items are simulated. In a real app, this would come from a 'sales' or 'orders' table.
+/**
+ * Fetches completed media plans to be used as "harvest items".
+ * A harvest item represents a campaign that has finished and is ready for post-sale actions.
+ */
 export async function getHarvestItems(): Promise<HarvestItem[]> {
-    console.log('[actions.ts:getHarvestItems] Fetching harvest items...');
+    console.log('[actions.ts:getHarvestItems] Fetching harvest items based on completed campaigns...');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
     
-    // Simulate fetching items based on offerings.
+    // Look for campaigns that ended in the last 30 days.
+    const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+
     const { data, error } = await supabase
-        .from('offerings')
-        .select(`
-            id,
-            created_at,
-            title
-        `)
+        .from('media_plans')
+        .select('id, title, campaign_end_date')
         .eq('user_id', user.id)
-        .limit(5);
+        .lt('campaign_end_date', new Date().toISOString()) // Ended in the past
+        .gte('campaign_end_date', thirtyDaysAgo); // But not too long ago
 
     if (error) {
-        console.error("Error fetching simulated harvest items:", error);
+        console.error("Error fetching completed media plans:", error);
         throw new Error("Could not fetch harvest items.");
     }
     
-    const harvestItems: HarvestItem[] = data.map(offering => ({
-        id: offering.id,
-        created_at: offering.created_at,
-        status: 'to_deliver', // Default status
-        offerings: {
-            title: {
-                primary: (offering.title as any)?.primary || 'Untitled Offering'
-            }
-        }
+    const harvestItems: HarvestItem[] = data.map(plan => ({
+        id: plan.id,
+        created_at: plan.campaign_end_date, // Use campaign end date
+        status: 'to_deliver', // Default status for a completed campaign
+        campaign_title: plan.title,
     }));
     
-    console.log(`[actions.ts:getHarvestItems] Successfully fetched and simulated ${harvestItems.length} items.`);
+    console.log(`[actions.ts:getHarvestItems] Successfully fetched ${harvestItems.length} completed campaigns to harvest.`);
     return harvestItems;
 }
 
 
 export async function updateHarvestItemStatus(itemId: string, newStatus: 'to_deliver' | 'in_progress' | 'completed'): Promise<{ message: string }> {
     console.log(`[actions.ts:updateHarvestItemStatus] Updating item ${itemId} to status ${newStatus}.`);
-    // This is a placeholder. In a real app, you'd update a 'sales' table.
-    console.log(`[actions.ts:updateHarvestItemStatus] SIMULATION: Status for item ${itemId} updated to ${newStatus}.`);
+    // This is a placeholder. In a real app, you might update the media_plan status or a related table.
+    console.log(`[actions.ts:updateHarvestItemStatus] SIMULATION: Status for campaign ${itemId} updated to ${newStatus}.`);
     revalidatePath('/harvest-circle');
     return { message: 'Status updated successfully.' };
 }
 
 export async function requestTestimonial(itemId: string): Promise<{ message: string }> {
-    console.log(`[actions.ts:requestTestimonial] Requesting testimonial for item ${itemId}.`);
-    // This is a placeholder. In a real app, this would trigger an email or WhatsApp message.
-    console.log(`[actions.ts:requestTestimonial] SIMULATION: Testimonial request sent for item ${itemId}.`);
-    return { message: 'Testimonial request sent successfully.' };
+    console.log(`[actions.ts:requestTestimonial] Requesting testimonial for campaign ${itemId}.`);
+    // This is a placeholder. In a real app, this would trigger an email or WhatsApp message
+    // to the audience of the campaign. For now, we just log it.
+    // The suggestion is to send it 1 day after campaign ends. This action is the manual trigger for that.
+    console.log(`[actions.ts:requestTestimonial] SIMULATION: Testimonial request initiated for campaign ${itemId}.`);
+    return { message: 'Testimonial request process started.' };
 }
 
 export async function getTestimonials(): Promise<Testimonial[]> {
