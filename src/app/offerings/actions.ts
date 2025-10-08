@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -315,7 +316,9 @@ export async function uploadSingleOfferingMedia(offeringId: string, formData: Fo
     const file = formData.get('file') as File | null;
     const description = formData.get('description') as string | null;
 
-    if (!file) throw new Error('No file provided for upload.');
+    if (!file) {
+        throw new Error('No file provided for upload.');
+    }
 
     const bucketName = 'Alma';
     const filePath = `${user.id}/offerings/${offeringId}/${crypto.randomUUID()}-${file.name}`;
@@ -479,5 +482,3 @@ export async function generateImageDescription(input: GenerateImageDescriptionIn
 export async function generateValueContent(input: GenerateValueContentInput): Promise<GenerateValueContentOutput> {
     return genValueContentFlow(input);
 }
-
-    
