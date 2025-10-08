@@ -8,12 +8,14 @@ import { TestimonialRepository } from './TestimonialRepository';
 import type { getHarvestItems, updateHarvestItemStatus, requestTestimonial, getTestimonials, saveTestimonial, createContentFromTestimonial } from '../actions';
 import type { getProfile } from '@/app/settings/actions';
 import type { HarvestItem, Testimonial } from '../actions';
+import type { Offering } from '@/app/offerings/actions';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 
 interface HarvestCircleClientPageProps {
     initialHarvestItems: HarvestItem[];
     initialTestimonials: Testimonial[];
+    initialOfferings: Offering[];
     profile: Profile;
     actions: {
         getHarvestItems: typeof getHarvestItems;
@@ -28,6 +30,7 @@ interface HarvestCircleClientPageProps {
 export function HarvestCircleClientPage({
     initialHarvestItems,
     initialTestimonials,
+    initialOfferings,
     profile,
     actions,
 }: HarvestCircleClientPageProps) {
@@ -77,6 +80,7 @@ export function HarvestCircleClientPage({
                 <TabsContent value="testimonials" className="mt-6">
                     <TestimonialRepository
                         initialTestimonials={testimonials}
+                        offerings={initialOfferings}
                         actions={{
                             saveTestimonial: actions.saveTestimonial,
                             createContentFromTestimonial: actions.createContentFromTestimonial,

@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { getHarvestItems, updateHarvestItemStatus, requestTestimonial, getTestimonials, saveTestimonial, createContentFromTestimonial } from './actions';
 import { HarvestCircleClientPage } from './_components/HarvestCircleClientPage';
 import { getProfile } from '@/app/settings/actions';
+import { getOfferings } from '@/app/offerings/actions';
 
 export default async function HarvestCirclePage() {
     console.log('[HarvestCirclePage - Server] Page rendering started.');
@@ -18,12 +19,13 @@ export default async function HarvestCirclePage() {
     console.log(`[HarvestCirclePage - Server] User ${user.id} authenticated.`);
 
     console.log('[HarvestCirclePage - Server] Fetching initial data...');
-    const [harvestItems, testimonials, profile] = await Promise.all([
+    const [harvestItems, testimonials, profile, offerings] = await Promise.all([
         getHarvestItems(),
         getTestimonials(),
         getProfile(),
+        getOfferings(),
     ]);
-    console.log(`[HarvestCirclePage - Server] Fetched ${harvestItems.length} harvest items and ${testimonials.length} testimonials.`);
+    console.log(`[HarvestCirclePage - Server] Fetched ${harvestItems.length} harvest items, ${testimonials.length} testimonials, and ${offerings.length} offerings.`);
 
     return (
         <DashboardLayout>
@@ -31,6 +33,7 @@ export default async function HarvestCirclePage() {
             <HarvestCircleClientPage
                 initialHarvestItems={harvestItems}
                 initialTestimonials={testimonials}
+                initialOfferings={offerings}
                 profile={profile}
                 actions={{
                     getHarvestItems,

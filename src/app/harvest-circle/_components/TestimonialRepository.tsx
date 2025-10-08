@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +18,7 @@ import type { Offering } from '@/app/offerings/actions';
 
 interface TestimonialRepositoryProps {
   initialTestimonials: Testimonial[];
+  offerings: Offering[];
   actions: {
     saveTestimonial: typeof saveTestimonial;
     createContentFromTestimonial: typeof createContentFromTestimonial;
@@ -25,11 +26,10 @@ interface TestimonialRepositoryProps {
   onDataChange: () => void;
 }
 
-export function TestimonialRepository({ initialTestimonials, actions, onDataChange }: TestimonialRepositoryProps) {
+export function TestimonialRepository({ initialTestimonials, offerings, actions, onDataChange }: TestimonialRepositoryProps) {
     console.log('[TestimonialRepository] Component rendering. Received initial testimonials:', initialTestimonials.length);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [newTestimonial, setNewTestimonial] = useState<Partial<Testimonial>>({});
-    const [offerings, setOfferings] = useState<Offering[]>([]);
     const [isSaving, startSaving] = useTransition();
     const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
@@ -37,8 +37,6 @@ export function TestimonialRepository({ initialTestimonials, actions, onDataChan
     // Fetch offerings when dialog opens
     const handleOpenDialog = async () => {
         setIsDialogOpen(true);
-        // In a real app, you would fetch offerings here
-        // For now, we assume they are passed or fetched elsewhere
     };
 
     const handleSave = () => {
@@ -135,7 +133,11 @@ export function TestimonialRepository({ initialTestimonials, actions, onDataChan
                             <Select onValueChange={value => setNewTestimonial(p => ({ ...p, offering_id: value }))}>
                                 <SelectTrigger><SelectValue placeholder="Select an offering..." /></SelectTrigger>
                                 <SelectContent>
-                                    {/* This would be populated by a fetch of offerings */}
+                                    {offerings.map(offering => (
+                                        <SelectItem key={offering.id} value={offering.id}>
+                                            {offering.title.primary}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
