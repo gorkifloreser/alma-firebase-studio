@@ -583,18 +583,18 @@ export default function ArtisanPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
-                        <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
-                            <CardHeader>
-                                <Wand2 className="w-8 h-8 text-primary mb-2" />
-                                <CardTitle>Freestyle Creation</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground">
-                                    Generate any type of content for any of your offerings on the fly.
-                                </p>
-                            </CardContent>
-                        </Card>
-                        <div className="space-y-2">
+                         <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
+                             <CardHeader>
+                                 <Wand2 className="w-8 h-8 text-primary mb-2" />
+                                 <CardTitle>Freestyle Creation</CardTitle>
+                             </CardHeader>
+                             <CardContent>
+                                 <p className="text-sm text-muted-foreground">
+                                     Generate any type of content for any of your offerings on the fly.
+                                 </p>
+                             </CardContent>
+                         </Card>
+                         <div className="space-y-2">
                              <h3 className="font-semibold flex items-center gap-2 text-foreground">
                                  <Sparkles className="w-5 h-5 text-primary" />
                                  From a Media Plan
@@ -651,11 +651,24 @@ export default function ArtisanPage() {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <aside className="space-y-8">
+                            {workflowMode === 'campaign' && selectedCampaign && (
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                                <GitBranch className="h-4 w-4" />
+                                                Working on Campaign
+                                            </CardDescription>
+                                            <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
+                                    </CardHeader>
+                                </Card>
+                            )}
                             <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
                                 <AccordionItem value="creative-controls" className="border-none">
                                     <CreativeControls
                                         workflowMode={workflowMode}
-                                        selectedCampaign={selectedCampaign}
                                         allArtisanItems={allArtisanItems}
                                         channelFilter={channelFilter}
                                         setChannelFilter={setChannelFilter}
@@ -687,7 +700,6 @@ export default function ArtisanPage() {
                                         isSaving={isSaving}
                                         handleSave={handleSave}
                                         hasContent={!!hasContent}
-                                        onSelectCampaign={() => setIsDialogOpen(true)}
                                     />
                                 </AccordionItem>
                                 {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (

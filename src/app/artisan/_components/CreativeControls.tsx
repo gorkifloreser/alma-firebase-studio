@@ -62,7 +62,6 @@ type MediaPlanSelectItem = { id: string; title: string; offering_id: string; off
 
 type CreativeControlsProps = {
     workflowMode: 'campaign' | 'custom' | null;
-    selectedCampaign: MediaPlanSelectItem | null;
     allArtisanItems: ArtisanItem[];
     channelFilter: string;
     setChannelFilter: (value: string) => void;
@@ -94,12 +93,10 @@ type CreativeControlsProps = {
     isSaving: boolean;
     handleSave: (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => void;
     hasContent: boolean;
-    onSelectCampaign: () => void;
 };
 
 export const CreativeControls: React.FC<CreativeControlsProps> = ({
     workflowMode,
-    selectedCampaign,
     allArtisanItems,
     channelFilter,
     setChannelFilter,
@@ -131,7 +128,6 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     isSaving,
     handleSave,
     hasContent,
-    onSelectCampaign,
 }) => {
     return (
         <Card>
@@ -139,29 +135,17 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                 <CardTitle>Creative Controls</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                 {workflowMode === 'campaign' && selectedCampaign && (
-                    <div className="space-y-4">
-                        <div className="p-3 bg-secondary/50 rounded-md">
-                            <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                                <GitBranch className="h-4 w-4" />
-                                Working on Campaign
-                            </Label>
-                            <div className="flex items-center justify-between mt-1">
-                                <p className="font-semibold truncate">{selectedCampaign.title}</p>
-                                <Button variant="outline" size="sm" onClick={onSelectCampaign}>Change</Button>
-                            </div>
+                 {workflowMode === 'campaign' && (
+                    <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
+                        <div className="flex justify-center">
+                            <TabsList>
+                                <TabsTrigger value="all">All ({queueCount})</TabsTrigger>
+                                {availableChannels.map(channel => (
+                                    <TabsTrigger key={channel} value={channel} className="capitalize">{channel} ({allArtisanItems.filter(i => i.user_channel_settings?.channel_name === channel).length})</TabsTrigger>
+                                ))}
+                            </TabsList>
                         </div>
-                        <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
-                            <div className="flex justify-center">
-                                <TabsList>
-                                    <TabsTrigger value="all">All ({queueCount})</TabsTrigger>
-                                    {availableChannels.map(channel => (
-                                        <TabsTrigger key={channel} value={channel} className="capitalize">{channel} ({allArtisanItems.filter(i => i.media_plan_id === selectedCampaign.id && i.user_channel_settings?.channel_name === channel).length})</TabsTrigger>
-                                    ))}
-                                </TabsList>
-                            </div>
-                        </Tabs>
-                    </div>
+                    </Tabs>
                 )}
 
                 <div className="space-y-2">
