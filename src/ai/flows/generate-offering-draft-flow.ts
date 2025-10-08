@@ -9,6 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 const OfferingScheduleDraftSchema = z.object({
   price_label: z.string().optional().describe("The descriptive label for this specific price point (e.g., 'Cacao Nibs 100g', 'Early Bird')."),
@@ -36,6 +37,7 @@ export type GenerateOfferingDraftInput = z.infer<typeof GenerateOfferingDraftInp
 
 const prompt = ai.definePrompt({
   name: 'generateOfferingDraftPrompt',
+  model: googleAI('gemini-1.5-flash-latest'),
   input: {
       schema: z.object({
           brandHeart: z.any(),

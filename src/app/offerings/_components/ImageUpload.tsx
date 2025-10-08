@@ -105,30 +105,27 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
     };
   }, [queue]);
   
+  const handleManualUpload = (file: File, itemId: string) => {
+    startProcessing(() => {
+        processFile(file, itemId);
+    });
+  }
+
   const processFile = useCallback(async (file: File, itemId: string) => {
     try {
+        const item = queue.find(q => q.id === itemId);
+        if (!item) throw new Error('File not found in queue.');
+
         let processedFile = file;
         if (file.size > MAX_FILE_SIZE_BYTES) {
             toast({ title: 'Resizing large image...', description: `"${file.name}" is being optimized.` });
             processedFile = await resizeImage(file);
         }
 
-        // Step 1: Generate Description
-        setQueue(prev => prev.map(item => item.id === itemId ? { ...item, status: 'generating_desc' } : item));
-        const dataUri = await new Promise<string>((res, rej) => {
-            const reader = new FileReader();
-            reader.onload = () => res(reader.result as string);
-            reader.onerror = rej;
-            reader.readAsDataURL(processedFile);
-        });
+        setQueue(prev => prev.map(item => item.id === itemId ? { ...item, status: 'uploading' } : item));
 
-        const { description } = await generateImageDescription({
-            imageDataUri: dataUri,
-            contextTitle: offeringContext.title || '',
-            contextDescription: offeringContext.description || '',
-        });
-        
-        setQueue(prev => prev.map(item => item.id === itemId ? { ...item, description, status: 'uploading' } : item));
+        // AI Call is bypassed
+        const description = item.description;
 
         // Step 2: Upload with description
         const formData = new FormData();
@@ -146,7 +143,7 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
         console.error("Error processing file:", error);
         setQueue(prev => prev.map(item => item.id === itemId ? { ...item, status: 'failed', error: errorMessage } : item));
     }
-  }, [offeringId, toast, onNewMediaUploaded, offeringContext]);
+  }, [offeringId, toast, onNewMediaUploaded, offeringContext, queue]);
 
   const onDrop = useCallback(async (acceptedFiles: File[], fileRejections: any[]) => {
     if (!offeringId) {
@@ -175,11 +172,7 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
     
     setQueue(prev => [...prev, ...newItems]);
 
-    startProcessing(() => {
-        newItems.forEach(item => processFile(item.file, item.id));
-    });
-
-  }, [toast, offeringId, processFile]);
+  }, [toast, offeringId]);
 
   const removeItemFromQueue = (id: string) => {
     setQueue(prev => {
@@ -187,6 +180,10 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
         if (itemToRemove) URL.revokeObjectURL(itemToRemove.file.preview);
         return prev.filter(item => item.id !== id);
     });
+  };
+
+  const handleDescriptionChange = (id: string, newDescription: string) => {
+    setQueue(prev => prev.map(item => item.id === id ? { ...item, description: newDescription } : item));
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -238,8 +235,7 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
               <div className="relative group aspect-square">
                 <Image src={item.file.preview} alt={`Preview ${item.file.name}`} fill className="object-cover rounded-md" />
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md text-white">
-                    {item.status === 'pending' && <p>Pending...</p>}
-                    {item.status === 'generating_desc' && <div className="text-center p-2"><Sparkles className="h-6 w-6 mx-auto animate-spin" /><p className="text-xs mt-2">Writing description...</p></div>}
+                    {item.status === 'pending' && <p className="text-sm font-semibold">Ready to upload</p>}
                     {item.status === 'uploading' && <div className="text-center p-2"><Loader2 className="h-6 w-6 mx-auto animate-spin" /><p className="text-xs mt-2">Uploading...</p></div>}
                     {item.status === 'failed' && (
                         <div className="text-center p-2">
@@ -253,9 +249,22 @@ export function ImageUpload({ offeringId, onNewMediaUploaded, existingMedia = []
                     <X className="h-4 w-4" />
                 </Button>
               </div>
-               <p className="text-xs text-muted-foreground p-2 border rounded-md min-h-[60px]">
-                {item.description || (item.status === 'generating_desc' ? 'Generating...' : 'Awaiting description...')}
-               </p>
+              <Textarea
+                placeholder="Enter a description..."
+                value={item.description}
+                onChange={(e) => handleDescriptionChange(item.id, e.target.value)}
+                className="text-xs"
+                disabled={item.status === 'uploading' || isProcessing}
+              />
+              <Button 
+                type="button" 
+                onClick={() => handleManualUpload(item.file, item.id)} 
+                disabled={item.status === 'uploading' || isProcessing}
+                className="w-full"
+              >
+                {item.status === 'uploading' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Upload
+              </Button>
             </div>
           ))}
         </div>
