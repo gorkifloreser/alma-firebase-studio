@@ -316,8 +316,8 @@ export async function uploadSingleOfferingMedia(offeringId: string, formData: Fo
     const file = formData.get('file') as File | null;
     const description = formData.get('description') as string | null;
 
-    if (!file) {
-        throw new Error('No file provided for upload.');
+    if (!file || !(file instanceof File) || !file.name) {
+        throw new Error('A valid file must be provided for upload.');
     }
 
     const bucketName = 'Alma';
