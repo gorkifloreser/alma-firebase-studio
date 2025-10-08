@@ -15,7 +15,7 @@ interface MediaPlanItem {
 interface SocialConnection {
   access_token: string;
   account_id: string | null;
-  instagram_account_id: string | null; // Added this field
+  instagram_account_id: string | null;
 }
 
 /**
@@ -152,6 +152,46 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
 
 
 /**
+ * Publishes a message to WhatsApp. (Placeholder)
+ * @param post - The media plan item to publish.
+ * @param connection - The user's social connection details.
+ */
+async function publishToWhatsapp(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
+    const { access_token } = connection;
+    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+    const recipientPhoneNumber = "PHONE_NUMBER_TO_SEND_TO"; // This needs to be dynamic
+
+    console.log(`[WhatsApp Publish - ${post.id}] START`);
+    
+    if (!phoneNumberId) {
+        console.error(`[WhatsApp Publish - ${post.id}] ERROR: META_PHONE_NUMBER_ID environment variable is not set.`);
+        throw new Error("WhatsApp publishing is not configured on the server.");
+    }
+    
+    // In a real scenario, you would use a pre-approved message template.
+    // For this example, we will log what would be sent.
+    const messagePayload = {
+        messaging_product: "whatsapp",
+        to: recipientPhoneNumber,
+        type: "text",
+        text: {
+            preview_url: false,
+            body: post.copy || "Default message",
+        },
+    };
+
+    console.log(`[WhatsApp Publish - ${post.id}] Step 1: Preparing to send message.`);
+    console.log(`[WhatsApp Publish - ${post.id}] From Phone ID: ${phoneNumberId}`);
+    console.log(`[WhatsApp Publish - ${post.id}] To: ${recipientPhoneNumber}`);
+    console.log(`[WhatsApp Publish - ${post.id}] Payload:`, JSON.stringify(messagePayload, null, 2));
+
+    // Here you would make the API call to `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+    // For now, we simulate success.
+    console.log(`[WhatsApp Publish - ${post.id}] SIMULATION: Message sent successfully.`);
+    return { success: true, message: "Simulated WhatsApp message sent." };
+}
+
+/**
  * Orchestrates the publishing of a single post based on its channel.
  * @param postId - The ID of the media plan item to publish.
  * @param supabase - An authenticated Supabase client instance.
@@ -203,10 +243,11 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
         case 'facebook':
             await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
             break;
+        case 'whatsapp':
+            await publishToWhatsapp(post as MediaPlanItem, connection as SocialConnection);
+            break;
         default:
             console.log(`Publishing for channel '${channel}' is not yet supported.`);
             break;
     }
 }
-
-    

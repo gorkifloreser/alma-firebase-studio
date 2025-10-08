@@ -22,12 +22,17 @@ This method uses Supabase's built-in scheduler to call your Next.js API route. I
 
 **Instructions:**
 
-1.  **Set Your Cron Secret:**
+1.  **Set Your Secrets:**
     Add the following to your `.env.local` file and also to your production environment variables on Vercel/your host. This is crucial for security.
     ```
+    # A random, secret string to protect your cron endpoint
     CRON_SECRET="your_super_secret_and_random_string_here"
+
+    # For WhatsApp functionality
+    META_PHONE_NUMBER_ID="your_whatsapp_phone_number_id"
+    META_BUSINESS_ACCOUNT_ID="your_meta_business_account_id"
     ```
-    *You can generate a strong secret using an online tool.*
+    *You can generate a strong `CRON_SECRET` using an online tool.*
 
 2.  **Run the SQL Setup Script:**
     Go to the **SQL Editor** in your Supabase dashboard and run the following commands. This script does three things: enables the `pg_cron` scheduler, enables the `pg_net` extension for making HTTP requests, and schedules the job.
@@ -68,7 +73,7 @@ This method uses Supabase's built-in scheduler to call your Next.js API route. I
 
 If your app is hosted on Vercel, this is another very easy method.
 
-1.  **Set Your Cron Secret** in your Vercel project's Environment Variables settings.
+1.  **Set Your Secrets** in your Vercel project's Environment Variables settings (`CRON_SECRET`, `META_PHONE_NUMBER_ID`, etc.).
 2.  **Create a `vercel.json` file** in the root of your project (if you don't have one).
 3.  **Add the cron job definition** to the file:
     ```json
