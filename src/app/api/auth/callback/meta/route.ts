@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
         console.log(`[META AUTH] Step 7: Upserting accounts into the database...`);
         const { error: dbError } = await supabase
             .from('social_connections')
-            .upsert(accountsToUpsert, { onConflict: 'user_id, account_id, provider' }); // Note: updated onConflict key
+            .upsert(accountsToUpsert, { onConflict: 'user_id, account_id, provider' });
         
         if (dbError) {
             console.error('[META AUTH] Database upsert error:', dbError);

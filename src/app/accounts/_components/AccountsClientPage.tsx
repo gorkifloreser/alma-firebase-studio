@@ -231,7 +231,7 @@ export function AccountsClientPage({
                                 <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
                                     <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                                        Conectado
+                                        Connected
                                     </p>
                                 </div>
                                 <Select
