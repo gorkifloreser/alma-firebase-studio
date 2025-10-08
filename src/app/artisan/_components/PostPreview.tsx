@@ -310,7 +310,7 @@ export const PostPreview = ({
                         {/* ... header content ... */}
                         
                         {/* Editable Text Area */}
-                        <div className="flex-1 flex items-center justify-center p-4">
+                        <div className="flex-1 flex flex-col justify-end p-4">
                         <Textarea
                                 value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
                                 onChange={(e) => {
@@ -324,9 +324,6 @@ export const PostPreview = ({
                                 placeholder="Your story text..."
                             />
                         </div>
-                        
-                        {/* Footer */}
-                        {/* ... footer content ... */}
                     </div>
                 </div>
             </TooltipProvider>
