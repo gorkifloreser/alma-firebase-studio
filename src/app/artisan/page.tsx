@@ -601,8 +601,8 @@ export default function ArtisanPage() {
     return (
         <DashboardLayout>
             <Toaster />
-             <Dialog open={isDialogOpen && workflowMode === null} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-2xl">
+             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Choose Your Creative Workflow</DialogTitle>
                         <DialogDescription>
@@ -672,7 +672,18 @@ export default function ArtisanPage() {
                     isOpen={isImageChatOpen}
                     onOpenChange={setIsImageChatOpen}
                     imageUrl={imageToChat.url}
-                    onImageUpdate={() => {}}
+                    onImageUpdate={(newImageUrl) => {
+                         setCreative(prev => {
+                            if (!prev) return null;
+                            if (imageToChat.slideIndex !== undefined) {
+                                const newSlides = [...(prev.carouselSlides || [])];
+                                newSlides[imageToChat.slideIndex] = { ...newSlides[imageToChat.slideIndex], imageUrl: newImageUrl };
+                                return { ...prev, carouselSlides: newSlides };
+                            }
+                            return { ...prev, imageUrl: newImageUrl };
+                        });
+                        setIsImageChatOpen(false);
+                    }}
                 />
              )}
 
@@ -699,34 +710,37 @@ export default function ArtisanPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                         {workflowMode === 'campaign' && selectedCampaign && (
-                            <Card className="col-span-full">
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardDescription className="flex items-center gap-2 text-xs font-semibold">
-                                            <GitBranch className="h-4 w-4" />
-                                            Working on Campaign
-                                        </CardDescription>
-                                        <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
-                                    </div>
-                                    <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
-                                </CardHeader>
-                            </Card>
-                        )}
-                         {workflowMode === 'custom' && (
-                            <Card className="col-span-full">
-                                <CardHeader className="flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardDescription className="flex items-center gap-2 text-xs font-semibold">
-                                            <Wand2 className="h-4 w-4" />
-                                            Working in Freestyle Mode
-                                        </CardDescription>
-                                        <CardTitle className="text-lg">Custom Content Creation</CardTitle>
-                                    </div>
-                                    <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
-                                </CardHeader>
-                            </Card>
-                        )}
+                         <div className="col-span-full">
+                            {workflowMode === 'campaign' && selectedCampaign && (
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                                <GitBranch className="h-4 w-4" />
+                                                Working on Campaign
+                                            </CardDescription>
+                                            <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                            {workflowMode === 'custom' && (
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                                <Wand2 className="h-4 w-4" />
+                                                Working in Freestyle Mode
+                                            </CardDescription>
+                                            <CardTitle className="text-lg">Custom Content Creation</CardTitle>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                         </div>
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             <aside className="space-y-8 lg:sticky top-24">
                                 <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
@@ -758,7 +772,13 @@ export default function ArtisanPage() {
                                             dimension={dimension}
                                             setDimension={setDimension}
                                             scheduledAt={scheduledAt}
-                                            handleDateTimeChange={() => {}}
+                                            handleDateTimeChange={(date, time) => {
+                                                if (!date) return;
+                                                const [hours, minutes] = time.split(':').map(Number);
+                                                const newDate = new Date(date);
+                                                newDate.setHours(hours, minutes);
+                                                setScheduledAt(newDate);
+                                            }}
                                             handleGenerate={handleGenerate}
                                             isGenerateDisabled={isGenerateDisabled}
                                             isSaving={isSaving}
