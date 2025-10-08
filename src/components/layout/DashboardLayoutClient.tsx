@@ -18,7 +18,6 @@ import {
   Wallet,
   FileText,
   CreditCard,
-  Import,
   BarChart2,
   Heart,
   ShoppingBag,
@@ -35,7 +34,7 @@ import { UserNav } from '@/components/auth/UserNav';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/', label: 'User Guide', icon: LayoutDashboard },
     { href: '/brand', label: 'Brand Heart', icon: Heart },
     { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
     { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
