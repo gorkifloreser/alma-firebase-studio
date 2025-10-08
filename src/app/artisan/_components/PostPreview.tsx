@@ -39,6 +39,7 @@ import {
 import Image from 'next/image';
 import type { GenerateCreativeOutput } from '@/ai/flows/generate-creative-flow';
 import { CodeEditor } from './CodeEditor';
+import { Label } from '@/components/ui/label';
 
 type Profile = {
     full_name: string | null;
@@ -354,13 +355,75 @@ export const PostPreview = ({
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center", aspectRatioClass)}>
+                         <div className={cn("relative w-full overflow-hidden bg-black flex items-center justify-center group", aspectRatioClass)}>
                             {renderVisualContent()}
-                            {/* Action buttons */}
+                            {hasVisuals && (
+                                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => onImageEdit(imageUrlToEdit!, current)}>
+                                                <Edit />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Retouch Image</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => onRegenerateClick()}>
+                                                <RefreshCw />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Regenerate Image</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => onDownload(urlToDownload!, 'creative')}>
+                                                <Download />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Download</TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                        {/* ... social icons and textareas ... */}
+                        <div className="flex justify-between w-full">
+                            <div className="flex gap-4">
+                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            </div>
+                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                        </div>
+                         <div className="w-full space-y-2">
+                            {currentSlideData ? (
+                                <Textarea
+                                    value={currentSlideData.body}
+                                    onChange={(e) => handleCarouselSlideChange(current, 'body', e.target.value)}
+                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                    placeholder={`Text for slide ${current + 1}...`}
+                                />
+                            ) : (
+                                <Textarea 
+                                    value={editableContent?.primary || ''}
+                                    onChange={(e) => handleContentChange('primary', e.target.value)}
+                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
+                                    placeholder="Your post copy will appear here..."
+                                />
+                            )}
+                            {secondaryLangName && editableContent?.secondary && !currentSlideData && (
+                                <>
+                                    <Separator className="my-2"/>
+                                    <Textarea 
+                                        value={editableContent.secondary}
+                                        onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent text-muted-foreground"
+                                        placeholder={`Your ${secondaryLangName} post copy...`}
+                                    />
+                                </>
+                            )}
+                        </div>
                     </CardFooter>
                 </Card>
             </div>
