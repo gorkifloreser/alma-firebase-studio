@@ -26,19 +26,14 @@ export default async function LoginPage({
             <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
               <div className="text-foreground text-center md:text-left">
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-                  Landing Page
+                  Welcome to Your Marketing Ecosystem
                 </h1>
                 <p className="mt-4 text-foreground/80">
-                  Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed
-                  diam nonummy nibh euismod tincidunt ut laoreet dolore magna
-                  aliquam erat volutpat.
+                  Where your authentic brand attracts, not shouts. Log in to continue nurturing your growth.
                 </p>
-                <Button variant="outline" className="mt-6 bg-transparent text-foreground border-foreground/50 hover:bg-foreground/10 hover:text-foreground">
-                  More...
-                </Button>
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-center text-foreground">Log In</h2>
+                <h2 className="text-3xl font-bold text-center text-foreground">Log In to Your Space</h2>
                  {searchParams.message && (
                   <p className="mt-4 rounded-md bg-green-500/20 p-4 text-center text-sm text-green-300">
                     {searchParams.message}
