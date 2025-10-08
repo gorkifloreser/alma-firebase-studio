@@ -660,8 +660,8 @@ export default function ArtisanPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                         {workflowMode === 'campaign' && selectedCampaign && (
-                            <Card>
+                        {workflowMode === 'campaign' && selectedCampaign && (
+                            <Card className="col-span-full">
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <div>
                                         <CardDescription className="flex items-center gap-2 text-xs font-semibold">
@@ -671,6 +671,20 @@ export default function ArtisanPage() {
                                         <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
+                                </CardHeader>
+                            </Card>
+                        )}
+                         {workflowMode === 'custom' && (
+                            <Card className="col-span-full">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                            <Wand2 className="h-4 w-4" />
+                                            Working in Freestyle Mode
+                                        </CardDescription>
+                                        <CardTitle className="text-lg">Custom Content Creation</CardTitle>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
                                 </CardHeader>
                             </Card>
                         )}
