@@ -267,7 +267,7 @@ export function KnowledgeBaseClientPage({
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">Max {MAX_FILE_SIZE_MB}MB. Supported format: PDF.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Max ${MAX_FILE_SIZE_MB}MB. Supported format: PDF.</p>
                             </div>
                             <div className="space-y-3">
                                 <h4 className="font-medium">Uploaded Documents</h4>
