@@ -13,9 +13,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
-import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../actions';
+import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, processAndEmbedDocument } from '../actions';
 import { getFileDownloadUrl } from '../getFileDownloadUrl';
-import { processAndEmbedDocument } from '../processAndEmbedDocument';
+import { parseDocumentClientSide } from '../process-document-client';
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -33,7 +33,7 @@ export interface KnowledgeBaseClientPageProps {
     deleteBrandDocumentAction: typeof deleteBrandDocument;
     uploadBrandDocumentAction: typeof uploadBrandDocument;
     askRagAction: typeof askRag;
-    generateAndStoreEmbeddingsAction: typeof generateAndStoreEmbeddings;
+    processAndEmbedDocumentAction: typeof processAndEmbedDocument;
 }
 
 export function KnowledgeBaseClientPage({
@@ -42,7 +42,7 @@ export function KnowledgeBaseClientPage({
     deleteBrandDocumentAction,
     uploadBrandDocumentAction,
     askRagAction,
-    generateAndStoreEmbeddingsAction,
+    processAndEmbedDocumentAction,
 }: KnowledgeBaseClientPageProps) {
     const [documents, setDocuments] = useState(initialDocuments);
     const [isLoading, setIsLoading] = useState(false);
@@ -124,20 +124,32 @@ export function KnowledgeBaseClientPage({
             }
         });
     };
-
+    
     const handleProcessDocument = (filePath: string, documentGroupId: string) => {
+        console.log(`[handleProcessDocument] Client-side processing for documentGroupId: ${documentGroupId}`);
         setProcessingId(documentGroupId);
         startProcessing(async () => {
             try {
-                const result = await processAndEmbedDocument(filePath, documentGroupId);
+                // Step 1: Get a secure download URL from the server
+                const { signedUrl } = await getFileDownloadUrl(filePath);
+
+                // Step 2: Parse the document on the client-side
+                const chunks = await parseDocumentClientSide(signedUrl);
+
+                // Step 3: Send the extracted text chunks to the server for embedding
+                const result = await processAndEmbedDocumentAction(chunks, documentGroupId);
+                
                 toast({ title: 'Processing Complete', description: result.message });
             } catch (error: any) {
+                console.error('[handleProcessDocument] Client-side processing failed:', error);
                 toast({ variant: 'destructive', title: 'Processing Failed', description: error.message });
             } finally {
+                console.log(`[handleProcessDocument] Finished client-side processing for documentGroupId: ${documentGroupId}`);
                 setProcessingId(null);
             }
         });
     };
+
 
     const handleChatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -312,4 +324,3 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-    
