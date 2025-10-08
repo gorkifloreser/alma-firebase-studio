@@ -508,6 +508,14 @@ export default function ArtisanPage() {
     };
     const availableCreativeOptions = useMemo(() => {
         const currentChannel = (workflowMode === 'campaign' && selectedArtisanItemId) ? allArtisanItems.find(i => i.id === selectedArtisanItemId)?.user_channel_settings?.channel_name : null;
+        const baseOptions = [
+            { id: 'text', label: 'Text Only', icon: Type },
+            { id: 'image', label: 'Single Image', icon: ImageIcon },
+            { id: 'carousel', label: 'Carousel', icon: Layers },
+            { id: 'video', label: 'Video', icon: Video },
+            { id: 'landing_page', label: 'Landing Page', icon: Globe },
+        ];
+        
         if (workflowMode === 'campaign' && currentChannel) {
             const formats = getFormatsForChannel(currentChannel);
             const options = new Set<CreativeType>();
@@ -522,21 +530,9 @@ export default function ArtisanPage() {
             if (options.has('image') || options.has('carousel') || options.has('video')) {
                 options.add('text');
             }
-            return [
-                { id: 'text', label: 'Text Only', icon: Type },
-                { id: 'image', label: 'Single Image', icon: ImageIcon },
-                { id: 'carousel', label: 'Carousel', icon: Layers },
-                { id: 'video', label: 'Video', icon: Video },
-                { id: 'landing_page', label: 'Landing Page', icon: Globe },
-            ].filter(opt => options.has(opt.id));
+            return baseOptions.filter(opt => options.has(opt.id));
         }
-        return [
-            { id: 'text', label: 'Text Only', icon: Type },
-            { id: 'image', label: 'Single Image', icon: ImageIcon },
-            { id: 'carousel', label: 'Carousel', icon: Layers },
-            { id: 'video', label: 'Video', icon: Video },
-            { id: 'landing_page', label: 'Landing Page', icon: Globe },
-        ];
+        return baseOptions;
     }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
 
     const finalPromptForCurrentVisual = useMemo(() => {

@@ -565,7 +565,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
     }
     
     console.log(`[ACTION] Updating status to 'queued_for_generation' for ${mediaPlanItemIds.length} items...`);
-    const { error: statusError } = await supabase
+    const { count, error: statusError } = await supabase
         .from('media_plan_items')
         .update({ status: 'queued_for_generation' })
         .in('id', mediaPlanItemIds)
@@ -576,7 +576,7 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
         throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
     }
 
-    console.log('[ACTION] Status update successful.');
+    console.log(`[ACTION] Status update successful. Rows affected: ${count}`);
     console.log('[ACTION] Revalidating path: /artisan');
     revalidatePath('/artisan');
     

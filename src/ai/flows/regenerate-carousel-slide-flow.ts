@@ -95,7 +95,7 @@ const regenerateCarouselSlideFlow = ai.defineFlow(
     const finalPrompt = promptOutput.text;
 
     const { media } = await ai.generate({
-      model: googleAI.model('imagen-4.0-fast-generate-001'),
+      model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
       prompt: finalPrompt,
     });
 
