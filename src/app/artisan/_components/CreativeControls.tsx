@@ -93,6 +93,7 @@ type CreativeControlsProps = {
     isSaving: boolean;
     handleSave: (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => void;
     hasContent: boolean;
+    onSelectCampaign: () => void;
 };
 
 export const CreativeControls: React.FC<CreativeControlsProps> = ({
@@ -128,6 +129,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     isSaving,
     handleSave,
     hasContent,
+    onSelectCampaign
 }) => {
     return (
         <Card>
@@ -150,7 +152,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
 
                 <div className="space-y-2">
                     <Label htmlFor="queue-select" className="flex items-center justify-between">
-                        <span>Choose an Item to Work On</span>
+                        <span className="truncate">Choose an Item to Work On</span>
                         {workflowMode === 'campaign' && totalCampaignItems > 0 && (
                             <span className="text-sm font-medium text-muted-foreground">
                                 ({doneCount}/{totalCampaignItems})
