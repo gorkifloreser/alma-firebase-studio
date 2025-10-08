@@ -14,7 +14,7 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow, Edit } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow, Edit, SendHorizonal } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -28,6 +28,7 @@ import { CreativeControls } from './_components/CreativeControls';
 import { PostPreview } from './_components/PostPreview';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import Image from 'next/image';
 
 type Profile = {
     full_name: string | null;
@@ -78,28 +79,101 @@ const MediaSelectionDialog = ({
 };
 
 const ImageChatDialog = ({
-    isOpen,
-    onOpenChange,
-    imageUrl,
-    onImageUpdate,
+  isOpen,
+  onOpenChange,
+  imageUrl,
+  onImageUpdate,
 }: {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    imageUrl: string | null;
-    onImageUpdate: (newImageUrl: string) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  imageUrl: string | null;
+  onImageUpdate: (newImageUrl: string) => void;
 }) => {
-    // Implementation is unchanged.
-    return (
-         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Chat with Your Image</DialogTitle>
-                    <DialogDescription>Give the AI conversational instructions to edit your image.</DialogDescription>
-                </DialogHeader>
-                {/* Content of the dialog... */}
-            </DialogContent>
-        </Dialog>
-    );
+  const [history, setHistory] = useState<{ instruction: string; resultUrl: string }[]>([]);
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [isEditing, startEditing] = useTransition();
+  const { toast } = useToast();
+
+  const lastImageUrl = history.length > 0 ? history[history.length - 1].resultUrl : imageUrl;
+
+  const handleEdit = async () => {
+    if (!currentPrompt.trim() || !lastImageUrl) return;
+
+    startEditing(async () => {
+      try {
+        const { editedImageUrl } = await editImageWithInstruction({
+          imageUrl: lastImageUrl,
+          instruction: currentPrompt,
+        });
+        setHistory(prev => [...prev, { instruction: currentPrompt, resultUrl: editedImageUrl }]);
+        setCurrentPrompt('');
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Editing Failed', description: error.message });
+      }
+    });
+  };
+
+  if (!imageUrl) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Chat with Your Image</DialogTitle>
+          <DialogDescription>
+            Give the AI conversational instructions to edit your image.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid md:grid-cols-2 gap-6 flex-1 min-h-0">
+          <div className="flex flex-col gap-4">
+            <div className="relative aspect-square border rounded-lg overflow-hidden bg-muted">
+              {isEditing ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <p className="mt-2">AI is working its magic...</p>
+                </div>
+              ) : null}
+              {lastImageUrl && <Image src={lastImageUrl} alt="Current image" fill className="object-contain" />}
+            </div>
+            <div className="flex gap-2">
+                <Textarea
+                    value={currentPrompt}
+                    onChange={(e) => setCurrentPrompt(e.target.value)}
+                    placeholder="e.g., 'make the background blue' or 'add a bird in the sky'"
+                    disabled={isEditing}
+                    className="flex-1 resize-none"
+                    onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEdit(); }}}
+                />
+                <Button onClick={handleEdit} disabled={isEditing || !currentPrompt.trim()}>
+                    <SendHorizonal className="h-4 w-4" />
+                </Button>
+            </div>
+          </div>
+          <div className="border-l pl-4 flex flex-col">
+            <h4 className="font-semibold mb-2">History</h4>
+            <div className="flex-1 overflow-y-auto space-y-4">
+                {history.length === 0 ? (
+                    <div className="text-center text-muted-foreground pt-10">
+                        <p>Your edits will appear here.</p>
+                    </div>
+                ) : (
+                    history.map((item, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm">
+                            <span className="font-semibold">{index + 1}.</span>
+                            <p className="flex-1 p-2 bg-secondary rounded-md">{item.instruction}</p>
+                        </div>
+                    ))
+                )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => { if(lastImageUrl) onImageUpdate(lastImageUrl); onOpenChange(false); }} disabled={history.length === 0}>Use This Image</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const AddTextDialog = ({
@@ -720,8 +794,8 @@ export default function ArtisanPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                         <div className="col-span-full">
-                            {workflowMode === 'campaign' && selectedCampaign && (
+                        <div className="col-span-full">
+                            {workflowMode === 'campaign' && selectedCampaign ? (
                                 <Card>
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <div>
@@ -734,8 +808,7 @@ export default function ArtisanPage() {
                                         <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
                                     </CardHeader>
                                 </Card>
-                            )}
-                             {workflowMode === 'custom' && (
+                            ) : workflowMode === 'custom' ? (
                                 <Card>
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <div>
@@ -748,8 +821,8 @@ export default function ArtisanPage() {
                                         <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
                                     </CardHeader>
                                 </Card>
-                            )}
-                         </div>
+                            ) : null}
+                        </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             <aside className="space-y-8 lg:sticky top-24">
