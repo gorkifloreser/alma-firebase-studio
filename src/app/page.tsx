@@ -63,12 +63,12 @@ export default async function Home() {
   const completionStatus = await getCompletionStatus(user.id);
   
   const steps: Step[] = [
-    { name: 'Brand Heart', href: '/brand', icon: Heart, description: "Define el alma de tu marca para guiar a la IA.", isComplete: completionStatus.brandHeart },
-    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: "Crea los productos y servicios que ofreces.", isComplete: completionStatus.offerings },
-    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: "Genera un plan estratégico para una oferta.", isComplete: completionStatus.funnels },
-    { name: 'AI Artisan', href: '/artisan', icon: Wand2, description: "Crea y personaliza el contenido para tus campañas.", isComplete: completionStatus.aiArtisan },
-    { name: 'AI Scheduler', href: '/calendar', icon: Calendar, description: "Organiza y visualiza tu calendario de contenidos.", isComplete: completionStatus.calendar },
-    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: "Cosecha testimonios y reutilízalos como contenido.", isComplete: completionStatus.harvestCircle },
+    { name: 'Brand Heart', href: '/brand', icon: Heart, description: "Define your brand's soul to guide the AI.", isComplete: completionStatus.brandHeart },
+    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: "Create the products and services you offer.", isComplete: completionStatus.offerings },
+    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: "Generate a strategic plan for an offering.", isComplete: completionStatus.funnels },
+    { name: 'AI Artisan', href: '/artisan', icon: Wand2, description: "Create and personalize content for your campaigns.", isComplete: completionStatus.aiArtisan },
+    { name: 'AI Scheduler', href: '/calendar', icon: Calendar, description: "Organize and visualize your content calendar.", isComplete: completionStatus.calendar },
+    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: "Harvest testimonials and reuse them as content.", isComplete: completionStatus.harvestCircle },
   ];
 
   const completedSteps = steps.filter(step => step.isComplete).length;
