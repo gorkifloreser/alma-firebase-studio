@@ -56,7 +56,7 @@ export function DashboardLayoutClient({
     <SidebarProvider>
       {console.log('[DashboardLayoutClient] Step 3: SidebarProvider rendered.')}
       <div className="flex min-h-screen bg-background">
-        <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-mesh-gradient")}>
+        <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-transparent")}>
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                 <div className="bg-primary rounded-lg p-1.5">
