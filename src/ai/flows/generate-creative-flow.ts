@@ -48,6 +48,7 @@ export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema
 // Prompt for generating main text content
 const contentPrompt = ai.definePrompt({
   name: 'generateContentOnlyPrompt',
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
@@ -77,6 +78,7 @@ Return the result in the specified JSON format.`,
 
 const masterImagePrompt = ai.definePrompt({
     name: 'masterImagePromptGenerator',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
@@ -115,6 +117,7 @@ Output only the final prompt string.`,
 
 const carouselPrompt = ai.definePrompt({
     name: 'generateCarouselPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
@@ -243,7 +246,7 @@ export const generateCreativeFlow = ai.defineFlow(
         }
 
         visualPromises.push(ai.generate({
-            model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-3.0-generate-preview'),
+            model: googleAI.model(process.env.GENKIT_VIDEO_MODEL || 'veo-3.0-generate-preview'),
             prompt: videoPromptPayload,
             config: { durationSeconds: 5, aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {

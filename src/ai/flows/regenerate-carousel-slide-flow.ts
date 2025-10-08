@@ -27,6 +27,7 @@ export type RegenerateCarouselSlideOutput = z.infer<typeof RegenerateCarouselSli
 
 const masterImagePrompt = ai.definePrompt({
     name: 'masterImagePromptForRegen', 
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
