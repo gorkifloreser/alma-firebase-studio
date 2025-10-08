@@ -14,7 +14,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
@@ -575,14 +575,14 @@ export default function ArtisanPage() {
         <DashboardLayout>
             <Toaster />
              <Dialog open={isDialogOpen && workflowMode === null} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Choose Your Creative Workflow</DialogTitle>
                         <DialogDescription>
                             Start by selecting an existing media plan or create content freely.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-6 pt-4">
                         <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
                             <CardHeader>
                                 <Wand2 className="w-8 h-8 text-primary mb-2" />
@@ -594,28 +594,26 @@ export default function ArtisanPage() {
                                 </p>
                             </CardContent>
                         </Card>
-                        <Card>
-                            <CardHeader>
-                                <Sparkles className="w-8 h-8 text-primary mb-2" />
-                                <CardTitle>From a Media Plan</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Select one of your AI-generated media plans to work on its content queue.
-                                </p>
-                                {mediaPlans.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {mediaPlans.map(plan => (
-                                            <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
-                                                {plan.title}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-center text-muted-foreground border p-4 rounded-md">No media plans found. Create one in the AI Strategist.</p>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <div className="space-y-2">
+                             <h3 className="font-semibold flex items-center gap-2 text-foreground">
+                                 <Sparkles className="w-5 h-5 text-primary" />
+                                 From a Media Plan
+                            </h3>
+                             <p className="text-sm text-muted-foreground">
+                                Select one of your AI-generated media plans to work on its content queue.
+                            </p>
+                            {mediaPlans.length > 0 ? (
+                                <div className="space-y-2 pt-2">
+                                    {mediaPlans.map(plan => (
+                                        <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
+                                            {plan.title}
+                                        </Button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-center text-muted-foreground border p-4 rounded-md mt-2">No media plans found. Create one in the AI Strategist.</p>
+                            )}
+                        </div>
                     </div>
                 </DialogContent>
              </Dialog>
