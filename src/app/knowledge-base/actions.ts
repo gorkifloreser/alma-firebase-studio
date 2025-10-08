@@ -4,8 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import { embed } from '@genkit-ai/ai';
-import { textEmbedding004 } from '@/ai/genkit';
+import { embedChunks } from '@/ai/genkit';
 
 
 export type BrandDocument = {
@@ -92,31 +91,19 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
     const user = authData.user;
     console.log(`[generateAndStoreEmbeddings] Authenticated user ID: ${user.id}`);
 
-    console.log('[generateAndStoreEmbeddings] Calling AI to generate embeddings with RETRIEVAL_DOCUMENT task type...');
-    console.log('[generateAndStoreEmbeddings] Chunks to be embedded:', JSON.stringify(validChunks, null, 2));
+    console.log(`[generateAndStoreEmbeddings] Calling Genkit action 'embedChunks'...`);
+    
     let embeddingResponse;
     try {
-        embeddingResponse = await embed(
-            textEmbedding004,
-            validChunks,
-            { taskType: "RETRIEVAL_DOCUMENT" },
-        );
+        embeddingResponse = await embedChunks(validChunks);
+        
     } catch (e: any) {
-        console.error('[generateAndStoreEmbeddings] CRITICAL: embed() call failed. Full error details below:');
-        console.error('Error Object:', JSON.stringify(e, null, 2));
-        console.error('Error Message:', e.message);
-        console.error('Error Stack:', e.stack);
-        if (e.cause) {
-            console.error('Root Cause:', e.cause);
-        }
-        console.error('[generateAndStoreEmbeddings] The specific error message is:', e.message);
-        console.error('[generateAndStoreEmbeddings] Chunks that caused the error:', JSON.stringify(validChunks, null, 2));
+        console.error('[generateAndStoreEmbeddings] CRITICAL: Genkit action failed.', e);
         throw new Error(`Failed to generate embeddings. Original error: ${e.message}`);
     }
 
-    console.log(`[generateAndStoreEmbeddings] Raw embeddings response received. Length: ${embeddingResponse?.length}`);
-    console.log('[generateAndStoreEmbeddings] Full response from Genkit embed():', JSON.stringify(embeddingResponse, null, 2));
-
+    console.log(`[generateAndStoreEmbeddings] Response from action received. Length: ${embeddingResponse?.length}`);
+    
     if (!embeddingResponse || !Array.isArray(embeddingResponse) || embeddingResponse.length !== validChunks.length) {
         console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddingResponse?.length}).`);
         throw new Error('The number of embeddings returned does not match the number of chunks.');
@@ -242,5 +229,3 @@ export async function askRag(query: string): Promise<RagOutput> {
     }
     return await askMyDocuments({ query });
 }
-
-    
