@@ -12,7 +12,6 @@ import {
   Calendar,
   Star,
   CheckCircle2,
-  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -64,11 +63,11 @@ export default async function Home() {
   
   const steps: Step[] = [
     { name: 'Brand Heart', href: '/brand', icon: Heart, description: "Define your brand's soul to guide the AI.", isComplete: completionStatus.brandHeart },
-    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: "Create the products and services you offer.", isComplete: completionStatus.offerings },
-    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: "Generate a strategic plan for an offering.", isComplete: completionStatus.funnels },
+    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: 'Create the products and services you offer.', isComplete: completionStatus.offerings },
+    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: 'Generate a strategic plan for an offering.', isComplete: completionStatus.funnels },
     { name: 'AI Artisan', href: '/artisan', icon: Wand2, description: "Create and personalize content for your campaigns.", isComplete: completionStatus.aiArtisan },
-    { name: 'AI Scheduler', href: '/calendar', icon: Calendar, description: "Organize and visualize your content calendar.", isComplete: completionStatus.calendar },
-    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: "Harvest testimonials and reuse them as content.", isComplete: completionStatus.harvestCircle },
+    { name: 'AI Scheduler', href: '/calendar', icon: Calendar, description: 'Organize and visualize your content calendar.', isComplete: completionStatus.calendar },
+    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: 'Harvest testimonials and reuse them as content.', isComplete: completionStatus.harvestCircle },
   ];
 
   const completedSteps = steps.filter(step => step.isComplete).length;
