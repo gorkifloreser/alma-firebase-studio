@@ -1,9 +1,11 @@
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
 import { ai } from '@/ai/genkit';
+
 
 export type BrandDocument = {
     id: string;
@@ -94,7 +96,6 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
     let embeddings;
     try {
         embeddings = await ai.embed({
-            model: 'models/text-embedding-004',
             input: validChunks,
             task_type: "RETRIEVAL_DOCUMENT",
         });
