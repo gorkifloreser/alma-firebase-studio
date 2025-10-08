@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { createContentFromTestimonial as createContentFromTestimonialFlow } from '@/ai/flows/create-content-from-testimonial-flow';
+import { createContentFromTestimonialFlow } from '@/ai/flows/create-content-from-testimonial-flow';
 
 export type HarvestItem = {
     id: string;
