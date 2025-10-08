@@ -276,7 +276,7 @@ export const generateCreativeFlow = ai.defineFlow(
                 });
             } else {
                 generationResult = await ai.generate({
-                    model: googleAI.model('imagen-4.0-fast-generate-001'),
+                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-fast-generate-001'),
                     prompt: finalImagePrompt,
                 });
             }
@@ -299,7 +299,7 @@ export const generateCreativeFlow = ai.defineFlow(
                     const finalSlidePrompt = slide.creativePrompt; // The prompt is now final and complete from the carouselPrompt
 
                     const { media } = await ai.generate({
-                        model: googleAI.model('imagen-4.0-fast-generate-001'),
+                        model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-fast-generate-001'),
                         prompt: finalSlidePrompt,
                     });
                     
@@ -331,5 +331,3 @@ export const generateCreativeFlow = ai.defineFlow(
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
     return generateCreativeFlow(input);
 }
-
-    

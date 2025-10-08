@@ -37,7 +37,7 @@ export type GenerateOfferingDraftInput = z.infer<typeof GenerateOfferingDraftInp
 
 const prompt = ai.definePrompt({
   name: 'generateOfferingDraftPrompt',
-  model: googleAI.model('gemini-2.5-flash'),
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
   input: {
       schema: z.object({
           brandHeart: z.any(),

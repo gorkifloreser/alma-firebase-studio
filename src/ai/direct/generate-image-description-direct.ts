@@ -11,7 +11,8 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+const modelName = process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash-latest';
+const model = genAI.getGenerativeModel({ model: modelName });
 
 function dataUriToGenerativePart(uri: string): Part {
     const match = uri.match(/^data:(.+);base64,(.+)$/);
@@ -50,7 +51,7 @@ Use the following context about the offering this image is for to inform your de
 - Offering Title: ${input.contextTitle || 'N/A'}
 - Offering Description: ${input.contextDescription || 'N/A'}`;
 
-        console.log('Direct AI Action: Calling Gemini Pro Vision API.');
+        console.log(`Direct AI Action: Calling Gemini Pro Vision API with model ${modelName}.`);
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const text = response.text();
