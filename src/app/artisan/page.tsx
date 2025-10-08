@@ -14,7 +14,7 @@ import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video } from 'lucide-react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
