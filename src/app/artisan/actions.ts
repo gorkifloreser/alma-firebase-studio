@@ -193,10 +193,23 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         offeringId
     } = input;
 
-    if (!mediaPlanItemId) {
-        console.error('[saveContent] -- ERROR -- Falta `mediaPlanItemId`. Es requerido para guardar el contenido.');
-        throw new Error('A media_plan_item_id is required to save content.');
+    if (!mediaPlanItemId && status !== 'draft') {
+        // If it's a new custom item, it should start as a draft.
+        // We'll create the record first.
+        const { data: newMediaItem, error: createError } = await supabase.from('media_plan_items').insert({
+            user_id: user.id,
+            offering_id: offeringId,
+            status: 'draft',
+            concept: 'Custom Content'
+        }).select().single();
+
+        if (createError) {
+            console.error('[saveContent] -- ERROR -- Could not create new draft media item:', createError);
+            throw new Error(`Could not create a new draft item. DB Error: ${createError.message}`);
+        }
+        input.mediaPlanItemId = newMediaItem.id;
     }
+
 
     let finalImageUrl = imageUrl;
     if (imageUrl && imageUrl.startsWith('data:image')) {
@@ -239,7 +252,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
     const { data, error } = await supabase
         .from('media_plan_items')
         .update(payload)
-        .eq('id', mediaPlanItemId)
+        .eq('id', input.mediaPlanItemId!)
         .select(`
             *, 
             offerings(*), 

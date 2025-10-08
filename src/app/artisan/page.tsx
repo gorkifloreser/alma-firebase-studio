@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -477,7 +478,6 @@ export default function ArtisanPage() {
         }));
     };
 
-    // Other handlers (startCampaignWorkflow, startCustomWorkflow, etc.) are unchanged and omitted for brevity.
     const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
@@ -567,12 +567,60 @@ export default function ArtisanPage() {
     return (
         <DashboardLayout>
             <Toaster />
+            {workflowMode === null && (
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                     <DialogContent>
+                         <DialogHeader>
+                             <DialogTitle>Choose Your Creative Workflow</DialogTitle>
+                             <DialogDescription>
+                                 Start by selecting an existing media plan or create content freely.
+                             </DialogDescription>
+                         </DialogHeader>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                             <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
+                                <CardHeader>
+                                    <Wand2 className="w-8 h-8 text-primary mb-2" />
+                                    <CardTitle>Freestyle Creation</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">
+                                        Generate any type of content for any of your offerings on the fly.
+                                    </p>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                 <CardHeader>
+                                     <Sparkles className="w-8 h-8 text-primary mb-2" />
+                                     <CardTitle>From a Media Plan</CardTitle>
+                                 </CardHeader>
+                                 <CardContent>
+                                     <p className="text-sm text-muted-foreground mb-4">
+                                        Select one of your AI-generated media plans to work on its content queue.
+                                    </p>
+                                    {mediaPlans.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {mediaPlans.map(plan => (
+                                                <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
+                                                    {plan.title}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-center text-muted-foreground border p-4 rounded-md">No media plans found. Create one in the AI Strategist.</p>
+                                    )}
+                                 </CardContent>
+                             </Card>
+                         </div>
+                     </DialogContent>
+                 </Dialog>
+             )}
             {savedContent && (
                 <EditContentDialog 
                     isOpen={isEditDialogOpen} 
                     onOpenChange={setIsEditDialogOpen} 
                     contentItem={savedContent}
                     onContentUpdated={handleContentUpdated}
+                    onContentDeleted={() => {}}
                 />
             )}
              {/* All other Dialogs go here... */}
