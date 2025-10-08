@@ -12,7 +12,7 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -523,18 +523,18 @@ export default function ArtisanPage() {
                 options.add('text');
             }
             return [
-                { id: 'text', label: 'Text Only', icon: ImageIcon },
+                { id: 'text', label: 'Text Only', icon: Type },
                 { id: 'image', label: 'Single Image', icon: ImageIcon },
-                { id: 'carousel', label: 'Carousel', icon: ImageIcon },
-                { id: 'video', label: 'Video', icon: ImageIcon },
+                { id: 'carousel', label: 'Carousel', icon: Layers },
+                { id: 'video', label: 'Video', icon: Video },
                 { id: 'landing_page', label: 'Landing Page', icon: Globe },
             ].filter(opt => options.has(opt.id));
         }
         return [
-            { id: 'text', label: 'Text Only', icon: ImageIcon },
+            { id: 'text', label: 'Text Only', icon: Type },
             { id: 'image', label: 'Single Image', icon: ImageIcon },
-            { id: 'carousel', label: 'Carousel', icon: ImageIcon },
-            { id: 'video', label: 'Video', icon: ImageIcon },
+            { id: 'carousel', label: 'Carousel', icon: Layers },
+            { id: 'video', label: 'Video', icon: Video },
             { id: 'landing_page', label: 'Landing Page', icon: Globe },
         ];
     }, [workflowMode, selectedArtisanItemId, allArtisanItems]);

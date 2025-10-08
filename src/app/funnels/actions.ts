@@ -543,12 +543,28 @@ export async function deleteMediaPlan(planId: string): Promise<{ message: string
 }
 
 export async function addMultipleToArtisanQueue(funnelId: string, offeringId: string, mediaPlanItemIds: string[]): Promise<{ count: number }> {
+    console.log(`[ACTION: addMultipleToArtisanQueue] -- START --`);
+    console.log(`[ACTION] Funnel ID: ${funnelId}, Offering ID: ${offeringId}`);
+    console.log(`[ACTION] Item IDs to queue: ${JSON.stringify(mediaPlanItemIds)}`);
+
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-    if (mediaPlanItemIds.length === 0) return { count: 0 };
-    if (!offeringId) throw new Error("An offering ID is required to queue items.");
+    if (!user) {
+        console.error('[ACTION] -- ERROR -- User not authenticated. Aborting.');
+        throw new Error('User not authenticated');
+    }
+    console.log(`[ACTION] Authenticated User ID: ${user.id}`);
 
+    if (mediaPlanItemIds.length === 0) {
+        console.log('[ACTION] -- INFO -- No item IDs provided. Nothing to do. Exiting.');
+        return { count: 0 };
+    }
+    if (!offeringId) {
+        console.error('[ACTION] -- ERROR -- Offering ID is required but was not provided. Aborting.');
+        throw new Error("An offering ID is required to queue items.");
+    }
+    
+    console.log(`[ACTION] Updating status to 'queued_for_generation' for ${mediaPlanItemIds.length} items...`);
     const { error: statusError } = await supabase
         .from('media_plan_items')
         .update({ status: 'queued_for_generation' })
@@ -556,11 +572,15 @@ export async function addMultipleToArtisanQueue(funnelId: string, offeringId: st
         .eq('user_id', user.id);
         
     if (statusError) {
-        console.error('Bulk status update failed:', statusError);
+        console.error('[ACTION] -- ERROR -- Bulk status update failed:', statusError);
         throw new Error(`Could not update item statuses. DB Error: ${statusError.message}`);
     }
-    
+
+    console.log('[ACTION] Status update successful.');
+    console.log('[ACTION] Revalidating path: /artisan');
     revalidatePath('/artisan');
+    
+    console.log(`[ACTION: addMultipleToArtisanQueue] -- END -- Successfully queued ${mediaPlanItemIds.length} items.`);
     return { count: mediaPlanItemIds.length };
 }
 
