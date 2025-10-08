@@ -4,15 +4,18 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
 import { KnowledgeBaseClientPage } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
+import { AccountsClientPage } from "@/app/accounts/_components/AccountsClientPage";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, BrainCircuit } from 'lucide-react';
+import { Heart, BrainCircuit, CreditCard } from 'lucide-react';
 import type { BrandHeartFormProps } from "@/app/brand-heart/_components/BrandHeartForm";
 import type { KnowledgeBaseClientPageProps } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
+import type { AccountsClientPageProps } from "@/app/accounts/_components/AccountsClientPage";
 
 interface BrandTabsProps {
     data: {
         brandHeart: BrandHeartFormProps;
         knowledgeBase: KnowledgeBaseClientPageProps;
+        accounts: AccountsClientPageProps;
     };
 }
 
@@ -22,13 +25,14 @@ export function BrandTabs({ data }: BrandTabsProps) {
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header>
                 <h1 className="text-3xl font-bold">Brand Soul</h1>
-                <p className="text-muted-foreground">Define your brand"s core identity and knowledge.</p>
+                <p className="text-muted-foreground">Define your brand's core identity, knowledge, and integrations.</p>
             </header>
             <Tabs defaultValue="brand-heart" className="w-full">
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="brand-heart" className="gap-2"><Heart className="h-4 w-4" /> Brand Heart</TabsTrigger>
                         <TabsTrigger value="knowledge-base" className="gap-2"><BrainCircuit className="h-4 w-4" /> Knowledge Base</TabsTrigger>
+                        <TabsTrigger value="accounts" className="gap-2"><CreditCard className="h-4 w-4" /> Accounts</TabsTrigger>
                     </TabsList>
                 </div>
                 <TabsContent value="brand-heart" className="mt-6">
@@ -46,6 +50,9 @@ export function BrandTabs({ data }: BrandTabsProps) {
                 </TabsContent>
                 <TabsContent value="knowledge-base" className="mt-6">
                      <KnowledgeBaseClientPage {...data.knowledgeBase} />
+                </TabsContent>
+                <TabsContent value="accounts" className="mt-6">
+                     <AccountsClientPage {...data.accounts} />
                 </TabsContent>
             </Tabs>
         </div>
@@ -71,3 +78,17 @@ declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {
         askRagAction: any;
     }
 }
+
+declare module "@/app/accounts/_components/AccountsClientPage" {
+    export interface AccountsClientPageProps {
+        initialUserChannels: any[];
+        socialConnections: any[];
+        updateUserChannelsAction: any;
+        updateChannelBestPracticesAction: any;
+        getMetaOAuthUrl: any;
+        disconnectMetaAccount: any;
+        setActiveConnection: any;
+        getSocialConnections: any;
+    }
+}
+

@@ -35,15 +35,14 @@ import { UserNav } from '@/components/auth/UserNav';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/brand', label: 'Brand', icon: Heart },
-  { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
-  { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
-  { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
-  { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
-  { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
-  { href: '/accounts', label: 'Accounts', icon: CreditCard },
-  { href: '/imports', label: 'Imports', icon: Import },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/brand', label: 'Brand', icon: Heart },
+    { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
+    { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
+    { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
+    { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
+    { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
+    { href: '/imports', label: 'Imports', icon: Import },
 ];
 
 export function DashboardLayoutClient({

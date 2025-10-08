@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
 import { getBrandHeart, updateBrandHeart, translateText } from '../brand-heart/actions';
 import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument, generateAndStoreEmbeddings } from '../knowledge-base/actions';
+import { getUserChannels, updateUserChannels, updateChannelBestPractices, getSocialConnections, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
 import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
 
@@ -17,10 +18,12 @@ export default async function BrandPage() {
         redirect('/login');
     }
 
-    const [profile, brandHeart, documents] = await Promise.all([
+    const [profile, brandHeart, documents, userChannels, socialConnections] = await Promise.all([
         getProfile(),
         getBrandHeart(),
         getBrandDocuments(),
+        getUserChannels(),
+        getSocialConnections(),
     ]);
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -41,6 +44,16 @@ export default async function BrandPage() {
             askRagAction: askRag,
             parseDocumentAction: parseDocument,
             generateAndStoreEmbeddingsAction: generateAndStoreEmbeddings,
+        },
+        accounts: {
+            initialUserChannels: userChannels,
+            socialConnections: socialConnections,
+            updateUserChannelsAction: updateUserChannels,
+            updateChannelBestPracticesAction: updateChannelBestPractices,
+            getMetaOAuthUrl: getMetaOAuthUrl,
+            disconnectMetaAccount: disconnectMetaAccount,
+            setActiveConnection: setActiveConnection,
+            getSocialConnections: getSocialConnections,
         },
     };
 
