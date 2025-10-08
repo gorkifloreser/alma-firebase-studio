@@ -84,6 +84,7 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
     const embeddings = await ai.embed({
         model: 'googleai/text-embedding-preview-0518',
         input: chunks,
+        outputDimensionality: 768,
     });
 
     if (embeddings.length !== chunks.length) {
@@ -205,3 +206,5 @@ export async function askRag(query: string): Promise<RagOutput> {
     }
     return await askMyDocuments({ query });
 }
+
+    

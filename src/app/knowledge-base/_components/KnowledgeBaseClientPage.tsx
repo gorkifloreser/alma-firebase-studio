@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition, useRef } from 'react';
+import React, { useState, useTransition, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 
 
 import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../actions';
+import { getFileDownloadUrl } from '../getFileDownloadUrl';
 
 
 const MAX_FILE_SIZE_MB = 5;
@@ -68,6 +69,16 @@ export function KnowledgeBaseClientPage({
     const [parsingResult, setParsingResult] = useState<{chunks: string[], documentGroupId: string} | null>(null);
     const [isStoring, startStoring] = useTransition();
 
+    const fetchDocumentFile = useCallback(async (filePath: string): Promise<File> => {
+        const { signedUrl } = await getFileDownloadUrl(filePath);
+        const response = await fetch(signedUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to download file: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        const fileName = filePath.split('/').pop() || 'downloaded-file';
+        return new File([blob], fileName, { type: blob.type });
+    }, []);
 
     const fetchAllData = async () => {
         setIsLoading(true);
@@ -112,14 +123,16 @@ export function KnowledgeBaseClientPage({
         formData.append('document', selectedFile);
 
         startUploading(async () => {
+            console.log('[handleDocumentUpload] Start');
             try {
                 const { filePath, documentGroupId } = await uploadBrandDocumentAction(formData);
-                toast({ title: 'Success!', description: 'Document uploaded. Now parsing...', duration: 2000 });
+                console.log('[handleDocumentUpload] Success:', { filePath, documentGroupId });
+                toast({ title: 'Success!', description: 'Document uploaded successfully.', duration: 2000 });
                 setSelectedFile(null);
                 if(fileInputRef.current) fileInputRef.current.value = "";
                 await fetchAllData();
-                await handleParseDocument(filePath, documentGroupId, selectedFile);
             } catch (error: any) {
+                console.error('[handleDocumentUpload] Error:', error);
                 toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
             }
         });
@@ -128,11 +141,14 @@ export function KnowledgeBaseClientPage({
     const handleDocumentDelete = (groupId: string) => {
         setDeletingId(groupId);
         startDeletingTransition(async () => {
+            console.log(`[handleDocumentDelete] Start deleting document group: ${groupId}`);
             try {
                 const result = await deleteBrandDocumentAction(groupId);
+                console.log(`[handleDocumentDelete] Success:`, result);
                 toast({ title: 'Success!', description: result.message });
                 await fetchAllData();
             } catch (error: any) {
+                console.error(`[handleDocumentDelete] Error deleting document group ${groupId}:`, error);
                 toast({ variant: 'destructive', title: 'Deletion failed', description: error.message });
             } finally {
                 setDeletingId(null);
@@ -140,38 +156,50 @@ export function KnowledgeBaseClientPage({
         });
     };
     
-    const handleParseDocument = async (filePath: string, documentGroupId: string, file: File) => {
+    const handleParseDocument = async (filePath: string, documentGroupId: string) => {
         setParsingId(filePath);
         startParsing(async () => {
             try {
-                const buffer = await file.arrayBuffer();
-                const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
-                const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
+                const file = await fetchDocumentFile(filePath);
+                console.log(`[handleParseDocument] Start parsing file: ${file.name} (type: ${file.type})`);
+                
                 let fullText = "";
+                if (file.type === 'application/pdf') {
+                    console.log('[handleParseDocument] Parsing PDF...');
+                    const buffer = await file.arrayBuffer();
+                    const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
+                    const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
 
-                for (let i = 1; i <= pdfDoc.numPages; i++) {
-                    const page = await pdfDoc.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
+                    for (let i = 1; i <= pdfDoc.numPages; i++) {
+                        const page = await pdfDoc.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
+                    }
+                } else {
+                    console.log('[handleParseDocument] Parsing text file...');
+                    fullText = await file.text();
                 }
                 
-                const lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                console.log('[handleParseDocument] Text extracted. Starting chunking...');
+                const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [];
                 const chunks: string[] = [];
                 let currentChunk = '';
 
-                for (const line of lines) {
-                    if (currentChunk.length + line.length + 1 <= 1500) {
-                        currentChunk += (currentChunk ? ' ' : '') + line;
+                for (const sentence of sentences) {
+                    if (currentChunk.length + sentence.length + 1 <= 1500) {
+                        currentChunk += (currentChunk ? ' ' : '') + sentence;
                     } else {
                         if (currentChunk) chunks.push(currentChunk);
-                        currentChunk = line;
+                        currentChunk = sentence;
                     }
                 }
                 if (currentChunk) chunks.push(currentChunk);
                 
+                console.log(`[handleParseDocument] Chunking complete. ${chunks.length} chunks created.`);
                 setParsingResult({ chunks, documentGroupId });
                 setIsResultDialogOpen(true);
             } catch (error: any) {
+                console.error('[handleParseDocument] Error:', error);
                 toast({
                     variant: 'destructive',
                     title: 'Parsing Failed',
@@ -195,9 +223,11 @@ export function KnowledgeBaseClientPage({
             return;
         }
 
+        console.log(`[handleGenerateEmbeddings] Start generating embeddings for ${parsingResult.chunks.length} chunks.`);
         startStoring(async () => {
             try {
                 const result = await generateAndStoreEmbeddingsAction(parsingResult.chunks, parsingResult.documentGroupId);
+                console.log('[handleGenerateEmbeddings] Success:', result);
                 toast({
                     title: 'Success!',
                     description: result.message,
@@ -205,6 +235,7 @@ export function KnowledgeBaseClientPage({
                 setIsResultDialogOpen(false);
                 setParsingResult(null);
             } catch (error: any) {
+                console.error('[handleGenerateEmbeddings] Error:', error);
                 toast({
                     variant: 'destructive',
                     title: 'Embedding Failed',
@@ -218,18 +249,21 @@ export function KnowledgeBaseClientPage({
         e.preventDefault();
         if (!chatQuery.trim()) return;
 
+        console.log(`[handleChatSubmit] Submitting query: "${chatQuery}"`);
         const newUserMessage: ChatMessage = { role: 'user', content: chatQuery };
-        setChatHistory(prev => [...prev, newUserMessage]);
+        setChatHistory(prev => [...prev, newUserMessage, { role: 'bot', content: 'Thinking...' }]);
         setChatQuery('');
 
         startAnswering(async () => {
             try {
                 const result = await askRagAction(chatQuery);
+                console.log('[handleChatSubmit] Received response:', result);
                 const newBotMessage: ChatMessage = { role: 'bot', content: result.response };
-                setChatHistory(prev => [...prev, newBotMessage]);
+                setChatHistory(prev => [...prev.slice(0, -1), newBotMessage]);
             } catch (error: any) {
+                console.error('[handleChatSubmit] Error:', error);
                 const newErrorMessage: ChatMessage = { role: 'bot', content: `Error: ${error.message}` };
-                setChatHistory(prev => [...prev, newErrorMessage]);
+                setChatHistory(prev => [...prev.slice(0, -1), newErrorMessage]);
             }
         });
     }
@@ -256,7 +290,7 @@ export function KnowledgeBaseClientPage({
                                         ref={fileInputRef}
                                         onChange={handleFileChange}
                                         className="flex-1"
-                                        accept=".pdf"
+                                        accept=".pdf,.txt,.md"
                                         disabled={isUploading}
                                     />
                                     <Button 
@@ -267,7 +301,7 @@ export function KnowledgeBaseClientPage({
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">Max ${MAX_FILE_SIZE_MB}MB. Supported format: PDF.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Max ${MAX_FILE_SIZE_MB}MB. Supported formats: PDF, TXT, MD.</p>
                             </div>
                             <div className="space-y-3">
                                 <h4 className="font-medium">Uploaded Documents</h4>
@@ -290,6 +324,18 @@ export function KnowledgeBaseClientPage({
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1">
+                                                     <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleParseDocument(doc.file_path, doc.document_group_id)}
+                                                        disabled={isParsing && parsingId === doc.file_path}
+                                                    >
+                                                        {isParsing && parsingId === doc.file_path ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Sparkles className="h-4 w-4 text-primary" />
+                                                        )}
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
@@ -418,3 +464,5 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
+    

@@ -74,6 +74,7 @@ const ragFlow = ai.defineFlow(
     const embedding = await ai.embed({
       model: 'googleai/text-embedding-preview-0518',
       input: query,
+      outputDimensionality: 768,
     });
 
     // 2. Query the database to find relevant document chunks.
