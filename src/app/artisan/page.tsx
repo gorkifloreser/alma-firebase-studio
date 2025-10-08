@@ -13,8 +13,8 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
@@ -563,57 +563,62 @@ export default function ArtisanPage() {
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published')).length : 0;
     const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
+    const availableChannels = useMemo(() => {
+        if (selectedCampaign) {
+            const items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
+            return [...new Set(items.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
+        }
+        return [];
+    }, [allArtisanItems, selectedCampaign]);
 
     return (
         <DashboardLayout>
             <Toaster />
-            {workflowMode === null && (
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Choose Your Creative Workflow</DialogTitle>
-                            <DialogDescription>
-                                Start by selecting an existing media plan or create content freely.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                            <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
-                                <CardHeader>
-                                    <Wand2 className="w-8 h-8 text-primary mb-2" />
-                                    <CardTitle>Freestyle Creation</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground">
-                                        Generate any type of content for any of your offerings on the fly.
-                                    </p>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <Sparkles className="w-8 h-8 text-primary mb-2" />
-                                    <CardTitle>From a Media Plan</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-muted-foreground mb-4">
-                                        Select one of your AI-generated media plans to work on its content queue.
-                                    </p>
-                                    {mediaPlans.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {mediaPlans.map(plan => (
-                                                <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
-                                                    {plan.title}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-center text-muted-foreground border p-4 rounded-md">No media plans found. Create one in the AI Strategist.</p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </DialogContent>
-                 </Dialog>
-             )}
+             <Dialog open={isDialogOpen && workflowMode === null} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Choose Your Creative Workflow</DialogTitle>
+                        <DialogDescription>
+                            Start by selecting an existing media plan or create content freely.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                        <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
+                            <CardHeader>
+                                <Wand2 className="w-8 h-8 text-primary mb-2" />
+                                <CardTitle>Freestyle Creation</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">
+                                    Generate any type of content for any of your offerings on the fly.
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <Sparkles className="w-8 h-8 text-primary mb-2" />
+                                <CardTitle>From a Media Plan</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Select one of your AI-generated media plans to work on its content queue.
+                                </p>
+                                {mediaPlans.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {mediaPlans.map(plan => (
+                                            <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
+                                                {plan.title}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-center text-muted-foreground border p-4 rounded-md">No media plans found. Create one in the AI Strategist.</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </DialogContent>
+             </Dialog>
             {savedContent && (
                 <EditContentDialog 
                     isOpen={isEditDialogOpen} 
@@ -627,89 +632,106 @@ export default function ArtisanPage() {
 
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header>
-                    {/* Header content... */}
+                    <h1 className="text-3xl font-bold">AI Artisan</h1>
+                    <p className="text-muted-foreground">Your creative studio for generating, refining, and scheduling content.</p>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                    <aside className="space-y-8">
-                        <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
-                             <AccordionItem value="creative-controls" className="border-none">
-                                <CreativeControls
-                                    workflowMode={workflowMode}
-                                    selectedCampaign={selectedCampaign}
-                                    allArtisanItems={allArtisanItems}
-                                    channelFilter={channelFilter}
-                                    setChannelFilter={setChannelFilter}
-                                    availableChannels={[]}
-                                    queueCount={queueCount}
-                                    doneCount={doneCount}
-                                    totalCampaignItems={totalCampaignItems}
-                                    isLoading={isLoading}
-                                    selectedArtisanItemId={selectedArtisanItemId}
-                                    handleArtisanItemSelect={handleArtisanItemSelect}
-                                    filteredArtisanItems={filteredArtisanItems}
-                                    offerings={offerings}
-                                    selectedOfferingId={selectedOfferingId}
-                                    setSelectedOfferingId={setSelectedOfferingId}
-                                    creativePrompt={creativePrompt}
-                                    setCreativePrompt={setCreativePrompt}
-                                    referenceImageUrl={referenceImageUrl}
-                                    setIsMediaSelectorOpen={setIsMediaSelectorOpen}
-                                    setReferenceImageUrl={setReferenceImageUrl}
-                                    availableCreativeOptions={availableCreativeOptions}
-                                    selectedCreativeType={selectedCreativeType}
-                                    setSelectedCreativeType={setSelectedCreativeType}
-                                    dimension={dimension}
-                                    setDimension={setDimension}
-                                    scheduledAt={scheduledAt}
-                                    handleDateTimeChange={() => {}}
-                                    handleGenerate={handleGenerate}
-                                    isGenerateDisabled={isGenerateDisabled}
-                                    isSaving={isSaving}
-                                    handleSave={handleSave}
-                                    hasContent={!!hasContent}
-                                    onSelectCampaign={() => setIsDialogOpen(true)}
-                                />
-                             </AccordionItem>
-                             {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
-                                <AccordionItem value="code-editor" className="border-none">
-                                    <CodeEditor
-                                        code={editableHtml || ''}
-                                        setCode={setEditableHtml}
-                                        theme={globalTheme}
-                                        onClose={() => setIsCodeEditorOpen(false)}
+                {!workflowMode ? (
+                     <Card className="text-center py-20">
+                        <CardHeader>
+                            <Workflow className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <CardTitle className="mt-4 text-2xl font-bold">Select a Workflow</CardTitle>
+                            <CardDescription>Choose a media plan or start a freestyle session to begin creating content.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button onClick={() => setIsDialogOpen(true)}>
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Choose Workflow
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        <aside className="space-y-8">
+                            <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
+                                <AccordionItem value="creative-controls" className="border-none">
+                                    <CreativeControls
+                                        workflowMode={workflowMode}
+                                        selectedCampaign={selectedCampaign}
+                                        allArtisanItems={allArtisanItems}
+                                        channelFilter={channelFilter}
+                                        setChannelFilter={setChannelFilter}
+                                        availableChannels={availableChannels}
+                                        queueCount={queueCount}
+                                        doneCount={doneCount}
+                                        totalCampaignItems={totalCampaignItems}
+                                        isLoading={isLoading}
+                                        selectedArtisanItemId={selectedArtisanItemId}
+                                        handleArtisanItemSelect={handleArtisanItemSelect}
+                                        filteredArtisanItems={filteredArtisanItems}
+                                        offerings={offerings}
+                                        selectedOfferingId={selectedOfferingId}
+                                        setSelectedOfferingId={setSelectedOfferingId}
+                                        creativePrompt={creativePrompt}
+                                        setCreativePrompt={setCreativePrompt}
+                                        referenceImageUrl={referenceImageUrl}
+                                        setIsMediaSelectorOpen={setIsMediaSelectorOpen}
+                                        setReferenceImageUrl={setReferenceImageUrl}
+                                        availableCreativeOptions={availableCreativeOptions}
+                                        selectedCreativeType={selectedCreativeType}
+                                        setSelectedCreativeType={setSelectedCreativeType}
+                                        dimension={dimension}
+                                        setDimension={setDimension}
+                                        scheduledAt={scheduledAt}
+                                        handleDateTimeChange={() => {}}
+                                        handleGenerate={handleGenerate}
+                                        isGenerateDisabled={isGenerateDisabled}
+                                        isSaving={isSaving}
+                                        handleSave={handleSave}
+                                        hasContent={!!hasContent}
+                                        onSelectCampaign={() => setIsDialogOpen(true)}
                                     />
                                 </AccordionItem>
-                            )}
-                        </Accordion>
-                    </aside>
-                     <main className="sticky top-24">
-                        <PostPreview
-                            profile={profile}
-                            dimension={dimension}
-                            isLoading={isLoading}
-                            selectedCreativeType={selectedCreativeType}
-                            creative={{
-                                ...creative,
-                                landingPageHtml: editableHtml ?? creative?.landingPageHtml
-                            }}
-                            editableContent={editableContent}
-                            secondaryLangName={secondaryLangName}
-                            isCodeEditorOpen={isCodeEditorOpen}
-                            onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
-                            handleContentChange={() => {}}
-                            handleCarouselSlideChange={() => {}}
-                            onImageEdit={() => {}}
-                            onRegenerateClick={() => setIsRegenerateOpen(true)}
-                            onCurrentSlideChange={setCurrentCarouselSlide}
-                            onDownload={handleDownload}
-                            onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
-                            onAddText={() => {}}
-                            onEditPost={() => setIsEditDialogOpen(true)}
-                            isSaved={!!savedContent}
-                        />
-                    </main>
-                </div>
+                                {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
+                                    <AccordionItem value="code-editor" className="border-none">
+                                        <CodeEditor
+                                            code={editableHtml || ''}
+                                            setCode={setEditableHtml}
+                                            theme={globalTheme}
+                                            onClose={() => setIsCodeEditorOpen(false)}
+                                        />
+                                    </AccordionItem>
+                                )}
+                            </Accordion>
+                        </aside>
+                        <main className="sticky top-24">
+                            <PostPreview
+                                profile={profile}
+                                dimension={dimension}
+                                isLoading={isLoading}
+                                selectedCreativeType={selectedCreativeType}
+                                creative={{
+                                    ...creative,
+                                    landingPageHtml: editableHtml ?? creative?.landingPageHtml
+                                }}
+                                editableContent={editableContent}
+                                secondaryLangName={secondaryLangName}
+                                isCodeEditorOpen={isCodeEditorOpen}
+                                onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
+                                handleContentChange={() => {}}
+                                handleCarouselSlideChange={() => {}}
+                                onImageEdit={() => {}}
+                                onRegenerateClick={() => setIsRegenerateOpen(true)}
+                                onCurrentSlideChange={setCurrentCarouselSlide}
+                                onDownload={handleDownload}
+                                onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
+                                onAddText={() => {}}
+                                onEditPost={() => setIsEditDialogOpen(true)}
+                                isSaved={!!savedContent}
+                            />
+                        </main>
+                    </div>
+                )}
             </div>
         </DashboardLayout>
     );
