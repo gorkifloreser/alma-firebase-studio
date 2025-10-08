@@ -42,7 +42,6 @@ const menuItems = [
     { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
     { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
     { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
-    { href: '/imports', label: 'Imports', icon: Import },
 ];
 
 export function DashboardLayoutClient({
@@ -97,7 +96,7 @@ export function DashboardLayoutClient({
 
              <div className="mt-auto p-4 group-data-[collapsible=icon]:hidden">
                 <Card className="rounded-2xl bg-black/10 text-center p-4 border-none text-sidebar-foreground backdrop-blur-sm">
-                    <p className="font-bold">Join Wallet Life Fourm</p>
+                    <p className="font-bold">Join our waiting list</p>
                     <Button size="sm" className="mt-4 btn-primary-gradient">Join Now</Button>
                 </Card>
              </div>
