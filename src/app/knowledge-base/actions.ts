@@ -4,8 +4,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
-import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 import { ai } from '@/ai/genkit';
 
 
@@ -22,10 +20,10 @@ export type BrandDocument = {
  * Uploads a document to Supabase storage. This action only handles the file upload.
  * Parsing is handled by a separate Edge Function.
  * @param {FormData} formData The form data containing the file to upload.
- * @returns {Promise<{ message: string }>} A success message.
+ * @returns {Promise<{ message: string, filePath: string, documentGroupId: string }>} A success message with file details.
  * @throws {Error} If any step of the process fails.
  */
-export async function uploadBrandDocument(formData: FormData): Promise<{ message: string }> {
+export async function uploadBrandDocument(formData: FormData): Promise<{ message: string, filePath: string, documentGroupId: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -66,85 +64,7 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
     }
 
     revalidatePath('/brand');
-    return { message: 'Document uploaded successfully!' };
-}
-
-/**
- * Downloads a document from Supabase storage and parses its content into text chunks.
- * @param {string} filePath - The path of the file in Supabase Storage.
- * @returns {Promise<{ chunks: string[]; document_group_id: string; }>} The text chunks and the document group ID.
- */
-export async function parseDocument(filePath: string): Promise<{ chunks: string[]; document_group_id: string; }> {
-    console.log('[parseDocument] Starting parsing process for file:', filePath);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data: docInfo, error: docError } = await supabase
-        .from('brand_documents')
-        .select('document_group_id')
-        .eq('file_path', filePath)
-        .eq('user_id', user.id)
-        .single();
-    
-    if (docError || !docInfo) {
-        throw new Error('Could not retrieve document information.');
-    }
-    
-    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME!;
-    
-    console.log('[parseDocument] Downloading file from storage...');
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from(bucketName)
-      .download(filePath);
-
-    if (downloadError) {
-        console.error('Error downloading file for parsing:', downloadError);
-        throw new Error(`Failed to download file: ${downloadError.message}`);
-    }
-    
-    if (!fileData) {
-        throw new Error("Downloaded file data is null.");
-    }
-    console.log('[parseDocument] File downloaded successfully.');
-
-    const buffer = await fileData.arrayBuffer();
-
-    console.log('[parseDocument] Loading PDF document...');
-    const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
-    const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
-    console.log(`[parseDocument] PDF loaded with ${pdfDoc.numPages} pages.`);
-    let fullText = "";
-
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
-        fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
-    }
-    
-    console.log('[parseDocument] Extracted full text content. Now chunking...');
-    
-    const lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    const chunks: string[] = [];
-    let currentChunk = '';
-
-    for (const line of lines) {
-        if (currentChunk.length + line.length + 1 <= 1500) {
-            currentChunk += (currentChunk ? ' ' : '') + line;
-        } else {
-            if (currentChunk) {
-                chunks.push(currentChunk);
-            }
-            currentChunk = line;
-        }
-    }
-    if (currentChunk) {
-        chunks.push(currentChunk);
-    }
-    
-    console.log(`[parseDocument] Text chunked into ${chunks.length} pieces.`);
-
-    return { chunks, document_group_id: docInfo.document_group_id };
+    return { message: 'Document uploaded successfully!', filePath, documentGroupId };
 }
 
 
@@ -153,9 +73,7 @@ export async function parseDocument(filePath: string): Promise<{ chunks: string[
  * @param {{ chunks: string[]; documentGroupId: string; }} { chunks, documentGroupId } - The text chunks and their associated document group ID.
  * @returns {Promise<{ message: string }>} A success message.
  */
-export async function generateAndStoreEmbeddings(
-  { chunks, documentGroupId }: { chunks: string[]; documentGroupId: string; }
-): Promise<{ message: string }> {
+export async function generateAndStoreEmbeddings(chunks: string[], documentGroupId: string): Promise<{ message: string }> {
     console.log(`[generateAndStoreEmbeddings] Starting batch embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();

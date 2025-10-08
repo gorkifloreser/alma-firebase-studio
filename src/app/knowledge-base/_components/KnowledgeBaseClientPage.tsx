@@ -13,7 +13,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, parseDocument, generateAndStoreEmbeddings } from '../actions';
+import * as pdfjsLib from 'pdfjs-dist';
+import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+
+import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../actions';
 
 
 const MAX_FILE_SIZE_MB = 5;
@@ -32,7 +37,6 @@ export interface KnowledgeBaseClientPageProps {
     deleteBrandDocumentAction: typeof deleteBrandDocument;
     uploadBrandDocumentAction: typeof uploadBrandDocument;
     askRagAction: typeof askRag;
-    parseDocumentAction: typeof parseDocument;
     generateAndStoreEmbeddingsAction: typeof generateAndStoreEmbeddings;
 }
 
@@ -43,7 +47,6 @@ export function KnowledgeBaseClientPage({
     deleteBrandDocumentAction,
     uploadBrandDocumentAction,
     askRagAction,
-    parseDocumentAction,
     generateAndStoreEmbeddingsAction,
 }: KnowledgeBaseClientPageProps) {
     const [documents, setDocuments] = useState(initialDocuments);
@@ -62,7 +65,7 @@ export function KnowledgeBaseClientPage({
     const [isAnswering, startAnswering] = useTransition();
 
     const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
-    const [parsingResult, setParsingResult] = useState<{chunks: string[], document_group_id: string} | null>(null);
+    const [parsingResult, setParsingResult] = useState<{chunks: string[], documentGroupId: string} | null>(null);
     const [isStoring, startStoring] = useTransition();
 
 
@@ -110,11 +113,12 @@ export function KnowledgeBaseClientPage({
 
         startUploading(async () => {
             try {
-                const result = await uploadBrandDocumentAction(formData);
-                toast({ title: 'Success!', description: result.message });
+                const { filePath, documentGroupId } = await uploadBrandDocumentAction(formData);
+                toast({ title: 'Success!', description: 'Document uploaded. Now parsing...', duration: 2000 });
                 setSelectedFile(null);
                 if(fileInputRef.current) fileInputRef.current.value = "";
                 await fetchAllData();
+                await handleParseDocument(filePath, documentGroupId, selectedFile);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
             }
@@ -135,13 +139,37 @@ export function KnowledgeBaseClientPage({
             }
         });
     };
-
-    const handleParseDocument = (filePath: string) => {
+    
+    const handleParseDocument = async (filePath: string, documentGroupId: string, file: File) => {
         setParsingId(filePath);
         startParsing(async () => {
             try {
-                const result = await parseDocumentAction(filePath);
-                setParsingResult(result);
+                const buffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
+                const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
+                let fullText = "";
+
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
+                }
+                
+                const lines = fullText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                const chunks: string[] = [];
+                let currentChunk = '';
+
+                for (const line of lines) {
+                    if (currentChunk.length + line.length + 1 <= 1500) {
+                        currentChunk += (currentChunk ? ' ' : '') + line;
+                    } else {
+                        if (currentChunk) chunks.push(currentChunk);
+                        currentChunk = line;
+                    }
+                }
+                if (currentChunk) chunks.push(currentChunk);
+                
+                setParsingResult({ chunks, documentGroupId });
                 setIsResultDialogOpen(true);
             } catch (error: any) {
                 toast({
@@ -156,6 +184,7 @@ export function KnowledgeBaseClientPage({
         });
     };
 
+
     const handleGenerateEmbeddings = async () => {
         if (!parsingResult || parsingResult.chunks.length === 0) {
             toast({
@@ -168,7 +197,7 @@ export function KnowledgeBaseClientPage({
 
         startStoring(async () => {
             try {
-                const result = await generateAndStoreEmbeddingsAction(parsingResult.chunks, parsingResult.document_group_id);
+                const result = await generateAndStoreEmbeddingsAction(parsingResult.chunks, parsingResult.documentGroupId);
                 toast({
                     title: 'Success!',
                     description: result.message,
@@ -261,19 +290,6 @@ export function KnowledgeBaseClientPage({
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => handleParseDocument(doc.file_path)}
-                                                        disabled={isParsing && parsingId === doc.file_path}
-                                                    >
-                                                        {isParsing && parsingId === doc.file_path ? (
-                                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                        ) : (
-                                                            <Sparkles className="h-4 w-4 mr-2" />
-                                                        )}
-                                                        Parse
-                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
