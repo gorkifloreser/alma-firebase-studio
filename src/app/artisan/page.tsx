@@ -243,9 +243,19 @@ export default function ArtisanPage() {
                 try {
                     const contentItem = await getContentItem(item.id);
                     if (contentItem) {
+                        let parsedSlides = contentItem.carousel_slides;
+                        if (typeof parsedSlides === 'string') {
+                            try {
+                                parsedSlides = JSON.parse(parsedSlides);
+                            } catch (e) {
+                                console.error("Failed to parse carousel slides from string:", e);
+                                parsedSlides = [];
+                            }
+                        }
+
                         setCreative({
                             imageUrl: contentItem.image_url,
-                            carouselSlides: contentItem.carousel_slides,
+                            carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                             videoUrl: contentItem.video_url,
                             landingPageHtml: contentItem.landing_page_html,
                         });
@@ -725,7 +735,7 @@ export default function ArtisanPage() {
                                     </CardHeader>
                                 </Card>
                             )}
-                            {workflowMode === 'custom' && (
+                             {workflowMode === 'custom' && (
                                 <Card>
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <div>
