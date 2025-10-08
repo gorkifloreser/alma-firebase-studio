@@ -4,7 +4,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { askMyDocuments, RagInput, RagOutput } from '@/ai/flows/rag-flow';
-import { ai } from '@/ai/genkit';
+import { embed } from '@genkit-ai/ai';
+import { textEmbedding004 } from '@/ai/genkit';
 
 
 export type BrandDocument = {
@@ -93,14 +94,17 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
 
     console.log('[generateAndStoreEmbeddings] Calling AI to generate embeddings with RETRIEVAL_DOCUMENT task type...');
     console.log('[generateAndStoreEmbeddings] Chunks to be embedded:', JSON.stringify(validChunks, null, 2));
-    let embeddings;
+    let embeddingResponse;
     try {
-        embeddings = await ai.embed({
-            input: validChunks,
-            task_type: "RETRIEVAL_DOCUMENT",
+        embeddingResponse = await embed({
+            model: textEmbedding004,
+            content: validChunks,
+            options: {
+                taskType: "RETRIEVAL_DOCUMENT",
+            },
         });
     } catch (e: any) {
-        console.error('[generateAndStoreEmbeddings] CRITICAL: ai.embed() call failed. Full error details below:');
+        console.error('[generateAndStoreEmbeddings] CRITICAL: embed() call failed. Full error details below:');
         console.error('Error Object:', JSON.stringify(e, null, 2));
         console.error('Error Message:', e.message);
         console.error('Error Stack:', e.stack);
@@ -109,27 +113,24 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
         }
         console.error('[generateAndStoreEmbeddings] The specific error message is:', e.message);
         console.error('[generateAndStoreEmbeddings] Chunks that caused the error:', JSON.stringify(validChunks, null, 2));
-        throw new Error(`Failed to generate embeddings. Original error: ${e.message, e.stack, e.cause}`);
+        throw new Error(`Failed to generate embeddings. Original error: ${e.message}`);
     }
 
-    console.log(`[generateAndStoreEmbeddings] Raw embeddings received. Type: ${typeof embeddings}, Length: ${embeddings?.length}`);
-    
-    // ¡LOG CLAVE! Inspecciona la respuesta COMPLETA de la API
-    console.log('[generateAndStoreEmbeddings] Full response from Gemini API:', JSON.stringify(embeddings, null, 2));
+    console.log(`[generateAndStoreEmbeddings] Raw embeddings response received. Length: ${embeddingResponse?.length}`);
+    console.log('[generateAndStoreEmbeddings] Full response from Genkit embed():', JSON.stringify(embeddingResponse, null, 2));
 
-    // AÑADE UNA VALIDACIÓN (GUARD CLAUSE)
-    if (!embeddings || !Array.isArray(embeddings) || embeddings.length !== validChunks.length) {
-        console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddings?.length}).`);
+    if (!embeddingResponse || !Array.isArray(embeddingResponse) || embeddingResponse.length !== validChunks.length) {
+        console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddingResponse?.length}).`);
         throw new Error('The number of embeddings returned does not match the number of chunks.');
     }
-    console.log(`[generateAndStoreEmbeddings] Successfully generated ${embeddings.length} embeddings.`);
+    console.log(`[generateAndStoreEmbeddings] Successfully generated ${embeddingResponse.length} embeddings.`);
 
     console.log('[generateAndStoreEmbeddings] --- Preparing records for insertion ---');
     const recordsToInsert = validChunks
         .map((chunk, index) => {
-            const embedding = embeddings[index];
+            const embedding = embeddingResponse[index].vector; 
+
             console.log(`[generateAndStoreEmbeddings] Processing chunk ${index}:`);
-            console.log(`  - Chunk content: "${chunk.substring(0, 50)}..."`);
             console.log(`  - Embedding type: ${typeof embedding}`);
             console.log(`  - Is embedding an array? ${Array.isArray(embedding)}`);
 
