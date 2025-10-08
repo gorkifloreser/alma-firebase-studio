@@ -8,7 +8,6 @@ export const textEmbedding004 = googleAI.model('text-embedding-004');
 
 export const ai = genkit({
   plugins: [googleAI()],
-  model: 'googleai/gemini-2.0-flash',
 });
 
 
@@ -24,7 +23,7 @@ export const embedChunks = action(
     }
     
     const embeddingResponse = await embed({
-      model: textEmbedding004,
+      model: 'models/text-embedding-004',
       content: chunks,
       options: {
         taskType: 'RETRIEVAL_DOCUMENT',

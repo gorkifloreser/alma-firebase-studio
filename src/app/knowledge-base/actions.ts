@@ -103,6 +103,7 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
     }
 
     console.log(`[generateAndStoreEmbeddings] Response from action received. Length: ${embeddingResponse?.length}`);
+    console.log('[generateAndStoreEmbeddings] Full response from Genkit embed():', JSON.stringify(embeddingResponse, null, 2));
     
     if (!embeddingResponse || !Array.isArray(embeddingResponse) || embeddingResponse.length !== validChunks.length) {
         console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddingResponse?.length}).`);
