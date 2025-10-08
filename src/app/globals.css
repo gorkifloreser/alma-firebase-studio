@@ -9,19 +9,19 @@ body {
 @layer base {
   :root {
     --background: 45 35% 95%; /* Vintage Paper */
-    --foreground: 25 45% 30%; /* Burnt Orange / Reddish Brown */
+    --foreground: 20 45% 27%; /* Burnt Orange / Reddish Brown */
     --card: 45 35% 95%;
-    --card-foreground: 25 45% 30%;
+    --card-foreground: 20 45% 27%;
     --popover: 45 35% 95%;
-    --popover-foreground: 25 45% 30%;
+    --popover-foreground: 20 45% 27%;
     --primary: 15 85% 60%; /* Terracotta */
     --primary-foreground: 20 20% 98%;
     --secondary: 45 35% 92%;
-    --secondary-foreground: 25 45% 30%;
+    --secondary-foreground: 20 45% 27%;
     --muted: 45 35% 92%;
-    --muted-foreground: 25 40% 45%;
+    --muted-foreground: 20 40% 45%;
     --accent: 35 90% 75%; /* Pale Gold */
-    --accent-foreground: 25 45% 30%;
+    --accent-foreground: 20 45% 27%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 45 30% 88%;
@@ -31,11 +31,11 @@ body {
 
     /* Sidebar Variables */
     --sidebar-background: transparent;
-    --sidebar-foreground: 25 45% 30%;
+    --sidebar-foreground: 20 45% 27%;
     --sidebar-primary: 15 85% 60%;
     --sidebar-primary-foreground: 20 20% 98%;
     --sidebar-accent: 45 35% 92%; /* Light accent for hover */
-    --sidebar-accent-foreground: 25 45% 30%;
+    --sidebar-accent-foreground: 20 45% 27%;
     --sidebar-border: 45 30% 88%;
     --sidebar-ring: 15 85% 60%;
   }
