@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -25,6 +24,7 @@ import {
   Calendar,
   GitBranch,
   Wand2,
+  Star,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -39,6 +39,7 @@ const menuItems = [
   { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
   { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
   { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
+  { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/imports', label: 'Imports', icon: Import },
 ];

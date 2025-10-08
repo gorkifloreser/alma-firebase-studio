@@ -1,4 +1,3 @@
-
 // Flows will be imported for their side effects in this file.
 import './flows/translate-flow';
 import './flows/rag-flow';
@@ -16,3 +15,4 @@ import './flows/rank-viral-hooks-flow';
 import './flows/adapt-viral-hooks-flow';
 import './flows/generate-value-content-flow';
 import './flows/generate-value-content-types';
+import './flows/create-content-from-testimonial-flow';
