@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
-  Wallet,
+  Infinity,
   FileText,
   CreditCard,
   BarChart2,
@@ -60,13 +60,13 @@ export function DashboardLayoutClient({
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                 <div className="bg-primary rounded-lg p-1.5">
-                   <Wallet className="h-5 w-5 text-primary-foreground" />
+                   <Infinity className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <span className="font-bold text-lg">alma AI</span>
               </div>
                <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
                 <div className="bg-primary rounded-lg p-1.5">
-                   <Wallet className="h-5 w-5 text-primary-foreground" />
+                   <Infinity className="h-5 w-5 text-primary-foreground" />
                 </div>
               </div>
           </SidebarHeader>
