@@ -327,9 +327,16 @@ export default function ArtisanPage() {
                             }
                         }
 
+                        const mappedSlides = (Array.isArray(parsedSlides) ? parsedSlides : []).map((slide: any) => ({
+                            title: slide.title || '',
+                            body: slide.body || '',
+                            imageUrl: slide.imageUrl || slide.image_url || undefined,
+                            finalPrompt: slide.finalPrompt || undefined,
+                        }));
+
                         setCreative({
                             imageUrl: contentItem.image_url,
-                            carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
+                            carouselSlides: mappedSlides,
                             videoUrl: contentItem.video_url,
                             landingPageHtml: contentItem.landing_page_html,
                         });

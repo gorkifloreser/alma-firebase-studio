@@ -289,7 +289,7 @@ export const PostPreview = ({
     if (isStory) {
         return (
             <TooltipProvider>
-                <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white", aspectRatioClass)}>
+                <div className={cn("relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg text-white group", aspectRatioClass)}>
                     <div className="absolute inset-0 bg-black">
                          {renderVisualContent()}
                     </div>
@@ -302,12 +302,62 @@ export const PostPreview = ({
                             </Button>
                         )}
                     </div>
-                    {/* ... other buttons ... */}
+                    
+                     {hasVisuals && (
+                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full" onClick={() => onImageEdit(imageUrlToEdit!, current)}>
+                                        <Edit />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Retouch Image</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full" onClick={() => onRegenerateClick()}>
+                                        <RefreshCw />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Regenerate Image</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full" onClick={() => onDownload(urlToDownload!, 'creative')}>
+                                        <Download />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Download</TooltipContent>
+                            </Tooltip>
+                        </div>
+                    )}
                     
                     {/* Content Overlay */}
                     <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
                         {/* Header */}
-                        {/* ... header content ... */}
+                        <div className="flex items-center justify-between p-2">
+                            <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                    <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-semibold [text-shadow:_0_1px_2px_rgb(0_0_0_/_60%)]">{postUserHandle}</span>
+                            </div>
+                             <div className="flex-1 px-4">
+                                {progressCount > 1 && (
+                                    <div className="flex gap-1">
+                                        {Array.from({ length: progressCount }).map((_, i) => (
+                                            <div key={i} className="flex-1 h-0.5 bg-white/50 rounded-full">
+                                                <div className="h-full bg-white transition-all duration-300" style={{ width: i === current ? '100%' : '0%' }}></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                             <button className="p-2 pointer-events-auto">
+                                 <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" />
+                            </button>
+                        </div>
                         
                         {/* Editable Text Area */}
                         <div className="flex-1 flex flex-col justify-end p-4">
