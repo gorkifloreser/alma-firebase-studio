@@ -11,18 +11,20 @@ import {
   Calendar,
   Star,
   CheckCircle2,
-  Circle,
   FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
+
 
 type Step = {
   name: string;
   href: string;
   icon: React.ElementType;
+  description: string;
   isComplete: boolean;
 };
 
@@ -60,13 +62,12 @@ export default async function Home() {
   const completionStatus = await getCompletionStatus(user.id);
   
   const steps: Step[] = [
-    { name: 'Brand Heart', href: '/brand', icon: Heart, isComplete: completionStatus.brandHeart },
-    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, isComplete: completionStatus.offerings },
-    { name: 'Funnels', href: '/funnels', icon: GitBranch, isComplete: completionStatus.funnels },
-    { name: 'Media Plan', href: '/funnels', icon: FileText, isComplete: completionStatus.mediaPlan }, // Links to funnels where plans are made
-    { name: 'AI Artisan', href: '/artisan', icon: Wand2, isComplete: completionStatus.aiArtisan },
-    { name: 'Calendar', href: '/calendar', icon: Calendar, isComplete: completionStatus.calendar },
-    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, isComplete: completionStatus.harvestCircle },
+    { name: 'Brand Heart', href: '/brand', icon: Heart, description: "Define el alma de tu marca para guiar a la IA.", isComplete: completionStatus.brandHeart },
+    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: "Crea los productos y servicios que ofreces.", isComplete: completionStatus.offerings },
+    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: "Genera un plan estratégico para una oferta.", isComplete: completionStatus.funnels },
+    { name: 'AI Artisan', href: '/artisan', icon: Wand2, description: "Crea y personaliza el contenido para tus campañas.", isComplete: completionStatus.aiArtisan },
+    { name: 'AI Scheduler', href: '/calendar', icon: Calendar, description: "Organiza y visualiza tu calendario de contenidos.", isComplete: completionStatus.calendar },
+    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: "Cosecha testimonios y reutilízalos como contenido.", isComplete: completionStatus.harvestCircle },
   ];
 
   const completedSteps = steps.filter(step => step.isComplete).length;
@@ -90,28 +91,28 @@ export default async function Home() {
                     <Progress value={progressPercentage} className="h-3" />
                     <span className="font-semibold text-primary">{Math.round(progressPercentage)}%</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 text-center">
+                <div className="space-y-2">
                     {steps.map((step, index) => (
-                        <Link href={step.href} key={step.name} className="group flex flex-col items-center gap-2">
-                           <div className="relative">
-                               <div className={cn(
-                                   "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-2",
-                                   step.isComplete ? "bg-green-500/20 border-green-500 text-green-500" : "bg-muted border-dashed text-muted-foreground"
-                               )}>
-                                   <step.icon className="h-7 w-7" />
-                               </div>
-                                {index < steps.length - 1 && (
-                                     <div className="absolute top-1/2 left-full w-4 h-px bg-border hidden lg:block"></div>
-                                )}
-                           </div>
-                           <p className={cn(
-                               "font-semibold text-sm mt-2 transition-colors",
-                               step.isComplete ? "text-foreground" : "text-muted-foreground",
-                               "group-hover:text-primary"
-                           )}>
-                               {step.name}
-                            </p>
-                        </Link>
+                       <React.Fragment key={step.name}>
+                        <div className="flex items-center gap-4 p-3 rounded-lg transition-colors hover:bg-muted/50">
+                            <div className={cn(
+                                "w-10 h-10 rounded-full flex items-center justify-center border-2 flex-shrink-0",
+                                step.isComplete ? "bg-green-500/20 border-green-500 text-green-500" : "bg-muted border-dashed text-muted-foreground"
+                            )}>
+                               {step.isComplete ? <CheckCircle2 className="h-6 w-6" /> : <span className="font-bold text-lg">{index + 1}</span>}
+                            </div>
+                            <div className="flex-1">
+                               <p className="font-semibold text-foreground">{step.name}</p>
+                               <p className="text-sm text-muted-foreground">{step.description}</p>
+                            </div>
+                            <Button asChild variant={step.isComplete ? "secondary" : "default"}>
+                                <Link href={step.href}>
+                                  {step.isComplete ? 'View & Edit' : 'Start'}
+                                </Link>
+                            </Button>
+                        </div>
+                         {index < steps.length - 1 && <Separator />}
+                       </React.Fragment>
                     ))}
                 </div>
             </CardContent>
