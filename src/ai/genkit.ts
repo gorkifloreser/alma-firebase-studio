@@ -23,7 +23,7 @@ export const embedChunks = action(
     }
     
     const embeddingResponse = await embed({
-      model: 'models/text-embedding-004',
+      embedder: textEmbedding004,
       content: chunks,
       options: {
         taskType: 'RETRIEVAL_DOCUMENT',

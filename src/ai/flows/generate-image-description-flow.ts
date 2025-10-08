@@ -7,6 +7,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 const GenerateImageDescriptionInputSchema = z.object({
   imageDataUri: z
@@ -27,6 +28,7 @@ export type GenerateImageDescriptionOutput = z.infer<typeof GenerateImageDescrip
 
 const prompt = ai.definePrompt({
   name: 'generateImageDescriptionPrompt',
+  model: googleAI('gemini-pro-vision'),
   input: { schema: GenerateImageDescriptionInputSchema },
   output: { schema: GenerateImageDescriptionOutputSchema },
   prompt: `Analyze the following image and generate a short, descriptive caption for it.
