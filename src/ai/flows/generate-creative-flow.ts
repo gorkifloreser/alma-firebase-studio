@@ -243,7 +243,7 @@ export const generateCreativeFlow = ai.defineFlow(
         }
 
         visualPromises.push(ai.generate({
-            model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-2.0-generate-001'),
+            model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-3.0-generate-preview'),
             prompt: videoPromptPayload,
             config: { durationSeconds: 5, aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {
