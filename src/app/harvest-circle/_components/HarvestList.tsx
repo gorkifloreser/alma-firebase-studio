@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,15 @@ export function HarvestList({ initialItems, actions, onDataChange }: HarvestList
     const [isUpdating, startUpdating] = useTransition();
     const [isRequesting, startRequesting] = useTransition();
     const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    useEffect(() => {
+        setItems(initialItems);
+    }, [initialItems]);
 
     const handleStatusChange = (itemId: string, newStatus: 'to_deliver' | 'in_progress' | 'completed') => {
         console.log(`[HarvestList] handleStatusChange triggered for item ${itemId} to status ${newStatus}.`);
@@ -67,7 +76,7 @@ export function HarvestList({ initialItems, actions, onDataChange }: HarvestList
                                 <div className="flex-1">
                                     <p className="font-semibold">{item.offerings.title.primary}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        Sale Date: {format(new Date(item.created_at), 'PPP')}
+                                        Sale Date: {isClient ? format(new Date(item.created_at), 'PPP') : '...'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 w-full sm:w-auto">
