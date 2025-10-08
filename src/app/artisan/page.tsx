@@ -584,12 +584,12 @@ export default function ArtisanPage() {
                             Start by selecting an existing media plan or create content freely.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 pt-4">
+                     <div className="space-y-6 pt-4">
                         <div
-                            className="flex items-center gap-3 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
+                            className="flex items-center gap-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
                             onClick={startCustomWorkflow}
                         >
-                            <Wand2 className="w-8 h-8 text-primary" />
+                            <Wand2 className="w-8 h-8 text-primary flex-shrink-0" />
                             <div>
                                 <h3 className="font-semibold">Freestyle Creation</h3>
                                 <p className="text-sm text-muted-foreground">
@@ -598,7 +598,7 @@ export default function ArtisanPage() {
                             </div>
                         </div>
 
-                         <div className="space-y-2">
+                         <div className="space-y-4">
                              <h3 className="font-semibold flex items-center gap-2 text-foreground">
                                  <Sparkles className="w-5 h-5 text-primary" />
                                  From a Media Plan
@@ -659,98 +659,100 @@ export default function ArtisanPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                        <aside className="space-y-8">
-                            {workflowMode === 'campaign' && selectedCampaign && (
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between">
-                                        <div>
-                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
-                                                <GitBranch className="h-4 w-4" />
-                                                Working on Campaign
-                                            </CardDescription>
-                                            <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
-                                    </CardHeader>
-                                </Card>
-                            )}
-                            <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
-                                <AccordionItem value="creative-controls" className="border-none">
-                                    <CreativeControls
-                                        workflowMode={workflowMode}
-                                        allArtisanItems={allArtisanItems}
-                                        channelFilter={channelFilter}
-                                        setChannelFilter={setChannelFilter}
-                                        availableChannels={availableChannels}
-                                        queueCount={queueCount}
-                                        doneCount={doneCount}
-                                        totalCampaignItems={totalCampaignItems}
-                                        isLoading={isLoading}
-                                        selectedArtisanItemId={selectedArtisanItemId}
-                                        handleArtisanItemSelect={handleArtisanItemSelect}
-                                        filteredArtisanItems={filteredArtisanItems}
-                                        offerings={offerings}
-                                        selectedOfferingId={selectedOfferingId}
-                                        setSelectedOfferingId={setSelectedOfferingId}
-                                        creativePrompt={creativePrompt}
-                                        setCreativePrompt={setCreativePrompt}
-                                        referenceImageUrl={referenceImageUrl}
-                                        setIsMediaSelectorOpen={setIsMediaSelectorOpen}
-                                        setReferenceImageUrl={setReferenceImageUrl}
-                                        availableCreativeOptions={availableCreativeOptions}
-                                        selectedCreativeType={selectedCreativeType}
-                                        setSelectedCreativeType={setSelectedCreativeType}
-                                        dimension={dimension}
-                                        setDimension={setDimension}
-                                        scheduledAt={scheduledAt}
-                                        handleDateTimeChange={() => {}}
-                                        handleGenerate={handleGenerate}
-                                        isGenerateDisabled={isGenerateDisabled}
-                                        isSaving={isSaving}
-                                        handleSave={handleSave}
-                                        hasContent={!!hasContent}
-                                        onSelectCampaign={() => setIsDialogOpen(true)}
-                                    />
-                                </AccordionItem>
-                                {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
-                                    <AccordionItem value="code-editor" className="border-none">
-                                        <CodeEditor
-                                            code={editableHtml || ''}
-                                            setCode={setEditableHtml}
-                                            theme={globalTheme}
-                                            onClose={() => setIsCodeEditorOpen(false)}
+                    <div className="space-y-8">
+                         {workflowMode === 'campaign' && selectedCampaign && (
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                            <GitBranch className="h-4 w-4" />
+                                            Working on Campaign
+                                        </CardDescription>
+                                        <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
+                                </CardHeader>
+                            </Card>
+                        )}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                            <aside className="space-y-8">
+                                <Accordion type="multiple" value={activeAccordion} onValueChange={setActiveAccordion} className="w-full space-y-4">
+                                    <AccordionItem value="creative-controls" className="border-none">
+                                        <CreativeControls
+                                            workflowMode={workflowMode}
+                                            allArtisanItems={allArtisanItems}
+                                            channelFilter={channelFilter}
+                                            setChannelFilter={setChannelFilter}
+                                            availableChannels={availableChannels}
+                                            queueCount={queueCount}
+                                            doneCount={doneCount}
+                                            totalCampaignItems={totalCampaignItems}
+                                            isLoading={isLoading}
+                                            selectedArtisanItemId={selectedArtisanItemId}
+                                            handleArtisanItemSelect={handleArtisanItemSelect}
+                                            filteredArtisanItems={filteredArtisanItems}
+                                            offerings={offerings}
+                                            selectedOfferingId={selectedOfferingId}
+                                            setSelectedOfferingId={setSelectedOfferingId}
+                                            creativePrompt={creativePrompt}
+                                            setCreativePrompt={setCreativePrompt}
+                                            referenceImageUrl={referenceImageUrl}
+                                            setIsMediaSelectorOpen={setIsMediaSelectorOpen}
+                                            setReferenceImageUrl={setReferenceImageUrl}
+                                            availableCreativeOptions={availableCreativeOptions}
+                                            selectedCreativeType={selectedCreativeType}
+                                            setSelectedCreativeType={setSelectedCreativeType}
+                                            dimension={dimension}
+                                            setDimension={setDimension}
+                                            scheduledAt={scheduledAt}
+                                            handleDateTimeChange={() => {}}
+                                            handleGenerate={handleGenerate}
+                                            isGenerateDisabled={isGenerateDisabled}
+                                            isSaving={isSaving}
+                                            handleSave={handleSave}
+                                            hasContent={!!hasContent}
+                                            onSelectCampaign={() => setIsDialogOpen(true)}
                                         />
                                     </AccordionItem>
-                                )}
-                            </Accordion>
-                        </aside>
-                        <main className="sticky top-24">
-                            <PostPreview
-                                profile={profile}
-                                dimension={dimension}
-                                isLoading={isLoading}
-                                selectedCreativeType={selectedCreativeType}
-                                creative={{
-                                    ...creative,
-                                    landingPageHtml: editableHtml ?? creative?.landingPageHtml
-                                }}
-                                editableContent={editableContent}
-                                secondaryLangName={secondaryLangName}
-                                isCodeEditorOpen={isCodeEditorOpen}
-                                onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
-                                handleContentChange={() => {}}
-                                handleCarouselSlideChange={() => {}}
-                                onImageEdit={() => {}}
-                                onRegenerateClick={() => setIsRegenerateOpen(true)}
-                                onCurrentSlideChange={setCurrentCarouselSlide}
-                                onDownload={handleDownload}
-                                onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
-                                onAddText={() => {}}
-                                onEditPost={() => setIsEditDialogOpen(true)}
-                                isSaved={!!savedContent}
-                            />
-                        </main>
+                                    {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
+                                        <AccordionItem value="code-editor" className="border-none">
+                                            <CodeEditor
+                                                code={editableHtml || ''}
+                                                setCode={setEditableHtml}
+                                                theme={globalTheme}
+                                                onClose={() => setIsCodeEditorOpen(false)}
+                                            />
+                                        </AccordionItem>
+                                    )}
+                                </Accordion>
+                            </aside>
+                            <main className="sticky top-24">
+                                <PostPreview
+                                    profile={profile}
+                                    dimension={dimension}
+                                    isLoading={isLoading}
+                                    selectedCreativeType={selectedCreativeType}
+                                    creative={{
+                                        ...creative,
+                                        landingPageHtml: editableHtml ?? creative?.landingPageHtml
+                                    }}
+                                    editableContent={editableContent}
+                                    secondaryLangName={secondaryLangName}
+                                    isCodeEditorOpen={isCodeEditorOpen}
+                                    onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
+                                    handleContentChange={() => {}}
+                                    handleCarouselSlideChange={() => {}}
+                                    onImageEdit={() => {}}
+                                    onRegenerateClick={() => setIsRegenerateOpen(true)}
+                                    onCurrentSlideChange={setCurrentCarouselSlide}
+                                    onDownload={handleDownload}
+                                    onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
+                                    onAddText={() => {}}
+                                    onEditPost={() => setIsEditDialogOpen(true)}
+                                    isSaved={!!savedContent}
+                                />
+                            </main>
+                        </div>
                     </div>
                 )}
             </div>
