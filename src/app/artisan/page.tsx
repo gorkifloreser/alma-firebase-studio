@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback, useMemo, useRef } from 'react';
@@ -25,6 +26,7 @@ import { EditContentDialog } from '@/app/calendar/_components/EditContentDialog'
 import { CodeEditor } from './_components/CodeEditor';
 import { CreativeControls } from './_components/CreativeControls';
 import { PostPreview } from './_components/PostPreview';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Profile = {
     full_name: string | null;
@@ -583,17 +585,21 @@ export default function ArtisanPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
-                         <Card className="hover:border-primary cursor-pointer" onClick={startCustomWorkflow}>
-                             <CardHeader>
-                                 <Wand2 className="w-8 h-8 text-primary mb-2" />
-                                 <CardTitle>Freestyle Creation</CardTitle>
-                             </CardHeader>
-                             <CardContent>
-                                 <p className="text-sm text-muted-foreground">
-                                     Generate any type of content for any of your offerings on the fly.
-                                 </p>
-                             </CardContent>
-                         </Card>
+                         <div className="space-y-4">
+                             <div
+                                 className="flex items-center gap-3 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
+                                 onClick={startCustomWorkflow}
+                             >
+                                 <Wand2 className="w-8 h-8 text-primary" />
+                                 <div>
+                                     <h3 className="font-semibold">Freestyle Creation</h3>
+                                     <p className="text-sm text-muted-foreground">
+                                         Generate any type of content for any of your offerings on the fly.
+                                     </p>
+                                 </div>
+                             </div>
+                         </div>
+
                          <div className="space-y-2">
                              <h3 className="font-semibold flex items-center gap-2 text-foreground">
                                  <Sparkles className="w-5 h-5 text-primary" />
@@ -602,17 +608,23 @@ export default function ArtisanPage() {
                              <p className="text-sm text-muted-foreground">
                                 Select one of your AI-generated media plans to work on its content queue.
                             </p>
-                            {mediaPlans.length > 0 ? (
-                                <div className="space-y-2 pt-2">
-                                    {mediaPlans.map(plan => (
+                            <div className="space-y-2 pt-2">
+                                {isLoading ? (
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-10 w-full" />
+                                        <Skeleton className="h-10 w-full" />
+                                        <Skeleton className="h-10 w-full" />
+                                    </div>
+                                ) : mediaPlans.length > 0 ? (
+                                    mediaPlans.map(plan => (
                                         <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
                                             {plan.title}
                                         </Button>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-center text-muted-foreground border p-4 rounded-md mt-2">No media plans found. Create one in the AI Strategist.</p>
-                            )}
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-center text-muted-foreground border p-4 rounded-md mt-2">No media plans found. Create one in the AI Strategist.</p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
@@ -700,6 +712,7 @@ export default function ArtisanPage() {
                                         isSaving={isSaving}
                                         handleSave={handleSave}
                                         hasContent={!!hasContent}
+                                        onSelectCampaign={() => setIsDialogOpen(true)}
                                     />
                                 </AccordionItem>
                                 {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
