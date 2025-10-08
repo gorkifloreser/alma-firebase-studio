@@ -128,6 +128,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
 
     const filteredOfferings = offerings.filter(offering => {
         if (activeTab === 'all') return true;
+        if (activeTab === 'value-content') return offering.type === 'Value Content';
         return offering.type.toLowerCase() === activeTab;
     });
 
@@ -247,38 +248,6 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                                 <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <h3 className="text-xl font-semibold mt-4">No {activeTab !== 'all' ? activeTab : ''} Offerings Found</h3>
                                 <p className="text-muted-foreground mt-2">Click "New Offering" to add one.</p>
-                            </div>
-                        )}
-                    </TabsContent>
-                    <TabsContent value="value-content" className="mt-0 space-y-6">
-                        {offeringsWithValueContent.length > 0 ? (
-                            offeringsWithValueContent.map(offering => (
-                                <Card key={offering.id}>
-                                    <CardHeader>
-                                        <CardTitle>{offering.title.primary}</CardTitle>
-                                        <CardDescription>{offering.type}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Accordion type="multiple" className="w-full">
-                                            {(offering.value_content || []).map((block, index) => (
-                                                <AccordionItem value={`item-${index}`} key={block.id}>
-                                                    <AccordionTrigger>{block.type}</AccordionTrigger>
-                                                    <AccordionContent className="whitespace-pre-wrap text-sm text-muted-foreground">
-                                                        {block.content}
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        ) : (
-                            <div className="text-center py-16 border-2 border-dashed rounded-lg">
-                                <BookHeart className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <h3 className="text-xl font-semibold mt-4">No Value Content Found</h3>
-                                <p className="text-muted-foreground mt-2">
-                                    Edit an offering to add value content for the AI to use.
-                                </p>
                             </div>
                         )}
                     </TabsContent>

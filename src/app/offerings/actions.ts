@@ -200,10 +200,10 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, schedules = [] } = offeringData;
+    const { title, description, type, contextual_notes, schedules = [], value_content } = offeringData;
 
     // 1. Update the main offering details
-    const offeringPayload = { title, description, type, contextual_notes, updated_at: new Date().toISOString() };
+    const offeringPayload = { title, description, type, contextual_notes, value_content, updated_at: new Date().toISOString() };
     const { error: offeringError } = await supabase
         .from('offerings')
         .update(offeringPayload)
@@ -314,11 +314,10 @@ export async function uploadSingleOfferingMedia(offeringId: string, formData: Fo
     if (!user) throw new Error('User not authenticated');
 
     const file = formData.get('file') as File | null;
-    const description = formData.get('description') as string | null;
-
-    if (!file || !(file instanceof File) || !file.name) {
+    if (!(file instanceof File) || !file.name) {
         throw new Error('A valid file must be provided for upload.');
     }
+    const description = formData.get('description') as string | null;
 
     const bucketName = 'Alma';
     const filePath = `${user.id}/offerings/${offeringId}/${crypto.randomUUID()}-${file.name}`;
