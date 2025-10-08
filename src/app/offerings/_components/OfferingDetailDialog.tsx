@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -23,12 +24,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import type { Offering, OfferingMedia, OfferingSchedule, ValueContentBlock } from '../actions';
+import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
-import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2, Repeat, MapPin, BookHeart } from 'lucide-react';
+import { Calendar, Clock, Tag, Globe, Package, Sparkles, Edit, Trash2, Repeat, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -73,7 +74,6 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
         description,
         type,
         contextual_notes,
-        value_content,
         offering_media,
         offering_schedules,
     } = offering;
@@ -131,31 +131,6 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                             </>
                         )}
                     </div>
-                    
-                    {value_content && value_content.length > 0 && (
-                        <>
-                            <Separator />
-                            <DetailItem icon={BookHeart} label="Value Content for AI">
-                                <Accordion type="multiple" className="w-full">
-                                    {value_content.map((block) => (
-                                        <AccordionItem value={block.id} key={block.id}>
-                                            <AccordionTrigger>{block.type}</AccordionTrigger>
-                                            <AccordionContent className="space-y-4">
-                                                <div>
-                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Concept</p>
-                                                    <p className="whitespace-pre-wrap text-sm italic">"{block.concept}"</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Developed Content</p>
-                                                    <p className="whitespace-pre-wrap text-sm">{block.developed_content}</p>
-                                                </div>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </DetailItem>
-                        </>
-                    )}
                     
                      {offering_schedules && offering_schedules.length > 0 && offering.type !== 'Value Content' && (
                         <>

@@ -8,9 +8,7 @@ import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/trans
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
 import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
-import { generateImageDescription as genImageDescFlow, GenerateImageDescriptionInput, GenerateImageDescriptionOutput } from '@/ai/flows/generate-image-description-flow';
-import { generateValueContent as genValueContentFlow } from '@/ai/flows/generate-value-content-flow';
-import type { GenerateValueContentInput, GenerateValueContentOutput } from '@/ai/flows/generate-value-content-types';
+import { generateImageDescriptionDirect as genImageDescDirect, GenerateImageDescriptionDirectInput, GenerateImageDescriptionDirectOutput } from '@/ai/direct/generate-image-description-direct';
 import { saveContent as saveContentAction } from '@/app/artisan/actions';
 import type { CalendarItem as ContentItem } from '@/app/calendar/actions';
 
@@ -51,13 +49,6 @@ export type OfferingSchedule = {
     prices: PricePoint[];
 };
 
-export type ValueContentBlock = {
-    id: string;
-    type: string;
-    concept: string;
-    developed_content: string;
-};
-
 export type Offering = {
     id: string;
     user_id: string;
@@ -67,7 +58,6 @@ export type Offering = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event' | 'Value Content';
     contextual_notes: string | null;
-    value_content: ValueContentBlock[] | null;
     offering_schedules: OfferingSchedule[];
 };
 
@@ -144,7 +134,6 @@ type UpsertOfferingPayload = {
     description: { primary: string | null; secondary: string | null };
     type: 'Product' | 'Service' | 'Event' | 'Value Content';
     contextual_notes: string | null;
-    value_content: ValueContentBlock[] | null;
     schedules?: OfferingSchedule[]; // Optional for create/update logic
 }
 
@@ -156,9 +145,9 @@ export async function createOffering(offeringData: UpsertOfferingPayload): Promi
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { title, description, type, contextual_notes, value_content, schedules } = offeringData;
+  const { title, description, type, contextual_notes, schedules } = offeringData;
 
-  const offeringPayload = { user_id: user.id, title, description, type, contextual_notes, value_content };
+  const offeringPayload = { user_id: user.id, title, description, type, contextual_notes };
 
   const { data: newOffering, error } = await supabase
     .from('offerings')
@@ -200,10 +189,10 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     
-    const { title, description, type, contextual_notes, schedules = [], value_content } = offeringData;
+    const { title, description, type, contextual_notes, schedules = [] } = offeringData;
 
     // 1. Update the main offering details
-    const offeringPayload = { title, description, type, contextual_notes, value_content, updated_at: new Date().toISOString() };
+    const offeringPayload = { title, description, type, contextual_notes, updated_at: new Date().toISOString() };
     const { error: offeringError } = await supabase
         .from('offerings')
         .update(offeringPayload)
@@ -464,27 +453,11 @@ export async function generateOfferingDraft(input: GenerateOfferingDraftInput): 
 }
 
 /**
- * Invokes the Genkit flow to generate an image description.
- * @param {GenerateImageDescriptionInput} input The image data URI and optional context.
- * @returns {Promise<GenerateImageDescriptionOutput>} The AI-generated description.
+ * Invokes the direct-to-API flow to generate an image description.
+ * @param {GenerateImageDescriptionDirectInput} input The image data URI and optional context.
+ * @returns {Promise<GenerateImageDescriptionDirectOutput>} The AI-generated description.
  */
-export async function generateImageDescription(input: GenerateImageDescriptionInput): Promise<GenerateImageDescriptionOutput> {
-    try {
-        const result = await genImageDescFlow(input);
-        return result;
-    } catch (error: any) {
-        console.error("Genkit image description flow failed:", error);
-        // Ensure a standard, serializable Error object is thrown
-        throw new Error(error.message || 'An unexpected error occurred during image description generation.');
-    }
-}
-
-
-/**
- * Invokes the Genkit flow to develop a value content block.
- * @param {GenerateValueContentInput} input The context and concept for the content.
- * @returns {Promise<GenerateValueContentOutput>} The developed content.
- */
-export async function generateValueContent(input: GenerateValueContentInput): Promise<GenerateValueContentOutput> {
-    return genValueContentFlow(input);
+export async function generateImageDescription(input: GenerateImageDescriptionDirectInput): Promise<GenerateImageDescriptionDirectOutput> {
+    // This now calls the lightweight, direct-to-API function instead of the Genkit flow.
+    return genImageDescDirect(input);
 }
