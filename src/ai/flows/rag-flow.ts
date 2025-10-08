@@ -72,7 +72,7 @@ const ragFlow = ai.defineFlow(
 
     // 1. Generate an embedding for the user's query.
     const embedding = await ai.embed({
-      model: 'googleai/text-embedding-preview-0518',
+      model: 'googleai/gemini-embedding-001',
       input: query,
       outputDimensionality: 768,
     });

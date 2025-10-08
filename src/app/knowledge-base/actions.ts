@@ -25,8 +25,9 @@ export type BrandDocument = {
  */
 export async function uploadBrandDocument(formData: FormData): Promise<{ message: string, filePath: string, documentGroupId: string }> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) throw new Error('User not authenticated');
+    const user = authData.user;
 
     const documentFile = formData.get('document') as File | null;
     if (!documentFile || documentFile.size === 0) {
@@ -74,36 +75,104 @@ export async function uploadBrandDocument(formData: FormData): Promise<{ message
  * @returns {Promise<{ message: string }>} A success message.
  */
 export async function generateAndStoreEmbeddings(chunks: string[], documentGroupId: string): Promise<{ message: string }> {
-    console.log(`[generateAndStoreEmbeddings] Starting batch embedding process for ${chunks.length} chunks for group ${documentGroupId}.`);
+    console.log(`[generateAndStoreEmbeddings] --- Execution Start ---`);
+    console.log(`[generateAndStoreEmbeddings] Received ${chunks?.length ?? 'undefined'} chunks for documentGroupId: ${documentGroupId}`);
+
+    if (!Array.isArray(chunks) || chunks.length === 0) {
+        console.error('[generateAndStoreEmbeddings] Error: Chunks are not a valid array or are empty.');
+        throw new Error('No valid text chunks provided for embedding.');
+    }
+
+    const validChunks = chunks.map(chunk => chunk.trim()).filter(chunk => chunk.length > 0);
+    console.log(`[generateAndStoreEmbeddings] After filtering, there are ${validChunks.length} valid chunks.`);
+
+    if (validChunks.length === 0) {
+        console.log('[generateAndStoreEmbeddings] No content to embed after filtering. Exiting.');
+        return { message: 'No content to embed after filtering empty chunks.' };
+    }
+    
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: authData, error: authError } = await supabase.auth.getUser();
 
-    // Step 1: Generate all embeddings in a single batch call.
+    if (authError) {
+        console.error('[generateAndStoreEmbeddings] Supabase auth error:', authError);
+        throw new Error('User not authenticated due to an error.');
+    }
+    if (!authData?.user) {
+        console.error('[generateAndStoreEmbeddings] Error: User not found.');
+        throw new Error('User not authenticated.');
+    }
+    const user = authData.user;
+    console.log(`[generateAndStoreEmbeddings] Authenticated user ID: ${user.id}`);
+
+    // Sanitize chunks before sending them to the embedding model
+    const sanitizeText = (text: string): string => {
+        // Removes non-printable characters, normalizes whitespace, and trims.
+        return text.replace(/[^a-zA-Z0-9 .,!?"'$%€@()\-]/g, ' ').replace(/\s+/g, ' ').trim();
+    };
+    const sanitizedChunks = validChunks.map(sanitizeText);
+
     console.log('[generateAndStoreEmbeddings] Calling AI to generate embeddings...');
-    const embeddings = await ai.embed({
-        model: 'googleai/text-embedding-preview-0518',
-        input: chunks,
-        outputDimensionality: 768,
-    });
+    console.log('[generateAndStoreEmbeddings] Chunks to be embedded:', JSON.stringify(sanitizedChunks, null, 2));
+    let embeddings;
+    try {
+        embeddings = await ai.embed({
+            model: 'googleai/gemini-embedding-001',
+            input: sanitizedChunks,
+            outputDimensionality: 768,
+        });
+    } catch (e) {
+        console.error('[generateAndStoreEmbeddings] CRITICAL: ai.embed() call failed.', e);
+        throw new Error('Failed to generate embeddings from the AI model.');
+    }
 
-    if (embeddings.length !== chunks.length) {
+    console.log(`[generateAndStoreEmbeddings] Raw embeddings received. Type: ${typeof embeddings}, Length: ${embeddings?.length}`);
+    if (embeddings) {
+        console.log('[generateAndStoreEmbeddings] First embedding:', JSON.stringify(embeddings[0], null, 2));
+    }
+
+
+    if (!embeddings || embeddings.length !== validChunks.length) {
+        console.error(`[generateAndStoreEmbeddings] Mismatch between chunks (${validChunks.length}) and embeddings (${embeddings?.length}).`);
         throw new Error('The number of embeddings returned does not match the number of chunks.');
     }
     console.log(`[generateAndStoreEmbeddings] Successfully generated ${embeddings.length} embeddings.`);
 
-    // Step 2: Prepare the data for a batch database insert.
-    const recordsToInsert = chunks.map((chunk, index) => ({
-        user_id: user.id,
-        document_group_id: documentGroupId,
-        content: chunk,
-        embedding: embeddings[index],
-        is_file_reference: false, // These are content chunks, not the file reference
-    }));
+    console.log('[generateAndStoreEmbeddings] --- Preparing records for insertion ---');
+    const recordsToInsert = validChunks
+        .map((chunk, index) => {
+            const embedding = embeddings[index];
+            console.log(`[generateAndStoreEmbeddings] Processing chunk ${index}:`);
+            console.log(`  - Chunk content: "${chunk.substring(0, 50)}..."`);
+            console.log(`  - Embedding type: ${typeof embedding}`);
+            console.log(`  - Is embedding an array? ${Array.isArray(embedding)}`);
+
+            if (!Array.isArray(embedding) || embedding.some(isNaN)) {
+                console.warn(`[generateAndStoreEmbeddings] SKIPPING chunk at index ${index} due to invalid embedding.`);
+                return null;
+            }
+
+            const record = {
+                user_id: user.id,
+                document_group_id: documentGroupId,
+                content: chunk,
+                embedding: embedding,
+                is_file_reference: false,
+            };
+            console.log(`  - Record created for chunk ${index}.`);
+            return record;
+        })
+        .filter((record): record is NonNullable<typeof record> => record !== null);
+
+    console.log(`[generateAndStoreEmbeddings] Total records to insert: ${recordsToInsert.length}`);
+
+    if (recordsToInsert.length === 0) {
+        console.log('[generateAndStoreEmbeddings] No valid records to insert. Exiting.');
+        return { message: 'No records to insert after processing and validating embeddings.' };
+    }
     
     console.log(`[generateAndStoreEmbeddings] Storing ${recordsToInsert.length} chunks and their embeddings in the database.`);
     
-    // Step 3: Perform a single batch insert.
     const { error: insertError } = await supabase
         .from('brand_documents')
         .insert(recordsToInsert);
@@ -113,8 +182,8 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
         throw new Error(`Failed to store chunks in the knowledge base. DB Error: ${insertError.message}`);
     }
 
-    console.log('[generateAndStoreEmbeddings] All chunks have been processed and stored successfully.');
-    return { message: `${chunks.length} document chunks added to knowledge base.` };
+    console.log('[generateAndStoreEmbeddings] --- Execution End ---');
+    return { message: `${recordsToInsert.length} document chunks added to knowledge base.` };
 }
 
 
@@ -125,8 +194,9 @@ export async function generateAndStoreEmbeddings(chunks: string[], documentGroup
  */
 export async function getBrandDocuments(): Promise<BrandDocument[]> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) return [];
+    const user = authData.user;
 
     const { data, error } = await supabase
         .from('brand_documents')
@@ -151,8 +221,9 @@ export async function getBrandDocuments(): Promise<BrandDocument[]> {
  */
 export async function deleteBrandDocument(document_group_id: string): Promise<{ message: string }> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) throw new Error('User not authenticated');
+    const user = authData.user;
 
     // First, get the file_path from one of the document chunks
     const { data: document, error: fetchError } = await supabase

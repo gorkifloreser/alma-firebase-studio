@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition, useRef, useCallback } from 'react';
+import React, { useState, useTransition, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,15 +12,10 @@ import { Upload, FileText, Trash2, Loader2, Bot, User as UserIcon, CornerDownLef
 import { formatDistanceToNow } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import * as pdfjsLib from 'pdfjs-dist';
-import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
 
 import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../actions';
 import { getFileDownloadUrl } from '../getFileDownloadUrl';
-
+import { processAndEmbedDocument } from '../processAndEmbedDocument';
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -41,7 +36,6 @@ export interface KnowledgeBaseClientPageProps {
     generateAndStoreEmbeddingsAction: typeof generateAndStoreEmbeddings;
 }
 
-
 export function KnowledgeBaseClientPage({
     initialDocuments,
     getBrandDocumentsAction,
@@ -55,8 +49,8 @@ export function KnowledgeBaseClientPage({
     const [isUploading, startUploading] = useTransition();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [isDeleting, startDeletingTransition] = useTransition();
-    const [parsingId, setParsingId] = useState<string | null>(null);
-    const [isParsing, startParsing] = useTransition();
+    const [processingId, setProcessingId] = useState<string | null>(null);
+    const [isProcessing, startProcessing] = useTransition();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,21 +58,6 @@ export function KnowledgeBaseClientPage({
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [chatQuery, setChatQuery] = useState('');
     const [isAnswering, startAnswering] = useTransition();
-
-    const [isResultDialogOpen, setIsResultDialogOpen] = useState(false);
-    const [parsingResult, setParsingResult] = useState<{chunks: string[], documentGroupId: string} | null>(null);
-    const [isStoring, startStoring] = useTransition();
-
-    const fetchDocumentFile = useCallback(async (filePath: string): Promise<File> => {
-        const { signedUrl } = await getFileDownloadUrl(filePath);
-        const response = await fetch(signedUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to download file: ${response.statusText}`);
-        }
-        const blob = await response.blob();
-        const fileName = filePath.split('/').pop() || 'downloaded-file';
-        return new File([blob], fileName, { type: blob.type });
-    }, []);
 
     const fetchAllData = async () => {
         setIsLoading(true);
@@ -102,11 +81,9 @@ export function KnowledgeBaseClientPage({
             toast({
                 variant: 'destructive',
                 title: 'File too large',
-                description: `The maximum file size is ${MAX_FILE_SIZE_MB}MB.`,
+                description: `The maximum file size is ${MAX_FILE_SIZE_MB}MB.`, 
             });
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+            if (fileInputRef.current) fileInputRef.current.value = "";
             setSelectedFile(null);
             return;
         }
@@ -118,21 +95,16 @@ export function KnowledgeBaseClientPage({
             toast({ variant: 'destructive', title: 'No file selected' });
             return;
         }
-
         const formData = new FormData();
         formData.append('document', selectedFile);
-
         startUploading(async () => {
-            console.log('[handleDocumentUpload] Start');
             try {
-                const { filePath, documentGroupId } = await uploadBrandDocumentAction(formData);
-                console.log('[handleDocumentUpload] Success:', { filePath, documentGroupId });
-                toast({ title: 'Success!', description: 'Document uploaded successfully.', duration: 2000 });
+                await uploadBrandDocumentAction(formData);
+                toast({ title: 'Success!', description: 'Document uploaded successfully.' });
                 setSelectedFile(null);
-                if(fileInputRef.current) fileInputRef.current.value = "";
+                if (fileInputRef.current) fileInputRef.current.value = "";
                 await fetchAllData();
             } catch (error: any) {
-                console.error('[handleDocumentUpload] Error:', error);
                 toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
             }
         });
@@ -141,106 +113,28 @@ export function KnowledgeBaseClientPage({
     const handleDocumentDelete = (groupId: string) => {
         setDeletingId(groupId);
         startDeletingTransition(async () => {
-            console.log(`[handleDocumentDelete] Start deleting document group: ${groupId}`);
             try {
                 const result = await deleteBrandDocumentAction(groupId);
-                console.log(`[handleDocumentDelete] Success:`, result);
                 toast({ title: 'Success!', description: result.message });
                 await fetchAllData();
             } catch (error: any) {
-                console.error(`[handleDocumentDelete] Error deleting document group ${groupId}:`, error);
                 toast({ variant: 'destructive', title: 'Deletion failed', description: error.message });
             } finally {
                 setDeletingId(null);
             }
         });
     };
-    
-    const handleParseDocument = async (filePath: string, documentGroupId: string) => {
-        setParsingId(filePath);
-        startParsing(async () => {
+
+    const handleProcessDocument = (filePath: string, documentGroupId: string) => {
+        setProcessingId(documentGroupId);
+        startProcessing(async () => {
             try {
-                const file = await fetchDocumentFile(filePath);
-                console.log(`[handleParseDocument] Start parsing file: ${file.name} (type: ${file.type})`);
-                
-                let fullText = "";
-                if (file.type === 'application/pdf') {
-                    console.log('[handleParseDocument] Parsing PDF...');
-                    const buffer = await file.arrayBuffer();
-                    const loadingTask = pdfjsLib.getDocument(new Uint8Array(buffer));
-                    const pdfDoc: PDFDocumentProxy = await loadingTask.promise;
-
-                    for (let i = 1; i <= pdfDoc.numPages; i++) {
-                        const page = await pdfDoc.getPage(i);
-                        const textContent = await page.getTextContent();
-                        fullText += (textContent.items ?? []).map((item: any) => item.str).join(" ") + "\n\n";
-                    }
-                } else {
-                    console.log('[handleParseDocument] Parsing text file...');
-                    fullText = await file.text();
-                }
-                
-                console.log('[handleParseDocument] Text extracted. Starting chunking...');
-                const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [];
-                const chunks: string[] = [];
-                let currentChunk = '';
-
-                for (const sentence of sentences) {
-                    if (currentChunk.length + sentence.length + 1 <= 1500) {
-                        currentChunk += (currentChunk ? ' ' : '') + sentence;
-                    } else {
-                        if (currentChunk) chunks.push(currentChunk);
-                        currentChunk = sentence;
-                    }
-                }
-                if (currentChunk) chunks.push(currentChunk);
-                
-                console.log(`[handleParseDocument] Chunking complete. ${chunks.length} chunks created.`);
-                setParsingResult({ chunks, documentGroupId });
-                setIsResultDialogOpen(true);
+                const result = await processAndEmbedDocument(filePath, documentGroupId);
+                toast({ title: 'Processing Complete', description: result.message });
             } catch (error: any) {
-                console.error('[handleParseDocument] Error:', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Parsing Failed',
-                    description: error.message,
-                });
-                 console.error('Parsing error details:', error);
+                toast({ variant: 'destructive', title: 'Processing Failed', description: error.message });
             } finally {
-                setParsingId(null);
-            }
-        });
-    };
-
-
-    const handleGenerateEmbeddings = async () => {
-        if (!parsingResult || parsingResult.chunks.length === 0) {
-            toast({
-                variant: 'destructive',
-                title: 'No Chunks to Process',
-                description: 'There are no text chunks to generate embeddings for.',
-            });
-            return;
-        }
-
-        console.log(`[handleGenerateEmbeddings] Start generating embeddings for ${parsingResult.chunks.length} chunks.`);
-        startStoring(async () => {
-            try {
-                const result = await generateAndStoreEmbeddingsAction(parsingResult.chunks, parsingResult.documentGroupId);
-                console.log('[handleGenerateEmbeddings] Success:', result);
-                toast({
-                    title: 'Success!',
-                    description: result.message,
-                });
-                setIsResultDialogOpen(false);
-                setParsingResult(null);
-            } catch (error: any) {
-                console.error('[handleGenerateEmbeddings] Error:', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Embedding Failed',
-                    description: error.message,
-                });
+                setProcessingId(null);
             }
         });
     };
@@ -248,35 +142,29 @@ export function KnowledgeBaseClientPage({
     const handleChatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatQuery.trim()) return;
-
-        console.log(`[handleChatSubmit] Submitting query: "${chatQuery}"`);
         const newUserMessage: ChatMessage = { role: 'user', content: chatQuery };
         setChatHistory(prev => [...prev, newUserMessage, { role: 'bot', content: 'Thinking...' }]);
         setChatQuery('');
-
         startAnswering(async () => {
             try {
                 const result = await askRagAction(chatQuery);
-                console.log('[handleChatSubmit] Received response:', result);
                 const newBotMessage: ChatMessage = { role: 'bot', content: result.response };
                 setChatHistory(prev => [...prev.slice(0, -1), newBotMessage]);
             } catch (error: any) {
-                console.error('[handleChatSubmit] Error:', error);
                 const newErrorMessage: ChatMessage = { role: 'bot', content: `Error: ${error.message}` };
                 setChatHistory(prev => [...prev.slice(0, -1), newErrorMessage]);
             }
         });
-    }
+    };
 
     return (
-        <>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <div className="space-y-8">
                 <Card>
                     <CardHeader>
                         <CardTitle>Brand Documents</CardTitle>
                         <CardDescription>
-                            Upload documents for the AI to learn from. The system will automatically process them.
+                            Upload documents for the AI to learn from. Click the magic wand to process them.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -293,11 +181,7 @@ export function KnowledgeBaseClientPage({
                                         accept=".pdf,.txt,.md"
                                         disabled={isUploading}
                                     />
-                                    <Button 
-                                        size="icon" 
-                                        onClick={handleDocumentUpload} 
-                                        disabled={!selectedFile || isUploading}
-                                    >
+                                    <Button size="icon" onClick={handleDocumentUpload} disabled={!selectedFile || isUploading}>
                                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                     </Button>
                                 </div>
@@ -324,13 +208,13 @@ export function KnowledgeBaseClientPage({
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                     <Button
+                                                    <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => handleParseDocument(doc.file_path, doc.document_group_id)}
-                                                        disabled={isParsing && parsingId === doc.file_path}
+                                                        onClick={() => handleProcessDocument(doc.file_path, doc.document_group_id)}
+                                                        disabled={isProcessing && processingId === doc.document_group_id}
                                                     >
-                                                        {isParsing && parsingId === doc.file_path ? (
+                                                        {isProcessing && processingId === doc.document_group_id ? (
                                                             <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
                                                             <Sparkles className="h-4 w-4 text-primary" />
@@ -342,7 +226,7 @@ export function KnowledgeBaseClientPage({
                                                         onClick={() => handleDocumentDelete(doc.document_group_id)}
                                                         disabled={isDeleting && deletingId === doc.document_group_id}
                                                     >
-                                                    {isDeleting && deletingId === doc.document_group_id ? (
+                                                        {isDeleting && deletingId === doc.document_group_id ? (
                                                             <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
                                                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -364,16 +248,15 @@ export function KnowledgeBaseClientPage({
                     </CardContent>
                 </Card>
             </div>
-
             <Card className="sticky top-24">
                 <CardHeader>
                     <CardTitle>Chat with your Knowledge Base</CardTitle>
                     <CardDescription>Ask questions about your uploaded documents.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                   <div className="h-[400px] flex flex-col">
+                    <div className="h-[400px] flex flex-col">
                         <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-                             {chatHistory.length === 0 && (
+                            {chatHistory.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full text-center">
                                     <Bot className="w-12 h-12 text-muted-foreground" />
                                     <p className="mt-4 text-muted-foreground">Ask me anything about your brand!</p>
@@ -385,7 +268,7 @@ export function KnowledgeBaseClientPage({
                                     <div className={`rounded-lg px-3 py-2 max-w-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                                     </div>
-                                     {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
+                                    {msg.role === 'user' && <Avatar className="w-8 h-8"><AvatarFallback><UserIcon className="w-5 h-5"/></AvatarFallback></Avatar>}
                                 </div>
                             ))}
                             {isAnswering && (
@@ -415,45 +298,10 @@ export function KnowledgeBaseClientPage({
                                 {isAnswering ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
                             </Button>
                         </form>
-                   </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>
-        <Dialog open={isResultDialogOpen} onOpenChange={setIsResultDialogOpen}>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Document Parsing Result</DialogTitle>
-                    <DialogDescription>
-                        The document was split into the following text chunks. Review them and then generate embeddings to add them to your knowledge base.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto space-y-4 p-4 my-4 border rounded-md">
-                    {parsingResult?.chunks.map((chunk, index) => (
-                        <div key={index} className="p-3 bg-muted/50 rounded-md">
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">Chunk {index + 1}</p>
-                            <p className="text-sm whitespace-pre-wrap">{chunk}</p>
-                        </div>
-                    ))}
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsResultDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleGenerateEmbeddings} disabled={isStoring}>
-                        {isStoring ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Generating Embeddings...
-                            </>
-                        ) : (
-                             <>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Generate Embeddings & Save
-                            </>
-                        )}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </>
     );
 }
 
@@ -464,5 +312,4 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-
     
