@@ -28,7 +28,7 @@ export type GenerateImageDescriptionOutput = z.infer<typeof GenerateImageDescrip
 
 const prompt = ai.definePrompt({
   name: 'generateImageDescriptionPrompt',
-  model: googleAI('gemini-pro-vision'),
+  model: googleAI.model('gemini-pro-vision'),
   input: { schema: GenerateImageDescriptionInputSchema },
   output: { schema: GenerateImageDescriptionOutputSchema },
   prompt: `Analyze the following image and generate a short, descriptive caption for it.
