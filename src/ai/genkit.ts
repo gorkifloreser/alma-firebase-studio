@@ -4,7 +4,7 @@ import { defineAction, action } from '@genkit-ai/core';
 import { z } from 'zod';
 import { embed } from '@genkit-ai/ai';
 
-export const textEmbedding004 = googleAI.model('text-embedding-004');
+export const textEmbedding004 = 'models/text-embedding-004';
 
 export const ai = genkit({
   plugins: [googleAI({apiKey: process.env.GEMINI_API_KEY})],
