@@ -1,6 +1,10 @@
 
 import type {NextConfig} from 'next';
 
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
@@ -37,5 +41,5 @@ const nextConfig: NextConfig = {
 export default () => {
   require('dotenv').config({ path: './.env.local' });
   process.env.TURBOPACK_MEMORY_LIMIT = '0.1';
-  return nextConfig;
+  return withBundleAnalyzer(nextConfig);
 };
