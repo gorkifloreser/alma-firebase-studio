@@ -209,7 +209,7 @@ export function EditContentDialog({
         onContentDeleted(contentItem.id);
         onOpenChange(false);
         toast({ title: 'Post Deleted', description: 'The content has been permanently removed.' });
-      } catch (error: any) => {
+      } catch (error: any) {
         toast({
           variant: 'destructive',
           title: 'Deletion Failed',
