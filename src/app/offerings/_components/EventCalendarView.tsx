@@ -107,7 +107,7 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
                 {...attributes}
                 className="absolute top-1/2 -left-2.5 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
             >
-                <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
+                 <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
                     <GripVertical className="h-4 w-4 text-primary-foreground" />
                 </div>
             </div>
@@ -120,6 +120,19 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [view, setView] = useState<'week' | 'month'>('week');
     
+    // Load view from localStorage on initial render
+    useEffect(() => {
+        const savedView = localStorage.getItem('offerings-calendar-view');
+        if (savedView === 'week' || savedView === 'month') {
+            setView(savedView);
+        }
+    }, []);
+
+    // Save view to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('offerings-calendar-view', view);
+    }, [view]);
+
     const { calendarDays, headerLabel } = useMemo(() => {
         if (view === 'month') {
             const firstDayOfMonth = startOfMonth(currentDate);
