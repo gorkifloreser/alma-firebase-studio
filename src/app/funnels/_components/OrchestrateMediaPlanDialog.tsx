@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { useToast } from '@/hooks/use-toast';
 import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel, archiveMediaPlan } from '../actions';
 import type { Funnel, MediaPlan } from '../types';
-import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy, CircleDashed, CheckCheck } from 'lucide-react';
+import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy, CircleDashed, CheckCheck, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,6 +82,7 @@ export function OrchestrateMediaPlanDialog({
 }: OrchestrateMediaPlanDialogProps) {
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
     const [fullFunnelData, setFullFunnelData] = useState<Funnel | null>(null);
+    const [isDataLoading, setIsDataLoading] = useState(true);
     const [view, setView] = useState<ViewState>('list');
     const [currentPlan, setCurrentPlan] = useState<PlanItemWithStatus[] | null>(null);
     const [planIdToEdit, setPlanIdToEdit] = useState<string | null>(null);
@@ -108,11 +109,12 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         if (isOpen) {
+            setIsDataLoading(true);
             getFunnel(funnel.id).then(({ data }) => {
                 if (data) {
                     setFullFunnelData(data);
                 }
-            });
+            }).finally(() => setIsDataLoading(false));
         }
     }, [isOpen, funnel.id]);
 
@@ -125,7 +127,8 @@ export function OrchestrateMediaPlanDialog({
             });
 
             if (!planIdToEdit && !currentPlan) {
-                const newViewState = fullFunnelData.media_plans && fullFunnelData.media_plans.length > 0 ? 'list' : 'generate';
+                const hasActivePlans = fullFunnelData.media_plans?.some(p => (p.status || 'active') === 'active');
+                const newViewState = hasActivePlans ? 'list' : 'generate';
                 setView(newViewState);
                 setCurrentPlan(null);
                 setPlanIdToEdit(null);
@@ -255,6 +258,7 @@ export function OrchestrateMediaPlanDialog({
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
+                    setFullFunnelData(updatedFunnel);
                 }
             } catch (error: any) {
                  toast({
@@ -302,6 +306,7 @@ export function OrchestrateMediaPlanDialog({
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
+                    setFullFunnelData(updatedFunnel);
                 }
                 setView('list');
             } catch (error: any) {
@@ -433,6 +438,14 @@ export function OrchestrateMediaPlanDialog({
     }
 
     const renderListView = () => {
+        if (isDataLoading) {
+            return (
+                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                    <Skeleton className="h-28 w-full" />
+                    <Skeleton className="h-28 w-full" />
+                </div>
+            );
+        }
         const plans = (fullFunnelData?.media_plans || []).filter(plan => (plan.status || 'active') === planStatusFilter);
 
         return (
@@ -688,7 +701,7 @@ export function OrchestrateMediaPlanDialog({
                                 className="bg-green-600 hover:bg-green-700 text-white"
                             >
                                 <CheckCheck className="mr-2 h-4 w-4" />
-                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
+                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${active_tab}' for Artisan`}
                             </Button>
                         </>
                     )}
