@@ -43,7 +43,7 @@ export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     return data as Funnel[];
 }
 
-export async function getFunnel(funnelId: string) {
+export async function getStrategy(funnelId: string) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
@@ -66,7 +66,7 @@ export async function getFunnel(funnelId: string) {
         .single();
     
     if (error) {
-        console.error(`[actions.ts:getFunnel] Error fetching funnel ${funnelId}:`, error.message);
+        console.error(`[actions.ts:getStrategy] Error fetching funnel ${funnelId}:`, error.message);
         throw new Error(`Could not fetch funnel: ${error.message}`);
     }
 
