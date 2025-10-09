@@ -114,8 +114,8 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
     }
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes}>
-             <Card className={cn("p-2 hover:bg-secondary transition-colors", getStatusStyles())}>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+             <Card className={cn("p-2 hover:bg-secondary transition-colors", getStatusStyles(), isDraggable && "cursor-grab")}>
                 <div className="flex flex-col gap-2">
                      {item.image_url && (
                         <div className="relative w-full aspect-square">
@@ -125,7 +125,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                      <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold truncate">{publicationTime}</p>
                         <div className="flex items-center justify-between mt-1">
-                            <div {...(isDraggable ? listeners : {})} className={cn("flex items-center gap-1", isDraggable && "cursor-grab")}>
+                            <div className={cn("flex items-center gap-1")}>
                                 {getStatusIcon()}
                             </div>
                             <Button
