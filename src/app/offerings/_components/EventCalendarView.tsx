@@ -21,7 +21,7 @@ interface EventCalendarViewProps {
     onAddEvent: (date: Date) => void;
 }
 
-const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: { day: Date, events: { offering: OfferingWithMedia, schedule: OfferingSchedule }[], isCurrentMonth: boolean, onEventClick: (offeringId: string, scheduleId: string) => void, onAddEvent: (date: Date) => void }) => {
+const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent, heightClass }: { day: Date, events: { offering: OfferingWithMedia, schedule: OfferingSchedule }[], isCurrentMonth: boolean, onEventClick: (offeringId: string, scheduleId: string) => void, onAddEvent: (date: Date) => void, heightClass: string }) => {
     const [isToday, setIsToday] = useState(false);
     
     useEffect(() => {
@@ -37,7 +37,8 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: 
         <div 
             ref={setNodeRef}
             className={cn(
-                "relative flex flex-col p-2 border-t border-l min-h-[160px] group",
+                "relative flex flex-col p-2 border-t border-l group",
+                heightClass,
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
                 isOver ? "bg-accent" : "",
             )}
@@ -117,17 +118,26 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
 export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCalendarViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [view, setView] = useState<'week' | 'month'>('week');
     
     const { calendarDays, headerLabel } = useMemo(() => {
-        const firstDayOfMonth = startOfMonth(currentDate);
-        const lastDayOfMonth = endOfMonth(currentDate);
-        const firstDayOfCalendar = startOfWeek(firstDayOfMonth);
-        const lastDayOfCalendar = endOfWeek(lastDayOfMonth);
-        return {
-            calendarDays: eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar }),
-            headerLabel: format(currentDate, 'MMMM yyyy'),
-        };
-    }, [currentDate]);
+        if (view === 'month') {
+            const firstDayOfMonth = startOfMonth(currentDate);
+            const lastDayOfMonth = endOfMonth(currentDate);
+            const firstDayOfCalendar = startOfWeek(firstDayOfMonth);
+            const lastDayOfCalendar = endOfWeek(lastDayOfMonth);
+            return {
+                calendarDays: eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar }),
+                headerLabel: format(currentDate, 'MMMM yyyy'),
+            };
+        } else { // week view
+            const firstDayOfWeek = startOfWeek(currentDate);
+            return {
+                calendarDays: eachDayOfInterval({ start: firstDayOfWeek, end: addDays(firstDayOfWeek, 6) }),
+                headerLabel: `${format(firstDayOfWeek, 'MMM d')} - ${format(addDays(firstDayOfWeek, 6), 'MMM d, yyyy')}`,
+            };
+        }
+    }, [currentDate, view]);
 
     const eventsByDate = useMemo(() => {
         const map = new Map<string, { offering: OfferingWithMedia, schedule: OfferingSchedule }[]>();
@@ -146,8 +156,20 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
         return map;
     }, [events]);
 
-    const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-    const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+    const handlePrev = () => {
+        if (view === 'month') {
+            setCurrentDate(subMonths(currentDate, 1));
+        } else {
+            setCurrentDate(addDays(currentDate, -7));
+        }
+    };
+    const handleNext = () => {
+         if (view === 'month') {
+            setCurrentDate(addMonths(currentDate, 1));
+        } else {
+            setCurrentDate(addDays(currentDate, 7));
+        }
+    };
     const handleDateSelect = (date: Date | undefined) => {
         if (date) {
             setCurrentDate(date);
@@ -155,13 +177,19 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
         }
     };
 
+    const dayHeightClass = view === 'week' ? 'h-[48rem]' : 'h-48';
+
     return (
         <Card>
             <CardHeader className="flex items-center justify-between flex-row">
                  <CardTitle className="text-2xl font-bold">{headerLabel}</CardTitle>
                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                        <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
+                        <Button variant={view === 'month' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('month')}>Month</Button>
+                    </div>
                      <div className="flex items-center gap-2">
-                         <Button variant="outline" size="icon" onClick={handlePrevMonth}><ChevronLeft /></Button>
+                         <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft /></Button>
                          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline">
@@ -178,7 +206,7 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
                                 />
                             </PopoverContent>
                         </Popover>
-                        <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight /></Button>
+                        <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
                     </div>
                  </div>
             </CardHeader>
@@ -188,7 +216,7 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
                         <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
                     ))}
                 </div>
-                 <div className="grid grid-cols-7">
+                 <div className="grid grid-cols-7 flex-1">
                     {calendarDays.map(day => {
                         const dayKey = format(day, 'yyyy-MM-dd');
                         const dayEvents = eventsByDate.get(dayKey) || [];
@@ -200,6 +228,7 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
                                 isCurrentMonth={isSameMonth(day, currentDate)}
                                 onEventClick={onEventClick}
                                 onAddEvent={onAddEvent}
+                                heightClass={dayHeightClass}
                             />
                         );
                     })}
