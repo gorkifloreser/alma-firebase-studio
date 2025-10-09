@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -78,9 +79,6 @@ type CreativeControlsProps = {
     setSelectedOfferingId: (id: string | undefined) => void;
     creativePrompt: string;
     setCreativePrompt: (value: string) => void;
-    referenceImageUrl: string | null;
-    setIsMediaSelectorOpen: (open: boolean) => void;
-    setReferenceImageUrl: (url: string | null) => void;
     availableCreativeOptions: { id: CreativeType, label: string, icon: React.ElementType }[];
     selectedCreativeType: CreativeType;
     setSelectedCreativeType: (type: CreativeType) => void;
@@ -114,9 +112,6 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     setSelectedOfferingId,
     creativePrompt,
     setCreativePrompt,
-    referenceImageUrl,
-    setIsMediaSelectorOpen,
-    setReferenceImageUrl,
     availableCreativeOptions,
     selectedCreativeType,
     setSelectedCreativeType,
@@ -162,7 +157,11 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                         </Label>
                         <Select onValueChange={(value) => handleArtisanItemSelect(value)} disabled={isLoading} value={selectedArtisanItemId || ''}>
                             <SelectTrigger id="queue-select">
-                                <SelectValue placeholder="Select a content idea..." />
+                                <SelectValue asChild>
+                                    <span className="truncate">
+                                        {filteredArtisanItems.find(item => item.id === selectedArtisanItemId)?.concept || "Select a content idea..."}
+                                    </span>
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
@@ -238,7 +237,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                     {selectedCreativeType !== 'landing_page' && (
                         <div className="space-y-2">
                             <Label htmlFor="dimension-select">Set Aspect Ratio</Label>
-                            <Select onValueChange={(v) => setDimension(v as any)} disabled={isLoading || selectedCreativeType === 'video'} value={dimension}>
+                            <Select onValueChange={(v) => setDimension(v as any)} disabled={isLoading} value={dimension}>
                                 <SelectTrigger id="dimension-select">
                                     <SelectValue placeholder="Select aspect ratio..." />
                                 </SelectTrigger>
