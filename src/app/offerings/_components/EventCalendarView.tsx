@@ -1,17 +1,16 @@
-
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Package, Clock, PlusCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Package, Clock, PlusCircle, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
 import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
@@ -27,12 +26,19 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: 
     useEffect(() => {
         setIsToday(isSameDay(day, new Date()));
     }, [day]);
+    
+    const { isOver, setNodeRef } = useDroppable({
+        id: format(day, 'yyyy-MM-dd'),
+        data: { type: 'calendarDay', date: day }
+    });
 
     return (
         <div 
+            ref={setNodeRef}
             className={cn(
                 "relative flex flex-col p-2 border-t border-l min-h-[160px] group",
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
+                isOver ? "bg-accent" : "",
             )}
         >
             <time dateTime={format(day, 'yyyy-MM-dd')} className={cn("text-sm", isToday ? "font-bold text-primary" : "")}>
@@ -57,9 +63,22 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
     const eventTime = schedule?.event_date && isValid(parseISO(schedule.event_date as any)) ? format(parseISO(schedule.event_date as any), 'p') : 'All day';
     const coverImage = offering.offering_media?.[0]?.media_url;
 
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+        id: schedule.id!,
+        data: { type: 'calendarEvent', schedule: schedule },
+    });
+
+    const style = transform ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 10,
+    } : undefined;
+
     return (
-        <div onClick={onClick}>
-             <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative group cursor-pointer">
+        <div ref={setNodeRef} style={style} className="relative group/event">
+             <Card 
+                className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative cursor-pointer"
+                onClick={onClick}
+            >
                 <div className="flex flex-col">
                      {coverImage ? (
                         <div className="relative w-full aspect-video bg-muted">
@@ -81,6 +100,13 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
                      </div>
                 </div>
             </Card>
+            <div 
+                {...listeners} 
+                {...attributes}
+                className="absolute top-1/2 -left-2 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
+            >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
         </div>
     )
 }
