@@ -6,15 +6,15 @@ import React, { useEffect, useState, useMemo, useTransition, useCallback } from 
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, subDays, parseISO, isValid } from 'date-fns';
-import { getContent, scheduleContent, unscheduleContent, type CalendarItem } from './actions';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
+import { getContent, scheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, GripVertical, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
@@ -33,34 +33,6 @@ const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
     if (lowerChannel.includes('website')) return <Globe className="h-4 w-4 text-muted-foreground" />;
     return <Sparkles className="h-4 w-4 text-muted-foreground" />;
 }
-
-const DraggableContent = ({ item }: { item: CalendarItem }) => {
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({
-        id: item.id,
-        data: { type: 'contentItem' }
-    });
-
-    const style = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    } : undefined;
-
-    return (
-        <Card ref={setNodeRef} style={style} {...attributes} className="p-3 mb-2 bg-card touch-none">
-            <div className="flex items-start gap-2">
-                <div {...listeners} className="cursor-grab p-1">
-                    <GripVertical className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                    <p className="font-medium text-sm line-clamp-2">{item.copy || 'Untitled Content'}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                         <ChannelIcon channel={item.user_channel_settings?.channel_name} />
-                        <p className="text-xs text-muted-foreground">{item.format || 'Content'}</p>
-                    </div>
-                </div>
-            </div>
-        </Card>
-    );
-};
 
 const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }: { day: Date, content: CalendarItem[], isCurrentMonth: boolean, onEventClick: (item: CalendarItem) => void, heightClass: string }) => {
     const { isOver, setNodeRef } = useDroppable({
@@ -217,10 +189,8 @@ export default function CalendarPage() {
         checkUserAndFetchData();
     }, [fetchContent]);
 
-    const { unscheduled, scheduledOrPublished } = useMemo(() => {
-        const unscheduled = contentItems.filter(item => item.status === 'approved');
-        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && (item.scheduled_at || item.published_at));
-        return { unscheduled, scheduledOrPublished };
+    const scheduledOrPublished = useMemo(() => {
+        return contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && (item.scheduled_at || item.published_at));
     }, [contentItems]);
 
     const { calendarDays, headerLabel } = useMemo(() => {
@@ -235,10 +205,9 @@ export default function CalendarPage() {
             };
         } else { // week view
             const firstDayOfWeek = startOfWeek(currentDate);
-            const lastDayOfWeek = endOfWeek(currentDate);
             return {
-                calendarDays: eachDayOfInterval({ start: firstDayOfWeek, end: lastDayOfWeek }),
-                headerLabel: `${format(firstDayOfWeek, 'MMM d')} - ${format(lastDayOfWeek, 'MMM d, yyyy')}`,
+                calendarDays: eachDayOfInterval({ start: firstDayOfWeek, end: addDays(firstDayOfWeek, 6) }),
+                headerLabel: `${format(firstDayOfWeek, 'MMM d')} - ${format(addDays(firstDayOfWeek, 6), 'MMM d, yyyy')}`,
             };
         }
     }, [currentDate, view]);
@@ -275,43 +244,8 @@ export default function CalendarPage() {
         const sourceType = active.data.current?.type;
         const targetType = over.data.current?.type;
 
-        // From unscheduled to calendar
-        if (sourceType === 'contentItem' && targetType === 'calendarDay') {
-            const targetDate = over.data.current?.date as Date;
-            
-            startScheduling(async () => {
-                try {
-                    await scheduleContent(contentId, targetDate);
-                    // Optimistic update
-                    setContentItems(prev => prev.map(item => 
-                        item.id === contentId 
-                        ? { ...item, status: 'scheduled', scheduled_at: targetDate.toISOString() } 
-                        : item
-                    ));
-                    toast({ title: "Content Scheduled!", description: "The item has been placed on your calendar." });
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Scheduling Failed', description: error.message });
-                }
-            });
-        } 
-        // From calendar back to unscheduled
-        else if (sourceType === 'calendarEvent' && targetType === 'unscheduledArea') {
-            startScheduling(async () => {
-                try {
-                    await unscheduleContent(contentId);
-                    setContentItems(prev => prev.map(item => 
-                        item.id === contentId 
-                        ? { ...item, status: 'approved', scheduled_at: null } 
-                        : item
-                    ));
-                    toast({ title: "Content Unscheduled", description: "The item has been returned to the 'Approved' list." });
-                } catch (error: any) {
-                     toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
-                }
-            });
-        }
         // From calendar to another day on the calendar (rescheduling)
-        else if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
+        if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
              const targetDate = over.data.current?.date as Date;
              
              const originalItem = contentItems.find(item => item.id === contentId);
@@ -334,11 +268,6 @@ export default function CalendarPage() {
             });
         }
     };
-    
-    const { setNodeRef: unscheduledAreaRef, isOver: isOverUnscheduled } = useDroppable({
-        id: 'unscheduledArea',
-        data: { type: 'unscheduledArea' }
-    });
 
     const dayHeightClass = view === 'week' ? 'h-[48rem]' : 'h-48';
 
@@ -346,25 +275,7 @@ export default function CalendarPage() {
         <DashboardLayout>
             <DndContext onDragEnd={handleDragEnd}>
                 <Toaster />
-                <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
-                    <aside ref={unscheduledAreaRef} className={cn("w-full lg:w-80 border-r p-4 overflow-y-auto", isOverUnscheduled ? "bg-destructive/10" : "")}>
-                        <h2 className="text-xl font-bold mb-4">Approved Content</h2>
-                        {isLoading ? (
-                            <div className="space-y-2">
-                                <Skeleton className="h-20 w-full" />
-                                <Skeleton className="h-20 w-full" />
-                            </div>
-                        ) : unscheduled.length > 0 ? (
-                            unscheduled.map(item => <DraggableContent key={item.id} item={item} />)
-                        ) : (
-                            <div className="text-center text-muted-foreground mt-10">
-                                <p>No unscheduled content.</p>
-                                <p className="text-sm">Approve content from the Artisan to see it here.</p>
-                            </div>
-                        )}
-                        {isOverUnscheduled && <div className="text-center p-4 text-destructive font-bold">Return to Unscheduled</div>}
-                    </aside>
-
+                <div className="flex flex-col h-[calc(100vh-4rem)]">
                     <main className="flex-1 flex flex-col">
                         <header className="flex items-center justify-between p-4 border-b">
                              <h1 className="text-2xl font-bold">{headerLabel}</h1>
@@ -402,22 +313,31 @@ export default function CalendarPage() {
                                 ))}
                             </div>
                              <div className="grid grid-cols-7 flex-1 border-b">
-                                {calendarDays.map(day => {
-                                    const dayContent = scheduledOrPublished.filter(item => {
-                                        const displayDate = item.published_at || item.scheduled_at;
-                                        return displayDate && isSameDay(new Date(displayDate), day);
-                                    });
-                                    return (
-                                        <CalendarDay 
-                                            key={day.toString()} 
-                                            day={day}
-                                            content={dayContent}
-                                            isCurrentMonth={isSameMonth(day, currentDate)}
-                                            onEventClick={handleEventClick}
-                                            heightClass={dayHeightClass}
-                                        />
-                                    );
-                                })}
+                                {isLoading ? (
+                                    Array.from({ length: view === 'week' ? 7 : 35 }).map((_, i) => (
+                                         <div key={i} className={cn("relative flex flex-col p-2 border-t border-l", dayHeightClass)}>
+                                            <Skeleton className="h-5 w-5 mb-2" />
+                                            <Skeleton className="h-20 w-full" />
+                                         </div>
+                                    ))
+                                ) : (
+                                    calendarDays.map(day => {
+                                        const dayContent = scheduledOrPublished.filter(item => {
+                                            const displayDate = item.published_at || item.scheduled_at;
+                                            return displayDate && isSameDay(new Date(displayDate), day);
+                                        });
+                                        return (
+                                            <CalendarDay 
+                                                key={day.toString()} 
+                                                day={day}
+                                                content={dayContent}
+                                                isCurrentMonth={isSameMonth(day, currentDate)}
+                                                onEventClick={handleEventClick}
+                                                heightClass={dayHeightClass}
+                                            />
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     </main>
