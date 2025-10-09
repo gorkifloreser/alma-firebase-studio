@@ -13,8 +13,7 @@ export function LandingPageNav() {
           <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
             <div className="relative h-full w-full">
               <div className="p-1.5 relative h-full w-full">
-                <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill className="dark:hidden" />
-                <Image src="/regen-logo-dark.svg" alt="Regen MKT Logo" fill className="hidden dark:block" />
+                <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill />
               </div>
             </div>
           </div>
