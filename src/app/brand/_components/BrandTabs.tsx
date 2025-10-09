@@ -1,7 +1,6 @@
-
-
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
 import { KnowledgeBaseClientPage } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
@@ -24,7 +23,22 @@ interface BrandTabsProps {
     };
 }
 
+const BRAND_HUB_TAB_STORAGE_KEY = 'brand-hub-active-tab';
+
 export function BrandTabs({ data }: BrandTabsProps) {
+    const [activeTab, setActiveTab] = useState('brand-heart');
+
+    useEffect(() => {
+        const savedTab = localStorage.getItem(BRAND_HUB_TAB_STORAGE_KEY);
+        if (savedTab) {
+            setActiveTab(savedTab);
+        }
+    }, []);
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        localStorage.setItem(BRAND_HUB_TAB_STORAGE_KEY, value);
+    };
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -32,7 +46,7 @@ export function BrandTabs({ data }: BrandTabsProps) {
                 <h1 className="text-3xl font-bold">Brand Hub</h1>
                 <p className="text-muted-foreground">Define your brand's core identity, knowledge, and integrations.</p>
             </header>
-            <Tabs defaultValue="brand-heart" className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="brand-heart" className="gap-2"><Heart className="h-4 w-4" /> Brand Heart</TabsTrigger>
