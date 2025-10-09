@@ -91,41 +91,31 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
     const displayDate = item.published_at || item.scheduled_at;
     const publicationTime = displayDate ? format(parseISO(displayDate), 'p') : 'Unscheduled';
 
-    const getStatusStyles = () => {
-        switch (item.status) {
-            case 'published':
-                return 'bg-green-500/10 border-green-500/20';
-            case 'failed':
-                return 'bg-destructive/10 border-destructive/20';
-            default:
-                return 'bg-secondary/50';
-        }
-    }
-    
     const getStatusIcon = () => {
         switch (item.status) {
-            case 'published':
-                return <CheckCheck className="h-4 w-4 text-green-600" />;
-            case 'failed':
-                return <AlertTriangle className="h-4 w-4 text-destructive" />;
-            default:
-                return <ChannelIcon channel={item.user_channel_settings?.channel_name} />;
+            case 'published': return <CheckCheck className="h-4 w-4 text-green-600" />;
+            case 'failed': return <AlertTriangle className="h-4 w-4 text-destructive" />;
+            default: return <Clock className="h-4 w-4 text-muted-foreground" />;
         }
     }
 
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-             <Card className={cn("p-2 hover:bg-secondary transition-colors", getStatusStyles(), isDraggable && "cursor-grab")}>
-                <div className="flex flex-col gap-2">
-                     {item.image_url && (
-                        <div className="relative w-full aspect-square">
-                            <Image src={item.image_url} alt="thumbnail" layout="fill" className="rounded-sm object-cover" />
+             <Card className={cn("overflow-hidden hover:shadow-md transition-shadow bg-secondary/30", isDraggable && "cursor-grab")}>
+                <div className="flex flex-col">
+                     {item.image_url ? (
+                        <div className="relative w-full aspect-video bg-muted">
+                            <Image src={item.image_url} alt="thumbnail" layout="fill" className="object-cover" />
+                        </div>
+                     ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                            <ChannelIcon channel={item.user_channel_settings?.channel_name} />
                         </div>
                      )}
-                     <div className="flex-1 min-w-0">
+                     <div className="p-2 space-y-1">
                         <p className="text-xs font-bold truncate">{item.offerings?.title?.primary || item.concept}</p>
                         <div className="flex items-center justify-between mt-1">
-                            <div className={cn("flex items-center gap-1")}>
+                            <div className={cn("flex items-center gap-1.5")}>
                                 {getStatusIcon()}
                                 <span className="text-xs text-muted-foreground">{publicationTime}</span>
                             </div>
