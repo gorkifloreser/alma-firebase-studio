@@ -59,6 +59,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
+    const [preselectedDate, setPreselectedDate] = useState<Date | undefined>(undefined);
     const [activeTab, setActiveTab] = useState('all');
     const [eventView, setEventView] = useState<'grid' | 'calendar'>('grid');
     const router = useRouter();
@@ -73,13 +74,15 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         }
     };
 
-    const handleOpenCreateDialog = () => {
+    const handleOpenCreateDialog = (date?: Date) => {
         setOfferingToEdit(null);
+        setPreselectedDate(date);
         setIsCreateDialogOpen(true);
     };
 
     const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
+        setPreselectedDate(undefined);
         setIsCreateDialogOpen(true);
     };
     
@@ -93,6 +96,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             }
         };
         setOfferingToEdit(clonedOffering as OfferingWithMedia);
+        setPreselectedDate(undefined);
         setIsCreateDialogOpen(true);
     };
 
@@ -140,7 +144,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                     <h1 className="text-3xl font-bold">Offerings</h1>
                     <p className="text-muted-foreground">Manage your products, services, and events.</p>
                 </div>
-                <Button onClick={handleOpenCreateDialog} className="gap-2">
+                <Button onClick={() => handleOpenCreateDialog()} className="gap-2">
                     <PlusCircle className="h-5 w-5" />
                     New Offering
                 </Button>
@@ -166,7 +170,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                  <div className="mt-6">
                     <TabsContent value={activeTab} className="mt-0">
                         {activeTab === 'event' && eventView === 'calendar' ? (
-                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} />
+                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} onAddEvent={handleOpenCreateDialog} />
                         ) : filteredOfferings.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredOfferings.map(offering => (
@@ -267,6 +271,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 profile={profile}
                 onOfferingSaved={handleOfferingSaved}
                 offeringToEdit={offeringToEdit}
+                preselectedDate={preselectedDate}
             />
             {offeringToView && (
                 <OfferingDetailDialog

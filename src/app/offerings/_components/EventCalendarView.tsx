@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Package, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Package, Clock, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -17,9 +18,10 @@ type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 interface EventCalendarViewProps {
     events: OfferingWithMedia[];
     onEventClick: (event: OfferingWithMedia) => void;
+    onAddEvent: (date: Date) => void;
 }
 
-const CalendarDay = ({ day, events, isCurrentMonth, onEventClick }: { day: Date, events: OfferingWithMedia[], isCurrentMonth: boolean, onEventClick: (event: OfferingWithMedia) => void }) => {
+const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: { day: Date, events: OfferingWithMedia[], isCurrentMonth: boolean, onEventClick: (event: OfferingWithMedia) => void, onAddEvent: (date: Date) => void }) => {
     const [isToday, setIsToday] = useState(false);
     
     useEffect(() => {
@@ -29,7 +31,7 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick }: { day: Date,
     return (
         <div 
             className={cn(
-                "relative flex flex-col p-2 border-t border-l min-h-[160px]",
+                "relative flex flex-col p-2 border-t border-l min-h-[160px] group",
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
             )}
         >
@@ -39,6 +41,14 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick }: { day: Date,
              <div className="mt-1 flex-1 overflow-y-auto space-y-1">
                 {events.map(event => <CalendarEvent key={event.id} event={event} onClick={() => onEventClick(event)} />)}
             </div>
+             <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onAddEvent(day)}
+            >
+                <PlusCircle className="h-5 w-5 text-muted-foreground" />
+            </Button>
         </div>
     );
 };
@@ -76,7 +86,7 @@ const CalendarEvent = ({ event, onClick }: { event: OfferingWithMedia, onClick: 
     )
 }
 
-export function EventCalendarView({ events, onEventClick }: EventCalendarViewProps) {
+export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCalendarViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     
@@ -164,6 +174,7 @@ export function EventCalendarView({ events, onEventClick }: EventCalendarViewPro
                                 events={dayEvents}
                                 isCurrentMonth={isSameMonth(day, currentDate)}
                                 onEventClick={onEventClick}
+                                onAddEvent={onAddEvent}
                             />
                         );
                     })}

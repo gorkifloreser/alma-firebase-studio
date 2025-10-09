@@ -123,6 +123,7 @@ interface CreateOfferingDialogProps {
     profile: Profile;
     onOfferingSaved: () => void;
     offeringToEdit: OfferingWithMedia | null;
+    preselectedDate?: Date;
 }
 
 export function CreateOfferingDialog({
@@ -131,6 +132,7 @@ export function CreateOfferingDialog({
     profile,
     onOfferingSaved,
     offeringToEdit,
+    preselectedDate,
 }: CreateOfferingDialogProps) {
     const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
     const [aiPrompt, setAiPrompt] = useState('');
@@ -157,11 +159,20 @@ export function CreateOfferingDialog({
                 })),
             });
         } else {
-            setOffering(initialOfferingState);
+             const newSchedule: OfferingSchedule = {
+                prices: [{ price: null, label: '', currency: 'USD' }],
+                event_date: preselectedDate || null,
+                duration: null,
+                frequency: 'One-time',
+                location_label: null,
+                location_address: null,
+                location_gmaps_url: null,
+            };
+            setOffering({ ...initialOfferingState, type: preselectedDate ? 'Event' : 'Service', offering_schedules: preselectedDate ? [newSchedule] : [] });
             setEventFrequency('One-time');
         }
         setAiPrompt('');
-    }, [offeringToEdit]);
+    }, [offeringToEdit, preselectedDate]);
 
     useEffect(() => {
         if (isOpen) {
