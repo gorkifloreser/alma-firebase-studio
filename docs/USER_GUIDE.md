@@ -1,110 +1,77 @@
-# Regen MKT User Guide
+# Regen MKT: The Intelligent Context Cascade
 
-Welcome to Regen MKT. This guide will walk you through using the application step-by-step to get the most out of its features. The workflow is designed to build your marketing strategy from the ground up, starting with your brand's core identity and moving all the way to execution and refinement.
-
-## General Workflow
-
-The recommended order for using the application, especially for the first time, is to follow the sidebar tabs in this sequence:
-
-1.  **Brand Heart**
-2.  **Offerings**
-3.  **Funnels**
-4.  **Campaign Orchestrator**
-5.  **AI Artisan**
-6.  **Calendar**
-7.  **Harvest Circle** (Testimonials)
+This guide explains how the Regen MKT platform uses your brand's core identity to create authentic, interdependent, and effective marketing campaigns. It's not a single, monolithic AI, but an ecosystem of specialized AI flows that pass context to each other, like an intelligent assembly line. Each step refines your marketing, building upon the previous one.
 
 ---
 
-### Step 1: Defining Your Brand Heart
+### **Phase 1: The Foundation (Your Brand's Soul & Tactical Libraries)**
 
-This is the first and most crucial step. Here, you will define your brand's identity and voice. All future communication and content will be based on this foundation.
+This is where it all begins. You provide the "soul" of your brand, and the AI enriches it with personalized tactics that will be used later.
 
-1.  **Navigation:** On the sidebar menu, click on the **"Brand Heart"** section.
-2.  **Action:** You will see a guided form with several sections (Mission, Vision, Values, Tone of Voice, etc.).
-3.  **Fill in the fields:** Take your time to complete each field with your brand's information. Be as detailed as possible.
-4.  **Upload your logo:** Look for the designated button or area to upload your brand's logo.
-5.  **Save:** Once you have completed all the information, find a **"Save"** or **"Update"** button to store your brand settings.
+1.  **Your Role (The Brand Strategist):**
+    *   **Define the `Brand Heart`:** You fill out your mission, vision, values, tone of voice, visual identity, and, crucially, your **`Audience`** profiles (buyer personas). This is your brand's fundamental truth.
+    *   **(Optional) Upload `Brand Documents`:** You provide raw knowledge (PDFs, text files) for the AI to consult, giving it deeper context about your work.
 
-> **Note:** There might also be an option to define your Brand Heart by uploading documents. If you prefer this method, look for a tab or button that says **"Upload Document"**.
+2.  **AI's Action (Tactical Enrichment):**
+    *   **`adapt-viral-hooks-flow`:** The AI analyzes your `Brand Heart` and the global `viral_hooks` library. It then generates and saves your brand's unique "Top 10" viral hooks, rewritten in your specific tone of voice and complete with visual ideas. These are stored in the `adapted_viral_hooks` table.
+    *   **`adapt-value-strategies-flow`:** The AI repeats this process for `value_strategies`, creating and saving a personalized "Top 10" list of content methods designed to provide value to your specific audience. These are stored in the `adapted_value_strategies` table.
 
-### Step 2: Creating Your Offerings
-
-Once your brand is defined, the next step is to create the products, services, or experiences you provide to your audience.
-
-1.  **Navigation:** On the sidebar, click on the **"Offerings"** section.
-2.  **Action:** You will see a main dashboard, likely with a visible button to **"Create New Offering"** or a `+` icon. Click it.
-3.  **Fill out the form:**
-    *   **Title and Description:** Give your offering a clear name and an attractive description.
-    *   **Offering Type:** Select the type of offering (product, service, event, etc.) from a dropdown list.
-    *   **Contextual Notes:** Add any additional details that are relevant for creating content about this offering.
-4.  **Save:** Click the **"Create"** or **"Save Offering"** button to add it to your list.
-5.  **Repeat:** Create as many offerings as you need.
-
-### Step 3: Generating Funnels and Strategies
-
-With your offerings created, you can now generate a "Magic Funnel," which is a marketing strategy and sales funnel designed for a specific offering.
-
-1.  **Navigation:** Go to the **"Funnels"** section in the sidebar.
-2.  **Action:** Click the **"Generate Magic Funnel"** or **"Create Funnel"** button.
-3.  **Select an Offering:** You will be prompted to choose which of your "Offerings" you want to create the funnel for. Select it from the list.
-4.  **Define the Goal:** Specify the main objective of this funnel (e.g., sales, lead generation, brand awareness).
-5.  **Generate:** Click the **"Generate"** button. The AI will create a strategy and the funnel steps, which may include a Landing Page.
-6.  **Review and Edit:** Once generated, you can view the funnel details. Look for options to **"View Landing Page"** or **"Edit Steps"** if you need to make adjustments.
-
-### Step 4: Building the Campaign
-
-The funnel defines the strategy; the campaign turns that strategy into concrete content for your channels.
-
-1.  **Navigation:** Click on **"Campaign Orchestrator"** in the sidebar.
-2.  **Action:** You will likely see an option to **"Create Campaign"** or be asked to select the "Funnel" for which you want to generate the campaign.
-3.  **Select the Funnel:** Choose the funnel you created in the previous step.
-4.  **Generate:** Click **"Generate Campaign"**. The application will create a series of content drafts (social media posts, emails, etc.) tailored to each stage of the funnel and your channels.
-5.  **Review and Approve:**
-    *   Navigate through the generated content pieces.
-    *   Click on each one to **"Edit"** the text, images, or creative prompts.
-    *   When a piece of content is ready, look for a button or switch to **"Approve"** it.
-
-### Step 5: Customizing Content in AI Artisan
-
-This is your creative studio for refining and personalizing the content drafts generated by the Campaign Orchestrator before they are scheduled.
-
-1.  **Navigation:** Go to the **"AI Artisan"** section. Here you will find the content items you approved in the previous step.
-2.  **Select Content:** Click on a content item to open an advanced editor.
-3.  **Customize:** Use the AI tools to:
-    *   **Tweak the copy:** Change the tone, shorten or lengthen the text.
-    *   **Generate visuals:** Create or modify images for the post.
-    *   **Finalize details:** Add hashtags, mentions, or any other final touches.
-4.  **Schedule:** Once a piece of content is fully customized and ready, look for a **"Schedule"** button to send it to the Cosmic Calendar.
-
-### Step 6: Scheduling on the Cosmic Calendar
-
-This is where everything comes to life. The calendar allows you to visualize and manage when your approved and customized content will be published.
-
-1.  **Navigation:** Go to the **"Calendar"** section in the sidebar.
-2.  **View:** You will see a calendar view (monthly, weekly, or daily).
-3.  **Scheduled Content:** The content you finalized in "AI Artisan" will appear on the dates you selected.
-4.  **Adjustments:**
-    *   **Drag and Drop:** If you want to change a post's date, simply click and drag it to a new day.
-    *   **Edit:** Click on a calendar item to open its details and make last-minute edits.
-5.  **Publication:** Depending on your integrations, the content will be published automatically at the scheduled date and time.
-
-### Step 7: The Harvest Circle (Testimonials)
-
-After your offerings have been delivered, the Harvest Circle helps you gather and utilize social proof to fuel future marketing.
-
-1.  **Navigation:** Click on **"Harvest Circle"** in the sidebar.
-2.  **Track Delivery:** This section may show the status of your offerings to identify customers from whom you can request testimonials.
-3.  **Request Testimonials:** Look for a feature to **"Automate Testimonial Requests"**. This will likely send emails or messages to past clients.
-4.  **Central Repository:** All collected testimonials will appear in a central library. You can review, manage, and tag them here.
-5.  **Reseed Content:** Use a feature like **"Reseed Content with Testimonials"** to instruct the AI to incorporate this powerful social proof into new marketing materials, thus closing the loop.
+*   **Outcome:** The database now contains not only your brand's soul (`Brand Heart`) but also an arsenal of **personalized marketing tactics** (`adapted_hooks` and `adapted_value_strategies`) ready for the AI to use in future campaign creation.
 
 ---
 
-### Additional Power-Up Tools
+### **Phase 2: The Strategic Plan (From "What" to "How")**
 
-You will also find other useful tools in the sidebar that can be used at any time:
+This is where we translate a product or service into a high-level marketing strategy.
 
-*   **Art Styles:** Define artistic styles to ensure consistent and on-brand image generation.
-*   **Viral Hooks:** Explore a library of "viral hooks" to capture attention and make your content more engaging.
-*   **Settings:** Manage your account settings, such as language preferences or profile details.
+1.  **Your Role (The Campaign Director):**
+    *   You create an **`Offering`** (the "what" you want to market).
+    *   You open the **"AI Strategist"** and select that `Offering`.
+    *   You choose a **`Funnel Preset`** (the strategic template, or the "why").
+    *   You define a clear **`Goal`** (e.g., "Get 50 signups for my webinar").
+
+2.  **AI's Action (`generate-funnel-flow`):**
+    *   The AI reads your `Brand Heart`, your `Audience` profiles, and the details of your `Offering`.
+    *   Using the `Funnel Preset` as a guide, it generates a **`strategy_brief`**. This is not the final content; it's a high-level *conceptual map*. It defines the psychological stages of the customer journey (Awareness, Consideration, Conversion, etc.) and the key concepts for each stage, all written in your brand's unique `Tone of Voice`.
+
+*   **Outcome:** A `funnels` record is saved to the database, linking your `Offering` to a detailed `strategy_brief`. This brief is now the master plan for the campaign.
+
+---
+
+### **Phase 3: Tactical Orchestration (From "How" to "What Content")**
+
+This is the most complex and powerful step, where the abstract strategy becomes a concrete, actionable content plan.
+
+1.  **Your Role (The Producer):**
+    *   You open the **"Campaign Orchestrator"** for the `Funnel` you just created.
+    *   You set the **campaign dates**.
+
+2.  **AI's Action (`generate-media-plan-flow`):**
+    *   **Cross-references data:** The AI now queries multiple tables to gather context:
+        1.  The `strategy_brief` from your `Funnel` (the map).
+        2.  Your personalized `adapted_viral_hooks` table (the best attention-grabbers).
+        3.  Your personalized `adapted_value_strategies` table (the best value arguments).
+        4.  Your `user_channel_settings` (the best practices for each social media channel).
+    *   **Generates the Content Plan:** The AI "orchestrates" a sequence of posts. For each post (which becomes a `media_plan_item`):
+        *   **For the Awareness stage:** It selects an `adapted_viral_hook` to use as the headline.
+        *   **For the Consideration stage:** It selects an `adapted_value_strategy` and develops it in the body of the post.
+        *   **For the Conversion stage:** It writes a clear Call-to-Action (CTA) aligned with your `Goal`.
+        *   **It generates a `creative_prompt`:** It merges your `visual_identity` with the post's concept to create a detailed instruction for image or video generation.
+        *   **It assigns a date and format:** It suggests a `suggested_post_at` and a `format` based on the channel's best practices.
+
+*   **Outcome:** A complete `MediaPlan` is generated, which is a list of `media_plan_items` (content drafts) ready for your final touch in the "AI Artisan".
+
+---
+
+### **Phase 4: The Harvest & Re-seeding (Closing the Loop)**
+
+The system becomes truly regenerative, turning customer success into new, authentic marketing.
+
+1.  **Your Role (The Gardener):**
+    *   You mark a sale or interaction as "Completed" in the **`Harvest Circle`**.
+
+2.  **AI's Action (`requestTestimonial` & `createContentFromTestimonial` flows):**
+    *   The system can automatically send a request for a testimonial.
+    *   When you add a new `Testimonial`, you can click **"Create Content"**. The AI reads the testimonial, cross-references it with your `Brand Heart` and the related `Offering`, and generates a new social media post draft based on that authentic social proof.
+
+*   **Outcome:** A customer's success story is automatically transformed into the starting point for a new, authentic piece of marketing, closing the loop and making your marketing self-sustaining.

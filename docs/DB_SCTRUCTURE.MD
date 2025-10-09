@@ -68,7 +68,7 @@ CREATE TABLE public.brand_hearts (
   logo_url text,
   visual_identity jsonb DEFAULT '{}'::jsonb,
   contact_info jsonb DEFAULT '[]'::jsonb,
-  audience jsonb DEFAULT '{}'::jsonb,
+  audience jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT brand_hearts_pkey PRIMARY KEY (id),
   CONSTRAINT brand_hearts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
