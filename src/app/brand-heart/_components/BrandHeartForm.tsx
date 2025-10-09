@@ -157,19 +157,22 @@ export function BrandHeartForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-2">
-                <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleBrandNameChange} />
+            <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="space-y-2">
+                    <Label className="text-lg font-semibold">Brand Logo</Label>
+                    <Avatar
+                        url={brandHeart?.logo_url}
+                        isUploading={isSaving}
+                        onFileSelect={handleFileSelect}
+                        accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                    />
+                </div>
+                <div className="space-y-2 w-full">
+                    <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
+                    <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleBrandNameChange} />
+                </div>
             </div>
-            <div className="space-y-2">
-                 <Label className="text-lg font-semibold">Brand Logo</Label>
-                 <Avatar
-                    url={brandHeart?.logo_url}
-                    isUploading={isSaving}
-                    onFileSelect={handleFileSelect}
-                    accept="image/png, image/jpeg, image/gif, image/svg+xml"
-                />
-            </div>
+
             <BilingualFormField 
                 id="brand_brief" 
                 label="Brand Brief" 
