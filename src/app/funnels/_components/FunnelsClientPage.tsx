@@ -78,11 +78,11 @@ const ValueStrategyCard = ({ strategy }: { strategy: ValueStrategy }) => {
             </CardHeader>
             <CardContent className="flex-grow space-y-4">
                 <div>
-                    <h4 className="font-semibold text-sm">Propósito de Valor</h4>
+                    <h4 className="font-semibold text-sm">Value Purpose</h4>
                     <p className="text-muted-foreground text-sm">{strategy.value_purpose}</p>
                 </div>
                  <div>
-                    <h4 className="font-semibold text-sm">Ejemplo Práctico</h4>
+                    <h4 className="font-semibold text-sm">Practical Example</h4>
                     <p className="text-muted-foreground text-sm italic">"{strategy.practical_example}"</p>
                 </div>
             </CardContent>
@@ -112,6 +112,7 @@ export function FunnelsClientPage({
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
     const [isDeleting, startDeleting] = useTransition();
     const [strategyView, setStrategyView] = useState<'grid' | 'list'>('grid');
+    const [activeTab, setActiveTab] = useState('my-strategies');
     const router = useRouter();
     const { toast } = useToast();
 
@@ -120,11 +121,19 @@ export function FunnelsClientPage({
         if (savedView === 'grid' || savedView === 'list') {
             setStrategyView(savedView);
         }
+        const savedTab = localStorage.getItem('ai-strategist-tab');
+        if (savedTab) {
+            setActiveTab(savedTab);
+        }
     }, []);
 
     useEffect(() => {
         localStorage.setItem('strategy-view', strategyView);
     }, [strategyView]);
+
+     useEffect(() => {
+        localStorage.setItem('ai-strategist-tab', activeTab);
+    }, [activeTab]);
 
 
     const { globalPresets, customPresets } = useMemo(() => {
@@ -294,7 +303,7 @@ export function FunnelsClientPage({
                 </Button>
             </header>
             
-            <Tabs defaultValue="my-strategies" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
