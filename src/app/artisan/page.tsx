@@ -464,6 +464,7 @@ export default function ArtisanPage() {
         if (selectedCreativeType === 'text') setEditableContent(null);
 
         try {
+            console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
             const creativeTypes: CreativeType[] = [selectedCreativeType];
             if (!['video', 'landing_page', 'text'].includes(selectedCreativeType) && !regeneratePrompt) {
                 creativeTypes.push('text');
@@ -476,6 +477,8 @@ export default function ArtisanPage() {
                 creativePrompt: regeneratePrompt || creativePrompt,
                 referenceImageUrl: referenceImageUrl || undefined,
             });
+            console.log('[handleGenerate] -- RESPONSE RECEIVED -- Full response from server:', { ...result, videoUrl: result.videoUrl ? `data:video/mp4;base64,...[${result.videoUrl.length}]` : null });
+
 
             setCreative(result);
             if (result.content) setEditableContent(result.content);
@@ -484,6 +487,7 @@ export default function ArtisanPage() {
 
             toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
         } catch (error: any) {
+            console.error('[handleGenerate] -- ERROR --', error);
             toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
         } finally {
             setIsLoading(false);
@@ -817,7 +821,7 @@ export default function ArtisanPage() {
                                 </Card>
                             ) : workflowMode === 'custom' ? (
                                 <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between">
+                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <div>
                                             <CardDescription className="flex items-center gap-2 text-xs font-semibold">
                                                 <Wand2 className="h-4 w-4" />

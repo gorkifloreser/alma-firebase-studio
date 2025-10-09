@@ -161,6 +161,9 @@ export const PostPreview = ({
     onEditPost: () => void;
     isSaved: boolean;
 }) => {
+    console.log('[PostPreview] Rendering... isLoading:', isLoading);
+    console.log('[PostPreview] Received creative prop:', { ...creative, videoUrl: creative?.videoUrl ? `data:video/mp4;base64,...[${creative.videoUrl.length}]` : null });
+
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const aspectRatioClass = dimensionMap[dimension];
@@ -244,26 +247,28 @@ export const PostPreview = ({
         }
       
         if (selectedCreativeType === 'video' && creative?.videoUrl) {
-          return (
-            <div className="relative w-full h-full">
-              <video
-                ref={videoRef}
-                src={creative.videoUrl}
-                className="w-full h-full object-cover"
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                loop
-                onClick={togglePlay}
-              />
-              {!isPlaying && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                  <div className="p-4 bg-black/50 rounded-full">
-                    <Play className="h-8 w-8 text-white fill-white" />
-                  </div>
+            console.log('[PostPreview] Rendering video with URL:', creative.videoUrl);
+            return (
+                <div className="relative w-full h-full">
+                <video
+                    ref={videoRef}
+                    src={creative.videoUrl}
+                    className="w-full h-full object-cover"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    loop
+                    controls
+                    onClick={togglePlay}
+                />
+                {!isPlaying && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                    <div className="p-4 bg-black/50 rounded-full">
+                        <Play className="h-8 w-8 text-white fill-white" />
+                    </div>
+                    </div>
+                )}
                 </div>
-              )}
-            </div>
-          );
+            );
         }
       
         return (
@@ -333,7 +338,7 @@ export const PostPreview = ({
                     )}
                     
                     {/* Content Overlay */}
-                    <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-black/60 pointer-events-none">
+                    <div className="absolute inset-0 flex flex-col p-3 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none">
                         {/* Header */}
                         <div className="flex items-center justify-between p-2">
                             <div className="flex items-center gap-2">
@@ -359,9 +364,9 @@ export const PostPreview = ({
                             </button>
                         </div>
                         
-                        {/* Editable Text Area */}
-                        <div className="flex-1 flex flex-col justify-end p-4">
-                        <Textarea
+                        {/* Editable Text Area at the bottom */}
+                         <div className="flex-1 flex flex-col justify-end p-4">
+                            <Textarea
                                 value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
                                 onChange={(e) => {
                                     if (currentSlideData) {
@@ -370,7 +375,7 @@ export const PostPreview = ({
                                         handleContentChange('primary', e.target.value)
                                     }
                                 }}
-                                className="w-full text-2xl font-bold text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
+                                className="w-full text-lg text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
                                 placeholder="Your story text..."
                             />
                         </div>

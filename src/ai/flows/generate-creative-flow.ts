@@ -185,9 +185,11 @@ export const generateCreativeFlow = ai.defineFlow(
   async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl }) => {
     
     async function downloadVideo(video: MediaPart): Promise<string> {
+        console.log('[downloadVideo] START - Downloading video from URL:', video.media!.url);
         const fetch = (await import('node-fetch')).default;
         const videoDownloadResponse = await fetch(`${video.media!.url}&key=${process.env.GEMINI_API_KEY}`);
         if (!videoDownloadResponse || videoDownloadResponse.status !== 200 || !videoDownloadResponse.body) {
+            console.error('[downloadVideo] ERROR - Failed to fetch video. Status:', videoDownloadResponse?.status);
             throw new Error('Failed to fetch video');
         }
         const chunks: Buffer[] = [];
@@ -195,7 +197,10 @@ export const generateCreativeFlow = ai.defineFlow(
             chunks.push(chunk as Buffer);
         }
         const buffer = Buffer.concat(chunks);
-        return `data:video/mp4;base64,${buffer.toString('base64')}`;
+        console.log(`[downloadVideo] SUCCESS - Video downloaded. Buffer size: ${buffer.length} bytes.`);
+        const dataUri = `data:video/mp4;base64,${buffer.toString('base64')}`;
+        console.log(`[downloadVideo] FINISH - Converted to data URI. Length: ${dataUri.length}`);
+        return dataUri;
     }
     
     const supabase = createClient();
@@ -238,7 +243,9 @@ export const generateCreativeFlow = ai.defineFlow(
     }
     
     if (creativeTypes.includes('video')) {
+        console.log('[generateCreativeFlow] Video generation requested.');
         const videoBasePrompt = userCreativePrompt || defaultVideoGenPromptTemplate(brandHeart, offering);
+        console.log('[generateCreativeFlow] Video base prompt:', videoBasePrompt);
         
         const videoPromptPayload: (MediaPart | { text: string })[] = [{ text: videoBasePrompt }];
         if (referenceImageUrl) {
@@ -250,14 +257,26 @@ export const generateCreativeFlow = ai.defineFlow(
             prompt: videoPromptPayload,
             config: { aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {
+            console.log('[generateCreativeFlow] Video generation initiated. Operation object received.');
             if (!operation) throw new Error('Expected video operation.');
+            let checkCount = 0;
             while (!operation.done) {
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 operation = await ai.checkOperation(operation);
+                checkCount++;
+                console.log(`[generateCreativeFlow] Video operation status check #${checkCount}: done = ${operation.done}`);
             }
-            if (operation.error) throw new Error(`Video generation failed: ${operation.error.message}`);
+            if (operation.error) {
+                console.error('[generateCreativeFlow] Video generation failed:', operation.error);
+                throw new Error(`Video generation failed: ${operation.error.message}`);
+            }
+            console.log('[generateCreativeFlow] Video operation finished. Output:', operation.output);
             const video = operation.output?.message?.content.find(p => !!p.media);
-            if (!video || !video.media?.url) throw new Error('Generated video not found.');
+            if (!video || !video.media?.url) {
+                console.error('[generateCreativeFlow] ERROR: Generated video media part not found in operation result.');
+                throw new Error('Generated video not found.');
+            }
+            console.log('[generateCreativeFlow] Video media part found. Starting download process.');
             return { videoUrl: await downloadVideo(video) };
         }));
     }
@@ -326,6 +345,7 @@ export const generateCreativeFlow = ai.defineFlow(
         }
     });
     
+    console.log('[generateCreativeFlow] FINAL OUTPUT to be sent to client:', { ...output, videoUrl: output.videoUrl ? `data:video/mp4;base64,...[${output.videoUrl.length}]` : null });
     return output;
   }
 );
