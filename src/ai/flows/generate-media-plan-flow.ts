@@ -78,7 +78,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert event marketing strategist and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
+  prompt: `You are an expert marketing strategist and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
 
 **YOUR GOAL:** Create a time-sensitive, strategic content plan for the '{{channel}}' channel, based on the provided campaign dates and event details.
 
@@ -88,7 +88,9 @@ const generateChannelPlanPrompt = ai.definePrompt({
 **INPUT #1: CAMPAIGN TIMELINE (Your Guide for "WHEN")**
 - Campaign Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
 - Campaign End Date: {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
+{{#if (eq offering.type "Event")}}
 - Event Date (if applicable): {{#if offering.offering_schedules.[0].event_date}}{{offering.offering_schedules.[0].event_date}}{{else}}N/A{{/if}}
+{{/if}}
 ---
 **INPUT #2: THE TOP 10 ADAPTED VIRAL HOOKS (Your Primary Inspiration for "WHAT")**
 {{#each topAdaptedHooks}}
@@ -103,6 +105,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 **INPUT #4: THE OFFERING (The "What" - The Core Subject)**
 - Title: {{offering.title.primary}}
 - Description: {{offering.description.primary}}
+- Type: {{offering.type}}
 - **Value Content (Key Talking Points):** 
 {{#each offering.value_content}}
     - **Type**: {{this.type}}, **Concept**: {{this.concept}}, **Developed Content**: {{this.developed_content}}
@@ -121,7 +124,11 @@ const generateChannelPlanPrompt = ai.definePrompt({
 
 Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint, making sure to use a **different viral hook** from the list for each stage.
 
-**Crucially, you MUST use the Campaign Timeline to suggest realistic and strategic dates for each post.** For example, suggest awareness posts near the start date, urgency posts near the end date, and "thank you" or "recap" posts after the event date.
+{{#if (eq offering.type "Event")}}
+**Crucially, you MUST use the Campaign Timeline and Event Date to suggest realistic and strategic dates for each post.** For example, suggest awareness posts near the start date, urgency posts near the end date, and "thank you" or "recap" posts after the event date.
+{{else}}
+**Crucially, you MUST use the Campaign Timeline to suggest realistic and strategic dates for each post.** Distribute the posts evenly throughout the campaign duration.
+{{/if}}
 
 Each package MUST contain:
 1.  **offering_id**: '{{offering.id}}'.
