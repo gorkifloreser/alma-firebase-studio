@@ -158,7 +158,7 @@ export function BrandHeartForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="flex flex-col md:flex-row items-center gap-8">
-                <div className="space-y-2">
+                <div className="space-y-2 flex-shrink-0">
                     <Label className="text-lg font-semibold">Brand Logo</Label>
                     <Avatar
                         url={brandHeart?.logo_url}

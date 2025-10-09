@@ -74,7 +74,9 @@ export function BilingualFormField({
             </div>
             <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
-                    <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
+                     {profile?.secondary_language && (
+                        <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
+                    )}
                     <Textarea 
                         id={`${id}_primary`} 
                         name={`${id}_primary`} 
