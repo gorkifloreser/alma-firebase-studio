@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useCallback } from 'react';
@@ -22,7 +23,7 @@ import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, isValid } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -77,11 +78,21 @@ export function CreateEventInstanceDialog({
         if (selectedTemplateId) {
             const template = eventTemplates.find(t => t.id === selectedTemplateId);
             if (template && template.offering_schedules && template.offering_schedules.length > 0) {
-                const baseSchedule = template.offering_schedules[0];
+                // Sort schedules to find the most recent one based on event_date
+                const sortedSchedules = [...template.offering_schedules].sort((a, b) => {
+                    const dateA = a.event_date ? new Date(a.event_date).getTime() : 0;
+                    const dateB = b.event_date ? new Date(b.event_date).getTime() : 0;
+                    return dateB - dateA;
+                });
+                const latestSchedule = sortedSchedules[0];
+
                 setSchedule(prev => ({
-                    ...prev,
-                    duration: baseSchedule.duration || prev.duration,
-                    prices: baseSchedule.prices.length > 0 ? [...baseSchedule.prices] : prev.prices
+                    ...prev, // Keeps the preselected date
+                    duration: latestSchedule.duration || prev.duration,
+                    prices: latestSchedule.prices.length > 0 ? [...latestSchedule.prices] : prev.prices,
+                    location_label: latestSchedule.location_label || prev.location_label,
+                    location_address: latestSchedule.location_address || prev.location_address,
+                    location_gmaps_url: latestSchedule.location_gmaps_url || prev.location_gmaps_url,
                 }));
             }
         }
