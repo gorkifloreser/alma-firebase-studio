@@ -857,9 +857,6 @@ export default function ArtisanPage() {
                                             setSelectedOfferingId={setSelectedOfferingId}
                                             creativePrompt={creativePrompt}
                                             setCreativePrompt={setCreativePrompt}
-                                            referenceImageUrl={referenceImageUrl}
-                                            setIsMediaSelectorOpen={setIsMediaSelectorOpen}
-                                            setReferenceImageUrl={setReferenceImageUrl}
                                             availableCreativeOptions={availableCreativeOptions}
                                             selectedCreativeType={selectedCreativeType}
                                             setSelectedCreativeType={setSelectedCreativeType}
