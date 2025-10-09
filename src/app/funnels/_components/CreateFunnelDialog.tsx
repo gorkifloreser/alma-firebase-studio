@@ -24,8 +24,6 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GenerateFunnelOutput, ConceptualStep } from '@/ai/flows/generate-funnel-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { getUserChannels } from '@/app/accounts/actions';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 
 interface CreateFunnelDialogProps {
@@ -68,8 +66,6 @@ export function CreateFunnelDialog({
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     const [name, setName] = useState('');
     const [goal, setGoal] = useState('');
-    const [availableChannels, setAvailableChannels] = useState<string[]>([]);
-    const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
     const [usedContext, setUsedContext] = useState<UsedContext>(null);
     
     // Step 2 State
@@ -83,10 +79,6 @@ export function CreateFunnelDialog({
     useEffect(() => {
         if (isOpen) {
             getOfferings().then(setOfferings);
-            getUserChannels().then(channels => {
-                const channelNames = channels.map(c => c.id);
-                setAvailableChannels(channelNames);
-            });
 
             if (funnelToEdit) {
                 // Editing an existing funnel
@@ -95,7 +87,6 @@ export function CreateFunnelDialog({
                 setGoal(funnelToEdit.goal || '');
                 setName(funnelToEdit.name || '');
                 setGeneratedContent(funnelToEdit.strategy_brief);
-                setSelectedChannels(funnelToEdit.strategy_brief?.channels || []);
             } else {
                 // Reset all state for new funnel
                 setSelectedOfferingId(null);
@@ -103,13 +94,12 @@ export function CreateFunnelDialog({
                 setGeneratedContent(null);
                 setName('');
                 setGoal('');
-                setSelectedChannels([]);
                 setUsedContext(null);
             }
         }
     }, [isOpen, funnelToEdit]);
 
-    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '' && selectedChannels.length > 0;
+    const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '';
 
     const handleGenerateBlueprint = async () => {
         if (!canGenerate) return;
@@ -134,7 +124,6 @@ export function CreateFunnelDialog({
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
                     goal,
-                    channels: selectedChannels,
                 });
                 
                 setGeneratedContent(result);
@@ -157,7 +146,7 @@ export function CreateFunnelDialog({
                     offeringId: selectedOfferingId,
                     name,
                     goal,
-                    strategyBrief: { ...generatedContent, channels: selectedChannels },
+                    strategyBrief: generatedContent,
                 };
 
                 if (isEditMode && funnelToEdit) {
@@ -173,7 +162,6 @@ export function CreateFunnelDialog({
         });
     };
 
-    const handleChannelToggle = (channel: string) => { setSelectedChannels(prev => prev.includes(channel) ? prev.filter(c => c !== channel) : [...prev, channel]); }
     const handleBlueprintChange = (stageIndex: number, field: keyof EditableStrategy['strategy'][0], value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy }); }
     const handleConceptualStepChange = (stageIndex: number, stepIndex: number, field: keyof ConceptualStep, value: string) => { if (!generatedContent) return; const newStrategy = [...generatedContent.strategy]; (newStrategy[stageIndex].conceptualSteps[stepIndex] as any)[field] = value; setGeneratedContent({ ...generatedContent, strategy: newStrategy });}
     
@@ -212,7 +200,6 @@ export function CreateFunnelDialog({
                             </Accordion>
                             <div className="space-y-4"><Label htmlFor="offering-select" className="text-lg font-semibold">2. Choose an Offering</Label><Select onValueChange={setSelectedOfferingId} value={selectedOfferingId || undefined}><SelectTrigger id="offering-select" className="text-base py-6"><SelectValue placeholder="Select an offering to promote..." /></SelectTrigger><SelectContent>{offerings.map(o => (<SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>))}</SelectContent></Select></div>
                             <div className="space-y-4"><Label htmlFor="goal" className="text-lg font-semibold">3. Define Your Goal</Label><Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g., Get 50 signups for my webinar" className="text-base py-6"/></div>
-                            <div className="space-y-4"><Label className="text-lg font-semibold">4. Select Target Channels</Label><div className="grid grid-cols-2 gap-4 p-4 border rounded-md">{availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}</div>{availableChannels.length === 0 && (<p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>)}</div>
                             <Button onClick={handleGenerateBlueprint} disabled={!canGenerate || isGenerating} className="w-full">{isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Strategy</>}</Button>
                         </div>
                    ) : (

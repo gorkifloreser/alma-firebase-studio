@@ -74,7 +74,7 @@ export async function getStrategy(funnelId: string) {
 }
 
 
-export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+export async function generateFunnelPreview(input: Omit<GenerateFunnelInput, 'channels'> & { channels?: string[] }): Promise<GenerateFunnelOutput> {
     try {
         const result = await genFunnelFlow(input);
         return result;
