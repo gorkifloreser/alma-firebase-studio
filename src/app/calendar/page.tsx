@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
@@ -100,8 +100,8 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
     }
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-             <Card className={cn("overflow-hidden hover:shadow-md transition-shadow bg-secondary/30", isDraggable && "cursor-grab")}>
+        <div ref={setNodeRef} style={style}>
+             <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative group">
                 <div className="flex flex-col">
                      {item.image_url ? (
                         <div className="relative w-full aspect-video bg-muted">
@@ -133,6 +133,15 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         </div>
                      </div>
                 </div>
+                 {isDraggable && (
+                    <div 
+                        {...attributes} 
+                        {...listeners}
+                        className="absolute top-1/2 -left-1 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                )}
             </Card>
         </div>
     )
