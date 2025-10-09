@@ -14,7 +14,7 @@ import { updateContent, type CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
-import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow, Edit, SendHorizonal } from 'lucide-react';
+import { Wand2, Image as ImageIcon, Globe, RefreshCw, X, Loader2, Bot, Sparkles, ZoomIn, History, Type, Layers, Video, GitBranch, Workflow, Edit, SendHorizonal, Undo } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
@@ -112,6 +112,14 @@ const ImageChatDialog = ({
       }
     });
   };
+  
+  const handleRestore = (index: number) => {
+    if (index === -1) { // Restore to original
+        setHistory([]);
+    } else {
+        setHistory(prev => prev.slice(0, index + 1));
+    }
+  };
 
   if (!imageUrl) return null;
 
@@ -151,18 +159,29 @@ const ImageChatDialog = ({
           </div>
           <div className="border-l pl-4 flex flex-col">
             <h4 className="font-semibold mb-2">History</h4>
-            <div className="flex-1 overflow-y-auto space-y-4">
-                {history.length === 0 ? (
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                 <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted/50">
+                    <Image src={imageUrl} alt="Original image" width={40} height={40} className="rounded-md aspect-square object-cover" />
+                    <p className="flex-1 text-sm font-semibold">Original Image</p>
+                    <Button variant="ghost" size="sm" onClick={() => handleRestore(-1)} disabled={history.length === 0}>
+                        <Undo className="mr-2 h-4 w-4" />
+                        Restore
+                    </Button>
+                </div>
+                {history.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm p-2 border rounded-lg">
+                        <Image src={item.resultUrl} alt={`Step ${index + 1}`} width={40} height={40} className="rounded-md aspect-square object-cover" />
+                        <p className="flex-1 p-2 bg-secondary rounded-md">{item.instruction}</p>
+                         <Button variant="ghost" size="sm" onClick={() => handleRestore(index)}>
+                            <Undo className="mr-2 h-4 w-4" />
+                            Restore
+                        </Button>
+                    </div>
+                ))}
+                {history.length === 0 && (
                     <div className="text-center text-muted-foreground pt-10">
                         <p>Your edits will appear here.</p>
                     </div>
-                ) : (
-                    history.map((item, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm">
-                            <span className="font-semibold">{index + 1}.</span>
-                            <p className="flex-1 p-2 bg-secondary rounded-md">{item.instruction}</p>
-                        </div>
-                    ))
                 )}
             </div>
           </div>
