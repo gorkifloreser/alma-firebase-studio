@@ -7,7 +7,7 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
-import { getContent, scheduleContent, type CalendarItem } from './actions';
+import { getContent, scheduleContent, type CalendarItem, getActiveSocialConnection, type SocialConnection } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -139,6 +139,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
 
 export default function CalendarPage() {
     const [contentItems, setContentItems] = useState<CalendarItem[]>([]);
+    const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isScheduling, startScheduling] = useTransition();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -167,9 +168,13 @@ export default function CalendarPage() {
     const fetchContent = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getContent();
+            const [data, connection] = await Promise.all([
+                getContent(),
+                getActiveSocialConnection()
+            ]);
             console.log('[page.tsx:fetchContent] Data received from server action:', data);
             setContentItems(data);
+            setActiveConnection(connection);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         } finally {
@@ -190,7 +195,7 @@ export default function CalendarPage() {
     }, [fetchContent]);
 
     const scheduledOrPublished = useMemo(() => {
-        return contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && (item.scheduled_at || item.published_at));
+        return contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && (item.published_at || item.scheduled_at));
     }, [contentItems]);
 
     const { calendarDays, headerLabel } = useMemo(() => {
@@ -350,6 +355,7 @@ export default function CalendarPage() {
                     contentItem={editingContent}
                     onContentUpdated={handleContentUpdated}
                     onContentDeleted={handleContentDeleted}
+                    activeConnection={activeConnection}
                 />
             )}
         </DashboardLayout>

@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -40,6 +40,7 @@ interface EditContentDialogProps {
   contentItem: CalendarItem | null;
   onContentUpdated: (contentItem: CalendarItem) => void;
   onContentDeleted: (itemId: string) => void;
+  activeConnection: SocialConnection | null;
 }
 
 type Profile = {
@@ -78,6 +79,7 @@ export function EditContentDialog({
   contentItem,
   onContentUpdated,
   onContentDeleted,
+  activeConnection,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
 
@@ -207,7 +209,7 @@ export function EditContentDialog({
         onContentDeleted(contentItem.id);
         onOpenChange(false);
         toast({ title: 'Post Deleted', description: 'The content has been permanently removed.' });
-      } catch (error: any) {
+      } catch (error: any) => {
         toast({
           variant: 'destructive',
           title: 'Deletion Failed',
@@ -281,8 +283,10 @@ export function EditContentDialog({
 
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
-  const postUser = profile?.full_name || 'Your Brand';
-  const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+
+  const postUser = activeConnection?.account_name || profile?.full_name || 'Your Brand';
+  const postUserHandle = activeConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
+  const postUserAvatar = activeConnection?.account_picture_url || profile?.avatar_url;
 
 
   return (
@@ -301,7 +305,7 @@ export function EditContentDialog({
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
                             <Avatar>
-                                <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
                                 <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
                             </Avatar>
                         )}

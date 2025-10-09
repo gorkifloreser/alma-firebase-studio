@@ -24,6 +24,37 @@ export type CalendarItem = MediaPlanItem & {
     } | null;
 };
 
+export type SocialConnection = {
+    id: number;
+    user_id: string;
+    provider: string;
+    account_id: string | null;
+    account_name: string | null;
+    account_picture_url: string | null;
+    is_active: boolean;
+};
+
+
+export async function getActiveSocialConnection(): Promise<SocialConnection | null> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+        .from('social_connections')
+        .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Error fetching active social connection:', error.message);
+        return null;
+    }
+
+    return data;
+}
+
 
 export async function getContent(): Promise<CalendarItem[]> {
     console.log('[actions.ts:getContent] START: Fetching calendar content...');
