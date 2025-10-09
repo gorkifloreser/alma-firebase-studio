@@ -118,7 +118,7 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
 export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCalendarViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [view, setView] = useState<'week' | 'month'>('week');
+    const [view, setView] = useState<'week' | 'month'>('month');
     
     // Load view from localStorage on initial render
     useEffect(() => {

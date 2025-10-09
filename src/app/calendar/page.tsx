@@ -155,7 +155,7 @@ export default function CalendarPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isScheduling, startScheduling] = useTransition();
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [view, setView] = useState<'week' | 'month'>('week');
+    const [view, setView] = useState<'week' | 'month'>('month');
     const { toast } = useToast();
 
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -315,7 +315,7 @@ export default function CalendarPage() {
                     ? { ...item, status: 'scheduled', scheduled_at: finalDate.toISOString() } 
                     : item
                 ));
-                toast({ title: "Content Rescheduled!", description: "The item's date and time have been updated." });
+                toast({ title: "Event Rescheduled!", description: "The item's date and time have been updated." });
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Rescheduling Failed', description: error.message });
             } finally {
