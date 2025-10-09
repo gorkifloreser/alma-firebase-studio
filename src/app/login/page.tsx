@@ -33,7 +33,7 @@ export default async function LoginPage({
                 </p>
               </div>
               <div>
-                <h2 className="text-3xl font-bold text-center text-foreground">Log In to Your Space</h2>
+                <h2 className="text-3xl font-bold text-center text-foreground">Log In</h2>
                  {searchParams.message && (
                   <p className="mt-4 rounded-md bg-green-500/20 p-4 text-center text-sm text-green-300">
                     {searchParams.message}
