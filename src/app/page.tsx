@@ -29,7 +29,7 @@ export default function LandingPage() {
             Stop Chasing. Start Attracting.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-foreground/70 max-w-2xl mx-auto">
-            Alma is a Regenerative Marketing ecosystem for conscious creators. It uses AI as a mindful co-creator to transform your marketing from an exhausting chore into a joyful expression of your purpose.
+            Regen MKT is a Regenerative Marketing ecosystem for conscious creators. It uses AI as a mindful co-creator to transform your marketing from an exhausting chore into a joyful expression of your purpose.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild className="btn-auth text-lg py-6 px-8">
@@ -69,10 +69,10 @@ export default function LandingPage() {
       {/* Solution Section */}
       <section id="solution" className="py-20 md:py-32">
         <div className="container mx-auto px-4 text-center max-w-4xl">
-            <p className="font-semibold text-primary">THE ALMA WAY</p>
+            <p className="font-semibold text-primary">THE REGEN MKT WAY</p>
             <h2 className="text-3xl md:text-4xl font-bold mt-2">Marketing as a Regenerative Practice</h2>
             <p className="mt-4 text-lg text-muted-foreground">
-                Alma is not just another tool; it's a new philosophy. We help you build a marketing ecosystem that nourishes you, your audience, and your business. It's about rhythm over rush, and coherence over clicks.
+                Regen MKT is not just another tool; it's a new philosophy. We help you build a marketing ecosystem that nourishes you, your audience, and your business. It's about rhythm over rush, and coherence over clicks.
             </p>
         </div>
       </section>
@@ -120,7 +120,7 @@ export default function LandingPage() {
        {/* Footer */}
       <footer className="py-12 bg-secondary/30">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-           <p>&copy; {new Date().getFullYear()} Alma AI. Marketing for the soul.</p>
+           <p>&copy; {new Date().getFullYear()} Regen MKT. Marketing for the soul.</p>
         </div>
       </footer>
     </div>

@@ -1,13 +1,13 @@
-# Project Brief: Alma App
+# Project Brief: Regen MKT
 
 ## Executive Summary
-The Alma App is a SaaS platform designed for conscious creators and entrepreneurs, offering a "Regenerative Marketing" ecosystem. It aims to transform marketing from an exhausting, extractive process into a joyful and authentic expression of purpose by using AI as a conscious co-creator to build magnetic, value-driven brands.
+The Regen MKT is a SaaS platform designed for conscious creators and entrepreneurs, offering a "Regenerative Marketing" ecosystem. It aims to transform marketing from an exhausting, extractive process into a joyful and authentic expression of purpose by using AI as a conscious co-creator to build magnetic, value-driven brands.
 
 ## Problem Statement
 Modern creators and conscious entrepreneurs face a significant conflict between their mission to serve and the conventional, extractive marketing tools available. Traditional marketing promotes a "hustle culture" that relies on pressure tactics, constant performance, and metrics that feel disconnected from genuine value. This leads to creative burnout and a misalignment between the creator's soul and their brand's expression.
 
 ## Proposed Solution
-Alma App provides a "Regenerative Marketing" platform that shifts the paradigm from chasing to attracting. It's an intelligent digital ecosystem that uses AI to assist creators in a way that nourishes them, their audience, and their business. The platform facilitates the creation of magnetic content, automates workflows in alignment with natural rhythms, and builds authentic connections, making marketing a natural extension of the creator's purpose.
+Regen MKT provides a "Regenerative Marketing" platform that shifts the paradigm from chasing to attracting. It's an intelligent digital ecosystem that uses AI to assist creators in a way that nourishes them, their audience, and their business. The platform facilitates the creation of magnetic content, automates workflows in alignment with natural rhythms, and builds authentic connections, making marketing a natural extension of the creator's purpose.
 
 ## Target Users
 **Primary User Segment: The Conscious Creator/Entrepreneur**
@@ -18,7 +18,7 @@ Alma App provides a "Regenerative Marketing" platform that shifts the paradigm f
 ## Goals & Success Metrics
 ### Business Objectives
 - Achieve a high user adoption and retention rate within the target niche.
-- Establish Alma App as the leading platform for regenerative business practices.
+- Establish Regen MKT as the leading platform for regenerative business practices.
 ### User Success Metrics
 - Users report a significant reduction in marketing-related stress and burnout.
 - Users feel their brand messaging is more aligned with their personal values.

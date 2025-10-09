@@ -1,6 +1,6 @@
-GEMINI.md - Alma App Development Standards
+GEMINI.md - Regen MKT Development Standards
 1. Core Development Philosophy
-This document outlines the development, testing, and debugging standards for the Alma App. Our philosophy is rooted in a senior-level approach to engineering, emphasizing clean, scalable, and maintainable code. We adhere to the following core principles:
+This document outlines the development, testing, and debugging standards for the Regen MKT. Our philosophy is rooted in a senior-level approach to engineering, emphasizing clean, scalable, and maintainable code. We adhere to the following core principles:
 
 Clarity and Simplicity: Code should be easy to read, understand, and maintain. Avoid overly complex or "clever" solutions.
 
@@ -154,4 +154,3 @@ Frontend Invocation MUST use Server Actions: The Next.js frontend will use Serve
 API Keys MUST be in Next.js Environment Variables: All platform-specific credentials (App ID, App Secret, API Key) must be stored as environment variables for the Next.js runtime. For production, these MUST be managed in the hosting provider's secret management system (e.g., Vercel Environment Variables, AWS Secrets Manager). They must never be hardcoded or exposed to the client.
 
 Permitted API Usage for Content Publishing: The primary and explicitly permitted use of integrated social media APIs is for publishing content to the user's connected accounts.
-

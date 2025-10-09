@@ -1,7 +1,7 @@
 # High Level Architecture
 
 ## Technical Summary
-The Alma App will be a modern, full-stack TypeScript application. The frontend will be a server-side rendered (SSR) Next.js application, ensuring a fast and SEO-friendly user experience. The backend logic will be handled by Supabase Edge Functions. The entire backend infrastructure, including the database, authentication, and file storage, will be managed by Supabase, with the database schema managed via Supabase's built-in migration tools. A Retrieval-Augmented Generation (RAG) system will be implemented to provide context-aware assistance for filling out the Brand Heart.
+The Regen MKT will be a modern, full-stack TypeScript application. The frontend will be a server-side rendered (SSR) Next.js application, ensuring a fast and SEO-friendly user experience. The backend logic will be handled by Supabase Edge Functions. The entire backend infrastructure, including the database, authentication, and file storage, will be managed by Supabase, with the database schema managed via Supabase's built-in migration tools. A Retrieval-Augmented Generation (RAG) system will be implemented to provide context-aware assistance for filling out the Brand Heart.
 
 ## Platform and Infrastructure Choice
 *   **Platform:** Vercel for the Next.js frontend and Supabase for the entire backend infrastructure.

@@ -1,8 +1,8 @@
-# Alma App Product Requirements Document (PRD)
+# Regen MKT Product Requirements Document (PRD)
 
 ## Table of Contents
 
-- [Alma App Product Requirements Document (PRD)](#table-of-contents)
+- [Regen MKT Product Requirements Document (PRD)](#table-of-contents)
   - [Goals and Background Context](./goals-and-background-context.md)
   - [Requirements](./requirements.md)
   - [User Interface Design Goals](./user-interface-design-goals.md)

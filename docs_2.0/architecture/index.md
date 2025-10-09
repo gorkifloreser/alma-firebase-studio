@@ -1,8 +1,8 @@
-# Alma App Fullstack Architecture Document
+# Regen MKT Fullstack Architecture Document
 
 ## Table of Contents
 
-- [Alma App Fullstack Architecture Document](#table-of-contents)
+- [Regen MKT Fullstack Architecture Document](#table-of-contents)
   - [Introduction](./introduction.md)
   - [High Level Architecture](./high-level-architecture.md)
     - [Technical Summary](./high-level-architecture.md#technical-summary)

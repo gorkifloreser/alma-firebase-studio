@@ -12,7 +12,7 @@ export function LandingPageNav() {
           <div className="bg-primary rounded-lg p-1.5">
             <Infinity className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-lg">alma AI</span>
+          <span className="font-bold text-lg">Regen MKT</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
           <Link href="#problem" className="text-sm font-medium hover:text-primary transition-colors">

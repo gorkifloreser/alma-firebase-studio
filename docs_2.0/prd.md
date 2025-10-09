@@ -1,4 +1,4 @@
-# Alma App Product Requirements Document (PRD)
+# Regen MKT Product Requirements Document (PRD)
 
 ## Goals and Background Context
 **Goals**
@@ -8,7 +8,7 @@
 *   Reduce user burnout and increase their sense of brand coherence.
 
 **Background Context**
-The Alma App addresses a core conflict faced by conscious creators: the misalignment between their purpose-driven work and the extractive nature of traditional digital marketing. Conventional tools often force them into a "hustle culture" of pressure tactics and vanity metrics, leading to creative burnout. Alma App proposes a "Regenerative Marketing" model, using AI as a conscious assistant to help build magnetic, authentic brands that attract rather than pursue, allowing creators to grow their businesses without sacrificing their soul.
+The Regen MKT addresses a core conflict faced by conscious creators: the misalignment between their purpose-driven work and the extractive nature of traditional digital marketing. Conventional tools often force them into a "hustle culture" of pressure tactics and vanity metrics, leading to creative burnout. Regen MKT proposes a "Regenerative Marketing" model, using AI as a conscious assistant to help build magnetic, authentic brands that attract rather than pursue, allowing creators to grow their businesses without sacrificing their soul.
 
 **Change Log**
 

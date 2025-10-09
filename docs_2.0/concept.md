@@ -1,4 +1,4 @@
-# Documento de Requisitos de Producto (PRD): Plataforma de Marketing Regenerativo - Alma App
+# Documento de Requisitos de Producto (PRD): Plataforma de Marketing Regenerativo - Regen MKT
 Versión: 2.6
 Autor: Gorki de FloreSer
 

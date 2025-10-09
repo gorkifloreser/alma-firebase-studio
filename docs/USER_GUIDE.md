@@ -1,6 +1,6 @@
-# Alma App User Guide
+# Regen MKT User Guide
 
-Welcome to Alma. This guide will walk you through using the application step-by-step to get the most out of its features. The workflow is designed to build your marketing strategy from the ground up, starting with your brand's core identity and moving all the way to execution and refinement.
+Welcome to Regen MKT. This guide will walk you through using the application step-by-step to get the most out of its features. The workflow is designed to build your marketing strategy from the ground up, starting with your brand's core identity and moving all the way to execution and refinement.
 
 ## General Workflow
 

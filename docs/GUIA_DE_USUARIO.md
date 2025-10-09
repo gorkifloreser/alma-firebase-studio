@@ -1,6 +1,6 @@
-# Guía de Usuario de la Aplicación Alma
+# Guía de Usuario de la Aplicación Regen MKT
 
-Bienvenido a Alma. Esta guía te mostrará cómo utilizar la aplicación paso a paso para sacar el máximo provecho de sus funcionalidades. El flujo de trabajo está diseñado para construir tu estrategia de marketing desde la base (tu marca) hasta la ejecución (tu calendario de contenidos).
+Bienvenido a Regen MKT. Esta guía te mostrará cómo utilizar la aplicación paso a paso para sacar el máximo provecho de sus funcionalidades. El flujo de trabajo está diseñado para construir tu estrategia de marketing desde la base (tu marca) hasta la ejecución (tu calendario de contenidos).
 
 ## Flujo de Trabajo General
 
