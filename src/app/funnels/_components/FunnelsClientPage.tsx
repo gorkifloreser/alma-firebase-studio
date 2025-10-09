@@ -337,7 +337,7 @@ export function FunnelsClientPage({
                                             <CardFooter className="mt-auto pt-4 flex justify-end gap-2">
                                                 <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
                                                     <Wand2 className="mr-2 h-4 w-4" />
-                                                    Media Orchestrator
+                                                    Campaign Orchestrator
                                                 </Button>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>

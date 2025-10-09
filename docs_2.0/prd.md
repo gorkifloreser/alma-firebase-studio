@@ -23,7 +23,7 @@ The Alma App addresses a core conflict faced by conscious creators: the misalign
 *   **FR2:** The system shall allow users to list their products and services ("Offerings") (Module 2).
 *   **FR3:** The platform must generate a landing page and follow-up sequence for an "Offering" (Module 3).
 *   **FR4:** The landing page must include an email capture or "Contact via WhatsApp" CTA (Module 3).
-*   **FR5:** The system must create a holistic content plan to promote all active "Offerings" across different channels (Module 4).
+*   **FR5:** The system must create a holistic content campaign to promote all active "Offerings" across different channels (Module 4).
 *   **FR6:** The system's AI must generate draft content for social media posts based on the content plan (Module 5).
 *   **FR7:** Users must be able to edit, personalize, and approve AI-generated content (Module 6).
 *   **FR8:** The platform shall provide a content calendar to schedule and visualize all approved content (Module 7).
@@ -52,7 +52,7 @@ The user experience must be calm, intuitive, and inspiring, making the process o
 *   **Brand Heart Dashboard (Módulo 1):** Central hub for the brand's soul.
 *   **Offerings Catalog (Módulo 2):** Gallery-like view of offerings.
 *   **Funnel Builder (Módulo 3):** Visual wizard for user journeys.
-*   **Media Orchestrator (Módulo 4):** A strategic dashboard to create and view the holistic content plan.
+*   **Campaign Orchestrator (Módulo 4):** A strategic dashboard to create and view the holistic content plan.
 *   **Content Editor (Módulo 6):** Minimalist, distraction-free editor.
 *   **Cosmic Calendar (Módulo 7):** Visual drag-and-drop calendar.
 *   **Harvest Dashboard (Módulo 8):** Simple dashboard for testimonial requests.
@@ -82,7 +82,7 @@ The user experience must be calm, intuitive, and inspiring, making the process o
 ## Epic List
 *   **Epic 1: Foundation & Brand Heart:** Establish the core project infrastructure, user authentication, and implement the "Brand Heart" (Module 1), allowing users to define their brand's soul.
 *   **Epic 2: Offerings & Content Creation:** Implement the "Offerings Catalog" (Module 2) and connect it to the "Creative Studio" (Module 5) and "Artisan's Workshop" (Module 6) to enable AI-powered content generation based on the user's offerings.
-*   **Epic 3: Funnels, Strategy & Scheduling:** Develop the "Magic Funnels" (Module 3) to create landing pages, the "Media Orchestrator" (Module 4) to build a content plan, and the "Cosmic Calendar" (Module 7) to schedule the content.
+*   **Epic 3: Funnels, Strategy & Scheduling:** Develop the "Magic Funnels" (Module 3) to create landing pages, the "Campaign Orchestrator" (Module 4) to build a content plan, and the "Cosmic Calendar" (Module 7) to schedule the content.
 *   **Epic 4: The Harvest Circle & Legacy:** Implement the "Harvest Circle" (Module 8) to manage the post-sale experience and automate the collection of testimonials.
 
 ## Epic 1: Foundation & Brand Heart
@@ -193,11 +193,11 @@ The user experience must be calm, intuitive, and inspiring, making the process o
         *   The visual editor will be implemented using the **Puck** open-source library.
         *   A set of custom, MUI-based React components will be created for use within the Puck editor to ensure brand consistency.
 
-**Story 3.3: Create a Holistic, Multi-Channel Media Plan (Module 4)**
+**Story 3.3: Create a Holistic, Multi-Channel Campaign (Module 4)**
 *   **As a Conscious Creator,** I want the AI to create a content plan that suggests specific pieces for social media, email, and WhatsApp, **so that** I have a clear, holistic strategy for promoting my "Offerings" across all my key channels.
     *   **Acceptance Criteria:**
-        1.  A new "Media Plan" page is created and is a protected route.
-        2.  A "Generate Plan" button triggers the AI to analyze all "Offerings" marked as "active".
+        1.  A new "Campaign Orchestrator" page is created and is a protected route.
+        2.  A "Generate Campaign" button triggers the AI to analyze all "Offerings" marked as "active".
         3.  The AI generates a list of suggested content pieces for the upcoming week, **explicitly tailored for different channels.**
         4.  The plan is displayed in a clear, organized list, grouped by channel (e.g., "Social Media," "Email," "WhatsApp").
         5.  Example plan items could be:

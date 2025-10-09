@@ -191,13 +191,13 @@ export function OrchestrateMediaPlanDialog({
                 setCurrentPlan(validatedItems);
                 setPlanIdToEdit(null); // This is a new plan
                 toast({
-                    title: 'Media Plan Generated!',
+                    title: 'Campaign Generated!',
                     description: 'Review and edit the suggested content ideas below.'
                 });
             } catch (error: any) {
                 toast({
                     variant: 'destructive',
-                    title: 'Media Plan Generation Failed',
+                    title: 'Campaign Generation Failed',
                     description: error.message,
                 });
             }
@@ -206,7 +206,7 @@ export function OrchestrateMediaPlanDialog({
 
     const handleSave = async () => {
         if (!currentPlan || !planTitle.trim()) {
-            toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please provide a title for the media plan.' });
+            toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please provide a title for the campaign.' });
             return null;
         }
 
@@ -225,7 +225,7 @@ export function OrchestrateMediaPlanDialog({
                     endDate: dateRange?.to?.toISOString() ?? null
                 });
 
-                toast({ title: 'Plan Saved!', description: 'Your changes have been saved.' });
+                toast({ title: 'Campaign Saved!', description: 'Your changes have been saved.' });
                 setPlanIdToEdit(savedPlan.id);
 
                 setCurrentPlan((savedPlan.media_plan_items || []).map(item => ({
@@ -253,7 +253,7 @@ export function OrchestrateMediaPlanDialog({
         startArchiving(async () => {
             try {
                 await archiveMediaPlan(planId);
-                toast({ title: "Plan Archived", description: "The media plan has been moved to the archive." });
+                toast({ title: "Campaign Archived", description: "The campaign has been moved to the archive." });
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
@@ -293,7 +293,7 @@ export function OrchestrateMediaPlanDialog({
         setSelectedChannels(channelsInPlan);
         
         setView('generate');
-        toast({ title: 'Plan Cloned!', description: 'A copy of the plan has been created. Adjust the dates and save.' });
+        toast({ title: 'Campaign Cloned!', description: 'A copy of the campaign has been created. Adjust the dates and save.' });
     };
 
 
@@ -301,7 +301,7 @@ export function OrchestrateMediaPlanDialog({
         startDeleting(async () => {
             try {
                 await deleteMediaPlan(planId);
-                toast({ title: "Plan Deleted", description: "The media plan has been successfully deleted." });
+                toast({ title: "Campaign Deleted", description: "The campaign has been successfully deleted." });
                 const { data: updatedFunnel } = await getFunnel(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
@@ -345,10 +345,10 @@ export function OrchestrateMediaPlanDialog({
         
         const isUnsaved = finalPlan.some(item => item.id.startsWith('temp-'));
         if (!finalPlanId || isUnsaved) {
-            toast({ title: 'Saving plan before approval...', description: 'This will only take a moment.' });
+            toast({ title: 'Saving campaign before approval...', description: 'This will only take a moment.' });
             const savedPlan = await handleSave();
             if (!savedPlan || !savedPlan.media_plan_items) {
-                toast({ variant: 'destructive', title: 'Save failed', description: 'Cannot approve an unsaved plan.' });
+                toast({ variant: 'destructive', title: 'Save failed', description: 'Cannot approve an unsaved campaign.' });
                 return;
             }
             finalPlan = savedPlan.media_plan_items.map(item => ({...item, id: item.id.toString()}));
@@ -367,7 +367,7 @@ export function OrchestrateMediaPlanDialog({
             try {
                 const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 
-                toast({ title: isCurrentChannelApproved ? 'Plan Updated!' : 'Plan Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
+                toast({ title: isCurrentChannelApproved ? 'Campaign Updated!' : 'Campaign Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
                 setCurrentPlan(prevPlan => prevPlan!.map(item => 
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
@@ -459,7 +459,7 @@ export function OrchestrateMediaPlanDialog({
                     </Tabs>
                     <Button onClick={() => setView('generate')} className="flex-shrink-0">
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Create New Media Plan
+                        Create New Campaign
                     </Button>
                  </div>
                 
@@ -496,7 +496,7 @@ export function OrchestrateMediaPlanDialog({
                                 <CardFooter className="flex justify-end gap-2">
                                      {plan.status === 'archived' ? (
                                         <Button size="sm" onClick={() => handleClonePlan(plan)}>
-                                            <Copy className="mr-2 h-4 w-4" /> Clone Plan
+                                            <Copy className="mr-2 h-4 w-4" /> Clone Campaign
                                         </Button>
                                     ) : isFinished ? (
                                         <Button variant="outline" size="sm" onClick={() => handleArchivePlan(plan.id)} disabled={isArchiving}>
@@ -525,7 +525,7 @@ export function OrchestrateMediaPlanDialog({
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>This will permanently delete the media plan titled "{plan.title}". This action cannot be undone.</AlertDialogDescription>
+                                                <AlertDialogDescription>This will permanently delete the campaign titled "{plan.title}". This action cannot be undone.</AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -540,7 +540,7 @@ export function OrchestrateMediaPlanDialog({
                         )
                     })
                 ) : (
-                    <p className="text-muted-foreground text-center py-4">No {planStatusFilter} media plans created for this strategy yet.</p>
+                    <p className="text-muted-foreground text-center py-4">No {planStatusFilter} campaigns created for this strategy yet.</p>
                 )}
             </div>
         );
@@ -557,7 +557,7 @@ export function OrchestrateMediaPlanDialog({
             {!isGenerating && !currentPlan && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                     <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-lg text-foreground">Generate a New Media Plan</h3>
+                    <h3 className="font-semibold text-lg text-foreground">Generate a New Campaign</h3>
                     <div className="grid gap-6 text-left my-6 max-w-md w-full">
                         <div className="space-y-2">
                             <Label htmlFor="plan-title">Campaign Title</Label>
@@ -593,7 +593,7 @@ export function OrchestrateMediaPlanDialog({
                         </div>
                     </div>
                     <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                        {isGenerating ? 'Generating...' : 'Generate Media Plan'}
+                        {isGenerating ? 'Generating...' : 'Generate Campaign'}
                     </Button>
                 </div>
             )}
@@ -683,7 +683,7 @@ export function OrchestrateMediaPlanDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-7xl">
                 <DialogHeader>
-                     <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Orchestrate Media Plan</DialogTitle>
+                     <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
                      <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
                 </DialogHeader>
                 
@@ -693,7 +693,7 @@ export function OrchestrateMediaPlanDialog({
                     {view === 'generate' && currentPlan && (
                         <>
                             <Button onClick={handleSave} disabled={isSaving || isGenerating}>
-                                {isSaving ? 'Saving...' : 'Save Plan'}
+                                {isSaving ? 'Saving...' : 'Save Campaign'}
                             </Button>
                             <Button
                                 onClick={handleBulkApproveChannel}
@@ -701,7 +701,7 @@ export function OrchestrateMediaPlanDialog({
                                 className="bg-green-600 hover:bg-green-700 text-white"
                             >
                                 <CheckCheck className="mr-2 h-4 w-4" />
-                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${active_tab}' for Artisan`}
+                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
                             </Button>
                         </>
                     )}
