@@ -140,7 +140,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                     {...attributes}
                     className="absolute top-1/2 -left-2.5 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
                 >
-                    <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
+                     <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
                         <GripVertical className="h-4 w-4 text-primary-foreground" />
                     </div>
                 </div>
@@ -165,6 +165,19 @@ export default function CalendarPage() {
     const [isConfirmTimeOpen, setIsConfirmTimeOpen] = useState(false);
     const [itemToReschedule, setItemToReschedule] = useState<{itemId: string, newDate: Date} | null>(null);
     const [newTime, setNewTime] = useState('09:00');
+
+    // Load view from localStorage on initial render
+    useEffect(() => {
+        const savedView = localStorage.getItem('ai-calendar-view');
+        if (savedView === 'week' || savedView === 'month') {
+            setView(savedView);
+        }
+    }, []);
+
+    // Save view to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('ai-calendar-view', view);
+    }, [view]);
 
     const handleEventClick = (item: CalendarItem) => {
         setEditingContent(item);
