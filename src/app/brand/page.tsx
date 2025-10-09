@@ -10,6 +10,7 @@ import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, ge
 import { getUserChannels, updateUserChannels, updateChannelBestPractices, getSocialConnections, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
 import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
+import { AudienceForm } from './_components/AudienceForm';
 
 export default async function BrandPage() {
     const supabase = createClient();
@@ -30,6 +31,13 @@ export default async function BrandPage() {
 
     const tabData = {
         brandHeart: {
+            profile,
+            brandHeart,
+            languageNames,
+            updateBrandHeartAction: updateBrandHeart,
+            translateTextAction: translateText,
+        },
+        audience: {
             profile,
             brandHeart,
             languageNames,

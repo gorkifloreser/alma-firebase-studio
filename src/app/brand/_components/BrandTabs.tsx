@@ -6,15 +6,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
 import { KnowledgeBaseClientPage } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
 import { AccountsClientPage } from "@/app/accounts/_components/AccountsClientPage";
+import { AudienceForm } from './AudienceForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, BrainCircuit, CreditCard } from 'lucide-react';
+import { Heart, BrainCircuit, Users, CreditCard } from 'lucide-react';
 import type { BrandHeartFormProps } from "@/app/brand-heart/_components/BrandHeartForm";
 import type { KnowledgeBaseClientPageProps } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
 import type { AccountsClientPageProps } from "@/app/accounts/_components/AccountsClientPage";
+import type { AudienceFormProps } from "./AudienceForm";
+
 
 interface BrandTabsProps {
     data: {
         brandHeart: BrandHeartFormProps;
+        audience: AudienceFormProps;
         knowledgeBase: KnowledgeBaseClientPageProps;
         accounts: AccountsClientPageProps;
     };
@@ -32,6 +36,7 @@ export function BrandTabs({ data }: BrandTabsProps) {
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="brand-heart" className="gap-2"><Heart className="h-4 w-4" /> Brand Heart</TabsTrigger>
+                        <TabsTrigger value="audience" className="gap-2"><Users className="h-4 w-4" /> Audience</TabsTrigger>
                         <TabsTrigger value="knowledge-base" className="gap-2"><BrainCircuit className="h-4 w-4" /> Knowledge Base</TabsTrigger>
                         <TabsTrigger value="accounts" className="gap-2"><CreditCard className="h-4 w-4" /> Accounts</TabsTrigger>
                     </TabsList>
@@ -46,6 +51,19 @@ export function BrandTabs({ data }: BrandTabsProps) {
                         </CardHeader>
                         <CardContent>
                             <BrandHeartForm {...data.brandHeart} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="audience" className="mt-6">
+                    <Card>
+                         <CardHeader>
+                            <CardTitle>Audience / Buyer Persona</CardTitle>
+                            <CardDescription>
+                                Define who your ideal customer is. This is crucial for the AI to create resonant content.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AudienceForm {...data.audience} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -68,9 +86,21 @@ declare module "@/app/brand-heart/_components/BrandHeartForm" {
         languageNames: Map<string, string>;
         updateBrandHeartAction: any;
         translateTextAction: any;
+    }
+}
+
+declare module "@/app/brand/_components/AudienceForm" {
+    export interface AudienceFormProps {
+        profile: any;
+        brandHeart: any;
+        languageNames: Map<string, string>;
+        updateBrandHeartAction: any;
+        translateTextAction: any;
         generateAudienceAction: any;
     }
 }
+
+
 declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {
     export interface KnowledgeBaseClientPageProps {
         initialDocuments: any[];

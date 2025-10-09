@@ -1,6 +1,20 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.adapted_value_strategies (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_id uuid NOT NULL,
+  original_id bigint,
+  original_method text,
+  relevance_score integer,
+  adapted_method text,
+  strategy text,
+  visual_prompt text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT adapted_value_strategies_pkey PRIMARY KEY (id),
+  CONSTRAINT adapted_value_strategies_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT adapted_value_strategies_original_id_fkey FOREIGN KEY (original_id) REFERENCES public.value_strategies(id)
+);
 CREATE TABLE public.adapted_viral_hooks (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   user_id uuid NOT NULL,
@@ -54,6 +68,7 @@ CREATE TABLE public.brand_hearts (
   logo_url text,
   visual_identity jsonb DEFAULT '{}'::jsonb,
   contact_info jsonb DEFAULT '[]'::jsonb,
+  audience jsonb DEFAULT '{}'::jsonb,
   CONSTRAINT brand_hearts_pkey PRIMARY KEY (id),
   CONSTRAINT brand_hearts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -243,6 +258,14 @@ CREATE TABLE public.user_channels (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT user_channels_pkey PRIMARY KEY (id),
   CONSTRAINT user_channels_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.value_strategies (
+  id bigint NOT NULL DEFAULT nextval('value_strategies_id_seq'::regclass),
+  virality_axis text NOT NULL,
+  content_method text NOT NULL,
+  value_purpose text NOT NULL,
+  practical_example text NOT NULL,
+  CONSTRAINT value_strategies_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.viral_hooks (
   id bigint NOT NULL DEFAULT nextval('viral_hooks_id_seq'::regclass),

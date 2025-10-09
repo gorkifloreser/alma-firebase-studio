@@ -6,17 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
 import { MultiContactEditor } from './MultiContactEditor';
-import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo, generateAudienceSuggestion } from '../actions';
+import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo } from '../actions';
 
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
-type GenerateAudienceAction = typeof generateAudienceSuggestion;
 
 type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info' | 'audience'>;
 
@@ -26,7 +24,6 @@ export interface BrandHeartFormProps {
     languageNames: Map<string, string>;
     updateBrandHeartAction: UpdateBrandHeartAction;
     translateTextAction: TranslateTextAction;
-    generateAudienceAction: GenerateAudienceAction;
 }
 
 const initialBrandHeartState: BrandHeartData = {
@@ -49,14 +46,12 @@ export function BrandHeartForm({
     languageNames,
     updateBrandHeartAction,
     translateTextAction,
-    generateAudienceAction,
 }: BrandHeartFormProps) {
     
     const [brandHeart, setBrandHeart] = useState<BrandHeartData>(initialBrandHeart || initialBrandHeartState);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
-    const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
     
     const handleFileSelect = (file: File | null) => {
@@ -89,7 +84,7 @@ export function BrandHeartForm({
         (Object.keys(brandHeart) as Array<keyof BrandHeartData>).forEach(key => {
             if (key === 'contact_info') {
                  formData.append('contact_info', JSON.stringify(brandHeart.contact_info));
-            } else if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
+            } else if (key !== 'audience' && typeof brandHeart[key] === 'object' && brandHeart[key] !== null) { // Exclude audience
                 const bilingualValue = brandHeart[key] as { primary: string | null, secondary: string | null };
                 if (bilingualValue.primary) {
                     formData.append(`${key}_primary`, bilingualValue.primary);
@@ -160,28 +155,6 @@ export function BrandHeartForm({
         }
     };
 
-    const handleGenerateAudience = async (fieldId: keyof BrandHeartData) => {
-        startGenerating(async () => {
-            try {
-                const result = await generateAudienceAction();
-                setBrandHeart((prev: any) => ({
-                    ...prev,
-                    [fieldId]: { ...prev[fieldId], primary: result.profileText }
-                }));
-                toast({
-                    title: 'Audience Profile Generated!',
-                    description: `The AI has suggested a buyer persona.`,
-                });
-            } catch (error: any) {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Generation Failed',
-                    description: error.message,
-                });
-            }
-        });
-    };
-
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2">
@@ -246,18 +219,6 @@ export function BrandHeartForm({
                 isTranslating={isTranslating} 
                 languageNames={languageNames} 
                 handleAutoTranslate={handleAutoTranslate}
-            />
-             <BilingualFormField 
-                id="audience" 
-                label="Audience / Buyer Persona" 
-                value={brandHeart.audience}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating}
-                isGenerating={isGenerating}
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-                onGenerate={handleGenerateAudience}
             />
             <BilingualFormField 
                 id="visual_identity" 
