@@ -173,6 +173,24 @@ export function CreateEventInstanceDialog({
                         <Input value={schedule.duration || ''} onChange={e => handleScheduleChange('duration', e.target.value)} placeholder="e.g., 2 hours" />
                     </div>
 
+                    <div className="space-y-4">
+                        <Label className="text-md font-semibold">Location</Label>
+                        <div className="p-3 border rounded-lg space-y-3 bg-secondary/30">
+                            <div className="space-y-2">
+                                <Label>Location Label</Label>
+                                <Input value={schedule.location_label || ''} onChange={e => handleScheduleChange('location_label', e.target.value)} placeholder="e.g., My Studio, Online" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Address</Label>
+                                <Input value={schedule.location_address || ''} onChange={e => handleScheduleChange('location_address', e.target.value)} placeholder="e.g., 123 Main St, Anytown" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Google Maps URL</Label>
+                                <Input value={schedule.location_gmaps_url || ''} onChange={e => handleScheduleChange('location_gmaps_url', e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                            </div>
+                        </div>
+                    </div>
+
                     <Separator />
 
                     <h4 className="font-medium text-md">Pricing</h4>

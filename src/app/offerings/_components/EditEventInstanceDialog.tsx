@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { updateOfferingSchedule, deleteOfferingSchedule } from '../actions';
 import type { Offering, OfferingSchedule, PricePoint } from '../actions';
-import { Calendar as CalendarIcon, Clock, PlusCircle, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, PlusCircle, Trash2, MapPin } from 'lucide-react';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -155,6 +155,24 @@ export function EditEventInstanceDialog({
                      <div className="space-y-2">
                         <Label>Duration</Label>
                         <Input value={schedule.duration || ''} onChange={e => handleScheduleChange('duration', e.target.value)} placeholder="e.g., 2 hours" />
+                    </div>
+
+                     <div className="space-y-4">
+                        <Label className="text-md font-semibold">Location</Label>
+                        <div className="p-3 border rounded-lg space-y-3 bg-secondary/30">
+                            <div className="space-y-2">
+                                <Label>Location Label</Label>
+                                <Input value={schedule.location_label || ''} onChange={e => handleScheduleChange('location_label', e.target.value)} placeholder="e.g., My Studio, Online" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Address</Label>
+                                <Input value={schedule.location_address || ''} onChange={e => handleScheduleChange('location_address', e.target.value)} placeholder="e.g., 123 Main St, Anytown" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Google Maps URL</Label>
+                                <Input value={schedule.location_gmaps_url || ''} onChange={e => handleScheduleChange('location_gmaps_url', e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                            </div>
+                        </div>
                     </div>
 
                     <Separator />
