@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -103,9 +104,11 @@ const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWith
             <div 
                 {...listeners} 
                 {...attributes}
-                className="absolute top-1/2 -left-2 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
+                className="absolute top-1/2 -left-2.5 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
             >
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
+                    <GripVertical className="h-4 w-4 text-primary-foreground" />
+                </div>
             </div>
         </div>
     )
