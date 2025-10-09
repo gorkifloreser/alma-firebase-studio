@@ -150,40 +150,42 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                     </Tabs>
                 )}
 
-                <div className="space-y-2">
-                    <Label htmlFor="queue-select" className="flex items-center justify-between">
-                        <span className="truncate">Choose an Item to Work On</span>
-                        {workflowMode === 'campaign' && totalCampaignItems > 0 && (
-                            <span className="text-sm font-medium text-muted-foreground">
-                                ({doneCount}/{totalCampaignItems})
-                            </span>
-                        )}
-                    </Label>
-                    <Select onValueChange={(value) => handleArtisanItemSelect(value)} disabled={isLoading} value={selectedArtisanItemId || ''}>
-                        <SelectTrigger id="queue-select">
-                            <SelectValue placeholder="Select a content idea..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
-                            filteredArtisanItems.length > 0 ? (
-                                filteredArtisanItems.map(item => {
-                                    const StatusIcon = item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published' ? CheckCircle2 : CircleDashed;
-                                    return (
-                                        <SelectItem key={item.id} value={item.id}>
-                                            <div className="flex items-center gap-2">
-                                                <StatusIcon className="h-4 w-4 text-muted-foreground" />
-                                                <span>{item.concept || 'Untitled Concept'}</span>
-                                            </div>
-                                        </SelectItem>
-                                    );
-                                })
-                            ) : (
-                                <SelectItem value="none" disabled>No pending items.</SelectItem>
+                {workflowMode === 'campaign' && (
+                    <div className="space-y-2">
+                        <Label htmlFor="queue-select" className="flex items-center justify-between">
+                            <span className="truncate">Choose an Item to Work On</span>
+                            {workflowMode === 'campaign' && totalCampaignItems > 0 && (
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    ({doneCount}/{totalCampaignItems})
+                                </span>
                             )}
-                        </SelectContent>
-                    </Select>
-                </div>
-
+                        </Label>
+                        <Select onValueChange={(value) => handleArtisanItemSelect(value)} disabled={isLoading} value={selectedArtisanItemId || ''}>
+                            <SelectTrigger id="queue-select">
+                                <SelectValue placeholder="Select a content idea..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {isLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> :
+                                filteredArtisanItems.length > 0 ? (
+                                    filteredArtisanItems.map(item => {
+                                        const StatusIcon = item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published' ? CheckCircle2 : CircleDashed;
+                                        return (
+                                            <SelectItem key={item.id} value={item.id}>
+                                                <div className="flex items-center gap-2">
+                                                    <StatusIcon className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="truncate">{item.concept || 'Untitled Concept'}</span>
+                                                </div>
+                                            </SelectItem>
+                                        );
+                                    })
+                                ) : (
+                                    <SelectItem value="none" disabled>No pending items.</SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+                
                 {workflowMode === 'custom' && (
                     <div className="space-y-2">
                         <Label htmlFor="offering-select">Choose an Offering</Label>
@@ -212,21 +214,6 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                         className="h-24 resize-none"
                     />
                 </div>
-
-                {(selectedCreativeType === 'image' || selectedCreativeType === 'video') && (
-                    <div className="space-y-2">
-                        <Button variant="outline" className="w-full" onClick={() => setIsMediaSelectorOpen(true)} disabled={!selectedOfferingId}>
-                            <Images className="mr-2" /> Select Reference Image
-                        </Button>
-                        {referenceImageUrl && (
-                            <div className="relative p-2 border rounded-md">
-                                <p className="text-xs text-muted-foreground mb-2">Using as reference:</p>
-                                <Image src={referenceImageUrl} alt="Reference image" width={64} height={64} className="rounded" />
-                                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => setReferenceImageUrl(null)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 <div>
                     <h3 className="font-medium mb-4">Choose Creative Type</h3>
