@@ -1,3 +1,4 @@
+
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -44,6 +45,7 @@ import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rank
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 
 
 interface FunnelsClientPageProps {
