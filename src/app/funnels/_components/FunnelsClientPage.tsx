@@ -143,7 +143,7 @@ export function FunnelsClientPage({
         startDeleting(async () => {
             try {
                 await actions.deleteFunnel(funnelId);
-                toast({ title: 'Success!', description: 'The funnel has been deleted.' });
+                toast({ title: 'Success!', description: 'The strategy has been deleted.' });
                 handleDataRefresh();
             } catch (error: any) {
                 toast({
@@ -261,7 +261,7 @@ export function FunnelsClientPage({
                 <div>
                     <h1 className="text-3xl font-bold">AI Strategist</h1>
                     <p className="text-muted-foreground">
-                        Create, manage, and orchestrate strategic marketing funnels and viral hooks.
+                        Create, manage, and orchestrate strategic marketing strategies and viral hooks.
                     </p>
                 </div>
                 <Button onClick={handleOpenCreateDialog} className="gap-2">
@@ -362,7 +362,7 @@ export function FunnelsClientPage({
                                                                 <AlertDialogHeader>
                                                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                        This will permanently delete the funnel and all its associated content. This action cannot be undone.
+                                                                        This will permanently delete the strategy and all its associated content. This action cannot be undone.
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>

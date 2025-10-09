@@ -357,7 +357,7 @@ export function ContentGenerationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="text-primary" />
-            Artisan&apos;s Workshop: <span className="font-bold">{offeringTitle}</span>
+            Artisan's Workshop: <span className="font-bold">{offeringTitle}</span>
           </DialogTitle>
           <DialogDescription>
             Generate, review, and approve AI-generated creatives for your offering.
@@ -368,19 +368,19 @@ export function ContentGenerationDialog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
             <aside className="space-y-6">
                  <div className="space-y-2">
-                    <Label htmlFor="funnel-select">Funnel (Optional)</Label>
+                    <Label htmlFor="funnel-select">Strategy (Optional)</Label>
                     <Select onValueChange={setSelectedFunnelId} disabled={isLoading}>
                         <SelectTrigger id="funnel-select">
-                            <SelectValue placeholder="Select a funnel..." />
+                            <SelectValue placeholder="Select a strategy..." />
                         </SelectTrigger>
                         <SelectContent>
-                             <SelectItem value="none">No Funnel</SelectItem>
+                             <SelectItem value="none">No Strategy</SelectItem>
                             {funnels.map(funnel => (
                                 <SelectItem key={funnel.id} value={funnel.id}>{funnel.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                     <p className="text-xs text-muted-foreground">Select a funnel to provide more context to the AI.</p>
+                     <p className="text-xs text-muted-foreground">Select a strategy to provide more context to the AI.</p>
                 </div>
                 
                 <div>

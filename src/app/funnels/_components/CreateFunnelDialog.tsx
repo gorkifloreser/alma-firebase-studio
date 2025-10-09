@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -119,9 +120,9 @@ export function CreateFunnelDialog({
                 
                 setGeneratedContent(result);
                 setName(name || `${offering.title.primary}: ${preset.title}`);
-                toast({ title: 'Blueprint Generated!', description: 'Review and refine the strategy below.' });
+                toast({ title: 'Strategy Generated!', description: 'Review and refine the strategy below.' });
             } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Blueprint Generation Failed', description: error.message });
+                toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
             }
         });
     };
@@ -173,7 +174,7 @@ export function CreateFunnelDialog({
                         {isEditMode ? 'Edit AI Strategy' : 'Create a New AI Strategy'}
                     </DialogTitle>
                     <DialogDescription>
-                        {isEditMode ? 'Refine the details of your strategic blueprint.' : 'Select a template, define your goal, and generate a strategic blueprint.'}
+                        {isEditMode ? 'Refine the details of your strategic plan.' : 'Select a template, define your goal, and generate a strategic plan.'}
                     </DialogDescription>
                 </DialogHeader>
                 
@@ -192,11 +193,11 @@ export function CreateFunnelDialog({
                             <div className="space-y-4"><Label htmlFor="offering-select" className="text-lg font-semibold">2. Choose an Offering</Label><Select onValueChange={setSelectedOfferingId} value={selectedOfferingId || undefined}><SelectTrigger id="offering-select" className="text-base py-6"><SelectValue placeholder="Select an offering to promote..." /></SelectTrigger><SelectContent>{offerings.map(o => (<SelectItem key={o.id} value={o.id}>{o.title.primary}</SelectItem>))}</SelectContent></Select></div>
                             <div className="space-y-4"><Label htmlFor="goal" className="text-lg font-semibold">3. Define Your Goal</Label><Input id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g., Get 50 signups for my webinar" className="text-base py-6"/></div>
                             <div className="space-y-4"><Label className="text-lg font-semibold">4. Select Target Channels</Label><div className="grid grid-cols-2 gap-4 p-4 border rounded-md">{availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}</div>{availableChannels.length === 0 && (<p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>)}</div>
-                            <Button onClick={handleGenerateBlueprint} disabled={!canGenerate || isGenerating} className="w-full">{isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Blueprint</>}</Button>
+                            <Button onClick={handleGenerateBlueprint} disabled={!canGenerate || isGenerating} className="w-full">{isGenerating ? 'Generating...' : <><Bot className="mr-2 h-4 w-4" /> Generate Strategy</>}</Button>
                         </div>
                    ) : (
                         <div className="space-y-6">
-                            <h3 className="text-xl font-semibold border-b pb-2">Edit Blueprint</h3>
+                            <h3 className="text-xl font-semibold border-b pb-2">Edit Strategy</h3>
                             <div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={name} onChange={(e) => setName(e.target.value)} className="text-lg"/></div>
                             <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (
                                 <Card key={sIdx} className="relative group/stage">
