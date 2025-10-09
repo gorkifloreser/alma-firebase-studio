@@ -18,7 +18,7 @@ type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
 type GenerateAudienceAction = typeof generateAudienceSuggestion;
 
-type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info'>;
+type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info' | 'audience'>;
 
 export interface BrandHeartFormProps {
     profile: Profile | null;
@@ -63,11 +63,11 @@ export function BrandHeartForm({
         setLogoFile(file);
     };
 
-    const handleFieldChange = (field: keyof BrandHeartFields, language: 'primary' | 'secondary', value: string) => {
+    const handleFieldChange = (field: keyof BrandHeartData, language: 'primary' | 'secondary', value: string) => {
         setBrandHeart(prev => ({
             ...prev,
             [field]: {
-                ...(prev[field]),
+                ...(prev[field] as object),
                 [language]: value
             }
         }));
@@ -122,7 +122,7 @@ export function BrandHeartForm({
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields) => {
+    const handleAutoTranslate = async (fieldId: keyof BrandHeartData) => {
         if (!profile?.secondary_language) return;
 
         const fieldData = (brandHeart as any)[fieldId];
@@ -138,7 +138,7 @@ export function BrandHeartForm({
             return;
         }
 
-        setIsTranslating(fieldId);
+        setIsTranslating(fieldId as string);
         try {
             const result = await translateTextAction({ text: primaryText, targetLanguage });
             setBrandHeart((prev: any) => ({
@@ -160,7 +160,7 @@ export function BrandHeartForm({
         }
     };
 
-    const handleGenerateAudience = async (fieldId: keyof BrandHeartFields) => {
+    const handleGenerateAudience = async (fieldId: keyof BrandHeartData) => {
         startGenerating(async () => {
             try {
                 const result = await generateAudienceAction();
@@ -249,7 +249,7 @@ export function BrandHeartForm({
             />
              <BilingualFormField 
                 id="audience" 
-                label="Audience" 
+                label="Audience / Buyer Persona" 
                 value={brandHeart.audience}
                 onFieldChange={handleFieldChange}
                 profile={profile} 
