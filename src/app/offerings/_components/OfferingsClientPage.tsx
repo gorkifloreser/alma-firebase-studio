@@ -11,6 +11,7 @@ import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, B
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
 import { CreateEventInstanceDialog } from './CreateEventInstanceDialog';
+import { EditEventInstanceDialog } from './EditEventInstanceDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +33,7 @@ import {
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import type { Offering, OfferingMedia, ValueContentBlock } from '../actions';
+import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
 import type { getOfferings, deleteOffering } from '../actions';
 import type { Funnel } from '@/app/funnels/actions';
 import type { getProfile } from '@/app/settings/actions';
@@ -58,9 +59,11 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
     const [isInstanceDialogOpen, setIsInstanceDialogOpen] = useState(false);
+    const [isEditInstanceDialogOpen, setIsEditInstanceDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
+    const [scheduleToEdit, setScheduleToEdit] = useState<OfferingSchedule | null>(null);
     const [preselectedDate, setPreselectedDate] = useState<Date | undefined>(undefined);
     const [activeTab, setActiveTab] = useState('all');
     const [eventView, setEventView] = useState<'grid' | 'calendar'>('grid');
@@ -133,6 +136,19 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         setIsDetailDialogOpen(true);
     };
 
+    const handleOpenEditInstanceDialog = (offeringId: string, scheduleId: string) => {
+        const offering = offerings.find(o => o.id === offeringId);
+        if (offering) {
+            const schedule = offering.offering_schedules.find(s => s.id === scheduleId);
+            if (schedule) {
+                setOfferingToEdit(offering); // Set the parent offering for context
+                setScheduleToEdit(schedule);
+                setIsEditInstanceDialogOpen(true);
+            }
+        }
+    };
+
+
     const handleOfferingSaved = () => {
         setIsCreateDialogOpen(false);
         fetchOfferings();
@@ -149,6 +165,12 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             title: 'Success!',
             description: 'A new date has been added to your event offering.',
         });
+    };
+
+    const handleEventInstanceUpdated = () => {
+        setIsEditInstanceDialogOpen(false);
+        fetchOfferings();
+        toast({ title: 'Success!', description: 'The event date has been updated.' });
     };
 
 
@@ -212,7 +234,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                  <div className="mt-6">
                     <TabsContent value={activeTab} className="mt-0">
                         {activeTab === 'event' && eventView === 'calendar' ? (
-                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} onAddEvent={handleOpenInstanceDialog} />
+                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenEditInstanceDialog} onAddEvent={handleOpenInstanceDialog} />
                         ) : filteredOfferings.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredOfferings.map(offering => (
@@ -322,6 +344,15 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 preselectedDate={preselectedDate}
                 onEventInstanceCreated={handleEventInstanceCreated}
             />
+             {offeringToEdit && scheduleToEdit && (
+                <EditEventInstanceDialog
+                    isOpen={isEditInstanceDialogOpen}
+                    onOpenChange={setIsEditInstanceDialogOpen}
+                    offering={offeringToEdit}
+                    schedule={scheduleToEdit}
+                    onEventInstanceUpdated={handleEventInstanceUpdated}
+                />
+            )}
             {offeringToView && (
                 <OfferingDetailDialog
                     isOpen={isDetailDialogOpen}

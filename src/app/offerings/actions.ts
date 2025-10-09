@@ -281,6 +281,53 @@ export async function addScheduleToOffering(offeringId: string, scheduleData: Om
     return newSchedule;
 }
 
+export async function updateOfferingSchedule(scheduleId: string, scheduleData: Partial<Omit<OfferingSchedule, 'id'>>): Promise<OfferingSchedule> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = { ...scheduleData, updated_at: new Date().toISOString() };
+    if (scheduleData.event_date) {
+        payload.event_date = scheduleData.event_date.toISOString();
+    }
+
+    const { data, error } = await supabase
+        .from('offering_schedules')
+        .update(payload)
+        .eq('id', scheduleId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+        
+    if (error) {
+        console.error(`Error updating schedule ${scheduleId}:`, error);
+        throw new Error(`Could not update event schedule: ${error.message}`);
+    }
+
+    revalidatePath('/offerings');
+    return data;
+}
+
+export async function deleteOfferingSchedule(scheduleId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('offering_schedules')
+        .delete()
+        .eq('id', scheduleId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error(`Error deleting schedule ${scheduleId}:`, error);
+        throw new Error(`Could not delete event schedule: ${error.message}`);
+    }
+
+    revalidatePath('/offerings');
+    return { message: 'Event date deleted successfully.' };
+}
+
 
 /**
  * Deletes an offering for the currently authenticated user, including its media from storage.

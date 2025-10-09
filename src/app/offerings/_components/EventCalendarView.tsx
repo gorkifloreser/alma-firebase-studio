@@ -11,17 +11,17 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
-import type { Offering, OfferingMedia } from '../actions';
+import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
 
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
 
 interface EventCalendarViewProps {
     events: OfferingWithMedia[];
-    onEventClick: (event: OfferingWithMedia) => void;
+    onEventClick: (offeringId: string, scheduleId: string) => void;
     onAddEvent: (date: Date) => void;
 }
 
-const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: { day: Date, events: OfferingWithMedia[], isCurrentMonth: boolean, onEventClick: (event: OfferingWithMedia) => void, onAddEvent: (date: Date) => void }) => {
+const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: { day: Date, events: { offering: OfferingWithMedia, schedule: OfferingSchedule }[], isCurrentMonth: boolean, onEventClick: (offeringId: string, scheduleId: string) => void, onAddEvent: (date: Date) => void }) => {
     const [isToday, setIsToday] = useState(false);
     
     useEffect(() => {
@@ -39,7 +39,7 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: 
                 {format(day, 'd')}
             </time>
              <div className="mt-1 flex-1 overflow-y-auto space-y-1">
-                {events.map(event => <CalendarEvent key={event.id} event={event} onClick={() => onEventClick(event)} />)}
+                {events.map(({ offering, schedule }) => <CalendarEvent key={`${offering.id}-${schedule.id}`} offering={offering} schedule={schedule} onClick={() => onEventClick(offering.id, schedule.id!)} />)}
             </div>
              <Button
                 variant="ghost"
@@ -53,10 +53,9 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick, onAddEvent }: 
     );
 };
 
-const CalendarEvent = ({ event, onClick }: { event: OfferingWithMedia, onClick: () => void }) => {
-    const firstSchedule = event.offering_schedules?.[0];
-    const eventTime = firstSchedule?.event_date && isValid(parseISO(firstSchedule.event_date as any)) ? format(parseISO(firstSchedule.event_date as any), 'p') : 'All day';
-    const coverImage = event.offering_media?.[0]?.media_url;
+const CalendarEvent = ({ offering, schedule, onClick }: { offering: OfferingWithMedia, schedule: OfferingSchedule, onClick: () => void }) => {
+    const eventTime = schedule?.event_date && isValid(parseISO(schedule.event_date as any)) ? format(parseISO(schedule.event_date as any), 'p') : 'All day';
+    const coverImage = offering.offering_media?.[0]?.media_url;
 
     return (
         <div onClick={onClick}>
@@ -64,7 +63,7 @@ const CalendarEvent = ({ event, onClick }: { event: OfferingWithMedia, onClick: 
                 <div className="flex flex-col">
                      {coverImage ? (
                         <div className="relative w-full aspect-video bg-muted">
-                            <Image src={coverImage} alt={event.title.primary || 'Event image'} layout="fill" className="object-cover" />
+                            <Image src={coverImage} alt={offering.title.primary || 'Event image'} layout="fill" className="object-cover" />
                         </div>
                      ) : (
                         <div className="aspect-video bg-muted flex items-center justify-center">
@@ -72,7 +71,7 @@ const CalendarEvent = ({ event, onClick }: { event: OfferingWithMedia, onClick: 
                         </div>
                      )}
                      <div className="p-2 space-y-1">
-                        <p className="text-xs font-bold truncate group-hover:text-primary">{event.title.primary}</p>
+                        <p className="text-xs font-bold truncate group-hover:text-primary">{offering.title.primary}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div className={cn("flex items-center gap-1.5")}>
                                 <Clock className="h-3 w-3 text-muted-foreground" />
@@ -102,18 +101,15 @@ export function EventCalendarView({ events, onEventClick, onAddEvent }: EventCal
     }, [currentDate]);
 
     const eventsByDate = useMemo(() => {
-        const map = new Map<string, OfferingWithMedia[]>();
+        const map = new Map<string, { offering: OfferingWithMedia, schedule: OfferingSchedule }[]>();
         events.forEach(event => {
             event.offering_schedules?.forEach(schedule => {
-                if (schedule.event_date) {
+                if (schedule.event_date && schedule.id) {
                     const date = parseISO(schedule.event_date as unknown as string);
                     if (isValid(date)) {
                         const dateKey = format(date, 'yyyy-MM-dd');
                         const dayEvents = map.get(dateKey) || [];
-                        // Avoid adding duplicates if an offering has multiple schedules on the same day
-                        if (!dayEvents.some(e => e.id === event.id)) {
-                           map.set(dateKey, [...dayEvents, event]);
-                        }
+                        map.set(dateKey, [...dayEvents, { offering: event, schedule }]);
                     }
                 }
             });
