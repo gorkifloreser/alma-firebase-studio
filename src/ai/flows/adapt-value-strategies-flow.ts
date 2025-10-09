@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -9,6 +10,7 @@ import { z } from 'genkit';
 import { getBrandHeart } from '@/app/brand-heart/actions';
 import { getValueStrategies, type ValueStrategy } from '@/app/funnels/actions';
 import { createClient } from '@/lib/supabase/server';
+import { googleAI } from '@genkit-ai/googleai';
 
 const AdaptedStrategySchema = z.object({
   original_id: z.number().describe('The ID of the original strategy.'),
@@ -27,6 +29,7 @@ const AdaptStrategiesOutputSchema = z.object({
 
 const adapterPrompt = ai.definePrompt({
     name: 'valueStrategyAdapterPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
