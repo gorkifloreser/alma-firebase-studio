@@ -185,22 +185,25 @@ export const generateCreativeFlow = ai.defineFlow(
   async ({ offeringId, creativeTypes, aspectRatio, creativePrompt: userCreativePrompt, referenceImageUrl }) => {
     
     async function downloadVideo(video: MediaPart): Promise<string> {
-        console.log('[downloadVideo] START - Downloading video from URL:', video.media!.url);
-        const fetch = (await import('node-fetch')).default;
+      console.log('[downloadVideo] START - Downloading video from URL:', video.media!.url);
+      const fetch = (await import('node-fetch')).default;
+      try {
         const videoDownloadResponse = await fetch(`${video.media!.url}&key=${process.env.GEMINI_API_KEY}`);
-        if (!videoDownloadResponse || videoDownloadResponse.status !== 200 || !videoDownloadResponse.body) {
-            console.error('[downloadVideo] ERROR - Failed to fetch video. Status:', videoDownloadResponse?.status);
-            throw new Error('Failed to fetch video');
+        if (!videoDownloadResponse.ok) {
+          const errorText = await videoDownloadResponse.text();
+          console.error(`[downloadVideo] ERROR - Failed to fetch video. Status: ${videoDownloadResponse.status}`, errorText);
+          throw new Error(`Failed to fetch video: ${videoDownloadResponse.statusText}`);
         }
-        const chunks: Buffer[] = [];
-        for await (const chunk of videoDownloadResponse.body) {
-            chunks.push(chunk as Buffer);
-        }
-        const buffer = Buffer.concat(chunks);
-        console.log(`[downloadVideo] SUCCESS - Video downloaded. Buffer size: ${buffer.length} bytes.`);
-        const dataUri = `data:video/mp4;base64,${buffer.toString('base64')}`;
+        const buffer = await videoDownloadResponse.arrayBuffer();
+        const base64String = Buffer.from(buffer).toString('base64');
+        console.log(`[downloadVideo] SUCCESS - Video downloaded. Buffer size: ${buffer.byteLength} bytes.`);
+        const dataUri = `data:video/mp4;base64,${base64String}`;
         console.log(`[downloadVideo] FINISH - Converted to data URI. Length: ${dataUri.length}`);
         return dataUri;
+      } catch (error) {
+        console.error('[downloadVideo] CATCH BLOCK - An error occurred during fetch or conversion:', error);
+        throw new Error('Failed to download or process video data.');
+      }
     }
     
     const supabase = createClient();
