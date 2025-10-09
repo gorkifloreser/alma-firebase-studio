@@ -172,7 +172,7 @@ export async function getMetaOAuthUrl(): Promise<{ url: string }> {
         throw new Error("Meta application credentials are not configured in the environment.");
     }
 
-    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,pages_manage_posts,whatsapp_business_management';
+    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,pages_manage_posts,whatsapp_business_management,whatsapp_business_messaging';
     const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
 
     return { url };
@@ -239,5 +239,3 @@ export async function setActiveConnection(connectionId: number): Promise<SocialC
     revalidatePath('/accounts');
     return getSocialConnections();
 }
-
-  
