@@ -59,14 +59,18 @@ export function DashboardLayoutClient({
         <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-transparent")}>
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-                <div className="relative h-8 w-8 p-1.5 bg-primary rounded-md flex items-center justify-center">
-                   <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="dark:brightness-100 dark:invert-0 brightness-0 invert"/>
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                   <div className="relative h-full w-full p-1.5">
+                    <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="brightness-0 invert dark:filter-none"/>
+                  </div>
                 </div>
                 <span className="font-bold text-lg">Regen MKT</span>
               </div>
                <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
-                <div className="relative h-8 w-8 p-1.5 bg-primary rounded-md flex items-center justify-center">
-                   <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="dark:brightness-100 dark:invert-0 brightness-0 invert"/>
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                  <div className="relative h-full w-full p-1.5">
+                    <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="brightness-0 invert dark:filter-none"/>
+                  </div>
                 </div>
               </div>
           </SidebarHeader>
