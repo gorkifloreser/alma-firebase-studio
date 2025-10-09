@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
 import { getContent, scheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
@@ -275,10 +275,10 @@ export default function CalendarPage() {
         <DashboardLayout>
             <DndContext onDragEnd={handleDragEnd}>
                 <Toaster />
-                <div className="flex flex-col h-[calc(100vh-4rem)]">
-                    <main className="flex-1 flex flex-col">
-                        <header className="flex items-center justify-between p-4 border-b">
-                             <h1 className="text-2xl font-bold">{headerLabel}</h1>
+                 <div className="p-4 sm:p-6 lg:p-8 flex flex-col h-full">
+                    <Card className="flex-1 flex flex-col">
+                        <CardHeader className="flex items-center justify-between flex-row">
+                             <CardTitle className="text-2xl font-bold">{headerLabel}</CardTitle>
                              <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                                     <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
@@ -305,14 +305,14 @@ export default function CalendarPage() {
                                     <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
                                 </div>
                              </div>
-                        </header>
-                         <div className="flex-1 flex flex-col">
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col p-0">
                             <div className="grid grid-cols-7 border-b">
                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                                     <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
                                 ))}
                             </div>
-                             <div className="grid grid-cols-7 flex-1 border-b">
+                             <div className="grid grid-cols-7 flex-1">
                                 {isLoading ? (
                                     Array.from({ length: view === 'week' ? 7 : 35 }).map((_, i) => (
                                          <div key={i} className={cn("relative flex flex-col p-2 border-t border-l", dayHeightClass)}>
@@ -339,8 +339,8 @@ export default function CalendarPage() {
                                     })
                                 )}
                             </div>
-                        </div>
-                    </main>
+                        </CardContent>
+                    </Card>
                 </div>
             </DndContext>
              {editingContent && (
