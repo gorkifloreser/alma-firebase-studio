@@ -76,9 +76,11 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }
 };
 
 const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => void }) => {
+    const isDraggable = item.status === 'scheduled';
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: item.id,
-        data: { type: 'calendarEvent' }
+        data: { type: 'calendarEvent' },
+        disabled: !isDraggable,
     });
 
     const style = transform ? {
@@ -110,9 +112,6 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                 return <ChannelIcon channel={item.user_channel_settings?.channel_name} />;
         }
     }
-
-    const isDraggable = item.status === 'scheduled';
-
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
