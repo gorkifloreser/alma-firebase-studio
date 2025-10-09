@@ -121,6 +121,11 @@ export function OrchestrateMediaPlanDialog({
 
     useEffect(() => {
         if (isOpen && fullFunnelData) {
+            
+            if (view === 'generate') {
+                setIsDataLoading(true);
+            }
+
             getProfile().then(p => {
                 setProfile(p);
                 setSelectedLanguage(p?.primary_language || 'en');
@@ -138,13 +143,17 @@ export function OrchestrateMediaPlanDialog({
                 const channelNames = channels.map(c => c.id);
                 setAvailableChannels(channelNames);
                 setSelectedChannels(fullFunnelData.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
+            }).finally(() => {
+                 if (view === 'generate') {
+                    setIsDataLoading(false);
+                }
             });
 
             if (dateRange?.from && !planIdToEdit) {
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, fullFunnelData, planIdToEdit, currentPlan, dateRange?.from]);
+    }, [isOpen, fullFunnelData, planIdToEdit, currentPlan, dateRange?.from, view]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};
