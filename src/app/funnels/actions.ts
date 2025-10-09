@@ -52,7 +52,7 @@ export async function getFunnel(funnelId: string) {
         .from('funnels')
         .select(`
             *,
-            offerings (id, title),
+            offerings (id, title, offering_schedules(*)),
             media_plans!funnel_id (
                 *,
                 media_plan_items!media_plan_id (

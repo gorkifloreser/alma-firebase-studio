@@ -45,6 +45,11 @@ export type MediaPlan = {
     media_plan_items: MediaPlanItem[] | null;
 };
 
+export type OfferingSchedule = {
+    id: string;
+    event_date: string | null;
+}
+
 export type Funnel = {
     id: string;
     user_id: string;
@@ -58,6 +63,7 @@ export type Funnel = {
     offerings: {
         id: string;
         title: { primary: string | null };
+        offering_schedules: OfferingSchedule[] | null;
     } | null;
     media_plans: MediaPlan[] | null;
 }
