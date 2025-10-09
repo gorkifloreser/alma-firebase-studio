@@ -30,7 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getFunnel, archiveMediaPlan } from '../actions';
+import { generateMediaPlan as generateMediaPlanAction, regeneratePlanItem, saveMediaPlan, addMultipleToArtisanQueue, getUserChannels, deleteMediaPlan, getStrategy, archiveMediaPlan } from '../actions';
 import type { Funnel, MediaPlan } from '../types';
 import { Stars, Sparkles, RefreshCw, Trash2, PlusCircle, CheckCircle2, ListPlus, Rows, X, Calendar as CalendarIcon, ArrowLeft, MoreVertical, Edit, Eye, Check, Archive, Copy, CircleDashed, CheckCheck, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,7 +110,7 @@ export function OrchestrateMediaPlanDialog({
     useEffect(() => {
         if (isOpen) {
             setIsDataLoading(true);
-            getFunnel(funnel.id).then(({ data }) => {
+            getStrategy(funnel.id).then(({ data }) => {
                 if (data) {
                     setFullFunnelData(data);
                 }
@@ -236,7 +236,7 @@ export function OrchestrateMediaPlanDialog({
                     status: item.status || 'draft',
                 } as PlanItemWithStatus)));
 
-                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                const { data: updatedFunnel } = await getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -254,7 +254,7 @@ export function OrchestrateMediaPlanDialog({
             try {
                 await archiveMediaPlan(planId);
                 toast({ title: "Campaign Archived", description: "The campaign has been moved to the archive." });
-                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                const { data: updatedFunnel } = await getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -302,7 +302,7 @@ export function OrchestrateMediaPlanDialog({
             try {
                 await deleteMediaPlan(planId);
                 toast({ title: "Campaign Deleted", description: "The campaign has been successfully deleted." });
-                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                const { data: updatedFunnel } = await getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -373,7 +373,7 @@ export function OrchestrateMediaPlanDialog({
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
                 ));
 
-                const { data: updatedFunnel } = await getFunnel(funnel.id);
+                const { data: updatedFunnel } = await getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
