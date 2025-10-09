@@ -248,7 +248,7 @@ export const generateCreativeFlow = ai.defineFlow(
         visualPromises.push(ai.generate({
             model: googleAI.model(process.env.GENKIT_VIDEO_MODEL || 'veo-3.0-generate-preview'),
             prompt: videoPromptPayload,
-            config: { durationSeconds: 5, aspectRatio: aspectRatio },
+            config: { aspectRatio: aspectRatio },
         }).then(async ({ operation }) => {
             if (!operation) throw new Error('Expected video operation.');
             while (!operation.done) {
