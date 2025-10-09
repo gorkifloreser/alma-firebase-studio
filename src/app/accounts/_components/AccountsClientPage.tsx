@@ -34,9 +34,10 @@ const initialAccounts: Omit<Account, 'best_practices'>[] = [
     { id: 'instagram', name: 'Instagram', description: 'Enable Instagram for post generation and analytics.', icon: '/instagram.svg', category: 'social', status: 'available' },
     { id: 'facebook', name: 'Facebook', description: 'Enable Facebook for content scheduling and insights.', icon: '/facebook.svg', category: 'social', status: 'available' },
     { id: 'tiktok', name: 'TikTok', description: 'Plan and analyze your TikTok content strategy.', icon: '/tiktok.svg', category: 'social', status: 'coming_soon' },
-    { id: 'linkedin', name: 'LinkedIn', description: 'Manage your professional presence and content on LinkedIn.', icon: '/linkedin.svg', category: 'social', 'status': 'coming_soon' },
+    { id: 'linkedin', name: 'LinkedIn', description: 'Manage your professional presence and content on LinkedIn.', icon: '/linkedin.svg', 'status': 'coming_soon' },
+    { id: 'youtube', name: 'YouTube', description: 'Analyze video performance and plan content.', icon: '/youtube.svg', category: 'social', status: 'coming_soon' },
     { id: 'whatsapp', name: 'WhatsApp', description: 'Enable WhatsApp to engage with customers.', icon: '/whatsapp.svg', category: 'messaging', status: 'available' },
-    { id: 'telegram', name: 'Telegram', description: 'Enable Telegram for messaging and automations.', icon: '/telegram.svg', category: 'messaging', status: 'available' },
+    { id: 'telegram', name: 'Telegram', description: 'Enable Telegram for messaging and automations.', icon: '/telegram.svg', category: 'messaging', status: 'coming_soon' },
     { id: 'webmail', name: 'Webmail', description: 'Enable email to send newsletters and sequences.', icon: '/mail.svg', category: 'owned', status: 'available' },
     { id: 'website', name: 'Website/Blog', description: 'Enable for landing pages and SEO content.', icon: '/globe.svg', category: 'owned', status: 'available' },
 ];
@@ -296,7 +297,7 @@ export function AccountsClientPage({
                         )
                     )}
 
-                    {isEnabled && account.best_practices !== null && (
+                    {isEnabled && account.best_practices !== null && account.status === 'available' && (
                         <BestPracticesEditor 
                             channelId={account.id} 
                             initialValue={account.best_practices}
