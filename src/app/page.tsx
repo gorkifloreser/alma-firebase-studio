@@ -1,23 +1,28 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, Heart, GitBranch, Wand2, Star, ArrowRight } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { CheckCircle2, Heart, GitBranch, Wand2, Star } from 'lucide-react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import { LandingPageNav } from '@/components/layout/LandingPageNav';
 
-export default async function LandingPage() {
-  const supabase = createClient();
-  const { data } = await supabase.auth.getUser();
+function FeatureCard({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) {
+    return (
+        <Card className="p-8">
+            <div className="inline-block p-3 bg-primary/10 rounded-lg">
+                <Icon className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">{title}</h3>
+            <p className="mt-2 text-muted-foreground">{description}</p>
+        </Card>
+    )
+}
 
-  // If user is logged in, redirect them to the user guide/dashboard.
-  if (data.user) {
-    redirect('/user-guide');
-  }
-  
+export default function LandingPage() {
   return (
     <div className="w-full bg-background text-foreground">
+      <LandingPageNav />
+
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center text-center p-4 overflow-hidden">
+      <section id="hero" className="relative min-h-screen flex items-center justify-center text-center p-4 overflow-hidden">
         <div className="absolute inset-0 bg-mesh-gradient opacity-50"></div>
         <div className="relative z-10 max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground/90">
@@ -38,7 +43,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-20 md:py-32 bg-secondary/50">
+      <section id="problem" className="py-20 md:py-32 bg-secondary/50">
         <div className="container mx-auto px-4 text-center max-w-4xl">
           <h2 className="text-3xl md:text-4xl font-bold">Does This Sound Familiar?</h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -62,7 +67,7 @@ export default async function LandingPage() {
       </section>
       
       {/* Solution Section */}
-      <section className="py-20 md:py-32">
+      <section id="solution" className="py-20 md:py-32">
         <div className="container mx-auto px-4 text-center max-w-4xl">
             <p className="font-semibold text-primary">THE ALMA WAY</p>
             <h2 className="text-3xl md:text-4xl font-bold mt-2">Marketing as a Regenerative Practice</h2>
@@ -73,7 +78,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="pb-20 md:pb-32">
+      <section id="features" className="pb-20 md:pb-32">
         <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <FeatureCard
@@ -120,16 +125,4 @@ export default async function LandingPage() {
       </footer>
     </div>
   );
-}
-
-function FeatureCard({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) {
-    return (
-        <Card className="p-8">
-            <div className="inline-block p-3 bg-primary/10 rounded-lg">
-                <Icon className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="mt-4 text-xl font-bold">{title}</h3>
-            <p className="mt-2 text-muted-foreground">{description}</p>
-        </Card>
-    )
 }
