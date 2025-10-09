@@ -100,8 +100,8 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
     }
 
     return (
-        <div ref={setNodeRef} style={style}>
-             <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative group">
+        <div ref={setNodeRef} style={style} className="relative group/event">
+             <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative">
                 <div className="flex flex-col">
                      {item.image_url ? (
                         <div className="relative w-full aspect-video bg-muted">
@@ -133,16 +133,18 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         </div>
                      </div>
                 </div>
-                 {isDraggable && (
-                    <div 
-                        {...attributes} 
-                        {...listeners}
-                        className="absolute top-1/2 -left-1 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                )}
             </Card>
+             {isDraggable && (
+                <div
+                    {...listeners}
+                    {...attributes}
+                    className="absolute top-1/2 -left-2.5 -translate-y-1/2 p-1 cursor-grab opacity-0 group-hover/event:opacity-100 transition-opacity"
+                >
+                    <div className="w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center shadow">
+                        <GripVertical className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -387,9 +389,9 @@ export default function CalendarPage() {
             <Dialog open={isConfirmTimeOpen} onOpenChange={setIsConfirmTimeOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Confirm New Publication Time</DialogTitle>
+                        <DialogTitle>Confirm New Time</DialogTitle>
                         <DialogDescription>
-                            You moved this post to {itemToReschedule?.newDate ? format(itemToReschedule.newDate, 'PPP') : ''}. Please select a time.
+                            You moved this event to {itemToReschedule?.newDate ? format(itemToReschedule.newDate, 'PPP') : ''}. Please select a time.
                         </DialogDescription>
                     </DialogHeader>
                      <div className="py-4">
