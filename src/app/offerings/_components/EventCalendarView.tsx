@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -29,7 +29,7 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick }: { day: Date,
     return (
         <div 
             className={cn(
-                "relative flex flex-col p-2 border-t border-l min-h-[120px]",
+                "relative flex flex-col p-2 border-t border-l min-h-[160px]",
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
             )}
         >
@@ -46,14 +46,32 @@ const CalendarDay = ({ day, events, isCurrentMonth, onEventClick }: { day: Date,
 const CalendarEvent = ({ event, onClick }: { event: OfferingWithMedia, onClick: () => void }) => {
     const firstSchedule = event.offering_schedules?.[0];
     const eventTime = firstSchedule?.event_date && isValid(parseISO(firstSchedule.event_date as any)) ? format(parseISO(firstSchedule.event_date as any), 'p') : 'All day';
+    const coverImage = event.offering_media?.[0]?.media_url;
 
     return (
-        <div 
-            onClick={onClick}
-            className="p-1.5 rounded-md hover:bg-secondary transition-colors cursor-pointer bg-primary/10 border-l-4 border-primary"
-        >
-            <p className="text-xs font-bold text-primary truncate">{event.title.primary}</p>
-            <p className="text-xs text-muted-foreground">{eventTime}</p>
+        <div onClick={onClick}>
+             <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative group cursor-pointer">
+                <div className="flex flex-col">
+                     {coverImage ? (
+                        <div className="relative w-full aspect-video bg-muted">
+                            <Image src={coverImage} alt={event.title.primary || 'Event image'} layout="fill" className="object-cover" />
+                        </div>
+                     ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                             <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                     )}
+                     <div className="p-2 space-y-1">
+                        <p className="text-xs font-bold truncate group-hover:text-primary">{event.title.primary}</p>
+                        <div className="flex items-center justify-between mt-1">
+                            <div className={cn("flex items-center gap-1.5")}>
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">{eventTime}</span>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+            </Card>
         </div>
     )
 }
@@ -82,7 +100,10 @@ export function EventCalendarView({ events, onEventClick }: EventCalendarViewPro
                     if (isValid(date)) {
                         const dateKey = format(date, 'yyyy-MM-dd');
                         const dayEvents = map.get(dateKey) || [];
-                        map.set(dateKey, [...dayEvents, event]);
+                        // Avoid adding duplicates if an offering has multiple schedules on the same day
+                        if (!dayEvents.some(e => e.id === event.id)) {
+                           map.set(dateKey, [...dayEvents, event]);
+                        }
                     }
                 }
             });
