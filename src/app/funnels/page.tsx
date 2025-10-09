@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
-import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from './actions';
+import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, getValueStrategies } from './actions';
 import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 
@@ -17,11 +17,12 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
 
     const offeringIdFilter = typeof searchParams.offeringId === 'string' ? searchParams.offeringId : undefined;
 
-    const [funnels, funnelPresets, viralHooks, adaptedHooks] = await Promise.all([
+    const [funnels, funnelPresets, viralHooks, adaptedHooks, valueStrategies] = await Promise.all([
         getFunnels(offeringIdFilter),
         getFunnelPresets(),
         getViralHooks(),
         getAdaptedHooks(),
+        getValueStrategies(),
     ]);
 
     return (
@@ -32,6 +33,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                 initialFunnelPresets={funnelPresets}
                 initialViralHooks={viralHooks}
                 initialAdaptedHooks={adaptedHooks}
+                initialValueStrategies={valueStrategies}
                 offeringIdFilter={offeringIdFilter}
                 getViralHooks={getViralHooks}
                 actions={{

@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight } from 'lucide-react';
 import { CreateFunnelDialog } from './CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
-import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
+import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy } from '../actions';
 import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook, getViralHooks } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 
@@ -49,6 +49,7 @@ interface FunnelsClientPageProps {
     initialFunnelPresets: FunnelPreset[];
     initialViralHooks: ViralHook[];
     initialAdaptedHooks: AdaptedHook[];
+    initialValueStrategies: ValueStrategy[];
     offeringIdFilter: string | undefined;
     getViralHooks: typeof getViralHooks;
     actions: {
@@ -68,11 +69,34 @@ interface FunnelsClientPageProps {
     }
 }
 
+const ValueStrategyCard = ({ strategy }: { strategy: ValueStrategy }) => {
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <Badge variant="secondary" className="w-fit">{strategy.virality_axis}</Badge>
+                <CardTitle className="mt-2">{strategy.content_method}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow space-y-4">
+                <div>
+                    <h4 className="font-semibold text-sm">Propósito de Valor</h4>
+                    <p className="text-muted-foreground text-sm">{strategy.value_purpose}</p>
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-sm">Ejemplo Práctico</h4>
+                    <p className="text-muted-foreground text-sm italic">"{strategy.practical_example}"</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export function FunnelsClientPage({
     initialFunnels,
     initialFunnelPresets,
     initialViralHooks,
     initialAdaptedHooks,
+    initialValueStrategies,
     offeringIdFilter,
     actions,
     getViralHooks,
@@ -275,9 +299,17 @@ export function FunnelsClientPage({
                     <TabsList>
                         <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
                         <TabsTrigger value="viral-hooks">Viral Hooks Library</TabsTrigger>
+                        <TabsTrigger value="value-strategies">Value Strategies</TabsTrigger>
                         <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
                     </TabsList>
                 </div>
+                <TabsContent value="value-strategies" className="mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {initialValueStrategies.map(strategy => (
+                            <ValueStrategyCard key={strategy.id} strategy={strategy} />
+                        ))}
+                    </div>
+                </TabsContent>
                  <TabsContent value="viral-hooks" className="mt-6">
                     <ViralHooksManager
                         initialViralHooks={initialViralHooks}

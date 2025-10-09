@@ -78,3 +78,11 @@ export type FunnelPreset = {
     best_for: string;
     principles: string;
 };
+
+export type ValueStrategy = {
+    id: number;
+    virality_axis: string;
+    content_method: string;
+    value_purpose: string;
+    practical_example: string;
+};

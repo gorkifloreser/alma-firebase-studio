@@ -11,9 +11,9 @@ import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type 
 import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
 import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import type { Account } from '@/app/accounts/_components/AccountsClientPage';
-import type { Funnel, FunnelPreset, MediaPlan, MediaPlanItem, PlanItemForSave } from './types';
+import type { Funnel, FunnelPreset, MediaPlan, MediaPlanItem, PlanItemForSave, ValueStrategy } from './types';
 
-export type { PlanItem, Funnel, FunnelPreset, MediaPlan, PlanItemForSave, MediaPlanItem };
+export type { PlanItem, Funnel, FunnelPreset, MediaPlan, PlanItemForSave, MediaPlanItem, ValueStrategy };
 
 export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     const supabase = createClient();
@@ -682,4 +682,14 @@ export async function getMediaPlanItems(mediaPlanId: string): Promise<MediaPlanI
     }
 
     return data as MediaPlanItem[];
+}
+
+export async function getValueStrategies(): Promise<ValueStrategy[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase.from('value_strategies').select('*').order('id');
+    if (error) {
+        console.error("Error fetching value strategies:", error);
+        throw new Error("Could not fetch value strategies.");
+    }
+    return data;
 }
