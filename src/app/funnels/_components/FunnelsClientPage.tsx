@@ -1,4 +1,5 @@
 
+
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -15,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight, BrainCircuit, Star, Save } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight, BrainCircuit, Star, Save, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles } from 'lucide-react';
 import { CreateFunnelDialog } from './CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -40,7 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
-import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy, AdaptedValueStrategy } from '../actions';
+import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy, AdaptedValueStrategy, updateAdaptedValueStrategy, deleteAdaptedValueStrategy } from '../actions';
 import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook, getViralHooks } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -72,6 +73,8 @@ interface FunnelsClientPageProps {
         updateAdaptedHook: typeof updateAdaptedHook;
         deleteAdaptedHook: typeof deleteAdaptedHook;
         generateAndGetAdaptedValueStrategies: () => Promise<{ topStrategies: AdaptedValueStrategy[] }>;
+        updateAdaptedValueStrategy: typeof updateAdaptedValueStrategy;
+        deleteAdaptedValueStrategy: typeof deleteAdaptedValueStrategy;
     }
 }
 
@@ -323,6 +326,44 @@ export function FunnelsClientPage({
             }
         });
     };
+    
+    const handleAdaptedValueStrategyChange = (id: number, field: keyof AdaptedValueStrategy, value: string) => {
+        setAdaptedValueStrategies(prev => 
+            prev.map(s => s.id === id ? { ...s, [field]: value } : s)
+        );
+        setDirtyAdaptedValueStrategies(prev => new Set(prev).add(id));
+    };
+
+    const handleSaveAdaptedValueStrategy = (id: number) => {
+        const strategyToSave = adaptedValueStrategies.find(s => s.id === id);
+        if (!strategyToSave) return;
+        
+        startDeleting(async () => { // re-using the transition state for saving
+            try {
+                await actions.updateAdaptedValueStrategy(id, strategyToSave);
+                setDirtyAdaptedValueStrategies(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(id);
+                    return newSet;
+                });
+                toast({ title: "Strategy Updated", description: "Your changes have been saved." });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+            }
+        });
+    };
+
+    const handleDeleteAdaptedValueStrategy = (id: number) => {
+        startDeleting(async () => {
+            try {
+                await actions.deleteAdaptedValueStrategy(id);
+                setAdaptedValueStrategies(prev => prev!.filter(s => s.id !== id));
+                toast({ title: 'Strategy Deleted', description: 'The adapted strategy has been removed.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+            }
+        });
+    };
 
     const PresetCard = ({ preset, isCustom }: { preset: FunnelPreset, isCustom: boolean }) => (
         <Card className="flex flex-col bg-muted/20">
@@ -428,14 +469,14 @@ export function FunnelsClientPage({
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                     {adaptedValueStrategies.map(strategy => 
                                         <AdaptedValueStrategyCard 
-                                            key={strategy.id} 
+                                            key={strategy.id}
                                             strategy={strategy} 
-                                            isSaving={false}
-                                            isDeleting={false}
-                                            isDirty={false}
-                                            onFieldChange={() => {}}
-                                            onSave={() => {}}
-                                            onDelete={() => {}}
+                                            isSaving={isDeleting}
+                                            isDeleting={isDeleting}
+                                            isDirty={dirtyAdaptedValueStrategies.has(strategy.id)}
+                                            onFieldChange={(field, value) => handleAdaptedValueStrategyChange(strategy.id, field, value)}
+                                            onSave={() => handleSaveAdaptedValueStrategy(strategy.id)}
+                                            onDelete={() => handleDeleteAdaptedValueStrategy(strategy.id)}
                                         />
                                     )}
                                 </div>
