@@ -203,6 +203,7 @@ export function AccountsClientPage({
 
     const renderCard = (account: Account) => {
         const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
+        const isEnabled = selectedChannels.has(account.id);
 
         return (
             <Card key={account.id} className="flex flex-col">
@@ -279,7 +280,7 @@ export function AccountsClientPage({
                         )
                     )}
 
-                    {selectedChannels.has(account.id) && account.best_practices !== null && !isMetaAccount && (
+                    {isEnabled && account.best_practices !== null && (
                         <BestPracticesEditor 
                             channelId={account.id} 
                             initialValue={account.best_practices}
@@ -288,20 +289,20 @@ export function AccountsClientPage({
                         />
                     )}
                 </CardContent>
-                {!(isMetaAccount || account.status === 'coming_soon') && (
+                {account.status === 'available' && !isMetaAccount && (
                     <CardFooter>
                          <div className="flex items-center space-x-2">
                             <Checkbox
                                 id={`check-${account.id}`}
-                                checked={selectedChannels.has(account.id)}
+                                checked={isEnabled}
                                 onCheckedChange={(checked) => handleChannelToggle(account.id, !!checked)}
-                                disabled={account.status === 'coming_soon' || isSaving}
+                                disabled={isSaving}
                             />
                             <Label
                                 htmlFor={`check-${account.id}`}
                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                               {selectedChannels.has(account.id) ? 'Enabled' : 'Disabled'}
+                               {isEnabled ? 'Enabled' : 'Disabled'}
                             </Label>
                         </div>
                     </CardFooter>
