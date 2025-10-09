@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from 'react';
@@ -65,6 +66,12 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }
         id: format(day, 'yyyy-MM-dd'),
         data: { type: 'calendarDay', date: day }
     });
+    
+    const [isToday, setIsToday] = useState(false);
+    
+    useEffect(() => {
+        setIsToday(isSameDay(day, new Date()));
+    }, [day]);
 
     return (
         <div 
@@ -76,7 +83,7 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }
                 isOver ? "bg-accent" : "",
             )}
         >
-            <time dateTime={format(day, 'yyyy-MM-dd')} className={cn("text-sm", isSameDay(day, new Date()) ? "font-bold text-primary" : "")}>
+            <time dateTime={format(day, 'yyyy-MM-dd')} className={cn("text-sm", isToday ? "font-bold text-primary" : "")}>
                 {format(day, 'd')}
             </time>
              <div className="mt-1 flex-1 overflow-y-auto space-y-1">
