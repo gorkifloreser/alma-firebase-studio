@@ -39,6 +39,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const publicRoutes = [
+    '/', // Add the root path to public routes
     '/login',
     '/signup',
     '/forgot-password',
@@ -46,10 +47,18 @@ export async function updateSession(request: NextRequest) {
     '/auth/callback',
   ];
 
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isPublicRoute = publicRoutes.some(route => pathname === route); // Use exact match for root
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
+  
+  if (user && isPublicRoute && pathname === '/') {
+    // If the user is logged in and tries to access the public landing page,
+    // redirect them to their dashboard/user-guide.
+    const url = request.nextUrl.clone()
+    url.pathname = '/user-guide'
+    return NextResponse.redirect(url)
+  }
 
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicRoute && !pathname.startsWith('/lp/')) { // Also protect non /lp routes
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -57,7 +66,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/user-guide' // Redirect to user guide if logged in
     return NextResponse.redirect(url)
   }
 

@@ -1,134 +1,135 @@
-
-import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle2, Heart, GitBranch, Wand2, Star, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
-  Heart,
-  ShoppingBag,
-  GitBranch,
-  Wand2,
-  Calendar,
-  Star,
-  CheckCircle2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
+export default async function LandingPage() {
+  const supabase = createClient();
+  const { data } = await supabase.auth.getUser();
 
-type Step = {
-  name: string;
-  href: string;
-  icon: React.ElementType;
-  description: string;
-  isComplete: boolean;
-  instructions: string;
-};
+  // If user is logged in, redirect them to the user guide/dashboard.
+  if (data.user) {
+    redirect('/user-guide');
+  }
+  
+  return (
+    <div className="w-full bg-background text-foreground">
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center text-center p-4 overflow-hidden">
+        <div className="absolute inset-0 bg-mesh-gradient opacity-50"></div>
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground/90">
+            Stop Chasing. Start Attracting.
+          </h1>
+          <p className="mt-6 text-lg md:text-xl text-foreground/70 max-w-2xl mx-auto">
+            Alma is a Regenerative Marketing ecosystem for conscious creators. It uses AI as a mindful co-creator to transform your marketing from an exhausting chore into a joyful expression of your purpose.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild className="btn-auth text-lg py-6 px-8">
+              <Link href="/signup">Start Your Journey Free</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="text-lg py-6 px-8 bg-transparent hover:bg-foreground/5">
+              Watch Demo
+            </Button>
+          </div>
+        </div>
+      </section>
 
-async function getCompletionStatus(userId: string) {
-    const supabase = createClient();
-    
-    const { data: brandHeart, error: brandHeartError } = await supabase.from('brand_hearts').select('id').eq('user_id', userId).maybeSingle();
-    const { data: offering, error: offeringError } = await supabase.from('offerings').select('id').eq('user_id', userId).limit(1).maybeSingle();
-    const { data: funnel, error: funnelError } = await supabase.from('funnels').select('id').eq('user_id', userId).limit(1).maybeSingle();
-    const { data: mediaPlan, error: mediaPlanError } = await supabase.from('media_plans').select('id').eq('user_id', userId).limit(1).maybeSingle();
-    const { data: artisanItem, error: artisanError } = await supabase.from('media_plan_items').select('id').eq('user_id', userId).in('status', ['ready_for_review', 'scheduled', 'published']).limit(1).maybeSingle();
-    const { data: calendarItem, error: calendarError } = await supabase.from('media_plan_items').select('id').eq('user_id', userId).eq('status', 'scheduled').limit(1).maybeSingle();
-    const { data: testimonial, error: testimonialError } = await supabase.from('testimonials').select('id').eq('user_id', userId).limit(1).maybeSingle();
+      {/* Problem Section */}
+      <section className="py-20 md:py-32 bg-secondary/50">
+        <div className="container mx-auto px-4 text-center max-w-4xl">
+          <h2 className="text-3xl md:text-4xl font-bold">Does This Sound Familiar?</h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            You are a creator with a mission. You pour your heart into your work, but when it comes to marketing, you feel a deep disconnect.
+          </p>
+          <div className="grid md:grid-cols-3 gap-8 mt-12 text-left">
+            <div className="p-6 border-l-4 border-primary">
+              <h3 className="font-semibold text-xl">The Hustle is Draining</h3>
+              <p className="mt-2 text-muted-foreground">The constant pressure to perform, post, and engage leaves you feeling creatively and spiritually exhausted. It feels extractive, not expressive.</p>
+            </div>
+            <div className="p-6 border-l-4 border-primary">
+              <h3 className="font-semibold text-xl">Misaligned Tactics</h3>
+              <p className="mt-2 text-muted-foreground">Aggressive sales funnels, urgency tactics, and vanity metrics feel inauthentic to you and your audience. Your marketing doesn't match your soul.</p>
+            </div>
+            <div className="p-6 border-l-4 border-primary">
+              <h3 className="font-semibold text-xl">Content Overwhelm</h3>
+              <p className="mt-2 text-muted-foreground">You know you need to be consistent, but the cycle of brainstorming, creating, and scheduling content is a constant source of stress and burnout.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* Solution Section */}
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4 text-center max-w-4xl">
+            <p className="font-semibold text-primary">THE ALMA WAY</p>
+            <h2 className="text-3xl md:text-4xl font-bold mt-2">Marketing as a Regenerative Practice</h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+                Alma is not just another tool; it's a new philosophy. We help you build a marketing ecosystem that nourishes you, your audience, and your business. It's about rhythm over rush, and coherence over clicks.
+            </p>
+        </div>
+      </section>
 
-    return {
-        brandHeart: !!brandHeart,
-        offerings: !!offering,
-        funnels: !!funnel,
-        mediaPlan: !!mediaPlan,
-        aiArtisan: !!artisanItem,
-        calendar: !!calendarItem,
-        harvestCircle: !!testimonial,
-    };
+      {/* Features Section */}
+      <section className="pb-20 md:pb-32">
+        <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <FeatureCard
+                    icon={Heart}
+                    title="1. The Brand Heart"
+                    description="Anchor your marketing in your truth. Our AI deeply understands your mission, vision, and voice to generate content that is authentically you."
+                />
+                <FeatureCard
+                    icon={GitBranch}
+                    title="2. AI-Powered Strategy"
+                    description="Transform your offerings into customer journeys. Generate strategic funnels and media plans with a single click, turning your expertise into magnetic invitations."
+                />
+                 <FeatureCard
+                    icon={Wand2}
+                    title="3. The AI Artisan"
+                    description="Co-create content with an AI partner that understands you. From social posts to video scripts, generate drafts in seconds and refine them in your creative studio."
+                />
+                 <FeatureCard
+                    icon={Star}
+                    title="4. The Harvest Circle"
+                    description="Close the loop. Automatically request testimonials from happy customers and seamlessly re-seed them into new, powerful marketing content."
+                />
+                 <FeatureCard
+                    icon={CheckCircle2}
+                    title="Holistic & Aligned"
+                    description="Every feature is designed to work in harmony, creating a self-sustaining marketing cycle that saves you time and feels good."
+                />
+                <Card className="flex flex-col items-center justify-center text-center p-8 bg-primary/10">
+                    <h3 className="text-2xl font-bold">Ready to Change How You Market?</h3>
+                    <p className="mt-2 text-muted-foreground">Start your journey towards a more authentic and sustainable brand presence.</p>
+                    <Button asChild className="mt-6 btn-auth">
+                        <Link href="/signup">Get Started for Free</Link>
+                    </Button>
+                </Card>
+            </div>
+        </div>
+      </section>
+
+       {/* Footer */}
+      <footer className="py-12 bg-secondary/30">
+        <div className="container mx-auto px-4 text-center text-muted-foreground">
+           <p>&copy; {new Date().getFullYear()} Alma AI. Marketing for the soul.</p>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
-
-export default async function Home() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect('/login');
-  }
-
-  const completionStatus = await getCompletionStatus(user.id);
-  
-  const steps: Step[] = [
-    { name: 'Brand Heart', href: '/brand', icon: Heart, description: "Define your brand's soul to guide the AI.", isComplete: completionStatus.brandHeart, instructions: "This is the first and most crucial step. Here, you will define your brand's identity and voice. All future communication and content will be based on this foundation." },
-    { name: 'Offerings', href: '/offerings', icon: ShoppingBag, description: 'Create the products and services you offer.', isComplete: completionStatus.offerings, instructions: "Once your brand is defined, the next step is to create the products, services, or experiences you provide to your audience." },
-    { name: 'AI Strategist', href: '/funnels', icon: GitBranch, description: 'Generate a strategic plan for an offering.', isComplete: completionStatus.funnels, instructions: "With your offerings created, you can now generate a 'Magic Funnel,' which is a marketing strategy and sales funnel designed for a specific offering." },
-    { name: 'Media Plan', href: '/funnels', icon: Wand2, description: "Create a content plan from your AI strategy.", isComplete: completionStatus.mediaPlan, instructions: "The funnel defines the strategy; the media plan turns that strategy into concrete content for your channels. It creates a series of content drafts (social media posts, emails, etc.) tailored to each stage of the funnel." },
-    { name: 'AI Artisan', href: '/artisan', icon: Wand2, description: "Personalize and schedule your AI-generated content.", isComplete: completionStatus.aiArtisan, instructions: "This is your creative studio for refining and personalizing the content drafts generated by the Media Plan before they are scheduled." },
-    { name: 'Calendar', href: '/calendar', icon: Calendar, description: 'Organize and visualize your content calendar.', isComplete: completionStatus.calendar, instructions: "This is where everything comes to life. The calendar allows you to visualize and manage when your approved and customized content will be published." },
-    { name: 'Harvest Circle', href: '/harvest-circle', icon: Star, description: 'Harvest testimonials and reuse them as content.', isComplete: completionStatus.harvestCircle, instructions: "After your offerings have been delivered, the Harvest Circle helps you gather and utilize social proof to fuel future marketing." },
-  ];
-
-  const completedSteps = steps.filter(step => step.isComplete).length;
-  const progressPercentage = (completedSteps / steps.length) * 100;
-
-  return (
-    <DashboardLayout>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-        <header>
-            <h1 className="text-3xl font-bold">User Guide</h1>
-            <p className="text-muted-foreground">Follow the regenerative cycle to bring your marketing to life, from soul to social proof.</p>
-        </header>
-
-        <Card className="rounded-2xl shadow-sm">
-            <CardHeader>
-                <CardTitle className="text-lg font-semibold">Your Regenerative Cycle</CardTitle>
-                 <div className="flex items-center gap-4 pt-2">
-                    <Progress value={progressPercentage} className="h-3" />
-                    <span className="font-semibold text-primary">{Math.round(progressPercentage)}%</span>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                    {steps.map((step, index) => (
-                        <AccordionItem value={`item-${index}`} key={step.name}>
-                            <AccordionTrigger className="p-3 rounded-lg transition-colors hover:bg-muted/50">
-                                <div className="flex items-center gap-4 w-full">
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center border-2 flex-shrink-0",
-                                        step.isComplete ? "bg-green-500/20 border-green-500 text-green-500" : "bg-muted border-dashed text-muted-foreground"
-                                    )}>
-                                       {step.isComplete ? <CheckCircle2 className="h-6 w-6" /> : <span className="font-bold text-lg">{index + 1}</span>}
-                                    </div>
-                                    <div className="flex-1 text-left">
-                                       <p className="font-semibold text-foreground">{step.name}</p>
-                                       <p className="text-sm text-muted-foreground">{step.description}</p>
-                                    </div>
-                                    <Button asChild variant={step.isComplete ? "secondary" : "default"} className="ml-auto">
-                                        <Link href={step.href}>
-                                          {step.isComplete ? 'View & Edit' : 'Start'}
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pl-16 pr-4 py-4 text-muted-foreground">
-                                {step.instructions}
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-            </CardContent>
+function FeatureCard({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) {
+    return (
+        <Card className="p-8">
+            <div className="inline-block p-3 bg-primary/10 rounded-lg">
+                <Icon className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">{title}</h3>
+            <p className="mt-2 text-muted-foreground">{description}</p>
         </Card>
-      </div>
-    </DashboardLayout>
-  );
+    )
 }
