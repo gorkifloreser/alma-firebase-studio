@@ -11,8 +11,11 @@ export function LandingPageNav() {
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         <Link href="#hero" className="flex items-center gap-2">
           <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
-            <div className="relative h-full w-full p-1.5">
-              <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="brightness-0 invert dark:filter-none"/>
+            <div className="relative h-full w-full">
+              <div className="p-1.5 relative h-full w-full">
+                <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill className="dark:hidden" />
+                <Image src="/regen-logo-dark.svg" alt="Regen MKT Logo" fill className="hidden dark:block" />
+              </div>
             </div>
           </div>
           <span className="font-bold text-lg">Regen MKT</span>

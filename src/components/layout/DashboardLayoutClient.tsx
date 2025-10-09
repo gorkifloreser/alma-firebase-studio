@@ -60,16 +60,22 @@ export function DashboardLayoutClient({
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
                 <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
-                   <div className="relative h-full w-full p-1.5">
-                    <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="brightness-0 invert dark:filter-none"/>
+                   <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill className="dark:hidden"/>
+                      <Image src="/regen-logo-dark.svg" alt="Regen MKT Logo" fill className="hidden dark:block"/>
+                    </div>
                   </div>
                 </div>
                 <span className="font-bold text-lg">Regen MKT</span>
               </div>
                <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
                 <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
-                  <div className="relative h-full w-full p-1.5">
-                    <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="brightness-0 invert dark:filter-none"/>
+                  <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill className="dark:hidden"/>
+                      <Image src="/regen-logo-dark.svg" alt="Regen MKT Logo" fill className="hidden dark:block"/>
+                    </div>
                   </div>
                 </div>
               </div>
