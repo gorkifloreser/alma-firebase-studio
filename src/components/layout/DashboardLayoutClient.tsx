@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 
 const menuItems = [
     { href: '/user-guide', label: 'User Guide', icon: LayoutDashboard },
-    { href: '/brand', label: 'Brand Heart', icon: Heart },
+    { href: '/brand', label: 'Brand Hub', icon: Heart },
     { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
     { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
     { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
