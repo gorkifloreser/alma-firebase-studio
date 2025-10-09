@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from 'react';
@@ -104,7 +105,8 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
         zIndex: 10,
     } : undefined;
 
-    const publicationTime = item.scheduled_at ? format(parseISO(item.scheduled_at), 'p') : 'Unscheduled';
+    const displayDate = item.published_at || item.scheduled_at;
+    const publicationTime = displayDate ? format(parseISO(displayDate), 'p') : 'Unscheduled';
 
     const getStatusStyles = () => {
         switch (item.status) {
@@ -216,10 +218,8 @@ export default function CalendarPage() {
     }, [fetchContent]);
 
     const { unscheduled, scheduledOrPublished } = useMemo(() => {
-        console.log('[page.tsx:useMemo] Filtering contentItems. Total count:', contentItems.length);
         const unscheduled = contentItems.filter(item => item.status === 'approved');
-        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && item.scheduled_at);
-        console.log('[page.tsx:useMemo] Filtering result -> Unscheduled:', unscheduled.length, 'Scheduled/Published:', scheduledOrPublished.length);
+        const scheduledOrPublished = contentItems.filter(item => (item.status === 'scheduled' || item.status === 'published' || item.status === 'failed') && (item.scheduled_at || item.published_at));
         return { unscheduled, scheduledOrPublished };
     }, [contentItems]);
 
@@ -403,7 +403,10 @@ export default function CalendarPage() {
                             </div>
                              <div className="grid grid-cols-7 flex-1 border-b">
                                 {calendarDays.map(day => {
-                                    const dayContent = scheduledOrPublished.filter(item => item.scheduled_at && isSameDay(new Date(item.scheduled_at), day));
+                                    const dayContent = scheduledOrPublished.filter(item => {
+                                        const displayDate = item.published_at || item.scheduled_at;
+                                        return displayDate && isSameDay(new Date(displayDate), day);
+                                    });
                                     return (
                                         <CalendarDay 
                                             key={day.toString()} 
