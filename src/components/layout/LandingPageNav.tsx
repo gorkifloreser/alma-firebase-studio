@@ -10,8 +10,8 @@ export function LandingPageNav() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm">
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         <Link href="#hero" className="flex items-center gap-2">
-          <div className="relative h-8 w-8">
-            <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill />
+          <div className="relative h-8 w-8 p-1.5 bg-primary rounded-md flex items-center justify-center">
+            <Image src="/regen-logo.svg" alt="Regen MKT Logo" fill className="dark:brightness-0 dark:invert"/>
           </div>
           <span className="font-bold text-lg">Regen MKT</span>
         </Link>
