@@ -6,7 +6,7 @@ import React, { useEffect, useState, useMemo, useTransition, useCallback } from 
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid } from 'date-fns';
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid, setHours, setMinutes } from 'date-fns';
 import { getContent, scheduleContent, type CalendarItem, getActiveSocialConnection, type SocialConnection } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,13 +14,22 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditContentDialog } from './_components/EditContentDialog';
 import Image from 'next/image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
+});
 
 const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
     if (!channel) return <Sparkles className="h-4 w-4 text-muted-foreground" />;
@@ -102,6 +111,8 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
         }
     }
 
+    const isDraggable = item.status === 'scheduled';
+
 
     return (
         <div ref={setNodeRef} style={style} {...attributes}>
@@ -115,7 +126,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                      <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold truncate">{publicationTime}</p>
                         <div className="flex items-center justify-between mt-1">
-                            <div {...listeners} className="flex items-center gap-1 cursor-grab">
+                            <div {...(isDraggable ? listeners : {})} className={cn("flex items-center gap-1", isDraggable && "cursor-grab")}>
                                 {getStatusIcon()}
                             </div>
                             <Button
@@ -149,6 +160,10 @@ export default function CalendarPage() {
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<CalendarItem | null>(null);
+
+    const [isConfirmTimeOpen, setIsConfirmTimeOpen] = useState(false);
+    const [itemToReschedule, setItemToReschedule] = useState<{itemId: string, newDate: Date} | null>(null);
+    const [newTime, setNewTime] = useState('09:00');
 
     const handleEventClick = (item: CalendarItem) => {
         setEditingContent(item);
@@ -221,7 +236,7 @@ export default function CalendarPage() {
         if (view === 'month') {
             setCurrentDate(subMonths(currentDate, 1));
         } else {
-            setCurrentDate(subDays(currentDate, 7));
+            setCurrentDate(addDays(currentDate, -7));
         }
     };
     const handleNext = () => {
@@ -249,7 +264,6 @@ export default function CalendarPage() {
         const sourceType = active.data.current?.type;
         const targetType = over.data.current?.type;
 
-        // From calendar to another day on the calendar (rescheduling)
         if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
              const targetDate = over.data.current?.date as Date;
              
@@ -257,21 +271,44 @@ export default function CalendarPage() {
              if (originalItem && originalItem.scheduled_at && isSameDay(new Date(originalItem.scheduled_at), targetDate)) {
                  return; 
              }
+             
+             if (originalItem?.status === 'published') {
+                 toast({ variant: 'destructive', title: 'Cannot Move Published Post', description: 'Once a post is published, its date cannot be changed.' });
+                 return;
+             }
 
-             startScheduling(async () => {
-                try {
-                    await scheduleContent(contentId, targetDate);
-                    setContentItems(prev => prev.map(item => 
-                        item.id === contentId 
-                        ? { ...item, status: 'scheduled', scheduled_at: targetDate.toISOString() } 
-                        : item
-                    ));
-                    toast({ title: "Content Rescheduled!", description: "The item's date has been updated." });
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Rescheduling Failed', description: error.message });
-                }
-            });
+             // Open confirmation dialog instead of scheduling directly
+             setItemToReschedule({ itemId: contentId, newDate: targetDate });
+             // Pre-fill with original time if available
+             const originalTime = originalItem?.scheduled_at ? format(parseISO(originalItem.scheduled_at), 'HH:mm') : '09:00';
+             setNewTime(originalTime);
+             setIsConfirmTimeOpen(true);
         }
+    };
+
+     const handleConfirmReschedule = () => {
+        if (!itemToReschedule) return;
+
+        const { itemId, newDate } = itemToReschedule;
+        const [hours, minutes] = newTime.split(':').map(Number);
+        const finalDate = setHours(setMinutes(newDate, minutes), hours);
+        
+        startScheduling(async () => {
+            try {
+                await scheduleContent(itemId, finalDate);
+                setContentItems(prev => prev.map(item => 
+                    item.id === itemId 
+                    ? { ...item, status: 'scheduled', scheduled_at: finalDate.toISOString() } 
+                    : item
+                ));
+                toast({ title: "Content Rescheduled!", description: "The item's date and time have been updated." });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Rescheduling Failed', description: error.message });
+            } finally {
+                setIsConfirmTimeOpen(false);
+                setItemToReschedule(null);
+            }
+        });
     };
 
     const dayHeightClass = view === 'week' ? 'h-[48rem]' : 'h-48';
@@ -329,7 +366,7 @@ export default function CalendarPage() {
                                     calendarDays.map(day => {
                                         const dayContent = scheduledOrPublished.filter(item => {
                                             const displayDate = item.published_at || item.scheduled_at;
-                                            return displayDate && isSameDay(new Date(displayDate), day);
+                                            return displayDate && isSameDay(parseISO(displayDate), day);
                                         });
                                         return (
                                             <CalendarDay 
@@ -348,6 +385,39 @@ export default function CalendarPage() {
                     </Card>
                 </div>
             </DndContext>
+            <Dialog open={isConfirmTimeOpen} onOpenChange={setIsConfirmTimeOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm New Publication Time</DialogTitle>
+                        <DialogDescription>
+                            You moved this post to {itemToReschedule?.newDate ? format(itemToReschedule.newDate, 'PPP') : ''}. Please select a time.
+                        </DialogDescription>
+                    </DialogHeader>
+                     <div className="py-4">
+                        <Select value={newTime} onValueChange={setNewTime}>
+                            <SelectTrigger className="w-full">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <SelectValue placeholder="Select a time" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {timeOptions.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmTimeOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmReschedule} disabled={isScheduling}>
+                            {isScheduling ? 'Saving...' : 'Confirm and Reschedule'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
              {editingContent && (
                 <EditContentDialog
                     isOpen={isEditDialogOpen}
