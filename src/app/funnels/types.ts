@@ -32,6 +32,7 @@ export type MediaPlanItem = {
     status: string; 
     user_channel_id: number | null;
     user_channel_settings: { channel_name: string } | null;
+    video_script: any[] | null; // Added
 };
 
 export type MediaPlan = {

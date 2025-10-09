@@ -12,7 +12,7 @@ export type CalendarItem = MediaPlanItem & {
     // Fields from the new, consolidated media_plan_items table
     content_body: { primary: string | null; secondary: string | null; } | null;
     image_url: string | null;
-    video_url: string | null;
+    video_script: any[] | null;
     carousel_slides: any[] | null; // Consider defining a stricter type for carousel slides
     landing_page_html: string | null;
     published_at: string | null;
@@ -159,7 +159,7 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'image_url' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');

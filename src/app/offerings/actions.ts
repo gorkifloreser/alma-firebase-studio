@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
-import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide, VideoScene } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
 import { generateImageDescriptionDirect as genImageDescDirect, GenerateImageDescriptionDirectInput, GenerateImageDescriptionDirectOutput } from '@/ai/direct/generate-image-description-direct';
 import { saveContent as saveContentAction } from '@/app/artisan/actions';

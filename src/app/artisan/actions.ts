@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { generateCreativeForOffering as genCreativeFlow, type GenerateCreativeInput, type GenerateCreativeOutput, type CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateCreativeForOffering as genCreativeFlow, type GenerateCreativeInput, type GenerateCreativeOutput, type CarouselSlide, type VideoScene } from '@/ai/flows/generate-creative-flow';
 import { generateCreativePrompt as genCreativePromptFlow, type GenerateCreativePromptInput, type GenerateCreativePromptOutput } from '@/ai/flows/generate-creative-prompt-flow';
 import { editImageWithInstruction as editImageFlow, type EditImageInput, type EditImageOutput } from '@/ai/flows/edit-image-flow';
 import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarouselSlideInput, type RegenerateCarouselSlideOutput } from '@/ai/flows/regenerate-carousel-slide-flow';
@@ -118,7 +118,7 @@ type SaveContentInput = {
     contentBody: { primary: string | null; secondary: string | null; } | null;
     imageUrl: string | null;
     carouselSlides: CarouselSlide[] | null;
-    videoUrl: string | null;
+    videoScript: VideoScene[] | null;
     landingPageHtml: string | null;
     status: 'draft' | 'ready_for_review' | 'scheduled' | 'published';
     mediaPlanItemId?: string | null;
@@ -186,7 +186,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         contentBody, 
         imageUrl, 
         carouselSlides, 
-        videoUrl, 
+        videoScript, 
         landingPageHtml, 
         status, 
         scheduledAt,
@@ -241,7 +241,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
             content_body: contentBody ? JSON.stringify(contentBody) : null,
             image_url: finalImageUrl,
             carousel_slides: finalCarouselSlides ? JSON.stringify(finalCarouselSlides) : null,
-            video_url: videoUrl,
+            video_script: videoScript ? JSON.stringify(videoScript) : null,
             landing_page_html: landingPageHtml,
             status: status,
             scheduled_at: scheduledAt || null,
