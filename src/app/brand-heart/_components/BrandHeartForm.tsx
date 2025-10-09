@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
 import { MultiContactEditor } from './MultiContactEditor';
-import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo } from '../actions';
+import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo, AudiencePersona } from '../actions';
 
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
@@ -34,7 +34,7 @@ const initialBrandHeartState: BrandHeartData = {
     vision: { primary: '', secondary: '' },
     values: { primary: '', secondary: '' },
     tone_of_voice: { primary: '', secondary: '' },
-    audience: { primary: '', secondary: '' },
+    audience: [],
     visual_identity: { primary: '', secondary: '' },
     contact_info: [],
 };
@@ -62,7 +62,7 @@ export function BrandHeartForm({
         setBrandHeart(prev => ({
             ...prev,
             [field]: {
-                ...(prev[field] as object),
+                ...((prev[field] as object) || {}),
                 [language]: value
             }
         }));
@@ -82,9 +82,9 @@ export function BrandHeartForm({
         
         formData.append('brand_name', brandHeart.brand_name || '');
         (Object.keys(brandHeart) as Array<keyof BrandHeartData>).forEach(key => {
-            if (key === 'contact_info') {
-                 formData.append('contact_info', JSON.stringify(brandHeart.contact_info));
-            } else if (key !== 'audience' && typeof brandHeart[key] === 'object' && brandHeart[key] !== null) { // Exclude audience
+            if (key === 'contact_info' || key === 'audience') {
+                 formData.append(key, JSON.stringify(brandHeart[key]));
+            } else if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
                 const bilingualValue = brandHeart[key] as { primary: string | null, secondary: string | null };
                 if (bilingualValue.primary) {
                     formData.append(`${key}_primary`, bilingualValue.primary);
