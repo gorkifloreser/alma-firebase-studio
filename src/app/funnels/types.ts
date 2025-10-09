@@ -86,3 +86,16 @@ export type ValueStrategy = {
     value_purpose: string;
     practical_example: string;
 };
+
+export type AdaptedValueStrategy = {
+    id: number;
+    user_id: string;
+    original_id: number;
+    original_method: string;
+    relevance_score: number;
+    adapted_method: string;
+    strategy: string;
+    visual_prompt: string;
+    created_at: string;
+};
+

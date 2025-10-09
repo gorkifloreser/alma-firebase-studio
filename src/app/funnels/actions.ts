@@ -11,9 +11,9 @@ import { generateFunnelPreview as genFunnelFlow, type GenerateFunnelInput, type 
 import { generateMediaPlanForStrategy as generateMediaPlanFlow, regeneratePlanItem as regeneratePlanItemFlow } from '@/ai/flows/generate-media-plan-flow';
 import type { GenerateMediaPlanInput, GenerateMediaPlanOutput, RegeneratePlanItemInput, PlanItem } from '@/ai/flows/generate-media-plan-flow';
 import type { Account } from '@/app/accounts/_components/AccountsClientPage';
-import type { Funnel, FunnelPreset, MediaPlan, MediaPlanItem, PlanItemForSave, ValueStrategy } from './types';
+import type { Funnel, FunnelPreset, MediaPlan, MediaPlanItem, PlanItemForSave, ValueStrategy, AdaptedValueStrategy } from './types';
 
-export type { PlanItem, Funnel, FunnelPreset, MediaPlan, PlanItemForSave, MediaPlanItem, ValueStrategy };
+export type { PlanItem, Funnel, FunnelPreset, MediaPlan, PlanItemForSave, MediaPlanItem, ValueStrategy, AdaptedValueStrategy };
 
 export async function getFunnels(offeringId?: string): Promise<Funnel[]> {
     const supabase = createClient();
@@ -396,66 +396,34 @@ export async function saveMediaPlan({ id, funnelId, title, planItems, startDate,
     const channelNameToIdMap = new Map(userChannels.map(c => [c.channel_name, c.id]));
     console.log('[SERVER] Step 5: Channel name-to-ID map constructed:', channelNameToIdMap);
 
-    const itemsToCreate = planItems.filter(item => item.id?.startsWith('temp-'));
-    const itemsToUpdate = planItems.filter(item => item.id && !item.id.startsWith('temp-'));
-
-    console.log(`[SERVER] Step 6: Found ${itemsToCreate.length} items to create and ${itemsToUpdate.length} items to update.`);
-
-    if (itemsToCreate.length > 0) {
-        const newRecords = itemsToCreate.map(item => {
-            const { id: _, user_channel_settings, ...restOfItem } = item;
-            const channelName = (item.user_channel_settings as any)?.channel_name || '';
-            const channelId = channelNameToIdMap.get(channelName);
-            if (!channelId) {
-                const errorMsg = `Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`;
-                console.error(`[SERVER] Step 6 - FATAL on CREATE: ${errorMsg}`);
-                throw new Error(errorMsg);
-            }
-            return {
-                ...restOfItem,
-                media_plan_id: mediaPlanId,
-                user_id: user.id,
-                offering_id: funnel.offering_id,
-                user_channel_id: channelId,
-                status: item.status || 'draft', // Ensure status is set
-            };
-        });
-        console.log('[SERVER] Step 6.1: Preparing to insert new records:', newRecords);
-        const { error: insertError } = await supabase.from('media_plan_items').insert(newRecords);
-        if (insertError) {
-            console.error('[SERVER] Step 6.1 - ERROR: Error inserting new media plan items:', insertError);
-            throw new Error(`Could not create new media plan items: ${insertError.message}`);
+    const itemsToUpsert = planItems.map(item => {
+        const { id: itemId, user_channel_settings, ...restOfItem } = item;
+        const channelName = (item.user_channel_settings as any)?.channel_name || '';
+        const channelId = channelNameToIdMap.get(channelName);
+        if (!channelId) {
+            const errorMsg = `Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`;
+            console.error(`[SERVER] Step 6 - FATAL on PREPARE for item ${itemId}: ${errorMsg}`);
+            throw new Error(errorMsg);
         }
-        console.log('[SERVER] Step 6.1: New records inserted successfully.');
-    }
+        return {
+            ...restOfItem,
+            id: itemId?.startsWith('temp-') ? undefined : itemId,
+            media_plan_id: mediaPlanId,
+            user_id: user.id,
+            offering_id: funnel.offering_id,
+            user_channel_id: channelId,
+            status: item.status || 'draft',
+        };
+    });
 
-    if (itemsToUpdate.length > 0) {
-        console.log('[SERVER] Step 6.2: Preparing to update existing records...');
-        for (const item of itemsToUpdate) {
-            const { id: itemId, user_channel_settings, ...restOfItem } = item;
-            const channelName = (item.user_channel_settings as any)?.channel_name || '';
-            const channelId = channelNameToIdMap.get(channelName);
-             if (!channelId) {
-                const errorMsg = `Could not find a channel ID for channel name: "${channelName}". Please ensure the channel is set up correctly.`;
-                console.error(`[SERVER] Step 6.2 - FATAL on UPDATE for item ${itemId}: ${errorMsg}`);
-                throw new Error(errorMsg);
-            }
-            const { error: updateError } = await supabase
-                .from('media_plan_items')
-                .update({ 
-                    ...restOfItem,
-                    user_channel_id: channelId,
-                    status: item.status || 'draft', // Ensure status is set
-                 })
-                .eq('id', itemId!);
-            if (updateError) {
-                console.error(`[SERVER] Step 6.2 - ERROR: Failed to update item ${itemId}:`, updateError.message);
-            } else {
-                console.log(`[SERVER] Step 6.2: Successfully updated item ${itemId}.`);
-            }
-        }
+    console.log('[SERVER] Step 6.2: Preparing to upsert records...');
+    const { error: upsertError } = await supabase.from('media_plan_items').upsert(itemsToUpsert, { onConflict: 'id', defaultToNull: false });
+    
+    if (upsertError) {
+        console.error('[SERVER] Step 6.2 - ERROR: Error upserting media plan items:', upsertError);
+        throw new Error(`Could not save media plan items: ${upsertError.message}`);
     }
-
+    
     console.log('[SERVER] Step 7: Revalidating paths and fetching final plan data.');
     revalidatePath('/funnels');
     
@@ -690,6 +658,23 @@ export async function getValueStrategies(): Promise<ValueStrategy[]> {
     if (error) {
         console.error("Error fetching value strategies:", error);
         throw new Error("Could not fetch value strategies.");
+    }
+    return data;
+}
+
+export async function getAdaptedValueStrategies(): Promise<AdaptedValueStrategy[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+        .from('adapted_value_strategies')
+        .select('*')
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error("Error fetching adapted value strategies:", error);
+        return [];
     }
     return data;
 }

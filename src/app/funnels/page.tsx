@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
-import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, getValueStrategies } from './actions';
+import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, getValueStrategies, getAdaptedValueStrategies } from './actions';
 import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
+import { adaptAndSaveValueStrategies } from '@/ai/flows/adapt-value-strategies-flow';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
     const supabase = createClient();
@@ -17,12 +18,13 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
 
     const offeringIdFilter = typeof searchParams.offeringId === 'string' ? searchParams.offeringId : undefined;
 
-    const [funnels, funnelPresets, viralHooks, adaptedHooks, valueStrategies] = await Promise.all([
+    const [funnels, funnelPresets, viralHooks, adaptedHooks, valueStrategies, adaptedValueStrategies] = await Promise.all([
         getFunnels(offeringIdFilter),
         getFunnelPresets(),
         getViralHooks(),
         getAdaptedHooks(),
         getValueStrategies(),
+        getAdaptedValueStrategies(),
     ]);
 
     return (
@@ -34,6 +36,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                 initialViralHooks={viralHooks}
                 initialAdaptedHooks={adaptedHooks}
                 initialValueStrategies={valueStrategies}
+                initialAdaptedValueStrategies={adaptedValueStrategies}
                 offeringIdFilter={offeringIdFilter}
                 getViralHooks={getViralHooks}
                 actions={{
@@ -50,6 +53,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                     createAdaptedHook,
                     updateAdaptedHook,
                     deleteAdaptedHook,
+                    generateAndGetAdaptedValueStrategies: adaptAndSaveValueStrategies,
                 }}
             />
         </DashboardLayout>

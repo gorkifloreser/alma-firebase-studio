@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight, BrainCircuit, Star, Save } from 'lucide-react';
 import { CreateFunnelDialog } from './CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -39,9 +39,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
-import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy } from '../actions';
+import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy, AdaptedValueStrategy } from '../actions';
 import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook, getViralHooks } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
 
 
 interface FunnelsClientPageProps {
@@ -50,6 +52,7 @@ interface FunnelsClientPageProps {
     initialViralHooks: ViralHook[];
     initialAdaptedHooks: AdaptedHook[];
     initialValueStrategies: ValueStrategy[];
+    initialAdaptedValueStrategies: AdaptedValueStrategy[];
     offeringIdFilter: string | undefined;
     getViralHooks: typeof getViralHooks;
     actions: {
@@ -66,6 +69,7 @@ interface FunnelsClientPageProps {
         createAdaptedHook: typeof createAdaptedHook;
         updateAdaptedHook: typeof updateAdaptedHook;
         deleteAdaptedHook: typeof deleteAdaptedHook;
+        generateAndGetAdaptedValueStrategies: () => Promise<{ topStrategies: AdaptedValueStrategy[] }>;
     }
 }
 
@@ -90,6 +94,75 @@ const ValueStrategyCard = ({ strategy }: { strategy: ValueStrategy }) => {
     );
 };
 
+const AdaptedValueStrategyCard = ({
+    strategy,
+    isSaving,
+    isDeleting,
+    isDirty,
+    onFieldChange,
+    onSave,
+    onDelete,
+}: {
+    strategy: AdaptedValueStrategy;
+    isSaving: boolean;
+    isDeleting: boolean;
+    isDirty: boolean;
+    onFieldChange: (field: keyof AdaptedValueStrategy, value: string) => void;
+    onSave: () => void;
+    onDelete: () => void;
+}) => (
+    <Card className="bg-muted/30">
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <Textarea
+                    value={strategy.adapted_method}
+                    onChange={e => onFieldChange('adapted_method', e.target.value)}
+                    className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1 resize-none"
+                />
+                <div className="flex gap-2 flex-shrink-0 ml-4">
+                    <Badge variant="outline" className="text-blue-600 border-blue-600/50">{strategy.relevance_score}/10 Relevance</Badge>
+                </div>
+            </div>
+            <CardDescription>Original: "{strategy.original_method}"</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Accordion type="single" collapsible defaultValue="strategy">
+                <AccordionItem value="strategy">
+                    <AccordionTrigger>Actionable Strategy</AccordionTrigger>
+                    <AccordionContent>
+                        <Textarea
+                            value={strategy.strategy}
+                            onChange={e => onFieldChange('strategy', e.target.value)}
+                            className="text-sm text-muted-foreground w-full"
+                            rows={3}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="visual">
+                    <AccordionTrigger>Visual Prompt</AccordionTrigger>
+                    <AccordionContent>
+                        <Textarea
+                            value={strategy.visual_prompt}
+                            onChange={e => onFieldChange('visual_prompt', e.target.value)}
+                            className="text-sm font-mono text-muted-foreground bg-secondary w-full"
+                            rows={4}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+            <AlertDialog>
+                <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Delete this adapted strategy?</AlertDialogTitle><AlertDialogDescription>This will permanently remove this strategy from your list.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={onDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">{isDeleting ? 'Deleting...' : 'Delete'}</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {isDirty && <Button size="sm" onClick={onSave} disabled={isSaving}><Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}</Button>}
+        </CardFooter>
+    </Card>
+);
 
 export function FunnelsClientPage({
     initialFunnels,
@@ -97,6 +170,7 @@ export function FunnelsClientPage({
     initialViralHooks,
     initialAdaptedHooks,
     initialValueStrategies,
+    initialAdaptedValueStrategies,
     offeringIdFilter,
     actions,
     getViralHooks,
@@ -113,6 +187,12 @@ export function FunnelsClientPage({
     const [isDeleting, startDeleting] = useTransition();
     const [strategyView, setStrategyView] = useState<'grid' | 'list'>('grid');
     const [activeTab, setActiveTab] = useState('my-strategies');
+    
+    // State for Value Strategies
+    const [adaptedValueStrategies, setAdaptedValueStrategies] = useState(initialAdaptedValueStrategies);
+    const [isGeneratingValueStrategies, startGeneratingValueStrategies] = useTransition();
+    const [dirtyAdaptedValueStrategies, setDirtyAdaptedValueStrategies] = useState<Set<number>>(new Set());
+
     const router = useRouter();
     const { toast } = useToast();
 
@@ -229,6 +309,18 @@ export function FunnelsClientPage({
             }
         });
     };
+    
+    const handleGenerateValueStrategy = () => {
+        startGeneratingValueStrategies(async () => {
+            try {
+                const result = await actions.generateAndGetAdaptedValueStrategies();
+                setAdaptedValueStrategies(result.topStrategies);
+                toast({ title: "Value Strategy Generated!", description: "The AI has created a custom Top 10 value strategy for your brand."});
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Value Strategy Generation Failed', description: error.message });
+            }
+        });
+    };
 
     const PresetCard = ({ preset, isCustom }: { preset: FunnelPreset, isCustom: boolean }) => (
         <Card className="flex flex-col bg-muted/20">
@@ -313,10 +405,47 @@ export function FunnelsClientPage({
                     </TabsList>
                 </div>
                 <TabsContent value="value-strategies" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {initialValueStrategies.map(strategy => (
-                            <ValueStrategyCard key={strategy.id} strategy={strategy} />
-                        ))}
+                     <div className="space-y-8">
+                        <header className="flex items-center justify-between">
+                            <div className="max-w-2xl">
+                                <h2 className="text-2xl font-bold">Adapted Value Strategies</h2>
+                                <p className="text-muted-foreground mt-1">
+                                   Your Top 10 value strategies, personalized by the AI for your brand.
+                                </p>
+                            </div>
+                            <Button onClick={handleGenerateValueStrategy} variant="outline" className="gap-2" disabled={isGeneratingValueStrategies}>
+                                {isGeneratingValueStrategies ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Value Strategy</>}
+                            </Button>
+                        </header>
+                         {(adaptedValueStrategies && adaptedValueStrategies.length > 0) && (
+                            <div className="space-y-6">
+                                <h3 className="text-2xl font-bold flex items-center gap-2">
+                                    <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
+                                    Top 10 Value Strategies for Your Brand
+                                </h3>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {adaptedValueStrategies.map(strategy => 
+                                        <AdaptedValueStrategyCard 
+                                            key={strategy.id} 
+                                            strategy={strategy} 
+                                            isSaving={false}
+                                            isDeleting={false}
+                                            isDirty={false}
+                                            onFieldChange={() => {}}
+                                            onSave={() => {}}
+                                            onDelete={() => {}}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <Separator />
+                        <h2 className="text-2xl font-bold pt-4">Global Value Strategy Library</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {initialValueStrategies.map(strategy => (
+                                <ValueStrategyCard key={strategy.id} strategy={strategy} />
+                            ))}
+                        </div>
                     </div>
                 </TabsContent>
                  <TabsContent value="viral-hooks" className="mt-6">
