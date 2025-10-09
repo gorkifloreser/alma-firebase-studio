@@ -16,9 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel } from '../actions';
+import { createFunnel, generateFunnelPreview, FunnelPreset, updateFunnel, Funnel } from '../actions';
 import { getOfferings, Offering } from '@/app/offerings/actions';
-import { Bot, User, Stars, Sparkles, ArrowLeft, PlusCircle, Trash2 } from 'lucide-react';
+import { Bot, User, Stars, Sparkles, ArrowLeft, PlusCircle, Trash2, Info, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,6 +47,14 @@ type EditableStrategy = {
     }>
 };
 
+type UsedContext = {
+    offeringTitle: string | null;
+    funnelType: string;
+    goal: string;
+    toneOfVoice: string | null;
+    audience: any;
+} | null;
+
 export function CreateFunnelDialog({
     isOpen,
     onOpenChange,
@@ -62,6 +70,7 @@ export function CreateFunnelDialog({
     const [goal, setGoal] = useState('');
     const [availableChannels, setAvailableChannels] = useState<string[]>([]);
     const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+    const [usedContext, setUsedContext] = useState<UsedContext>(null);
     
     // Step 2 State
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
@@ -95,6 +104,7 @@ export function CreateFunnelDialog({
                 setName('');
                 setGoal('');
                 setSelectedChannels([]);
+                setUsedContext(null);
             }
         }
     }, [isOpen, funnelToEdit]);
@@ -109,6 +119,15 @@ export function CreateFunnelDialog({
                 const preset = funnelPresets.find(p => p.id === selectedPresetId);
                 const offering = offerings.find(o => o.id === selectedOfferingId);
                 if (!preset || !offering) throw new Error("Selected preset or offering not found.");
+                
+                // Store context for UI verification
+                setUsedContext({
+                    offeringTitle: offering.title.primary,
+                    funnelType: preset.title,
+                    goal,
+                    toneOfVoice: 'Fetching...',
+                    audience: 'Fetching...'
+                });
 
                 const result = await generateFunnelPreview({
                     offeringId: selectedOfferingId!,
@@ -123,6 +142,7 @@ export function CreateFunnelDialog({
                 toast({ title: 'Strategy Generated!', description: 'Review and refine the strategy below.' });
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
+                 setUsedContext(null);
             }
         });
     };
@@ -197,6 +217,21 @@ export function CreateFunnelDialog({
                         </div>
                    ) : (
                         <div className="space-y-6">
+                            <Accordion type="single" collapsible className="w-full border rounded-lg px-4">
+                                <AccordionItem value="context" className="border-b-0">
+                                    <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+                                        <div className="flex items-center gap-2">
+                                            <Info className="h-4 w-4" />
+                                            AI Generation Context
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+                                        <p><strong className="text-foreground">Offering:</strong> {usedContext?.offeringTitle || funnelToEdit?.offerings?.title.primary}</p>
+                                        <p><strong className="text-foreground">Goal:</strong> {goal}</p>
+                                        <p><strong className="text-foreground">Template:</strong> {usedContext?.funnelType || funnelPresets.find(p=>p.id === funnelToEdit?.preset_id)?.title}</p>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                             <h3 className="text-xl font-semibold border-b pb-2">Edit Strategy</h3>
                             <div className="space-y-2"><Label htmlFor="funnelName" className="text-lg font-semibold">Strategy Title</Label><Input id="funnelName" value={name} onChange={(e) => setName(e.target.value)} className="text-lg"/></div>
                             <div className="space-y-6">{generatedContent.strategy.map((stage, sIdx) => (
@@ -223,6 +258,9 @@ export function CreateFunnelDialog({
                 </div>
 
                 <DialogFooter>
+                    {generatedContent && (
+                        <Button variant="ghost" onClick={() => setGeneratedContent(null)}><ArrowLeft className="mr-2 h-4 w-4"/> Go Back</Button>
+                    )}
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleSave} disabled={isSaving || !generatedContent}>
                         {isSaving ? 'Saving...' : 'Save Strategy'}

@@ -141,7 +141,7 @@ const generateFunnelFlow = ai.defineFlow(
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
 
-    const { output } = await prompt({
+    const promptContext = {
         primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,
         brandHeart,
         offering,
@@ -149,11 +149,29 @@ const generateFunnelFlow = ai.defineFlow(
         funnelPrinciples,
         goal,
         channels,
-    });
+    };
+    
+    // AI Best Practice: Log the input context for verification
+    console.log('--- AI CONTEXT FOR FUNNEL GENERATION ---');
+    console.log('Funnel Type:', funnelType);
+    console.log('Goal:', goal);
+    console.log('Offering Title:', offering.title.primary);
+    console.log('Tone of Voice:', brandHeart.tone_of_voice.primary);
+    console.log('Audience:', JSON.stringify(brandHeart.audience, null, 2));
+    console.log('------------------------------------');
+
+
+    const { output } = await prompt(promptContext);
     
     if (!output) {
       throw new Error('The AI model did not return a response.');
     }
+    
+    // AI Best Practice: Log the raw output for verification
+    console.log('--- RAW AI OUTPUT FROM FUNNEL GENERATION ---');
+    console.log(JSON.stringify(output, null, 2));
+    console.log('------------------------------------');
+
 
     return output;
   }
