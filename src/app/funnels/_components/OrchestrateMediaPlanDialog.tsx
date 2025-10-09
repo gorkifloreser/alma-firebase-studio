@@ -153,7 +153,9 @@ export function OrchestrateMediaPlanDialog({
                 setPlanTitle(`Campaign for ${format(dateRange.from, 'LLL dd, y')}`);
             }
         }
-    }, [isOpen, fullFunnelData, planIdToEdit, currentPlan, dateRange?.from, view]);
+    // The dependency array is stable. We only want this to run when the dialog opens or the main data changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, fullFunnelData, view]);
 
     const groupedByChannel = useMemo(() => {
         if (!currentPlan) return {};

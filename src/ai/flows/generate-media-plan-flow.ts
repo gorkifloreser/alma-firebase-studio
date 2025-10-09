@@ -68,6 +68,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
           campaignLanguage: z.string(),
           brandHeart: z.any(),
           offering: z.any(),
+          isEvent: z.boolean(),
           strategy: z.any(),
           topAdaptedHooks: z.array(z.any()), // New input for viral hooks
           channel: z.string(),
@@ -88,7 +89,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 **INPUT #1: CAMPAIGN TIMELINE (Your Guide for "WHEN")**
 - Campaign Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
 - Campaign End Date: {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
-{{#if (eq offering.type "Event")}}
+{{#if isEvent}}
 - Event Date (if applicable): {{#if offering.offering_schedules.[0].event_date}}{{offering.offering_schedules.[0].event_date}}{{else}}N/A{{/if}}
 {{/if}}
 ---
@@ -124,7 +125,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
 
 Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint, making sure to use a **different viral hook** from the list for each stage.
 
-{{#if (eq offering.type "Event")}}
+{{#if isEvent}}
 **Crucially, you MUST use the Campaign Timeline and Event Date to suggest realistic and strategic dates for each post.** For example, suggest awareness posts near the start date, urgency posts near the end date, and "thank you" or "recap" posts after the event date.
 {{else}}
 **Crucially, you MUST use the Campaign Timeline to suggest realistic and strategic dates for each post.** Distribute the posts evenly throughout the campaign duration.
@@ -244,7 +245,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     }
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
-    const channels = requestedChannels || strategyBrief?.channels || [];
+    const channels = requestedChannels || [];
     const offering = strategy.offerings;
 
     if (channels.length === 0) {
@@ -257,6 +258,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
     const secondaryLanguage = profile.secondary_language ? languageNames.get(profile.secondary_language) : undefined;
+    const isEvent = offering.type === 'Event';
 
     // Create a parallel generation task for each channel
     const channelPromises = channels.map(channel => {
@@ -268,6 +270,7 @@ const generateMediaPlanFlow = ai.defineFlow(
             campaignLanguage: languageNames.get(campaignLanguage || profile.primary_language) || campaignLanguage || primaryLanguage,
             brandHeart,
             offering,
+            isEvent,
             strategy,
             topAdaptedHooks: adaptedHooks, // Pass the hooks to the prompt
             channel,
