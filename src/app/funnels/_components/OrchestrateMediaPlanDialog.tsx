@@ -587,9 +587,22 @@ export function OrchestrateMediaPlanDialog({
                         <div className="space-y-2">
                             <Label>Select Target Channels</Label>
                             <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
-                                {availableChannels.map(c => (<div key={c} className="flex items-center space-x-2"><Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} /><Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label></div>))}
+                                {isDataLoading ? (
+                                    <div className="col-span-2 space-y-2">
+                                        <Skeleton className="h-6 w-full" />
+                                        <Skeleton className="h-6 w-full" />
+                                    </div>
+                                ) : availableChannels.length > 0 ? (
+                                    availableChannels.map(c => (
+                                        <div key={c} className="flex items-center space-x-2">
+                                            <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
+                                            <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="col-span-2 text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>
+                                )}
                             </div>
-                            {availableChannels.length === 0 && <p className="text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>}
                         </div>
                     </div>
                     <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
