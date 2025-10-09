@@ -14,7 +14,7 @@ import { googleAI } from '@genkit-ai/googleai';
 // Define the output schema for a detailed audience profile
 const AudienceProfileSchema = z.object({
   name: z.string().describe("A memorable name for this persona (e.g., 'Conscious Creator Carla', 'Holistic Helen')."),
-  demographics: z.string().describe("Key demographic information: age range, gender, location, occupation, and income level."),
+  demographics: z.string().describe("Key demographic information: age range, gender, location, occupation, and income level. MUST incorporate user hints."),
   psychographics: z.string().describe("Their core values, beliefs, lifestyle, and personality traits. What do they care about deeply?"),
   goals: z.string().describe("What are their primary goals and aspirations, both personally and professionally, related to the brand's offerings?"),
   painPoints: z.string().describe("What are their biggest challenges, frustrations, and pain points that the brand's offerings can solve?"),
@@ -27,6 +27,11 @@ const GenerateAudienceOutputSchema = z.object({
 });
 export type GenerateAudienceOutput = z.infer<typeof GenerateAudienceOutputSchema>;
 
+const GenerateAudienceInputSchema = z.object({
+    userHint: z.string().optional().describe("User-provided hints about the audience, like age range, location, or specific interests."),
+});
+export type GenerateAudienceInput = z.infer<typeof GenerateAudienceInputSchema>;
+
 
 const audiencePrompt = ai.definePrompt({
     name: 'generateAudiencePrompt',
@@ -35,10 +40,11 @@ const audiencePrompt = ai.definePrompt({
         schema: z.object({
             brandHeart: z.any(),
             offerings: z.array(z.any()).optional(),
+            userHint: z.string().optional(),
         })
     },
     output: { schema: AudienceProfileSchema },
-    prompt: `You are an expert market researcher and brand strategist. Your task is to analyze a brand's core identity and its products/services to create a detailed, insightful, and empathetic buyer persona.
+    prompt: `You are an expert market researcher and brand strategist. Your task is to analyze a brand's core identity, its products/services, and user-provided hints to create a detailed, insightful, and empathetic buyer persona.
 
 **BRAND IDENTITY (The "Who"):**
 - **Brand Name:** {{brandHeart.brand_name}}
@@ -56,10 +62,19 @@ const audiencePrompt = ai.definePrompt({
 - No specific offerings provided. Analyze based on the brand identity alone.
 {{/if}}
 
+**USER'S HINTS (CRITICAL CONTEXT):**
+{{#if userHint}}
+- **User's perception of the audience:** "{{userHint}}"
+- **IMPORTANT:** You MUST prioritize these hints when creating the persona, especially for demographics like age and location.
+{{else}}
+- No specific hints provided by the user.
+{{/if}}
+
+
 **YOUR MISSION:**
-Based on the brand's identity and offerings, create a profile for their ideal customer. Define the following characteristics for this persona:
+Based on all the information above, create a profile for ONE ideal customer. Define the following characteristics for this persona:
 1.  **name**: A catchy, alliterative name for the persona.
-2.  **demographics**: Age, gender, location, occupation, etc.
+2.  **demographics**: Age, gender, location, occupation, etc. **This must align with the user's hints if provided.**
 3.  **psychographics**: Their values, beliefs, and lifestyle. What is important to them?
 4.  **goals**: What do they want to achieve that your brand can help with?
 5.  **painPoints**: What are their biggest struggles and frustrations?
@@ -73,9 +88,10 @@ Provide a detailed and actionable profile that will help the brand create resona
 const generateAudienceFlow = ai.defineFlow(
   {
     name: 'generateAudienceFlow',
+    inputSchema: GenerateAudienceInputSchema,
     outputSchema: GenerateAudienceOutputSchema,
   },
-  async () => {
+  async ({ userHint }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -90,7 +106,7 @@ const generateAudienceFlow = ai.defineFlow(
       throw new Error('Brand Heart not found. Please define your brand heart first.');
     }
     
-    const { output } = await audiencePrompt({ brandHeart, offerings: offerings || [] });
+    const { output } = await audiencePrompt({ brandHeart, offerings: offerings || [], userHint });
 
     if (!output) {
       throw new Error('The AI model did not return a response for the audience suggestion.');
@@ -121,6 +137,6 @@ ${output.wateringHoles}
   }
 );
 
-export async function generateAudienceSuggestion(): Promise<GenerateAudienceOutput> {
-    return generateAudienceFlow();
+export async function generateAudienceSuggestion(input: GenerateAudienceInput): Promise<GenerateAudienceOutput> {
+    return generateAudienceFlow(input);
 }

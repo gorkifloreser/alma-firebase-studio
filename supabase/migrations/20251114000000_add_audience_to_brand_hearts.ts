@@ -1,9 +1,10 @@
 -- Add the audience column to the brand_hearts table
+-- We are changing this to an array of objects to store multiple personas.
 ALTER TABLE public.brand_hearts
-ADD COLUMN audience jsonb DEFAULT '{}'::jsonb;
+ADD COLUMN audience jsonb DEFAULT '[]'::jsonb;
 
 -- Add a comment to the new column for clarity
-COMMENT ON COLUMN public.brand_hearts.audience IS 'Stores a description of the target audience or buyer persona.';
+COMMENT ON COLUMN public.brand_hearts.audience IS 'Stores an array of buyer persona objects, each with a title and content.';
 
 -- Enable RLS for the table if it's not already enabled
 -- (This might already be done in a previous migration, but it's safe to run again)

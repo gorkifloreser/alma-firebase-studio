@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
-import { generateAudienceSuggestion as generateAudienceFlow, GenerateAudienceOutput } from '@/ai/flows/generate-audience-flow';
+import { generateAudienceSuggestion as generateAudienceFlow, type GenerateAudienceInput, type GenerateAudienceOutput } from '@/ai/flows/generate-audience-flow';
 
 
 export type ContactInfo = {
@@ -14,6 +14,12 @@ export type ContactInfo = {
   value: string;
   address?: string;
   google_maps_url?: string;
+};
+
+export type AudiencePersona = {
+    id: string; // client-side UUID
+    title: string;
+    content: string;
 };
 
 /**
@@ -32,7 +38,7 @@ export type BrandHeartData = {
   vision: { primary: string | null; secondary: string | null };
   values: { primary: string | null; secondary: string | null };
   tone_of_voice: { primary: string | null; secondary: string | null };
-  audience: { primary: string | null; secondary: string | null };
+  audience: AudiencePersona[];
   visual_identity: { primary: string | null; secondary: string | null };
   contact_info: ContactInfo[];
 };
@@ -69,8 +75,20 @@ export async function getBrandHeart(): Promise<BrandHeartData | null> {
             id: contact.id || crypto.randomUUID(),
         }));
     }
+    
+    // Add client-side IDs to audience personas if they don't exist
+    if (data && Array.isArray(data.audience)) {
+        data.audience = data.audience.map((persona: any) => ({
+            ...persona,
+            id: persona.id || crypto.randomUUID(),
+        }));
+    } else if (data) {
+        // If audience is not an array, initialize it as one
+        data.audience = [];
+    }
 
-    return data;
+
+    return data as BrandHeartData;
 }
 
 /**
@@ -120,44 +138,33 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
   }
 
   const contactInfoString = formData.get('contact_info') as string;
-  const contactInfo = JSON.parse(contactInfoString || '[]');
+  const contactInfo = contactInfoString ? JSON.parse(contactInfoString) : undefined;
+  
+  const audienceString = formData.get('audience') as string;
+  const audience = audienceString ? JSON.parse(audienceString) : undefined;
 
 
-  const payload = {
+  const payload: { [key: string]: any } = {
     user_id: user.id,
-    brand_name: (formData.get('brand_name') as string) || '',
-    logo_url: newLogoUrl,
-    brand_brief: {
-      primary: (formData.get('brand_brief_primary') as string) || null,
-      secondary: (formData.get('brand_brief_secondary') as string) || null,
-    },
-    mission: {
-      primary: (formData.get('mission_primary') as string) || null,
-      secondary: (formData.get('mission_secondary') as string) || null,
-    },
-    vision: {
-      primary: (formData.get('vision_primary') as string) || null,
-      secondary: (formData.get('vision_secondary') as string) || null,
-    },
-    values: {
-      primary: (formData.get('values_primary') as string) || null,
-      secondary: (formData.get('values_secondary') as string) || null,
-    },
-    tone_of_voice: {
-      primary: (formData.get('tone_of_voice_primary') as string) || null,
-      secondary: (formData.get('tone_of_voice_secondary') as string) || null,
-    },
-    audience: {
-      primary: (formData.get('audience_primary') as string) || null,
-      secondary: (formData.get('audience_secondary') as string) || null,
-    },
-    visual_identity: {
-      primary: (formData.get('visual_identity_primary') as string) || null,
-      secondary: (formData.get('visual_identity_secondary') as string) || null,
-    },
-    contact_info: contactInfo,
     updated_at: new Date().toISOString(),
   };
+
+  const fields: (keyof BrandHeartData)[] = ['brand_name', 'brand_brief', 'mission', 'vision', 'values', 'tone_of_voice', 'visual_identity'];
+  fields.forEach(field => {
+      if (formData.has(`${field}_primary`)) {
+          payload[field] = {
+              primary: formData.get(`${field}_primary`) as string,
+              secondary: formData.get(`${field}_secondary`) as string | null,
+          };
+      } else if (formData.has(field)) {
+          payload[field] = formData.get(field) as string;
+      }
+  });
+
+  if (newLogoUrl !== undefined) payload.logo_url = newLogoUrl;
+  if (contactInfo !== undefined) payload.contact_info = contactInfo;
+  if (audience !== undefined) payload.audience = audience;
+
 
   const { error } = await supabase
     .from('brand_hearts')
@@ -176,7 +183,6 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
  * Invokes the Genkit translation flow.
  * @param {TranslateInput} input The text and target language for translation.
  * @returns {Promise<TranslateOutput>} The translated text.
- * @throws {Error} If the translation fails.
  */
 export async function translateText(input: TranslateInput): Promise<TranslateOutput> {
     try {
@@ -190,11 +196,10 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
 
 /**
  * Invokes the Genkit flow to generate an audience profile suggestion.
- * @returns {Promise<GenerateAudienceOutput>} The suggested audience profile text.
  */
-export async function generateAudienceSuggestion(): Promise<GenerateAudienceOutput> {
+export async function generateAudienceSuggestion(input: GenerateAudienceInput): Promise<GenerateAudienceOutput> {
     try {
-        const result = await generateAudienceFlow();
+        const result = await generateAudienceFlow(input);
         return result;
     } catch (error: any) {
         console.error("Audience suggestion action failed:", error);
