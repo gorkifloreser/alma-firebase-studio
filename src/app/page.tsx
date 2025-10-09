@@ -28,7 +28,7 @@ export default async function LandingPage() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild className="btn-auth text-lg py-6 px-8">
-              <Link href="/signup">Start Your Journey Free</Link>
+              <Link href="/signup">Start Your Journey</Link>
             </Button>
             <Button size="lg" variant="outline" className="text-lg py-6 px-8 bg-transparent hover:bg-foreground/5">
               Watch Demo
@@ -105,7 +105,7 @@ export default async function LandingPage() {
                     <h3 className="text-2xl font-bold">Ready to Change How You Market?</h3>
                     <p className="mt-2 text-muted-foreground">Start your journey towards a more authentic and sustainable brand presence.</p>
                     <Button asChild className="mt-6 btn-auth">
-                        <Link href="/signup">Get Started for Free</Link>
+                        <Link href="/signup">Get Started</Link>
                     </Button>
                 </Card>
             </div>
