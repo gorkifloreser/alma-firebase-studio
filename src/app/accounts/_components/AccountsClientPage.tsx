@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -203,22 +202,12 @@ export function AccountsClientPage({
     };
     
     const metaConnections = socialConnections.filter(sc => sc.provider === 'meta');
-    const whatsappConnections = socialConnections.filter(sc => sc.provider === 'whatsapp');
-
     const activeMetaConnection = metaConnections.find(sc => sc.is_active);
-    const activeWhatsappConnection = whatsappConnections.find(sc => sc.is_active);
-
-    const hasAnyMetaConnection = metaConnections.length > 0 || whatsappConnections.length > 0;
+    const hasAnyMetaConnection = metaConnections.length > 0;
 
     const renderCard = (account: Account) => {
         const isMetaSocial = account.id === 'instagram' || account.id === 'facebook';
-        const isWhatsApp = account.id === 'whatsapp';
         const isEnabled = selectedChannels.has(account.id);
-        
-        let connectionsToShow = isMetaSocial ? metaConnections : (isWhatsApp ? whatsappConnections : []);
-        let activeConnection = isMetaSocial ? activeMetaConnection : (isWhatsApp ? activeWhatsappConnection : null);
-        let providerName = isMetaSocial ? 'Meta' : 'WhatsApp';
-        let IconComponent = isMetaSocial ? Instagram : (isWhatsApp ? MessageSquare : Link);
 
         return (
             <Card key={account.id} className="flex flex-col">
@@ -241,7 +230,7 @@ export function AccountsClientPage({
                         </div>
                     )}
 
-                    {(isMetaSocial || isWhatsApp) && account.status === 'available' && (
+                    {isMetaSocial && account.status === 'available' && (
                         hasAnyMetaConnection ? (
                              <div className="space-y-3">
                                 <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
@@ -250,27 +239,27 @@ export function AccountsClientPage({
                                         Connected to Meta
                                     </p>
                                 </div>
-                                {connectionsToShow.length > 0 ? (
+                                {metaConnections.length > 0 ? (
                                     <Select
-                                        value={activeConnection?.id?.toString()}
+                                        value={activeMetaConnection?.id?.toString()}
                                         onValueChange={(value) => handleSetActiveConnection(Number(value))}
                                         disabled={isSaving}
                                     >
                                         <SelectTrigger>
                                             <SelectValue asChild>
                                                  <div className="flex items-center gap-2">
-                                                    {activeConnection?.account_picture_url ? (
+                                                    {activeMetaConnection?.account_picture_url ? (
                                                         <Avatar className="h-6 w-6">
-                                                            <AvatarImage src={activeConnection.account_picture_url} />
-                                                            <AvatarFallback>{activeConnection.account_name?.[0]}</AvatarFallback>
+                                                            <AvatarImage src={activeMetaConnection.account_picture_url} />
+                                                            <AvatarFallback>{activeMetaConnection.account_name?.[0]}</AvatarFallback>
                                                         </Avatar>
-                                                    ) : <IconComponent className="h-5 w-5" />}
-                                                    <span>{activeConnection?.account_name || `Select ${providerName} account...`}</span>
+                                                    ) : <Instagram className="h-5 w-5" />}
+                                                    <span>{activeMetaConnection?.account_name || `Select account...`}</span>
                                                 </div>
                                             </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {connectionsToShow.map(conn => (
+                                            {metaConnections.map(conn => (
                                                 <SelectItem key={conn.id} value={conn.id.toString()}>
                                                     <div className="flex items-center gap-2">
                                                         {conn.account_picture_url ? (
@@ -278,7 +267,7 @@ export function AccountsClientPage({
                                                                 <AvatarImage src={conn.account_picture_url} />
                                                                 <AvatarFallback>{conn.account_name?.[0]}</AvatarFallback>
                                                             </Avatar>
-                                                        ) : <IconComponent className="h-5 w-5" />}
+                                                        ) : <Instagram className="h-5 w-5" />}
                                                         <span>{conn.account_name}</span>
                                                     </div>
                                                 </SelectItem>
@@ -286,7 +275,7 @@ export function AccountsClientPage({
                                         </SelectContent>
                                     </Select>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No {providerName} accounts found for this connection.</p>
+                                    <p className="text-sm text-muted-foreground">No Instagram or Facebook accounts found for this connection.</p>
                                 )}
                                  <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-destructive" disabled={isSaving}>
                                     Disconnect Meta
@@ -299,7 +288,7 @@ export function AccountsClientPage({
                         )
                     )}
 
-                    {isEnabled && account.best_practices !== null && account.status === 'available' && !isMetaSocial && !isWhatsApp && (
+                    {isEnabled && account.best_practices !== null && account.status === 'available' && !isMetaSocial && (
                         <BestPracticesEditor 
                             channelId={account.id} 
                             initialValue={account.best_practices}
@@ -308,7 +297,7 @@ export function AccountsClientPage({
                         />
                     )}
                 </CardContent>
-                {account.status === 'available' && !isMetaSocial && !isWhatsApp && (
+                {account.status === 'available' && !isMetaSocial && (
                     <CardFooter>
                          <div className="flex items-center space-x-2">
                             <Checkbox

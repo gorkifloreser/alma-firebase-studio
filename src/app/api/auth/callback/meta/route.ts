@@ -102,45 +102,45 @@ export async function GET(req: NextRequest) {
              console.log('[META AUTH] Step 3: No Facebook Pages found.');
         }
 
-        // Step 4: Get WhatsApp Business Accounts
-        console.log('[META AUTH] Step 4: Fetching WhatsApp Business accounts...');
-        const wabaUrl = `https://graph.facebook.com/v19.0/me/whatsapp_business_accounts?access_token=${access_token}`;
-        const wabaRes = await fetch(wabaUrl);
-        const wabaData = await wabaRes.json();
-        console.log('[META AUTH] Step 4 Response:', JSON.stringify(wabaData, null, 2));
+        // // Step 4: Get WhatsApp Business Accounts (COMMENTED OUT)
+        // console.log('[META AUTH] Step 4: Fetching WhatsApp Business accounts...');
+        // const wabaUrl = `https://graph.facebook.com/v19.0/me/whatsapp_business_accounts?access_token=${access_token}`;
+        // const wabaRes = await fetch(wabaUrl);
+        // const wabaData = await wabaRes.json();
+        // console.log('[META AUTH] Step 4 Response:', JSON.stringify(wabaData, null, 2));
 
-        if (wabaData.error) throw new Error(`Fetching WhatsApp accounts error: ${wabaData.error.message}`);
+        // if (wabaData.error) throw new Error(`Fetching WhatsApp accounts error: ${wabaData.error.message}`);
 
-        if (wabaData.data && wabaData.data.length > 0) {
-            for (const waba of wabaData.data) {
-                console.log(`[META AUTH] Step 4.1: Fetching phone numbers for WABA ID ${waba.id}`);
-                const phonesUrl = `https://graph.facebook.com/v19.0/${waba.id}/phone_numbers?access_token=${access_token}`;
-                const phonesRes = await fetch(phonesUrl);
-                const phonesData = await phonesRes.json();
-                console.log(`[META AUTH] Step 4.1 Response for ${waba.id}:`, JSON.stringify(phonesData, null, 2));
+        // if (wabaData.data && wabaData.data.length > 0) {
+        //     for (const waba of wabaData.data) {
+        //         console.log(`[META AUTH] Step 4.1: Fetching phone numbers for WABA ID ${waba.id}`);
+        //         const phonesUrl = `https://graph.facebook.com/v19.0/${waba.id}/phone_numbers?access_token=${access_token}`;
+        //         const phonesRes = await fetch(phonesUrl);
+        //         const phonesData = await phonesRes.json();
+        //         console.log(`[META AUTH] Step 4.1 Response for ${waba.id}:`, JSON.stringify(phonesData, null, 2));
                 
-                if (phonesData.data) {
-                    phonesData.data.forEach((phone: any) => {
-                         socialConnections.push({
-                            user_id: user.id,
-                            provider: 'whatsapp',
-                            access_token: access_token, // Use the user's long-lived token for WhatsApp
-                            expires_at: expiresAt.toISOString(),
-                            account_id: phone.id, // Phone Number ID
-                            account_name: phone.display_phone_number,
-                            account_picture_url: null, // No picture for phone numbers
-                            is_active: false,
-                        });
-                    });
-                }
-            }
-            console.log(`[META AUTH] Step 4 Success: Processed WhatsApp numbers.`);
-        } else {
-            console.log('[META AUTH] Step 4: No WhatsApp Business Accounts found.');
-        }
+        //         if (phonesData.data) {
+        //             phonesData.data.forEach((phone: any) => {
+        //                  socialConnections.push({
+        //                     user_id: user.id,
+        //                     provider: 'whatsapp',
+        //                     access_token: access_token, // Use the user's long-lived token for WhatsApp
+        //                     expires_at: expiresAt.toISOString(),
+        //                     account_id: phone.id, // Phone Number ID
+        //                     account_name: phone.display_phone_number,
+        //                     account_picture_url: null, // No picture for phone numbers
+        //                     is_active: false,
+        //                 });
+        //             });
+        //         }
+        //     }
+        //     console.log(`[META AUTH] Step 4 Success: Processed WhatsApp numbers.`);
+        // } else {
+        //     console.log('[META AUTH] Step 4: No WhatsApp Business Accounts found.');
+        // }
         
         if (socialConnections.length === 0) {
-            throw new Error('No social accounts (Instagram, Facebook, or WhatsApp) found to connect.');
+            throw new Error('No social accounts (Instagram or Facebook) found to connect.');
         }
 
         // Step 5: Determine which accounts to set as active
@@ -155,11 +155,11 @@ export async function GET(req: NextRequest) {
             console.log(`[META AUTH] Step 5: No Instagram account found. Activating first Facebook page: ${socialConnections[firstMetaIndex].account_name}`);
         }
         
-        const firstWaIndex = socialConnections.findIndex(acc => acc.provider === 'whatsapp');
-        if (firstWaIndex !== -1) {
-            socialConnections[firstWaIndex].is_active = true;
-            console.log(`[META AUTH] Step 5: Activating WhatsApp number: ${socialConnections[firstWaIndex].account_name}`);
-        }
+        // const firstWaIndex = socialConnections.findIndex(acc => acc.provider === 'whatsapp');
+        // if (firstWaIndex !== -1) {
+        //     socialConnections[firstWaIndex].is_active = true;
+        //     console.log(`[META AUTH] Step 5: Activating WhatsApp number: ${socialConnections[firstWaIndex].account_name}`);
+        // }
 
         console.log('[META AUTH] Step 6: Final records to be upserted:', JSON.stringify(socialConnections, null, 2));
 
