@@ -252,6 +252,37 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
 }
 
 /**
+ * Adds a new schedule to an existing offering.
+ */
+export async function addScheduleToOffering(offeringId: string, scheduleData: Omit<OfferingSchedule, 'id'>): Promise<OfferingSchedule> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = {
+        ...scheduleData,
+        offering_id: offeringId,
+        user_id: user.id,
+        event_date: scheduleData.event_date ? scheduleData.event_date.toISOString() : null,
+    };
+
+    const { data: newSchedule, error } = await supabase
+        .from('offering_schedules')
+        .insert(payload)
+        .select()
+        .single();
+    
+    if (error) {
+        console.error('Error adding schedule to offering:', error.message);
+        throw new Error('Could not add schedule.');
+    }
+
+    revalidatePath('/offerings');
+    return newSchedule;
+}
+
+
+/**
  * Deletes an offering for the currently authenticated user, including its media from storage.
  * The database will cascade delete schedules.
  */

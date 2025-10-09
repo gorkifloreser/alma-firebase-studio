@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart, LayoutGrid, Calendar } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
+import { CreateEventInstanceDialog } from './CreateEventInstanceDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +57,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
     const [offerings, setOfferings] = useState(initialOfferings);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+    const [isInstanceDialogOpen, setIsInstanceDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
@@ -101,6 +103,11 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         setIsCreateDialogOpen(true);
     };
 
+    const handleOpenInstanceDialog = (date: Date) => {
+        setPreselectedDate(date);
+        setIsInstanceDialogOpen(true);
+    };
+
     const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
         setPreselectedDate(undefined);
@@ -134,6 +141,16 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             description: `Your offering has been ${offeringToEdit ? 'updated' : 'created'}.`,
         });
     };
+    
+    const handleEventInstanceCreated = () => {
+        setIsInstanceDialogOpen(false);
+        fetchOfferings();
+        toast({
+            title: 'Success!',
+            description: 'A new date has been added to your event offering.',
+        });
+    };
+
 
     const handleOfferingDelete = (offeringId: string) => {
         startDeleting(async () => {
@@ -152,11 +169,15 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         router.push(`/funnels?offeringId=${offeringId}`);
     }
 
-    const filteredOfferings = offerings.filter(offering => {
-        if (activeTab === 'all') return true;
-        if (activeTab === 'value-content') return offering.type === 'Value Content';
-        return offering.type.toLowerCase() === activeTab;
-    });
+    const { filteredOfferings, eventTemplates } = useMemo(() => {
+        const events = offerings.filter(o => o.type === 'Event');
+        const filtered = offerings.filter(offering => {
+            if (activeTab === 'all') return true;
+            if (activeTab === 'value-content') return offering.type === 'Value Content';
+            return offering.type.toLowerCase() === activeTab;
+        });
+        return { filteredOfferings: filtered, eventTemplates: events };
+    }, [offerings, activeTab]);
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -191,7 +212,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                  <div className="mt-6">
                     <TabsContent value={activeTab} className="mt-0">
                         {activeTab === 'event' && eventView === 'calendar' ? (
-                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} onAddEvent={handleOpenCreateDialog} />
+                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} onAddEvent={handleOpenInstanceDialog} />
                         ) : filteredOfferings.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredOfferings.map(offering => (
@@ -293,6 +314,13 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 onOfferingSaved={handleOfferingSaved}
                 offeringToEdit={offeringToEdit}
                 preselectedDate={preselectedDate}
+            />
+            <CreateEventInstanceDialog 
+                isOpen={isInstanceDialogOpen}
+                onOpenChange={setIsInstanceDialogOpen}
+                eventTemplates={eventTemplates}
+                preselectedDate={preselectedDate}
+                onEventInstanceCreated={handleEventInstanceCreated}
             />
             {offeringToView && (
                 <OfferingDetailDialog
