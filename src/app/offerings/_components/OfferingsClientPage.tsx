@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart, LayoutGrid, Calendar } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
 import {
@@ -35,8 +35,8 @@ import type { Offering, OfferingMedia, ValueContentBlock } from '../actions';
 import type { getOfferings, deleteOffering } from '../actions';
 import type { Funnel } from '@/app/funnels/actions';
 import type { getProfile } from '@/app/settings/actions';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
+import { EventCalendarView } from './EventCalendarView';
+
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -60,6 +60,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
     const [activeTab, setActiveTab] = useState('all');
+    const [eventView, setEventView] = useState<'grid' | 'calendar'>('grid');
     const router = useRouter();
     const { toast } = useToast();
 
@@ -132,8 +133,6 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         return offering.type.toLowerCase() === activeTab;
     });
 
-    const offeringsWithValueContent = offerings.filter(offering => offering.value_content && offering.value_content.length > 0);
-
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header className="flex items-center justify-between">
@@ -148,7 +147,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             </header>
 
             <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-                 <div className="flex justify-center">
+                 <div className="flex justify-between items-center">
                     <TabsList>
                         <TabsTrigger value="all">All</TabsTrigger>
                         <TabsTrigger value="service">Services</TabsTrigger>
@@ -156,10 +155,19 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                         <TabsTrigger value="event">Events</TabsTrigger>
                         <TabsTrigger value="value-content">Value Content</TabsTrigger>
                     </TabsList>
+
+                    {activeTab === 'event' && (
+                        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                            <Button variant={eventView === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setEventView('grid')}><LayoutGrid className="h-4 w-4"/></Button>
+                            <Button variant={eventView === 'calendar' ? 'secondary' : 'ghost'} size="icon" onClick={() => setEventView('calendar')}><Calendar className="h-4 w-4"/></Button>
+                        </div>
+                    )}
                 </div>
                  <div className="mt-6">
                     <TabsContent value={activeTab} className="mt-0">
-                        {filteredOfferings.length > 0 ? (
+                        {activeTab === 'event' && eventView === 'calendar' ? (
+                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} />
+                        ) : filteredOfferings.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredOfferings.map(offering => (
                                     <Card key={offering.id} className="flex flex-col group">
