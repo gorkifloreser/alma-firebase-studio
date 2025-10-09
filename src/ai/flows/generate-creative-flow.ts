@@ -135,15 +135,15 @@ const carouselPrompt = ai.definePrompt({
             })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique, final creative prompt for its image.'),
         })
     },
-  prompt: `You are a marketing expert and AI prompt engineer specializing in creating engaging social media carousels.
+  prompt: `You are an expert marketing strategist and AI prompt engineer specializing in creating visually cohesive and highly engaging social media carousels.
 
-**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt**.
+**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt** that maintains stylistic consistency and leaves room for text overlays.
 
 ---
 **1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
-- **Visual Identity:** {{brandHeart.visual_identity.primary}}
+- **Visual Identity (The North Star for ALL Images):** {{brandHeart.visual_identity.primary}}
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
@@ -153,20 +153,26 @@ const carouselPrompt = ai.definePrompt({
 {{#if basePrompt}}
 - "{{basePrompt}}"
 {{else}}
-- Create a carousel that tells a story about the offering, starting with the problem or desire, showing the transformation, and ending with a call to action.
+- Create a carousel that tells a story about the offering, starting with a problem or desire, showing the transformation, and ending with a call to action.
 {{/if}}
 
 ---
 **YOUR TASK:**
 
-Based on all the information above, create a 3-5 slide carousel script. For each slide:
+Based on all the information above, create a 3-5 slide carousel script. For each slide, you must adhere to these two critical rules for the \`creativePrompt\`:
+
+**Rule #1: VISUAL COHESION**
+- All \`creativePrompt\` fields MUST share a consistent artistic style, color palette, and mood. Use the brand's **Visual Identity** as the primary guide for this. The entire carousel must feel like a single, unified piece of art.
+
+**Rule #2: COMPOSITION FOR TEXT**
+- Each \`creativePrompt\` MUST instruct the AI to compose the image with significant "negative space" or a clean area at the top. The main subject should be framed in the lower two-thirds of the image. This is crucial for adding text overlays later. Use phrases like "negative space at the top", "frame the subject in the lower two-thirds", or "composition leaves ample clean space at the top for text".
+
+For each slide, generate:
 1.  **title:** A short, punchy title.
 2.  **body:** Brief, engaging body text.
-3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual identity, and the aspect ratio if provided. Do NOT include placeholders.
+3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator that follows the two rules above, incorporating the specific subject for that slide, the brand's visual identity, and the aspect ratio.
 
-   **CRUCIAL RULE:** You MUST base each slide's \`creativePrompt\` directly on the corresponding instructions found in the user's 'Creative Brief'. If the user's brief describes 'Slide 1' as 'a close-up of a cup', your \`creativePrompt\` for the first slide MUST describe a close-up of a cup, enhanced with the brand's aesthetic. Do NOT invent new scenarios.
-
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist flat-lay of a journal and a steaming mug of cacao on a rustic wooden table, embodying a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, framed in the lower two-thirds of the image leaving ample negative space at the top. The image should embody a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Generate the carousel slides in the specified JSON format.`,
 });
