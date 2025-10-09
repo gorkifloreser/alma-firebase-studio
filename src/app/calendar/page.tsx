@@ -123,10 +123,11 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
                         </div>
                      )}
                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate">{publicationTime}</p>
+                        <p className="text-xs font-bold truncate">{item.offerings?.title?.primary || item.concept}</p>
                         <div className="flex items-center justify-between mt-1">
                             <div className={cn("flex items-center gap-1")}>
                                 {getStatusIcon()}
+                                <span className="text-xs text-muted-foreground">{publicationTime}</span>
                             </div>
                             <Button
                                 variant="ghost"
