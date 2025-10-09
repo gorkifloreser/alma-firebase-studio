@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useMemo, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart, LayoutGrid, Calendar, Clock } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart, LayoutGrid, Calendar } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
 import { CreateEventInstanceDialog } from './CreateEventInstanceDialog';
@@ -41,6 +42,7 @@ import type { Funnel } from '@/app/funnels/actions';
 import type { getProfile } from '@/app/settings/actions';
 import { EventCalendarView } from './EventCalendarView';
 import { format, isSameDay, parseISO, setHours, setMinutes } from 'date-fns';
+import { Clock } from 'lucide-react';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -435,7 +437,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
              <Dialog open={isConfirmTimeOpen} onOpenChange={setIsConfirmTimeOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Confirm New Publication Time</DialogTitle>
+                        <DialogTitle>Confirm New Event Time</DialogTitle>
                         <DialogDescription>
                             You moved this event to {itemToReschedule?.newDate ? format(itemToReschedule.newDate, 'PPP') : ''}. Please select a time.
                         </DialogDescription>
