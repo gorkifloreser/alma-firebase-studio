@@ -208,7 +208,7 @@ export const PostPreview = ({
 
     const renderVisualContent = () => {
         if (isLoading) {
-          return <Skeleton className="w-full h-full" />;
+          return <Skeleton className="w-full h-full rounded-none" />;
         }
       
         if (selectedCreativeType === 'carousel' && creative?.carouselSlides && creative.carouselSlides.length > 0) {
