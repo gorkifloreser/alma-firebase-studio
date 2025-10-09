@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,27 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
     const [eventView, setEventView] = useState<'grid' | 'calendar'>('grid');
     const router = useRouter();
     const { toast } = useToast();
+
+    // Effect to read from localStorage on initial client-side render
+    useEffect(() => {
+        const savedTab = localStorage.getItem('offerings-active-tab');
+        if (savedTab) {
+            setActiveTab(savedTab);
+        }
+        const savedEventView = localStorage.getItem('offerings-event-view');
+        if (savedEventView === 'grid' || savedEventView === 'calendar') {
+            setEventView(savedEventView);
+        }
+    }, []);
+
+    // Effect to save to localStorage whenever state changes
+    useEffect(() => {
+        localStorage.setItem('offerings-active-tab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        localStorage.setItem('offerings-event-view', eventView);
+    }, [eventView]);
 
     const fetchOfferings = async () => {
         try {
@@ -150,7 +171,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 </Button>
             </header>
 
-            <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
                  <div className="flex justify-between items-center">
                     <TabsList>
                         <TabsTrigger value="all">All</TabsTrigger>
