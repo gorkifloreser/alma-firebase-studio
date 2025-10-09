@@ -200,9 +200,11 @@ export function AccountsClientPage({
     
     const metaConnections = socialConnections.filter(sc => sc.provider === 'meta');
     const activeMetaConnection = metaConnections.find(sc => sc.is_active);
+    const hasWhatsAppConnection = metaConnections.some(c => c.provider === 'meta'); // Simplified check
 
     const renderCard = (account: Account) => {
-        const isMetaAccount = account.id === 'instagram' || account.id === 'facebook';
+        const isMetaSocial = account.id === 'instagram' || account.id === 'facebook';
+        const isWhatsApp = account.id === 'whatsapp';
         const isEnabled = selectedChannels.has(account.id);
 
         return (
@@ -226,7 +228,7 @@ export function AccountsClientPage({
                         </div>
                     )}
 
-                    {isMetaAccount && account.status === 'available' && (
+                    {(isMetaSocial || isWhatsApp) && account.status === 'available' && (
                         metaConnections.length > 0 ? (
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 rounded-md bg-green-100 dark:bg-green-900/30 p-3">
@@ -235,40 +237,42 @@ export function AccountsClientPage({
                                         Connected
                                     </p>
                                 </div>
-                                <Select
-                                    value={activeMetaConnection?.id?.toString()}
-                                    onValueChange={(value) => handleSetActiveConnection(Number(value))}
-                                    disabled={isSaving}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue asChild>
-                                             <div className="flex items-center gap-2">
-                                                {activeMetaConnection?.account_picture_url && (
-                                                    <Avatar className="h-6 w-6">
-                                                        <AvatarImage src={activeMetaConnection.account_picture_url} />
-                                                        <AvatarFallback>{activeMetaConnection.account_name?.[0]}</AvatarFallback>
-                                                    </Avatar>
-                                                )}
-                                                <span>@{activeMetaConnection?.account_name || 'Select account...'}</span>
-                                            </div>
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {metaConnections.map(conn => (
-                                            <SelectItem key={conn.id} value={conn.id.toString()}>
-                                                <div className="flex items-center gap-2">
-                                                    {conn.account_picture_url && (
+                                {isMetaSocial && (
+                                    <Select
+                                        value={activeMetaConnection?.id?.toString()}
+                                        onValueChange={(value) => handleSetActiveConnection(Number(value))}
+                                        disabled={isSaving}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue asChild>
+                                                 <div className="flex items-center gap-2">
+                                                    {activeMetaConnection?.account_picture_url && (
                                                         <Avatar className="h-6 w-6">
-                                                            <AvatarImage src={conn.account_picture_url} />
-                                                            <AvatarFallback>{conn.account_name?.[0]}</AvatarFallback>
+                                                            <AvatarImage src={activeMetaConnection.account_picture_url} />
+                                                            <AvatarFallback>{activeMetaConnection.account_name?.[0]}</AvatarFallback>
                                                         </Avatar>
                                                     )}
-                                                    <span>@{conn.account_name}</span>
+                                                    <span>@{activeMetaConnection?.account_name || 'Select account...'}</span>
                                                 </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {metaConnections.map(conn => (
+                                                <SelectItem key={conn.id} value={conn.id.toString()}>
+                                                    <div className="flex items-center gap-2">
+                                                        {conn.account_picture_url && (
+                                                            <Avatar className="h-6 w-6">
+                                                                <AvatarImage src={conn.account_picture_url} />
+                                                                <AvatarFallback>{conn.account_name?.[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                        )}
+                                                        <span>@{conn.account_name}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                  <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-destructive" disabled={isSaving}>
                                     Disconnect Meta Account
                                 </Button>
@@ -289,7 +293,7 @@ export function AccountsClientPage({
                         />
                     )}
                 </CardContent>
-                {account.status === 'available' && !isMetaAccount && (
+                {account.status === 'available' && !isMetaSocial && !isWhatsApp && (
                     <CardFooter>
                          <div className="flex items-center space-x-2">
                             <Checkbox
@@ -347,3 +351,5 @@ export function AccountsClientPage({
         </div>
     );
 }
+
+  

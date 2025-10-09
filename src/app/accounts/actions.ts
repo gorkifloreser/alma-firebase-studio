@@ -239,3 +239,5 @@ export async function setActiveConnection(connectionId: number): Promise<SocialC
     revalidatePath('/accounts');
     return getSocialConnections();
 }
+
+  
