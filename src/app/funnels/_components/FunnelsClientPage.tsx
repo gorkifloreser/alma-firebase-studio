@@ -456,9 +456,25 @@ export function FunnelsClientPage({
                                    Your Top 10 value strategies, personalized by the AI for your brand.
                                 </p>
                             </div>
-                            <Button onClick={handleGenerateValueStrategy} variant="outline" className="gap-2" disabled={isGeneratingValueStrategies}>
-                                {isGeneratingValueStrategies ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Value Strategy</>}
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" className="gap-2" disabled={isGeneratingValueStrategies}>
+                                        {isGeneratingValueStrategies ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Value Strategy</>}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Generation</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Generating a new Top 10 list will overwrite any existing adapted value strategies you have. Are you sure you want to continue?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleGenerateValueStrategy}>Generate</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </header>
                          {(adaptedValueStrategies && adaptedValueStrategies.length > 0) && (
                             <div className="space-y-6">

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -419,9 +420,25 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                     </p>
                 </div>
                 <div className="flex gap-2">
-                     <Button onClick={handleGenerateStrategy} variant="outline" className="gap-2" disabled={isGenerating}>
-                        {isGenerating ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Strategy</>}
-                    </Button>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="gap-2" disabled={isGenerating}>
+                                {isGenerating ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Strategy</>}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Generation</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Generating a new Top 10 list will overwrite any existing adapted hooks you have. Are you sure you want to continue?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleGenerateStrategy}>Generate</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <Button onClick={() => handleOpenDialog(null)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         New Custom Hook
