@@ -10,12 +10,13 @@ import { Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
 import { MultiContactEditor } from './MultiContactEditor';
-import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo } from '../actions';
+import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo, generateAudienceSuggestion } from '../actions';
 
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
+type GenerateAudienceAction = typeof generateAudienceSuggestion;
 
 type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info'>;
 
@@ -25,6 +26,7 @@ export interface BrandHeartFormProps {
     languageNames: Map<string, string>;
     updateBrandHeartAction: UpdateBrandHeartAction;
     translateTextAction: TranslateTextAction;
+    generateAudienceAction: GenerateAudienceAction;
 }
 
 const initialBrandHeartState: BrandHeartData = {
@@ -35,6 +37,7 @@ const initialBrandHeartState: BrandHeartData = {
     vision: { primary: '', secondary: '' },
     values: { primary: '', secondary: '' },
     tone_of_voice: { primary: '', secondary: '' },
+    audience: { primary: '', secondary: '' },
     visual_identity: { primary: '', secondary: '' },
     contact_info: [],
 };
@@ -46,19 +49,21 @@ export function BrandHeartForm({
     languageNames,
     updateBrandHeartAction,
     translateTextAction,
+    generateAudienceAction,
 }: BrandHeartFormProps) {
     
     const [brandHeart, setBrandHeart] = useState<BrandHeartData>(initialBrandHeart || initialBrandHeartState);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [isSaving, startSaving] = useTransition();
     const [isTranslating, setIsTranslating] = useState<string | null>(null);
+    const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
     
     const handleFileSelect = (file: File | null) => {
         setLogoFile(file);
     };
 
-    const handleFieldChange = (field: keyof BrandHeartFields | 'visual_identity', language: 'primary' | 'secondary', value: string) => {
+    const handleFieldChange = (field: keyof BrandHeartFields, language: 'primary' | 'secondary', value: string) => {
         setBrandHeart(prev => ({
             ...prev,
             [field]: {
@@ -117,7 +122,7 @@ export function BrandHeartForm({
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields | 'visual_identity') => {
+    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields) => {
         if (!profile?.secondary_language) return;
 
         const fieldData = (brandHeart as any)[fieldId];
@@ -153,6 +158,28 @@ export function BrandHeartForm({
         } finally {
             setIsTranslating(null);
         }
+    };
+
+    const handleGenerateAudience = async (fieldId: keyof BrandHeartFields) => {
+        startGenerating(async () => {
+            try {
+                const result = await generateAudienceAction();
+                setBrandHeart((prev: any) => ({
+                    ...prev,
+                    [fieldId]: { ...prev[fieldId], primary: result.profileText }
+                }));
+                toast({
+                    title: 'Audience Profile Generated!',
+                    description: `The AI has suggested a buyer persona.`,
+                });
+            } catch (error: any) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Generation Failed',
+                    description: error.message,
+                });
+            }
+        });
     };
 
     return (
@@ -219,6 +246,18 @@ export function BrandHeartForm({
                 isTranslating={isTranslating} 
                 languageNames={languageNames} 
                 handleAutoTranslate={handleAutoTranslate}
+            />
+             <BilingualFormField 
+                id="audience" 
+                label="Audience" 
+                value={brandHeart.audience}
+                onFieldChange={handleFieldChange}
+                profile={profile} 
+                isTranslating={isTranslating}
+                isGenerating={isGenerating}
+                languageNames={languageNames} 
+                handleAutoTranslate={handleAutoTranslate}
+                onGenerate={handleGenerateAudience}
             />
             <BilingualFormField 
                 id="visual_identity" 

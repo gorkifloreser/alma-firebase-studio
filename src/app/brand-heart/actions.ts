@@ -4,6 +4,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
+import { generateAudienceSuggestion as generateAudienceFlow, GenerateAudienceOutput } from '@/ai/flows/generate-audience-flow';
+
 
 export type ContactInfo = {
   id: string; // Add a UUID for React keys
@@ -30,6 +32,7 @@ export type BrandHeartData = {
   vision: { primary: string | null; secondary: string | null };
   values: { primary: string | null; secondary: string | null };
   tone_of_voice: { primary: string | null; secondary: string | null };
+  audience: { primary: string | null; secondary: string | null };
   visual_identity: { primary: string | null; secondary: string | null };
   contact_info: ContactInfo[];
 };
@@ -144,6 +147,10 @@ export async function updateBrandHeart(formData: FormData): Promise<{ message: s
       primary: (formData.get('tone_of_voice_primary') as string) || null,
       secondary: (formData.get('tone_of_voice_secondary') as string) || null,
     },
+    audience: {
+      primary: (formData.get('audience_primary') as string) || null,
+      secondary: (formData.get('audience_secondary') as string) || null,
+    },
     visual_identity: {
       primary: (formData.get('visual_identity_primary') as string) || null,
       secondary: (formData.get('visual_identity_secondary') as string) || null,
@@ -178,5 +185,19 @@ export async function translateText(input: TranslateInput): Promise<TranslateOut
     } catch (error) {
         console.error("Translation action failed:", error);
         throw new Error("Failed to translate the text. Please try again.");
+    }
+}
+
+/**
+ * Invokes the Genkit flow to generate an audience profile suggestion.
+ * @returns {Promise<GenerateAudienceOutput>} The suggested audience profile text.
+ */
+export async function generateAudienceSuggestion(): Promise<GenerateAudienceOutput> {
+    try {
+        const result = await generateAudienceFlow();
+        return result;
+    } catch (error: any) {
+        console.error("Audience suggestion action failed:", error);
+        throw new Error(`Failed to generate audience suggestion: ${error.message}`);
     }
 }

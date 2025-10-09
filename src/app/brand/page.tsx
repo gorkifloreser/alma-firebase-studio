@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
-import { getBrandHeart, updateBrandHeart, translateText } from '../brand-heart/actions';
+import { getBrandHeart, updateBrandHeart, translateText, generateAudienceSuggestion } from '../brand-heart/actions';
 import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../knowledge-base/actions';
 import { getUserChannels, updateUserChannels, updateChannelBestPractices, getSocialConnections, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
 import { languages } from '@/lib/languages';
@@ -35,6 +35,7 @@ export default async function BrandPage() {
             languageNames,
             updateBrandHeartAction: updateBrandHeart,
             translateTextAction: translateText,
+            generateAudienceAction: generateAudienceSuggestion,
         },
         knowledgeBase: {
             initialDocuments: documents,

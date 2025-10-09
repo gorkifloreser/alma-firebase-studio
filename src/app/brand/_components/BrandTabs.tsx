@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -24,7 +25,7 @@ export function BrandTabs({ data }: BrandTabsProps) {
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header>
-                <h1 className="text-3xl font-bold">Brand Heart</h1>
+                <h1 className="text-3xl font-bold">Brand Hub</h1>
                 <p className="text-muted-foreground">Define your brand's core identity, knowledge, and integrations.</p>
             </header>
             <Tabs defaultValue="brand-heart" className="w-full">
@@ -67,6 +68,7 @@ declare module "@/app/brand-heart/_components/BrandHeartForm" {
         languageNames: Map<string, string>;
         updateBrandHeartAction: any;
         translateTextAction: any;
+        generateAudienceAction: any;
     }
 }
 declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {

@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Bot } from 'lucide-react';
 import type { getProfile, getBrandHeart } from '../actions';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
@@ -20,8 +20,10 @@ export interface BilingualFormFieldProps {
     onFieldChange: (field: keyof BrandHeartFields, language: 'primary' | 'secondary', value: string) => void;
     profile: Profile | null;
     isTranslating: string | null;
+    isGenerating?: boolean;
     languageNames: Map<string, string>;
     handleAutoTranslate: (fieldId: keyof BrandHeartFields) => void;
+    onGenerate?: (fieldId: keyof BrandHeartFields) => void;
 }
 
 export function BilingualFormField({
@@ -31,27 +33,44 @@ export function BilingualFormField({
     onFieldChange,
     profile,
     isTranslating,
+    isGenerating,
     languageNames,
     handleAutoTranslate,
+    onGenerate,
 }: BilingualFormFieldProps) {
     
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <Label htmlFor={`${id}_primary`} className="text-lg font-semibold">{label}</Label>
-                {profile?.secondary_language && (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => handleAutoTranslate(id)}
-                        disabled={isTranslating === id}
-                    >
-                        <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
-                        {isTranslating === id ? 'Translating...' : 'Auto-translate'}
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {onGenerate && (
+                         <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => onGenerate(id)}
+                            disabled={isGenerating}
+                        >
+                            <Bot className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                            {isGenerating ? 'Generating...' : 'Generate with AI'}
+                        </Button>
+                    )}
+                    {profile?.secondary_language && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleAutoTranslate(id)}
+                            disabled={isTranslating === id}
+                        >
+                            <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
+                            {isTranslating === id ? 'Translating...' : 'Auto-translate'}
+                        </Button>
+                    )}
+                </div>
             </div>
             <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
