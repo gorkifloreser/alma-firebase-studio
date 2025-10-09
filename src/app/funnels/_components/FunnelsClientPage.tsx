@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2 } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows } from 'lucide-react';
 import { CreateFunnelDialog } from './CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -87,8 +87,21 @@ export function FunnelsClientPage({
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
     const [isDeleting, startDeleting] = useTransition();
+    const [strategyView, setStrategyView] = useState<'grid' | 'list'>('grid');
     const router = useRouter();
     const { toast } = useToast();
+
+     useEffect(() => {
+        const savedView = localStorage.getItem('strategy-view');
+        if (savedView === 'grid' || savedView === 'list') {
+            setStrategyView(savedView);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('strategy-view', strategyView);
+    }, [strategyView]);
+
 
     const { globalPresets, customPresets } = useMemo(() => {
         const global = funnelPresets.filter(p => p.user_id === null);
@@ -291,73 +304,83 @@ export function FunnelsClientPage({
                     </div>
                 </TabsContent>
                 <TabsContent value="my-strategies" className="mt-6">
+                    <div className="flex justify-end mb-4">
+                        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                            <Button variant={strategyView === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setStrategyView('grid')}><LayoutGrid className="h-4 w-4"/></Button>
+                            <Button variant={strategyView === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setStrategyView('list')}><Rows className="h-4 w-4"/></Button>
+                        </div>
+                    </div>
                     {funnels.length > 0 ? (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className={strategyView === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
                                 {funnels.map(funnel => (
                                     <Card key={funnel.id} className="flex flex-col group">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <CardTitle className="text-xl">{funnel.name}</CardTitle>
-                                                    <CardDescription>
-                                                        For: {funnel.offerings?.title.primary || 'N/A'}
-                                                    </CardDescription>
-                                                </div>
-                                                <GitBranch className="h-8 w-8 text-muted-foreground" />
+                                         <div className={strategyView === 'list' ? 'flex justify-between items-center' : ''}>
+                                            <div className="flex-1">
+                                                <CardHeader>
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <CardTitle className="text-xl">{funnel.name}</CardTitle>
+                                                            <CardDescription>
+                                                                For: {funnel.offerings?.title.primary || 'N/A'}
+                                                            </CardDescription>
+                                                        </div>
+                                                        <GitBranch className="h-8 w-8 text-muted-foreground" />
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="flex-grow">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
+                                                    </p>
+                                                </CardContent>
                                             </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter className="mt-auto pt-4 flex justify-between">
-                                            <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
-                                                <Wand2 className="mr-2 h-4 w-4" />
-                                                Media Orchestrator
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Strategy</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                                <Trash className="mr-2 h-4 w-4" />
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This will permanently delete the funnel and all its associated content. This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    onClick={() => handleFunnelDelete(funnel.id)}
-                                                                    disabled={isDeleting}
-                                                                    className="bg-destructive hover:bg-destructive/90"
-                                                                >
-                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </CardFooter>
+                                            <CardFooter className="mt-auto pt-4 flex justify-end gap-2">
+                                                <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
+                                                    <Wand2 className="mr-2 h-4 w-4" />
+                                                    Media Orchestrator
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Strategy</span>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                    <Trash className="mr-2 h-4 w-4" />
+                                                                    <span>Delete</span>
+                                                                </DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete the funnel and all its associated content. This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        onClick={() => handleFunnelDelete(funnel.id)}
+                                                                        disabled={isDeleting}
+                                                                        className="bg-destructive hover:bg-destructive/90"
+                                                                    >
+                                                                        {isDeleting ? 'Deleting...' : 'Delete'}
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </CardFooter>
+                                         </div>
                                     </Card>
                                 ))}
                             </div>
