@@ -1,3 +1,4 @@
+
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -68,7 +69,7 @@ function RegenerateDialog({ isOpen, onOpenChange, onConfirm, isRegenerating }: R
                 <DialogHeader>
                     <DialogTitle>Regenerate Content Idea</DialogTitle>
                     <DialogDescription>
-                        Give the AI some hints on what you'd like to change. For example: "make it more human" or "make the carousel 8 slides".
+                        Give the AI some hints on what you'd like to change. For example: "make it more human" or "the carousel should have 8 slides".
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
@@ -144,9 +145,16 @@ export function OrchestrateMediaPlanDialog({
     const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false);
     const [itemToRegenerate, setItemToRegenerate] = useState<PlanItemWithStatus | null>(null);
 
+    const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+
     const { toast } = useToast();
     
     const languageNames = new Map(languageList.map(l => [l.value, l.label]));
+
+    const hasUnsavedChanges = useMemo(() => {
+        // A plan is considered unsaved if it exists in the state but hasn't been given a persistent ID from the DB yet.
+        return !!currentPlan && !planIdToEdit;
+    }, [currentPlan, planIdToEdit]);
 
     useEffect(() => {
         if (isOpen) {
@@ -493,6 +501,14 @@ export function OrchestrateMediaPlanDialog({
                 : [...prev, channel]
         );
     }
+    
+    const handleAttemptClose = () => {
+        if (hasUnsavedChanges) {
+            setIsConfirmCloseOpen(true);
+        } else {
+            onOpenChange(false);
+        }
+    };
 
     const renderListView = () => {
         if (isDataLoading) {
@@ -755,44 +771,64 @@ export function OrchestrateMediaPlanDialog({
     );
     
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-7xl max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                     <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
-                     <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
-                </DialogHeader>
-                
-                {view === 'list' ? renderListView() : renderGenerateView()}
+        <>
+            <Dialog open={isOpen} onOpenChange={handleAttemptClose}>
+                <DialogContent className="sm:max-w-7xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
+                        <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
+                    </DialogHeader>
+                    
+                    {view === 'list' ? renderListView() : renderGenerateView()}
 
-                <DialogFooter className="mt-auto pt-4 border-t">
-                    {view === 'generate' && !currentPlan && (
-                        <Button className="w-full" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                            {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                        </Button>
-                    )}
-                    {view === 'generate' && currentPlan && (
-                        <>
-                            <Button onClick={handleSave} disabled={isSaving || isGenerating}>
-                                {isSaving ? 'Saving...' : 'Save Campaign'}
-                            </Button>
-                            <Button
-                                onClick={handleBulkApproveChannel}
-                                disabled={isSaving || isGenerating || !activeTab}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                <CheckCheck className="mr-2 h-4 w-4" />
-                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
-                            </Button>
-                        </>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-             <RegenerateDialog 
+                    <DialogFooter className="mt-auto pt-4 border-t">
+                        {view === 'generate' && !currentPlan && (
+                            <div className="w-full">
+                                <Button className="w-full" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                                    {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                                </Button>
+                            </div>
+                        )}
+                        {view === 'generate' && currentPlan && (
+                            <>
+                                <Button onClick={handleSave} disabled={isSaving || isGenerating}>
+                                    {isSaving ? 'Saving...' : 'Save Campaign'}
+                                </Button>
+                                <Button
+                                    onClick={handleBulkApproveChannel}
+                                    disabled={isSaving || isGenerating || !activeTab}
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                    <CheckCheck className="mr-2 h-4 w-4" />
+                                    {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
+                                </Button>
+                            </>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            
+            <AlertDialog open={isConfirmCloseOpen} onOpenChange={setIsConfirmCloseOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            If you close now, your generated campaign will be lost. Save your campaign first if you want to keep your changes.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onOpenChange(false)}>Close Anyway</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            
+            <RegenerateDialog 
                 isOpen={isRegenerateDialogOpen}
                 onOpenChange={setIsRegenerateDialogOpen}
                 onConfirm={handleRegenerateItem}
                 isRegenerating={!!itemToRegenerate && !!isRegenerating[itemToRegenerate.id]}
             />
-        </Dialog>
+        </>
     );
 }
