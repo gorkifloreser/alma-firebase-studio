@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnections, rewritePost } from '../actions';
 import type { PostAnalysis } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
@@ -391,7 +391,7 @@ export function EditContentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl flex flex-col" style={{ height: 'calc(90vh - 2rem)' }}>
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
           <DialogDescription>
@@ -579,7 +579,7 @@ export function EditContentDialog({
                  </div>
             </div>
 
-            <div className="md:col-span-2 space-y-4 sticky top-0 overflow-y-auto">
+            <div className="md:col-span-2 space-y-4 overflow-y-auto pr-4">
                 <Card className="w-full max-w-sm mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
