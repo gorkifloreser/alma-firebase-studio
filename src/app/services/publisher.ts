@@ -73,22 +73,38 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
 
 
 async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-  const { access_token: pageAccessToken, account_id: pageId } = connection;
-  console.log(`[FB Publish - ${post.id}] START`);
+    const { access_token: pageAccessToken, account_id: pageId } = connection;
+    console.log(`[FB Publish - ${post.id}] START`);
 
-  if (!pageId) throw new Error("Active Facebook connection is missing the Page ID.");
-  if (!post.image_url) throw new Error("Facebook posts with images require an image URL.");
-  
-  const url = `https://graph.facebook.com/v19.0/${pageId}/photos`;
-  const params = new URLSearchParams({ url: post.image_url, message: post.copy || '', access_token: pageAccessToken });
+    if (!pageId) throw new Error("Active Facebook connection is missing the Page ID.");
 
-  const response = await fetch(url, { method: 'POST', body: params });
-  const data = await response.json();
+    let url;
+    let params;
 
-  if (!response.ok || data.error) {
-    throw new Error(`Facebook post failed: ${JSON.stringify(data.error)}`);
-  }
-  return data;
+    if (post.image_url) {
+        // Publish as a photo
+        url = `https://graph.facebook.com/v19.0/${pageId}/photos`;
+        params = new URLSearchParams({
+            url: post.image_url,
+            message: post.copy || '',
+            access_token: pageAccessToken
+        });
+    } else {
+        // Publish as a text-only feed post
+        url = `https://graph.facebook.com/v19.0/${pageId}/feed`;
+        params = new URLSearchParams({
+            message: post.copy || '',
+            access_token: pageAccessToken
+        });
+    }
+
+    const response = await fetch(url, { method: 'POST', body: params });
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+        throw new Error(`Facebook post failed: ${JSON.stringify(data.error)}`);
+    }
+    return data;
 }
 
 async function publishToWhatsapp(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
