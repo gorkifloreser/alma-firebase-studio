@@ -91,7 +91,6 @@ const parseCarouselSlides = (slides: any): any[] | null => {
     return null;
 }
 
-// GEMINI_SAFE_START
 const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: string | null }) => {
     const Icon =
         provider.toLowerCase().includes('instagram') ? Instagram :
@@ -110,7 +109,6 @@ const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: stri
     
     return <Icon className="h-5 w-5" />;
 };
-// GEMINI_SAFE_END
 
 
 export function EditContentDialog({
@@ -229,25 +227,25 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
+        const payload: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
         
-        if (editableContent) updates.content_body = editableContent;
-        if (editableHashtags) updates.hashtags = editableHashtags;
-        if (editableSlides) updates.carousel_slides = editableSlides;
-        if (selectedChannelId) updates.user_channel_id = selectedChannelId;
-        if (editableFormat) updates.format = editableFormat;
+        if (editableContent) payload.content_body = editableContent;
+        if (editableHashtags) payload.hashtags = editableHashtags;
+        if (editableSlides) payload.carousel_slides = editableSlides;
+        if (selectedChannelId) payload.user_channel_id = selectedChannelId;
+        if (editableFormat) payload.format = editableFormat;
 
         if (editableScheduledAt) {
-            updates.scheduled_at = editableScheduledAt.toISOString();
-            updates.status = 'scheduled';
+            payload.scheduled_at = editableScheduledAt.toISOString();
+            payload.status = 'scheduled';
         } else {
-            updates.scheduled_at = null;
+            payload.scheduled_at = null;
             if (contentItem.status === 'scheduled') {
-                updates.status = 'approved';
+                payload.status = 'approved';
             }
         }
         
-        const updatedContent = await updateContent(contentItem.id, updates);
+        const updatedContent = await updateContent(contentItem.id, payload);
         onContentUpdated(updatedContent);
         onOpenChange(false);
         toast({ title: 'Success!', description: 'Your post has been updated.' });
@@ -401,58 +399,32 @@ export function EditContentDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 flex-1 min-h-0">
             <div className="md:col-span-3 space-y-4 overflow-y-auto pr-4">
-                 {/* 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Publishing to</Label>
-                        {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                                {activeConnections.map(conn => (
-                                    <Button
-                                        key={conn.id}
-                                        variant={selectedChannelId === conn.id ? 'default' : 'outline'}
-                                        size="icon"
-                                        className="h-12 w-12 transition-all duration-200"
-                                        onClick={() => setSelectedChannelId(conn.id)}
-                                    >
-                                        <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url}/>
-                                    </Button>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No active social account. Please connect one in Accounts.</p>
-                        )}
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="format-select">Format</Label>
-                        <Select value={editableFormat || undefined} onValueChange={setEditableFormat}>
-                            <SelectTrigger id="format-select" className="h-12">
-                                <SelectValue placeholder="Select a format..." />
+                 <div className="space-y-2">
+                    <Label>Publishing to</Label>
+                    {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
+                        <Select
+                            value={selectedChannelId?.toString()}
+                            onValueChange={(val) => setSelectedChannelId(Number(val))}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a channel..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {formatOptions.map(option => {
-                                    const Icon = option.icon;
-                                    const isVideo = contentItem.video_url;
-                                    const isImage = contentItem.image_url || contentItem.carousel_slides;
-                                    const isDisabled = (option.value === 'Reel' && !isVideo) || (option.value === 'Story' && !isVideo && !isImage);
-
-                                    return (
-                                        <SelectItem key={option.value} value={option.value} disabled={isDisabled}>
-                                            <div className="flex items-center gap-3">
-                                                <Icon className="h-5 w-5 text-muted-foreground" />
-                                                <div>
-                                                    <p className="font-semibold">{option.label}</p>
-                                                    <p className="text-xs text-muted-foreground">{option.description}</p>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                    );
-                                })}
+                                {activeConnections.map(conn => (
+                                    <SelectItem key={conn.id} value={conn.id.toString()}>
+                                        <div className="flex items-center gap-2">
+                                            <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url}/>
+                                            <span>{conn.account_name}</span>
+                                            <span className="text-muted-foreground capitalize">({conn.provider})</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
-                    </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No active social account. Please connect one in Accounts.</p>
+                    )}
                 </div>
-                */}
 
                  <div className="space-y-2">
                     <Label htmlFor="post-copy">Post Copy</Label>

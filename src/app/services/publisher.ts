@@ -105,7 +105,6 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
 }
 
 
-// GEMINI_SAFE_START
 /**
  * Publishes a post to a Facebook Page.
  * @param post - The media plan item to publish.
@@ -148,7 +147,6 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
   console.log(`[FB Publish - ${post.id}] Success: Media published.`);
   return data;
 }
-// GEMINI_SAFE_END
 
 
 /**
@@ -198,43 +196,38 @@ async function publishToWhatsapp(post: MediaPlanItem, connection: SocialConnecti
  */
 export async function publishPost(postId: string, supabase: SupabaseClient): Promise<void> {
     console.log(`[publishPost] Initiating publish for post ID: ${postId}`);
+    
+    // Fetch the post with its related user_channel_id first.
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
-        .select(`
-            id,
-            copy,
-            image_url,
-            user_id,
-            user_channel_settings ( channel_name )
-        `)
+        .select(`*, user_channel_settings!inner(id, channel_name)`)
         .eq('id', postId)
         .single();
     
     if (postError || !post) {
-        throw new Error(`Post with ID ${postId} not found. Error: ${postError?.message}`);
+        throw new Error(`Post with ID ${postId} not found or is missing channel link. Error: ${postError?.message}`);
     }
-    console.log(`[publishPost] Found post:`, post);
 
+    if (!post.user_channel_settings) {
+         throw new Error(`Post with ID ${postId} is missing channel information.`);
+    }
+
+    console.log(`[publishPost] Found post for channel: ${post.user_channel_settings.channel_name}`, post);
+
+    const channel = post.user_channel_settings.channel_name.toLowerCase();
 
     const { data: connection, error: connectionError } = await supabase
         .from('social_connections')
         .select('access_token, account_id, instagram_account_id')
         .eq('user_id', post.user_id)
         .eq('is_active', true)
+        .eq('provider', channel === 'instagram' || channel === 'facebook' ? 'meta' : channel) // Map IG/FB to 'meta' provider
         .single();
 
     if (connectionError || !connection) {
-        throw new Error(`No active Meta connection found for user ${post.user_id}.`);
+        throw new Error(`No active connection found for user ${post.user_id} and channel ${channel}.`);
     }
     console.log(`[publishPost] Found active connection for user.`);
-
-
-    const channel = post.user_channel_settings?.channel_name?.toLowerCase();
-    if (!channel) {
-        throw new Error(`Post ${postId} is missing channel information.`);
-    }
-    console.log(`[publishPost] Determined channel is: ${channel}`);
-
 
     switch(channel) {
         case 'instagram':
