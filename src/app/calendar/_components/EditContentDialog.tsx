@@ -32,7 +32,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X, Film, PlusSquare, Image as ImageIcon } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -61,13 +61,18 @@ type Profile = {
     secondary_language: string | null;
 } | null;
 
-// Generate time options for the select dropdown
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
   const hours = Math.floor(i / 2);
   const minutes = (i % 2) * 30;
   const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') }; // Format to AM/PM
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') };
 });
+
+const formatOptions = [
+    { value: 'Post', label: 'Post', icon: ImageIcon, description: 'Standard publication' },
+    { value: 'Reel', label: 'Reel', icon: Film, description: 'Automatic posting' },
+    { value: 'Story', label: 'Story', icon: PlusSquare, description: 'Automatic posting' },
+]
 
 const parseCarouselSlides = (slides: any): any[] | null => {
     if (!slides) return null;
@@ -102,10 +107,9 @@ export function EditContentDialog({
   onContentDeleted,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
-  const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<'instagram' | 'facebook' | null>(null);
+  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
 
-  // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
   const getInitialContent = () => {
     if (!contentItem) return { primary: '', secondary: '' };
     if (contentItem.content_body && (contentItem.content_body.primary || contentItem.content_body.secondary)) {
@@ -121,6 +125,7 @@ export function EditContentDialog({
   const [editableSlides, setEditableSlides] = useState(() => parseCarouselSlides(contentItem?.carousel_slides));
   const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
   const [editableHashtags, setEditableHashtags] = useState(contentItem?.hashtags || '');
+  const [editableFormat, setEditableFormat] = useState<string | null>(contentItem?.format || 'Post');
   const [isSaving, startSaving] = useTransition();
   const [isDeleting, startDeleting] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
@@ -139,18 +144,23 @@ export function EditContentDialog({
         if(isOpen) {
             setIsLoading(true);
             try {
-                const [profileData, connectionData] = await Promise.all([
+                const [profileData, connectionsData] = await Promise.all([
                     getProfile(),
                     getActiveSocialConnection()
                 ]);
                 setProfile(profileData);
-                setActiveConnection(connectionData);
+                setSocialConnections(connectionsData);
 
-                // Set initial channel selection
-                if (connectionData?.instagram_account_id) {
-                    setSelectedChannel('instagram'); // Default to Instagram if available
-                } else if (connectionData) {
-                    setSelectedChannel('facebook');
+                // Set initial channel selection based on the content item or the first active connection
+                if(contentItem?.user_channel_id) {
+                    setSelectedChannelId(contentItem.user_channel_id);
+                } else if (connectionsData.length > 0) {
+                    const activeConnection = connectionsData.find(c => c.is_active);
+                    if (activeConnection) {
+                        setSelectedChannelId(activeConnection.id);
+                    } else {
+                        setSelectedChannelId(connectionsData[0].id);
+                    }
                 }
 
             } catch (error) {
@@ -161,7 +171,7 @@ export function EditContentDialog({
         }
     }
     fetchData();
-  }, [isOpen]);
+  }, [isOpen, contentItem]);
 
   useEffect(() => {
     if (contentItem) {
@@ -169,8 +179,9 @@ export function EditContentDialog({
         setEditableHashtags(contentItem.hashtags || '');
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
-        setAnalysisResult(null); // Reset analysis on item change
-        setSuggestedRewrite(null); // Reset rewrite suggestion
+        setEditableFormat(contentItem.format || 'Post');
+        setAnalysisResult(null);
+        setSuggestedRewrite(null);
     }
   }, [contentItem]);
   
@@ -178,8 +189,8 @@ export function EditContentDialog({
 
   const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
     setEditableContent(prev => ({
-        primary: null, // default
-        secondary: null, // default
+        primary: null,
+        secondary: null,
         ...prev,
         [language]: value
     }));
@@ -212,7 +223,7 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id'>> = {};
+        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
         
         if (editableContent) {
             updates.content_body = editableContent;
@@ -220,8 +231,8 @@ export function EditContentDialog({
         }
         if (editableHashtags) updates.hashtags = editableHashtags;
         if (editableSlides) updates.carousel_slides = editableSlides;
-
-        if(activeConnection) updates.user_channel_id = activeConnection.id;
+        if (selectedChannelId) updates.user_channel_id = selectedChannelId;
+        if (editableFormat) updates.format = editableFormat;
 
 
         if (editableScheduledAt) {
@@ -370,7 +381,8 @@ export function EditContentDialog({
 
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
-
+  
+  const activeConnection = socialConnections.find(sc => sc.id === selectedChannelId);
   const postUser = activeConnection?.account_name || profile?.full_name || 'Your Brand';
   const postUserHandle = activeConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
   const postUserAvatar = activeConnection?.account_picture_url || profile?.avatar_url;
@@ -387,31 +399,55 @@ export function EditContentDialog({
         </DialogHeader>
         <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto pr-6">
             <div className="md:col-span-3 space-y-4">
-                 <div className="space-y-2">
-                    <Label>Channel</Label>
-                    {isLoading ? <Skeleton className="h-12 w-28" /> : activeConnection ? (
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {activeConnection.instagram_account_id && (
-                                <Button
-                                    variant={selectedChannel === 'instagram' ? 'default' : 'outline'}
-                                    className="gap-2 h-12"
-                                    onClick={() => setSelectedChannel('instagram')}
-                                >
-                                    <Instagram /> Instagram
-                                </Button>
-                            )}
-                            <Button
-                                variant={selectedChannel === 'facebook' ? 'default' : 'outline'}
-                                className="gap-2 h-12"
-                                onClick={() => setSelectedChannel('facebook')}
-                            >
-                                <Facebook /> Facebook
-                            </Button>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">No active social media account found. Please connect one in Accounts.</p>
-                    )}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Publishing to</Label>
+                        {isLoading ? <Skeleton className="h-10 w-full" /> : socialConnections.length > 0 ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {socialConnections.map(conn => (
+                                    <Button
+                                        key={conn.id}
+                                        variant={selectedChannelId === conn.id ? 'default' : 'outline'}
+                                        className="gap-2 h-12"
+                                        onClick={() => setSelectedChannelId(conn.id)}
+                                    >
+                                        <Avatar className="h-6 w-6">
+                                            <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url} />
+                                        </Avatar>
+                                        {conn.account_name}
+                                    </Button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No social accounts found. Please connect one in Accounts.</p>
+                        )}
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="format-select">Format</Label>
+                        <Select value={editableFormat || undefined} onValueChange={setEditableFormat}>
+                            <SelectTrigger id="format-select" className="h-12">
+                                <SelectValue placeholder="Select a format..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {formatOptions.map(option => {
+                                    const Icon = option.icon;
+                                    return (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            <div className="flex items-center gap-3">
+                                                <Icon className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="font-semibold">{option.label}</p>
+                                                    <p className="text-xs text-muted-foreground">{option.description}</p>
+                                                </div>
+                                            </div>
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
+
                 {secondaryLangName ? (
                     <Tabs defaultValue="primary" className="w-full">
                         <TabsList>
@@ -480,10 +516,10 @@ export function EditContentDialog({
                         ))}
                     </div>
                  )}
-                <div className="pt-4">
+                 <div className="pt-4">
                     <Accordion type="single" collapsible>
                         <AccordionItem value="item-1" className="border-b-0">
-                            <AccordionTrigger
+                           <AccordionTrigger
                                 className={cn(buttonVariants({ variant: "outline" }), "w-full hover:no-underline")}
                                 onClick={!analysisResult ? handleAnalyzePost : undefined}
                                 disabled={isAnalyzing}
@@ -663,5 +699,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
-    
