@@ -52,6 +52,44 @@ import { mediaFormatConfig } from '@/lib/media-formats';
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 
 
+interface RegenerateDialogProps {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: (hint: string) => void;
+    isRegenerating: boolean;
+}
+
+function RegenerateDialog({ isOpen, onOpenChange, onConfirm, isRegenerating }: RegenerateDialogProps) {
+    const [hint, setHint] = useState('');
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Regenerate Content Idea</DialogTitle>
+                    <DialogDescription>
+                        Give the AI some hints on what you'd like to change. For example: "make it more human" or "make the carousel 8 slides".
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        value={hint}
+                        onChange={(e) => setHint(e.target.value)}
+                        placeholder="Your hints here..."
+                        className="h-24"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={() => onConfirm(hint)} disabled={isRegenerating}>
+                        {isRegenerating ? 'Regenerating...' : <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
@@ -103,6 +141,9 @@ export function OrchestrateMediaPlanDialog({
     const [selectedLanguage, setSelectedLanguage] = useState<string>('');
     const [planStatusFilter, setPlanStatusFilter] = useState<'active' | 'archived'>('active');
     
+    const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false);
+    const [itemToRegenerate, setItemToRegenerate] = useState<PlanItemWithStatus | null>(null);
+
     const { toast } = useToast();
     
     const languageNames = new Map(languageList.map(l => [l.value, l.label]));
@@ -330,21 +371,26 @@ export function OrchestrateMediaPlanDialog({
         });
     };
     
-    const handleRegenerateItem = async (itemToRegen: PlanItemWithStatus) => {
-        setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
+    const handleRegenerateItem = async (userHint: string) => {
+        if (!itemToRegenerate) return;
+        
+        setIsRegenerating(prev => ({ ...prev, [itemToRegenerate.id]: true }));
         try {
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
-                channel: itemToRegen.user_channel_settings!.channel_name, 
-                stageName: itemToRegen.stage_name,
+                channel: itemToRegenerate.user_channel_settings!.channel_name, 
+                stageName: itemToRegenerate.stage_name,
+                userHint,
             });
             
-            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));
+            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegenerate.id ? { ...item, ...newItem, status: 'draft' } : item));
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
         } finally {
-            setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: false }));
+            setIsRegenerating(prev => ({ ...prev, [itemToRegenerate.id]: false }));
+            setIsRegenerateDialogOpen(false);
+            setItemToRegenerate(null);
         }
     };
 
@@ -652,7 +698,7 @@ export function OrchestrateMediaPlanDialog({
                                     <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
                                         const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
                                         const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
-                                        const StatusIcon = item.status === 'approved' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                        const StatusIcon = item.status === 'approved' ? CheckCircle2 : item.status === 'scheduled' ? Calendar : CircleDashed;
                                         const statusColor = item.status === 'approved' ? 'text-green-500' : item.status === 'scheduled' ? 'text-blue-500' : 'text-muted-foreground';
 
                                         return (
@@ -662,7 +708,9 @@ export function OrchestrateMediaPlanDialog({
                                                   <StatusIcon className={cn("h-4 w-4", statusColor)} />
                                                   <span className={statusColor}>{item.status}</span>
                                                 </div>
-                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setItemToRegenerate(item); setIsRegenerateDialogOpen(true); }} disabled={isRegenerating[item.id]}>
+                                                    {isRegenerating[item.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                </Button>
                                                 <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                             <div className="space-y-4">
@@ -735,6 +783,12 @@ export function OrchestrateMediaPlanDialog({
                     )}
                 </DialogFooter>
             </DialogContent>
+             <RegenerateDialog 
+                isOpen={isRegenerateDialogOpen}
+                onOpenChange={setIsRegenerateDialogOpen}
+                onConfirm={handleRegenerateItem}
+                isRegenerating={!!itemToRegenerate && !!isRegenerating[itemToRegenerate.id]}
+            />
         </Dialog>
     );
 }

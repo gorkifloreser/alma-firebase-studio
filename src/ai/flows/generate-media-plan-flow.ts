@@ -54,6 +54,7 @@ const RegeneratePlanItemInputSchema = z.object({
     stageName: z.string().optional(),
     objective: z.string().optional(),
     concept: z.string().optional(),
+    userHint: z.string().optional(), // Added user hint
 });
 export type RegeneratePlanItemInput = z.infer<typeof RegeneratePlanItemInputSchema>;
 
@@ -159,10 +160,11 @@ const regeneratePlanItemPrompt = ai.definePrompt({
             stageName: z.string().optional(),
             validFormats: z.array(z.string()),
             bestPractices: z.string().optional(),
+            userHint: z.string().optional(), // Added user hint
         })
     },
     output: { schema: PlanItemSchema },
-    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided brand identity and a specific strategic stage.
+    prompt: `You are an expert direct response copywriter and AI prompt engineer. Your task is to regenerate ONE actionable, ready-to-use content package for a specific marketing channel, based on a provided brand identity, a specific strategic stage, and a user's hint for changes.
 
 **Brand Identity (The "Who"):**
 - Brand Name: {{brandHeart.brand_name}}
@@ -177,20 +179,23 @@ const regeneratePlanItemPrompt = ai.definePrompt({
 **CHANNEL-SPECIFIC INSTRUCTIONS for '{{channel}}':**
 "{{bestPractices}}"
 
+**USER HINT FOR REGENERATION (Crucial):**
+"{{#if userHint}}{{userHint}}{{else}}No specific hint provided. Regenerate the item to be fresh and different.{{/if}}"
+
 **Your Specific Task:**
 
-Generate ONE NEW, DIFFERENT content package for the **'{{channel}}' channel**, for the **'{{stageName}}'** stage of the campaign.
+Based on all the context above, and prioritizing the user's hint, generate ONE NEW, DIFFERENT content package for the **'{{channel}}' channel**, for the **'{{stageName}}'** stage of the campaign.
 
 This content package MUST contain:
 1.  **offering_id**: '{{offering.id}}'.
 2.  **user_channel_settings**: { "channel_name": '{{channel}}' }.
 3.  **format**: Suggest a NEW, DIFFERENT visual format from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice.
+4.  **copy**: Write NEW, DIFFERENT, compelling ad copy that embodies the brand's tone of voice and follows the user's hint.
 5.  **hashtags**: A NEW, DIFFERENT space-separated list of 5-10 relevant hashtags.
-6.  **creative_prompt**: A NEW, DIFFERENT, detailed prompt for an AI image/video generator.
+6.  **creative_prompt**: A NEW, DIFFERENT, detailed prompt for an AI image/video generator that aligns with the user's hint.
 7.  **stage_name**: '{{stageName}}'.
-8.  **objective**: **Generate a NEW, specific goal for this content piece.**
-9.  **concept**: **Generate a NEW, specific concept for this content piece.**
+8.  **objective**: **Generate a NEW, specific goal for this content piece**, guided by the user's hint.
+9.  **concept**: **Generate a NEW, specific concept for this content piece**, guided by the user's hint.
 10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
 
 Generate this single content package in the **{{primaryLanguage}}** language. Return the result as a single JSON object.`,
@@ -306,7 +311,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
         inputSchema: RegeneratePlanItemInputSchema,
         outputSchema: PlanItemSchema,
     },
-    async ({ funnelId, channel, stageName }) => {
+    async ({ funnelId, channel, stageName, userHint }) => {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated.');
@@ -345,6 +350,7 @@ const regeneratePlanItemFlow = ai.defineFlow(
             stageName,
             validFormats,
             bestPractices,
+            userHint, // Pass the hint to the prompt
         });
 
         if (!output) {
