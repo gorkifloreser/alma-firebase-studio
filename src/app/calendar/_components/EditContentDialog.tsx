@@ -1,5 +1,4 @@
 
-      
 'use client';
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -24,10 +23,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnection, rewritePost } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnections, rewritePost } from '../actions';
 import type { PostAnalysis } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,7 +105,8 @@ export function EditContentDialog({
   onContentDeleted,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
-  const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
+  const [activeConnections, setActiveConnections] = useState<SocialConnection[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
 
   const getInitialContent = () => {
     if (!contentItem) return { primary: '', secondary: '' };
@@ -142,12 +142,17 @@ export function EditContentDialog({
         if(isOpen) {
             setIsLoading(true);
             try {
-                const [profileData, connectionData] = await Promise.all([
+                const [profileData, connectionsData] = await Promise.all([
                     getProfile(),
-                    getActiveSocialConnection()
+                    getActiveSocialConnections()
                 ]);
                 setProfile(profileData);
-                setActiveConnection(connectionData);
+                setActiveConnections(connectionsData);
+                if (contentItem?.user_channel_id) {
+                    setSelectedChannelId(contentItem.user_channel_id);
+                } else if (connectionsData.length > 0) {
+                    setSelectedChannelId(connectionsData[0].id);
+                }
             } catch (error) {
                 console.error("Failed to fetch initial data for dialog", error);
             } finally {
@@ -216,7 +221,7 @@ export function EditContentDialog({
         }
         if (editableHashtags) updates.hashtags = editableHashtags;
         if (editableSlides) updates.carousel_slides = editableSlides;
-        if (activeConnection) updates.user_channel_id = activeConnection.id;
+        if (selectedChannelId) updates.user_channel_id = selectedChannelId;
         if (editableFormat) updates.format = editableFormat;
 
 
@@ -367,9 +372,10 @@ export function EditContentDialog({
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
   
-  const postUser = activeConnection?.account_name || profile?.full_name || 'Your Brand';
-  const postUserHandle = activeConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
-  const postUserAvatar = activeConnection?.account_picture_url || profile?.avatar_url;
+  const activeMetaConnection = activeConnections.find(c => c.provider === 'meta');
+  const postUser = activeMetaConnection?.account_name || profile?.full_name || 'Your Brand';
+  const postUserHandle = activeMetaConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
+  const postUserAvatar = activeMetaConnection?.account_picture_url || profile?.avatar_url;
 
 
   return (
@@ -386,14 +392,18 @@ export function EditContentDialog({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Publishing to</Label>
-                        {isLoading ? <Skeleton className="h-12 w-full" /> : activeConnection ? (
+                        {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
                             <div className="flex items-center gap-2 flex-wrap">
-                                 <Button variant='default' className="gap-2 h-12">
-                                     <Avatar className="h-6 w-6">
-                                        <ChannelIcon provider={activeConnection.provider} imageUrl={activeConnection.account_picture_url} />
-                                     </Avatar>
-                                     {activeConnection.account_name}
-                                 </Button>
+                                {activeMetaConnection?.instagram_account_id && (
+                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} className="gap-2 h-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
+                                        <Instagram className="h-5 w-5" /> Instagram
+                                    </Button>
+                                )}
+                                {activeMetaConnection && (
+                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} className="gap-2 h-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
+                                        <Facebook className="h-5 w-5" /> Facebook
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">No active social account. Please connect one in Accounts.</p>
@@ -472,7 +482,7 @@ export function EditContentDialog({
                     </div>
                  )}
                  <div className="pt-4">
-                    <Accordion type="single" collapsible>
+                     <Accordion type="single" collapsible>
                         <AccordionItem value="item-1" className="border-b-0">
                            <AccordionTrigger
                                 className={cn(buttonVariants({ variant: "outline" }), "w-full hover:no-underline")}
@@ -658,5 +668,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
-    

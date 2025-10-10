@@ -41,22 +41,20 @@ export type SocialConnection = {
 };
 
 
-export async function getActiveSocialConnection(): Promise<SocialConnection | null> {
+export async function getActiveSocialConnections(): Promise<SocialConnection[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) return [];
 
     const { data, error } = await supabase
         .from('social_connections')
         .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active, instagram_account_id')
         .eq('user_id', user.id)
-        .eq('is_active', true)
-        .eq('provider', 'meta') // Assuming we are focusing on Meta for now
-        .maybeSingle();
+        .eq('is_active', true);
 
     if (error) {
-        console.error('Error fetching active social connection:', error.message);
-        return null;
+        console.error('Error fetching active social connections:', error.message);
+        return [];
     }
 
     return data;
@@ -166,7 +164,7 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
