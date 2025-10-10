@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -31,7 +30,7 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -364,7 +363,7 @@ export function EditContentDialog({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="channel-select">Channel</Label>
-                    <Select value={contentItem.user_channel_settings?.channel_name} disabled>
+                    <Select value={contentItem.user_channel_settings?.channel_name || ''} disabled>
                         <SelectTrigger id="channel-select"><SelectValue placeholder="N/A" /></SelectTrigger>
                         <SelectContent>
                             {contentItem.user_channel_settings?.channel_name && (
