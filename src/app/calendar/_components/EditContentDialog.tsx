@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
@@ -311,7 +311,7 @@ export function EditContentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
           <DialogDescription>
@@ -319,49 +319,9 @@ export function EditContentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="flex items-center justify-center">
-                <Card className="w-full max-w-md mx-auto">
-                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
-                            <Avatar>
-                                <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
-                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        )}
-                        <div className="grid gap-0.5">
-                            {isLoadingProfile ? (
-                                <>
-                                    <Skeleton className="h-4 w-24" />
-                                    <Skeleton className="h-3 w-16 mt-1" />
-                                </>
-                            ) : (
-                                <>
-                                    <span className="font-semibold">{postUser}</span>
-                                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
-                                </>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="relative aspect-square w-full overflow-hidden bg-secondary">
-                        {renderVisualContent()}
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col items-start gap-2 pt-2">
-                        <div className="flex justify-between w-full">
-                            <div className="flex gap-4">
-                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
-                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
-                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
-                            </div>
-                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                    </CardFooter>
-                </Card>
-            </div>
-            <div className="space-y-4">
-                <div className="space-y-2">
+         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4">
+            <div className="md:col-span-3 space-y-4">
+                 <div className="space-y-2">
                     <Label htmlFor="channel-select">Channel</Label>
                     <Select value={contentItem.user_channel_settings?.channel_name || 'none'} disabled>
                         <SelectTrigger id="channel-select"><SelectValue placeholder="N/A" /></SelectTrigger>
@@ -378,48 +338,34 @@ export function EditContentDialog({
                 </div>
                 {secondaryLangName ? (
                     <Tabs defaultValue="primary" className="w-full">
-                        <div className="flex justify-center">
-                            <TabsList>
-                                <TabsTrigger value="primary">{primaryLangName}</TabsTrigger>
-                                <TabsTrigger value="secondary">{secondaryLangName}</TabsTrigger>
-                            </TabsList>
-                        </div>
+                        <TabsList>
+                            <TabsTrigger value="primary">{primaryLangName}</TabsTrigger>
+                            <TabsTrigger value="secondary">{secondaryLangName}</TabsTrigger>
+                        </TabsList>
                         <TabsContent value="primary" className="mt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="primary-copy">Primary Copy</Label>
-                                <Textarea 
-                                    id="primary-copy"
-                                    value={editableContent?.primary || ''}
-                                    onChange={(e) => handleContentChange('primary', e.target.value)}
-                                    className="w-full text-sm h-24"
-                                    placeholder="Your post copy will appear here..."
-                                />
-                            </div>
+                            <Textarea 
+                                value={editableContent?.primary || ''}
+                                onChange={(e) => handleContentChange('primary', e.target.value)}
+                                className="w-full text-sm min-h-[150px]"
+                                placeholder="Your post copy will appear here..."
+                            />
                         </TabsContent>
                         <TabsContent value="secondary" className="mt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="secondary-copy">Secondary Copy</Label>
-                                <Textarea 
-                                    id="secondary-copy"
-                                    value={editableContent?.secondary || ''}
-                                    onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                    className="w-full text-sm h-24"
-                                    placeholder={`Your ${secondaryLangName} post copy...`}
-                                />
-                            </div>
+                            <Textarea
+                                value={editableContent?.secondary || ''}
+                                onChange={(e) => handleContentChange('secondary', e.target.value)}
+                                className="w-full text-sm min-h-[150px]"
+                                placeholder={`Your ${secondaryLangName} post copy...`}
+                            />
                         </TabsContent>
                     </Tabs>
                 ) : (
-                    <div className="space-y-2">
-                        <Label htmlFor="primary-copy">Primary Copy ({primaryLangName})</Label>
-                        <Textarea 
-                            id="primary-copy"
-                            value={editableContent?.primary || ''}
-                            onChange={(e) => handleContentChange('primary', e.target.value)}
-                            className="w-full text-sm h-24"
-                            placeholder="Your post copy will appear here..."
-                        />
-                    </div>
+                    <Textarea 
+                        value={editableContent?.primary || ''}
+                        onChange={(e) => handleContentChange('primary', e.target.value)}
+                        className="w-full text-sm min-h-[150px]"
+                        placeholder="Your post copy will appear here..."
+                    />
                 )}
                  {editableSlides && editableSlides.length > 0 && (
                     <div className="w-full mt-2 space-y-4 pt-4 border-t">
@@ -448,46 +394,45 @@ export function EditContentDialog({
                         ))}
                     </div>
                  )}
-                <Separator className="my-4" />
-                <div className="space-y-2">
-                    <Label>Schedule Publication</Label>
-                    <div className="flex items-center gap-2">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn("w-full justify-start text-left font-normal", !editableScheduledAt && "text-muted-foreground")}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {editableScheduledAt ? format(editableScheduledAt, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={editableScheduledAt || undefined}
-                                    onSelect={(d) => handleDateTimeChange(d, editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : '09:00')}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                        <Select
-                            value={editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : ''}
-                            onValueChange={(time) => handleDateTimeChange(editableScheduledAt || new Date(), time)}
-                        >
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {timeOptions.map(option => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
+            </div>
+
+            <div className="md:col-span-2 space-y-4">
+                <Card className="w-full max-w-sm mx-auto">
+                    <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
+                            <Avatar>
+                                <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
+                                <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        )}
+                        <div className="grid gap-0.5">
+                            {isLoadingProfile ? (
+                                <>
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-16 mt-1" />
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-semibold">{postUser}</span>
+                                    <span className="text-xs text-muted-foreground">@{postUserHandle}</span>
+                                </>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="relative aspect-square w-full overflow-hidden bg-secondary">
+                        {renderVisualContent()}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between w-full pt-2">
+                         <div className="flex gap-4">
+                                <Heart className="h-6 w-6 cursor-pointer hover:text-red-500" />
+                                <MessageCircle className="h-6 w-6 cursor-pointer hover:text-primary" />
+                                <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
+                            </div>
+                            <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
+                    </CardFooter>
+                </Card>
 
                  <div className="space-y-4 pt-4">
                     <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
@@ -496,7 +441,7 @@ export function EditContentDialog({
                     </Button>
                     {isAnalyzing && <Skeleton className="h-24 w-full" />}
                     {analysisResult && (
-                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 max-h-60 overflow-y-auto">
                              <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-300">
                                     <Sparkles className="h-5 w-5" />
@@ -536,12 +481,48 @@ export function EditContentDialog({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-          <div className="flex gap-2">
-             <Button variant="secondary" onClick={handlePublishNow} disabled={isPublishing || isSaving}>
-                 {isPublishing ? 'Publishing...' : <SendHorizonal className="mr-2 h-4 w-4" />} Publish Now
-             </Button>
+          <div className="flex gap-2 items-center">
+             <div className="flex items-center gap-2">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn("w-[150px] justify-start text-left font-normal", !editableScheduledAt && "text-muted-foreground")}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {editableScheduledAt ? format(editableScheduledAt, "MMM d") : <span>Date</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={editableScheduledAt || undefined}
+                            onSelect={(d) => handleDateTimeChange(d, editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : '09:00')}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
+                 <Select
+                    value={editableScheduledAt ? format(editableScheduledAt, 'HH:mm') : ''}
+                    onValueChange={(time) => handleDateTimeChange(editableScheduledAt || new Date(), time)}
+                >
+                    <SelectTrigger className="w-[110px]">
+                        <SelectValue placeholder="Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {timeOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
              <Button onClick={handleSave} disabled={isSaving || isPublishing}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'Saving...' : 'Save & Schedule'}
+             </Button>
+             <Button variant="secondary" onClick={handlePublishNow} disabled={isPublishing || isSaving}>
+                 {isPublishing ? 'Publishing...' : <SendHorizonal className="mr-2 h-4 w-4" />}
              </Button>
           </div>
         </DialogFooter>
@@ -549,5 +530,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
-    
