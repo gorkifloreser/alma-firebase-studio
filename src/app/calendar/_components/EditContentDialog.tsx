@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,17 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -143,8 +153,8 @@ export function EditContentDialog({
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setAnalysisResult(null); // Reset analysis on item change
         // Set the initially selected channel based on the content item
-        const initialChannel = socialConnections.find(sc => sc.provider === contentItem.user_channel_settings?.channel_name);
-        setSelectedChannelId(initialChannel?.id || socialConnections[0]?.id || null);
+        const initialChannel = socialConnections.find(sc => sc.id === contentItem.user_channel_id);
+        setSelectedChannelId(initialChannel?.id || socialConnections.find(sc => sc.is_active)?.id || socialConnections[0]?.id || null);
     }
   }, [contentItem, socialConnections]);
   
@@ -551,4 +561,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
