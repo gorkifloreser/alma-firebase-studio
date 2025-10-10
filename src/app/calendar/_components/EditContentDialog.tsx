@@ -10,9 +10,20 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion, getActiveSocialConnection } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -30,17 +41,6 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -98,10 +98,10 @@ export function EditContentDialog({
   contentItem,
   onContentUpdated,
   onContentDeleted,
-  socialConnections,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
-  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
+  const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<'instagram' | 'facebook' | null>(null);
 
   // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
   const getInitialContent = () => {
@@ -122,7 +122,7 @@ export function EditContentDialog({
   const [isDeleting, startDeleting] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
   const [isAnalyzing, startAnalyzing] = useTransition();
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [analysisResult, setAnalysisResult] = useState<{ suggestions: PostSuggestion[], overall_feedback: string } | null>(null);
 
   const { toast } = useToast();
@@ -130,20 +130,32 @@ export function EditContentDialog({
 
 
   useEffect(() => {
-    async function fetchProfile() {
+    async function fetchData() {
         if(isOpen) {
-            setIsLoadingProfile(true);
+            setIsLoading(true);
             try {
-                const profileData = await getProfile();
+                const [profileData, connectionData] = await Promise.all([
+                    getProfile(),
+                    getActiveSocialConnection()
+                ]);
                 setProfile(profileData);
+                setActiveConnection(connectionData);
+
+                // Set initial channel selection
+                if (connectionData?.instagram_account_id) {
+                    setSelectedChannel('instagram'); // Default to Instagram if available
+                } else if (connectionData) {
+                    setSelectedChannel('facebook');
+                }
+
             } catch (error) {
-                console.error("Failed to fetch profile", error);
+                console.error("Failed to fetch initial data for dialog", error);
             } finally {
-                setIsLoadingProfile(false);
+                setIsLoading(false);
             }
         }
     }
-    fetchProfile();
+    fetchData();
   }, [isOpen]);
 
   useEffect(() => {
@@ -152,15 +164,9 @@ export function EditContentDialog({
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setAnalysisResult(null); // Reset analysis on item change
-        // Set the initially selected channel based on the content item
-        const initialChannel = socialConnections.find(sc => sc.id === contentItem.user_channel_id);
-        setSelectedChannelId(initialChannel?.id || socialConnections.find(sc => sc.is_active)?.id || socialConnections[0]?.id || null);
     }
-  }, [contentItem, socialConnections]);
+  }, [contentItem]);
   
-  const activeConnection = socialConnections.find(sc => sc.id === selectedChannelId);
-
-
   if (!contentItem) return null;
 
   const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
@@ -206,7 +212,10 @@ export function EditContentDialog({
             updates.copy = editableContent.primary; // Also update the flat `copy` field for compatibility
         }
         if (editableSlides) updates.carousel_slides = editableSlides;
-        if (activeConnection) updates.user_channel_id = activeConnection.id;
+
+        // Set user_channel_id based on the active connection, NOT the selected channel within it
+        if(activeConnection) updates.user_channel_id = activeConnection.id;
+
 
         if (editableScheduledAt) {
             updates.scheduled_at = editableScheduledAt.toISOString();
@@ -253,6 +262,8 @@ export function EditContentDialog({
   const handlePublishNow = () => {
     startPublishing(async () => {
       try {
+        // Here we would pass the selected channel ('instagram' or 'facebook') to the publish action
+        // For now, the action defaults to Instagram if available
         const result = await publishNow(contentItem.id);
         const updatedItem = await updateContent(contentItem.id, { status: 'published', published_at: new Date().toISOString() });
         onContentUpdated(updatedItem);
@@ -351,21 +362,29 @@ export function EditContentDialog({
             <div className="md:col-span-3 space-y-4">
                  <div className="space-y-2">
                     <Label>Channel</Label>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {socialConnections.map(conn => (
+                    {isLoading ? <Skeleton className="h-12 w-28" /> : activeConnection ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {activeConnection.instagram_account_id && (
+                                <Button
+                                    variant={selectedChannel === 'instagram' ? 'default' : 'outline'}
+                                    className="gap-2 h-12"
+                                    onClick={() => setSelectedChannel('instagram')}
+                                >
+                                    <Instagram /> Instagram
+                                </Button>
+                            )}
                             <Button
-                                key={conn.id}
-                                variant={selectedChannelId === conn.id ? 'default' : 'outline'}
-                                size="icon"
-                                className="h-12 w-12 rounded-lg"
-                                onClick={() => setSelectedChannelId(conn.id)}
+                                variant={selectedChannel === 'facebook' ? 'default' : 'outline'}
+                                className="gap-2 h-12"
+                                onClick={() => setSelectedChannel('facebook')}
                             >
-                                <Avatar className="h-full w-full rounded-md">
-                                    <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url} />
-                                </Avatar>
+                                <Facebook /> Facebook
                             </Button>
-                        ))}
-                    </div>
+                            {/* Add other channel options here based on activeConnection if needed */}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No active social media account found. Please connect one in Accounts.</p>
+                    )}
                 </div>
                 {secondaryLangName ? (
                     <Tabs defaultValue="primary" className="w-full">
@@ -430,14 +449,14 @@ export function EditContentDialog({
             <div className="md:col-span-2 space-y-4">
                 <Card className="w-full max-w-sm mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-                        {isLoadingProfile ? <Skeleton className="h-10 w-10 rounded-full" /> : (
+                        {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
                             <Avatar>
                                 <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
                                 <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
                             </Avatar>
                         )}
                         <div className="grid gap-0.5">
-                            {isLoadingProfile ? (
+                            {isLoading ? (
                                 <>
                                     <Skeleton className="h-4 w-24" />
                                     <Skeleton className="h-3 w-16 mt-1" />

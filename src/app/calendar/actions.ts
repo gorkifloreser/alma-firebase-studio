@@ -35,22 +35,26 @@ export type SocialConnection = {
     account_name: string | null;
     account_picture_url: string | null;
     is_active: boolean;
+    instagram_account_id?: string | null; // Added for Meta connections
 };
 
 
-export async function getSocialConnections(): Promise<SocialConnection[]> {
+export async function getActiveSocialConnection(): Promise<SocialConnection | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) return null;
 
     const { data, error } = await supabase
         .from('social_connections')
-        .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active')
+        .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active, instagram_account_id')
         .eq('user_id', user.id)
+        .eq('is_active', true)
+        .eq('provider', 'meta') // Assuming we are focusing on Meta for now
+        .maybeSingle();
 
     if (error) {
-        console.error('Error fetching social connections:', error.message);
-        return [];
+        console.error('Error fetching active social connection:', error.message);
+        return null;
     }
 
     return data;
