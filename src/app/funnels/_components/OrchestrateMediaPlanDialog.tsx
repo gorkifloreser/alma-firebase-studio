@@ -514,10 +514,12 @@ export function OrchestrateMediaPlanDialog({
                             <TabsTrigger value="archived">Archived</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button onClick={() => setView('generate')} className="flex-shrink-0">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create New Campaign
-                    </Button>
+                     {fullFunnelData?.media_plans && fullFunnelData.media_plans.length > 0 && (
+                        <Button onClick={() => setView('generate')} className="flex-shrink-0">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create New Campaign
+                        </Button>
+                    )}
                  </div>
                 
                 {plans.length > 0 ? (
@@ -604,12 +606,12 @@ export function OrchestrateMediaPlanDialog({
     };
     
     const renderGenerateView = () => (
-        <div className="max-h-[70vh] flex flex-col py-4">
-            <div className="flex-shrink-0">
-                {(fullFunnelData?.media_plans ?? []).length > 0 && (
+        <div className="max-h-[70vh] flex flex-col pt-4">
+             {((fullFunnelData?.media_plans ?? []).length > 0) && (
+                <div className="flex-shrink-0">
                     <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
-                )}
-            </div>
+                </div>
+            )}
             
             {isGenerating && <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
 
@@ -665,15 +667,12 @@ export function OrchestrateMediaPlanDialog({
                                 </div>
                             </div>
                         </div>
-                        <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                            {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                        </Button>
                     </div>
                 </div>
             )}
             
             {currentPlan && (
-                 <div className="flex-1 flex flex-col overflow-hidden py-4">
+                 <div className="flex-1 flex flex-col overflow-hidden pt-4">
                     <div className="flex-shrink-0 flex justify-between items-center mb-4">
                          <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} className="text-xl font-bold" />
                     </div>
@@ -766,6 +765,11 @@ export function OrchestrateMediaPlanDialog({
                 {view === 'list' ? renderListView() : renderGenerateView()}
 
                 <DialogFooter className="mt-auto pt-4 border-t">
+                    {view === 'generate' && !currentPlan && (
+                        <Button className="w-full" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                            {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                        </Button>
+                    )}
                     {view === 'generate' && currentPlan && (
                         <>
                             <Button onClick={handleSave} disabled={isSaving || isGenerating}>
