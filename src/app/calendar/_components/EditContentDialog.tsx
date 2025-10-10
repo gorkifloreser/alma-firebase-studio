@@ -395,13 +395,13 @@ export function EditContentDialog({
                         {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
                             <div className="flex items-center gap-2 flex-wrap">
                                 {activeMetaConnection?.instagram_account_id && (
-                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} className="gap-2 h-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
-                                        <Instagram className="h-5 w-5" /> Instagram
+                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} size="icon" className="h-12 w-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
+                                        <Instagram className="h-6 w-6" />
                                     </Button>
                                 )}
                                 {activeMetaConnection && (
-                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} className="gap-2 h-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
-                                        <Facebook className="h-5 w-5" /> Facebook
+                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} size="icon" className="h-12 w-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
+                                        <Facebook className="h-6 w-6" />
                                     </Button>
                                 )}
                             </div>
