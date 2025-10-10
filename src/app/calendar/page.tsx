@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EditContentDialog } from './_components/EditContentDialog';
+import { SocialMetricsDashboard } from './_components/SocialMetricsDashboard';
 import Image from 'next/image';
 
 
@@ -411,13 +412,7 @@ export default function CalendarPage() {
                             </Card>
                         </TabsContent>
                         <TabsContent value="metrics" className="mt-6">
-                             <Card className="text-center py-20">
-                                <CardHeader>
-                                    <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
-                                    <CardTitle className="mt-4 text-2xl font-bold">Social Metrics Coming Soon</CardTitle>
-                                    <CardDescription>Analytics and performance reports for your connected social media accounts will be available here.</CardDescription>
-                                </CardHeader>
-                            </Card>
+                             <SocialMetricsDashboard />
                         </TabsContent>
                     </Tabs>
                 </div>

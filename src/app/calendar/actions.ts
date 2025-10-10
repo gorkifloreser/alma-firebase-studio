@@ -246,3 +246,35 @@ export async function publishNow(mediaPlanItemId: string): Promise<{ message: st
         throw new Error(`Publishing failed: ${error.message}`);
     }
 }
+
+// Mock function to simulate fetching social media metrics
+export async function getSocialMetrics() {
+    // In a real application, this would fetch data from Meta APIs
+    // For now, we return mock data.
+    return {
+        kpis: {
+            totalEngagement: 12530,
+            engagementChange: 15.2,
+            totalReach: 89400,
+            reachChange: 8.1,
+            totalImpressions: 152000,
+            impressionsChange: 12.5,
+        },
+        engagementOverTime: [
+            { date: '2023-10-01', engagement: 280 },
+            { date: '2023-10-02', engagement: 350 },
+            { date: '2023-10-03', engagement: 410 },
+            { date: '2023-10-04', engagement: 390 },
+            { date: '2023-10-05', engagement: 450 },
+            { date: '2023-10-06', engagement: 510 },
+            { date: '2023-10-07', engagement: 550 },
+        ],
+        recentPostPerformance: [
+            { name: 'Post 1', engagement: 120, reach: 2200 },
+            { name: 'Post 2', engagement: 98, reach: 1800 },
+            { name: 'Post 3', engagement: 210, reach: 3500 },
+            { name: 'Post 4', engagement: 150, reach: 2800 },
+            { name: 'Post 5', engagement: 180, reach: 3100 },
+        ],
+    };
+}
