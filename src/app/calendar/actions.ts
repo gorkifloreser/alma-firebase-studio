@@ -164,15 +164,21 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const payload: { [key: string]: any } = {
+        ...updates,
+        copy: updates.content_body?.primary, // Ensure copy is synced with primary content
         updated_at: new Date().toISOString(),
-        ...updates
     };
+    
+    // Remove the copy field if content_body is not being updated to avoid conflicts
+    if (!updates.content_body) {
+        delete payload.copy;
+    }
 
     const { data, error } = await supabase
         .from('media_plan_items')
