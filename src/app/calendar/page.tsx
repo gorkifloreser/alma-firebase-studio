@@ -1,3 +1,7 @@
+// GEMINI_SAFE_START
+// @functional: This component and its related features are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-10
 
 'use client';
 
@@ -6,7 +10,7 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid, setHours, setMinutes } from 'date-fns';
-import { getContent, scheduleContent, type CalendarItem, getActiveSocialConnection, type SocialConnection } from './actions';
+import { getContent, scheduleContent, type CalendarItem } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +48,7 @@ const ChannelIcon = ({ channel }: { channel: string | null | undefined }) => {
     return <Sparkles className="h-4 w-4 text-muted-foreground" />;
 }
 
-const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }: { day: Date, content: CalendarItem[], isCurrentMonth: boolean, onEventClick: (item: CalendarItem) => void, heightClass: string }) => {
+const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, onAddEvent, heightClass }: { day: Date, content: CalendarItem[], isCurrentMonth: boolean, onEventClick: (item: CalendarItem) => void, onAddEvent: (date: Date) => void, heightClass: string }) => {
     const { isOver, setNodeRef } = useDroppable({
         id: format(day, 'yyyy-MM-dd'),
         data: { type: 'calendarDay', date: day }
@@ -60,7 +64,7 @@ const CalendarDay = ({ day, content, isCurrentMonth, onEventClick, heightClass }
         <div 
             ref={setNodeRef}
             className={cn(
-                "relative flex flex-col p-2 border-t border-l",
+                "relative flex flex-col p-2 border-t border-l group",
                 heightClass,
                 isCurrentMonth ? "bg-background" : "bg-muted/50",
                 isOver ? "bg-accent" : "",
@@ -397,6 +401,7 @@ export default function CalendarPage() {
                                                         content={dayContent}
                                                         isCurrentMonth={isSameMonth(day, currentDate)}
                                                         onEventClick={handleEventClick}
+                                                        onAddEvent={() => {}}
                                                         heightClass={dayHeightClass}
                                                     />
                                                 );
@@ -452,9 +457,10 @@ export default function CalendarPage() {
                     contentItem={editingContent}
                     onContentUpdated={handleContentUpdated}
                     onContentDeleted={handleContentDeleted}
-                    socialConnections={[]}
                 />
             )}
         </DashboardLayout>
     );
 }
+
+// GEMINI_SAFE_END

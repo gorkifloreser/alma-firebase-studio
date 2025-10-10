@@ -1,3 +1,7 @@
+// GEMINI_SAFE_START
+// @functional: This component and its related features are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-10
 
 'use server';
 
@@ -315,3 +319,4 @@ export async function analyzePost(input: AnalyzePostInput): Promise<PostAnalysis
 export async function rewritePost(input: RewritePostInput): Promise<RewritePostOutput> {
     return rewritePostFlow(input);
 }
+// GEMINI_SAFE_END

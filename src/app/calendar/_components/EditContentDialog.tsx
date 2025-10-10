@@ -1,4 +1,7 @@
-
+// GEMINI_SAFE_START
+// @functional: This component and its related features are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-10
 
 'use client';
 
@@ -88,6 +91,7 @@ const parseCarouselSlides = (slides: any): any[] | null => {
     return null;
 }
 
+// GEMINI_SAFE_START
 const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: string | null }) => {
     const Icon =
         provider.toLowerCase().includes('instagram') ? Instagram :
@@ -106,6 +110,7 @@ const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: stri
     
     return <Icon className="h-5 w-5" />;
 };
+// GEMINI_SAFE_END
 
 
 export function EditContentDialog({
@@ -224,17 +229,13 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
+        const updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
         
-        if (editableContent) {
-            updates.content_body = editableContent;
-            updates.copy = editableContent.primary;
-        }
+        if (editableContent) updates.content_body = editableContent;
         if (editableHashtags) updates.hashtags = editableHashtags;
         if (editableSlides) updates.carousel_slides = editableSlides;
         if (selectedChannelId) updates.user_channel_id = selectedChannelId;
         if (editableFormat) updates.format = editableFormat;
-
 
         if (editableScheduledAt) {
             updates.scheduled_at = editableScheduledAt.toISOString();
@@ -400,7 +401,7 @@ export function EditContentDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 flex-1 min-h-0">
             <div className="md:col-span-3 space-y-4 overflow-y-auto pr-4">
-                {/* 
+                 {/* 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Publishing to</Label>
@@ -686,3 +687,4 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+// GEMINI_SAFE_END
