@@ -264,6 +264,11 @@ const generateMediaPlanFlow = ai.defineFlow(
     const channelPromises = channels.map(channel => {
         const validFormats = getFormatsForChannel(channel);
         const bestPractices = channelSettingsMap.get(channel) || 'No specific best practices provided.';
+        
+        // **SURGICAL LOGGING ADDED HERE**
+        console.log(`[DEBUG] AI CONTEXT FOR CHANNEL: ${channel}`);
+        console.log(`[DEBUG] Best Practices:`, bestPractices);
+        
         return generateChannelPlanPrompt({
             primaryLanguage,
             secondaryLanguage,
