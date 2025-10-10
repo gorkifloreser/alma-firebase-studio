@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnection, rewritePost } from '../actions';
 import type { PostAnalysis } from '../actions';
@@ -385,8 +385,7 @@ export function EditContentDialog({
             For offering: <span className="font-semibold">{contentItem.offerings?.title?.primary || '...'}</span>
           </DialogDescription>
         </DialogHeader>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto flex-1 pr-6">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto pr-6">
             <div className="md:col-span-3 space-y-4">
                  <div className="space-y-2">
                     <Label>Channel</Label>
@@ -664,3 +663,5 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+
+    
