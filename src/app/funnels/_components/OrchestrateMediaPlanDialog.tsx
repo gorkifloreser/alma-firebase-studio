@@ -714,38 +714,40 @@ export function OrchestrateMediaPlanDialog({
                                     <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
                                         const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
                                         const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
-                                        const StatusIcon = item.status === 'approved' ? CheckCircle2 : item.status === 'scheduled' ? Calendar : CircleDashed;
-                                        const statusColor = item.status === 'approved' ? 'text-green-500' : item.status === 'scheduled' ? 'text-blue-500' : 'text-muted-foreground';
+                                        const isLocked = item.status === 'approved' || item.status === 'scheduled' || item.status === 'published';
+                                        const StatusIcon = isLocked ? CheckCircle2 : CircleDashed;
+                                        const statusColor = isLocked ? 'text-green-500' : 'text-muted-foreground';
+
 
                                         return (
-                                        <div key={item.id} className="p-4 border rounded-lg space-y-4 relative transition-all">
+                                        <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isLocked && "bg-muted/30")}>
                                             <div className="absolute top-2 right-2 flex items-center gap-2">
                                                 <div className="flex items-center gap-1.5 text-xs font-semibold">
                                                   <StatusIcon className={cn("h-4 w-4", statusColor)} />
                                                   <span className={statusColor}>{item.status}</span>
                                                 </div>
-                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setItemToRegenerate(item); setIsRegenerateDialogOpen(true); }} disabled={isRegenerating[item.id]}>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setItemToRegenerate(item); setIsRegenerateDialogOpen(true); }} disabled={isRegenerating[item.id] || isLocked}>
                                                     {isRegenerating[item.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                 </Button>
-                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)} disabled={isLocked}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <Label htmlFor={`stage_name-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stage_name-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" />
+                                                    <Input id={`stage_name-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" disabled={isLocked}/>
                                                 </div>
-                                                <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
-                                                <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
-                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
-                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
-                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" disabled={isLocked}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} disabled={isLocked}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={isLocked}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} disabled={isLocked}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} disabled={isLocked}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} disabled={isLocked}/></div>
                                                 <div className="space-y-2">
                                                     <Label>Suggested Post Time</Label>
                                                     <div className="flex items-center gap-2">
                                                         <Popover>
                                                             <PopoverTrigger asChild>
-                                                            <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")}>
+                                                            <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")} disabled={isLocked}>
                                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                                 {postDate && isValid(postDate) ? format(postDate, "PPP") : <span>Pick a date</span>}
                                                             </Button>
@@ -754,7 +756,7 @@ export function OrchestrateMediaPlanDialog({
                                                             <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => handleItemChange(item.id, 'suggested_post_at', date?.toISOString() || '')} initialFocus />
                                                             </PopoverContent>
                                                         </Popover>
-                                                        <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
+                                                        <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]" disabled={isLocked}/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -794,17 +796,34 @@ export function OrchestrateMediaPlanDialog({
                         )}
                         {view === 'generate' && currentPlan && (
                             <div className="flex gap-2">
-                                <Button onClick={handleSave} disabled={isSaving || isGenerating}>
-                                    {isSaving ? 'Saving...' : 'Save Campaign'}
+                                <Button variant="secondary" onClick={handleSave} disabled={isSaving || isGenerating}>
+                                    {isSaving ? 'Saving...' : 'Save Campaign Draft'}
                                 </Button>
-                                <Button
-                                    onClick={handleBulkApproveChannel}
-                                    disabled={isSaving || isGenerating || !activeTab}
-                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                    <CheckCheck className="mr-2 h-4 w-4" />
-                                    {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
-                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            disabled={isSaving || isGenerating || !activeTab}
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                        >
+                                            <CheckCheck className="mr-2 h-4 w-4" />
+                                            {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Approve Campaign for '{activeTab}'?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Once approved, the items for this channel will be sent to the AI Artisan and can no longer be edited here. This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleBulkApproveChannel}>
+                                                Confirm & Approve
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         )}
                     </DialogFooter>
