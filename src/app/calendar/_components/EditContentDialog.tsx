@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -20,6 +19,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -481,14 +481,16 @@ export function EditContentDialog({
                         ))}
                     </div>
                  )}
-                 <div className="pt-4">
+                <div className="pt-4">
                     <Accordion type="single" collapsible>
                         <AccordionItem value="item-1" className="border-b-0">
-                             <AccordionTrigger asChild>
-                                <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
-                                    <Bot className="mr-2 h-4 w-4" />
-                                    {isAnalyzing ? 'Analyzing...' : 'Rate post with AI'}
-                                </Button>
+                            <AccordionTrigger
+                                className={cn(buttonVariants({ variant: "outline" }), "w-full hover:no-underline")}
+                                onClick={!analysisResult ? handleAnalyzePost : undefined}
+                                disabled={isAnalyzing}
+                            >
+                                <Bot className="mr-2 h-4 w-4" />
+                                {isAnalyzing ? 'Analyzing...' : 'Rate post with AI'}
                             </AccordionTrigger>
                             <AccordionContent className="pt-4">
                                {isAnalyzing ? <Skeleton className="h-40 w-full" /> : analysisResult && (
