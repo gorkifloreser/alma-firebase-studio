@@ -1,4 +1,5 @@
 
+
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -781,17 +782,17 @@ export function OrchestrateMediaPlanDialog({
                     
                     {view === 'list' ? renderListView() : renderGenerateView()}
 
-                    <DialogFooter className="mt-auto pt-4 border-t">
+                    <DialogFooter className="mt-auto pt-4 border-t flex justify-between">
+                         <Button variant="ghost" onClick={handleAttemptClose}>Cancel</Button>
+
                         {view === 'generate' && !currentPlan && (
-                            <div className="w-full">
-                                <Button className="w-full" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                                    {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                                </Button>
-                            </div>
+                             <Button onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                                {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                            </Button>
                         )}
                         {view === 'generate' && currentPlan && (
-                            <>
-                                <Button onClick={handleSave} disabled={isSaving || isGenerating}>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={handleSave} disabled={isSaving || isGenerating}>
                                     {isSaving ? 'Saving...' : 'Save Campaign'}
                                 </Button>
                                 <Button
@@ -802,7 +803,7 @@ export function OrchestrateMediaPlanDialog({
                                     <CheckCheck className="mr-2 h-4 w-4" />
                                     {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
                                 </Button>
-                            </>
+                            </div>
                         )}
                     </DialogFooter>
                 </DialogContent>
