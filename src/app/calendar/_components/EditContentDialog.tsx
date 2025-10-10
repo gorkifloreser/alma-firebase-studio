@@ -205,7 +205,7 @@ export function EditContentDialog({
     setEditableSlides(prev => {
         if (!prev) return null;
         const newSlides = [...prev];
-        const slideToUpdate = { ...newSlides[index] };
+        const slideToUpdate = newSlides[index] ? { ...newSlides[index] } : {};
         (slideToUpdate as any)[field] = value;
         newSlides[index] = slideToUpdate;
         return newSlides;
@@ -334,7 +334,7 @@ export function EditContentDialog({
                 <Carousel className="w-full h-full">
                     <CarouselContent>
                         {editableSlides.map((slide: any, index: number) => (
-                            <CarouselItem key={index} className="relative w-full h-full">
+                            slide && <CarouselItem key={index} className="relative w-full h-full">
                                 {slide.imageUrl ? (
                                     <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
                                 ) : (
@@ -442,11 +442,11 @@ export function EditContentDialog({
                     <div className="w-full mt-2 space-y-4 pt-4 border-t">
                         <h4 className="font-semibold text-sm">Carousel Slide Text</h4>
                         {editableSlides.map((slide, index) => (
-                            <div key={index} className="space-y-2">
+                            slide && <div key={index} className="space-y-2">
                                 <Label htmlFor={`slide-title-${index}`} className="text-xs font-bold">Slide {index + 1} Title</Label>
                                 <Input
                                     id={`slide-title-${index}`}
-                                    value={slide.title}
+                                    value={slide.title || ''}
                                     onChange={(e) => handleCarouselSlideChange(index, 'title', e.target.value)}
                                     className="w-full text-sm"
                                     placeholder={`Title for slide ${index + 1}...`}
@@ -454,7 +454,7 @@ export function EditContentDialog({
                                 <Label htmlFor={`slide-body-${index}`} className="text-xs font-bold">Slide {index + 1} Body</Label>
                                 <Textarea
                                     id={`slide-body-${index}`}
-                                    value={slide.body}
+                                    value={slide.body || ''}
                                     onChange={(e) => handleCarouselSlideChange(index, 'body', e.target.value)}
                                     className="w-full text-sm"
                                     placeholder={`Body text for slide ${index + 1}...`}
