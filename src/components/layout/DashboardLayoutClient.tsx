@@ -22,7 +22,7 @@ import {
   Heart,
   ShoppingBag,
   BrainCircuit,
-  Calendar,
+  Users,
   GitBranch,
   Wand2,
   Star,
@@ -39,7 +39,7 @@ const menuItems = [
     { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
     { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
     { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
-    { href: '/calendar', label: 'AI Scheduler', icon: Calendar },
+    { href: '/calendar', label: 'AI Social Manager', icon: Users },
     { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
 ];
 
