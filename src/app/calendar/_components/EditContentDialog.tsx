@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion, getActiveSocialConnection } from '../actions';
@@ -350,7 +350,7 @@ export function EditContentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
           <CardDescription>
@@ -358,7 +358,7 @@ export function EditContentDialog({
           </CardDescription>
         </DialogHeader>
 
-         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto flex-1 pr-6">
             <div className="md:col-span-3 space-y-4">
                  <div className="space-y-2">
                     <Label>Channel</Label>
@@ -380,7 +380,6 @@ export function EditContentDialog({
                             >
                                 <Facebook /> Facebook
                             </Button>
-                            {/* Add other channel options here based on activeConnection if needed */}
                         </div>
                     ) : (
                         <p className="text-sm text-muted-foreground">No active social media account found. Please connect one in Accounts.</p>
@@ -491,7 +490,7 @@ export function EditContentDialog({
                     </Button>
                     {isAnalyzing && <Skeleton className="h-24 w-full" />}
                     {analysisResult && (
-                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 max-h-60 overflow-y-auto">
+                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
                              <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-300">
                                     <Sparkles className="h-5 w-5" />
@@ -499,7 +498,7 @@ export function EditContentDialog({
                                 </CardTitle>
                                 <CardDescription className="text-blue-700 dark:text-blue-400">{analysisResult.overall_feedback}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3">
+                            <CardContent className="space-y-3 max-h-60 overflow-y-auto">
                                 {analysisResult.suggestions.map((s, i) => (
                                     <div key={i} className="p-3 bg-background/50 rounded-md">
                                         <p className="font-semibold flex items-center gap-2"><Lightbulb className="h-4 w-4 text-primary" />{s.suggestion}</p>
@@ -513,7 +512,7 @@ export function EditContentDialog({
             </div>
         </div>
 
-        <DialogFooter className="justify-between">
+        <DialogFooter className="justify-between pt-4 border-t">
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                      <Button variant="destructive" disabled={isDeleting}>
