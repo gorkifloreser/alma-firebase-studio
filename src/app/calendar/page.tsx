@@ -6,14 +6,14 @@ import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-
 import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, endOfWeek, addMonths, subMonths, parseISO, isValid, setHours, setMinutes } from 'date-fns';
-import { getContent, scheduleContent, type CalendarItem, getActiveSocialConnection, type SocialConnection } from './actions';
+import { getContent, scheduleContent, type CalendarItem, getSocialConnections, type SocialConnection } from './actions';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock, GripVertical, BarChart2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock, GripVertical, BarChart2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -152,7 +152,7 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
 
 export default function CalendarPage() {
     const [contentItems, setContentItems] = useState<CalendarItem[]>([]);
-    const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
+    const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isScheduling, startScheduling] = useTransition();
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -198,13 +198,13 @@ export default function CalendarPage() {
     const fetchContent = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [data, connection] = await Promise.all([
+            const [data, connections] = await Promise.all([
                 getContent(),
-                getActiveSocialConnection()
+                getSocialConnections()
             ]);
             console.log('[page.tsx:fetchContent] Data received from server action:', data);
             setContentItems(data);
-            setActiveConnection(connection);
+            setSocialConnections(connections);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         } finally {
@@ -457,7 +457,7 @@ export default function CalendarPage() {
                     contentItem={editingContent}
                     onContentUpdated={handleContentUpdated}
                     onContentDeleted={handleContentDeleted}
-                    activeConnection={activeConnection}
+                    socialConnections={socialConnections}
                 />
             )}
         </DashboardLayout>

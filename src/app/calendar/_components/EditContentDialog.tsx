@@ -14,13 +14,13 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,7 @@ interface EditContentDialogProps {
   contentItem: CalendarItem | null;
   onContentUpdated: (contentItem: CalendarItem) => void;
   onContentDeleted: (itemId: string) => void;
-  activeConnection: SocialConnection | null;
+  socialConnections: SocialConnection[];
 }
 
 type Profile = {
@@ -72,15 +72,26 @@ const parseCarouselSlides = (slides: any): any[] | null => {
     return null;
 }
 
+const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: string | null }) => {
+    if (imageUrl) {
+        return <AvatarImage src={imageUrl} className="w-full h-full object-cover" />;
+    }
+    if (provider.toLowerCase().includes('instagram')) return <Instagram className="h-5 w-5" />;
+    if (provider.toLowerCase().includes('facebook')) return <Facebook className="h-5 w-5" />;
+    return <Sparkles className="h-5 w-5" />;
+};
+
+
 export function EditContentDialog({
   isOpen,
   onOpenChange,
   contentItem,
   onContentUpdated,
   onContentDeleted,
-  activeConnection,
+  socialConnections,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
 
   // Fallback logic: Use content_body if available, otherwise use the root `copy` field.
   const getInitialContent = () => {
@@ -131,8 +142,14 @@ export function EditContentDialog({
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setAnalysisResult(null); // Reset analysis on item change
+        // Set the initially selected channel based on the content item
+        const initialChannel = socialConnections.find(sc => sc.provider === contentItem.user_channel_settings?.channel_name);
+        setSelectedChannelId(initialChannel?.id || socialConnections[0]?.id || null);
     }
-  }, [contentItem]);
+  }, [contentItem, socialConnections]);
+  
+  const activeConnection = socialConnections.find(sc => sc.id === selectedChannelId);
+
 
   if (!contentItem) return null;
 
@@ -172,13 +189,14 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at'>> = {};
+        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id'>> = {};
         
         if (editableContent) {
             updates.content_body = editableContent;
             updates.copy = editableContent.primary; // Also update the flat `copy` field for compatibility
         }
         if (editableSlides) updates.carousel_slides = editableSlides;
+        if (activeConnection) updates.user_channel_id = activeConnection.id;
 
         if (editableScheduledAt) {
             updates.scheduled_at = editableScheduledAt.toISOString();
@@ -314,27 +332,30 @@ export function EditContentDialog({
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
-          <DialogDescription>
+          <CardDescription>
             For offering: <span className="font-semibold">{contentItem.offerings?.title?.primary || '...'}</span>
-          </DialogDescription>
+          </CardDescription>
         </DialogHeader>
 
          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4">
             <div className="md:col-span-3 space-y-4">
                  <div className="space-y-2">
-                    <Label htmlFor="channel-select">Channel</Label>
-                    <Select value={contentItem.user_channel_settings?.channel_name || 'none'} disabled>
-                        <SelectTrigger id="channel-select"><SelectValue placeholder="N/A" /></SelectTrigger>
-                        <SelectContent>
-                            {contentItem.user_channel_settings?.channel_name ? (
-                                <SelectItem value={contentItem.user_channel_settings.channel_name}>
-                                    {contentItem.user_channel_settings.channel_name}
-                                </SelectItem>
-                            ) : (
-                                <SelectItem value="none">Not specified</SelectItem>
-                            )}
-                        </SelectContent>
-                    </Select>
+                    <Label>Channel</Label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {socialConnections.map(conn => (
+                            <Button
+                                key={conn.id}
+                                variant={selectedChannelId === conn.id ? 'default' : 'outline'}
+                                size="icon"
+                                className="h-12 w-12 rounded-lg"
+                                onClick={() => setSelectedChannelId(conn.id)}
+                            >
+                                <Avatar className="h-full w-full rounded-md">
+                                    <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url} />
+                                </Avatar>
+                            </Button>
+                        ))}
+                    </div>
                 </div>
                 {secondaryLangName ? (
                     <Tabs defaultValue="primary" className="w-full">
@@ -530,3 +551,4 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+
