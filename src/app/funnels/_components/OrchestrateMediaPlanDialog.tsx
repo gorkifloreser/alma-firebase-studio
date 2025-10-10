@@ -181,7 +181,7 @@ export function OrchestrateMediaPlanDialog({
                 setSelectedLanguage(p?.primary_language || 'en');
             });
 
-            if (!planIdToEdit && !currentPlan) {
+            if (!planIdToEdit && !currentPlan && view !== 'generate') {
                 const hasActivePlans = fullFunnelData.media_plans?.some(p => (p.status || 'active') === 'active');
                 const newViewState = hasActivePlans ? 'list' : 'generate';
                 setView(newViewState);
@@ -531,12 +531,10 @@ export function OrchestrateMediaPlanDialog({
                             <TabsTrigger value="archived">Archived</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                     {fullFunnelData?.media_plans && fullFunnelData.media_plans.length > 0 && (
-                        <Button onClick={() => setView('generate')} className="flex-shrink-0">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New Campaign
-                        </Button>
-                    )}
+                    <Button onClick={() => setView('generate')} className="flex-shrink-0">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Campaign
+                    </Button>
                  </div>
                 
                 {plans.length > 0 ? (
@@ -803,7 +801,7 @@ export function OrchestrateMediaPlanDialog({
                                     <AlertDialogTrigger asChild>
                                         <Button
                                             disabled={isSaving || isGenerating || !activeTab}
-                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                         >
                                             <CheckCheck className="mr-2 h-4 w-4" />
                                             {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
@@ -813,12 +811,12 @@ export function OrchestrateMediaPlanDialog({
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Approve Campaign for '{activeTab}'?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Once approved, the items for this channel will be sent to the AI Artisan and can no longer be edited here. This action cannot be undone.
+                                                 Once approved, the items for the '{activeTab}' channel can no longer be edited here and will be sent to the AI Artisan. This action cannot be undone.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleBulkApproveChannel}>
+                                            <AlertDialogAction onClick={handleBulkApproveChannel} className="bg-primary hover:bg-primary/90">
                                                 Confirm & Approve
                                             </AlertDialogAction>
                                         </AlertDialogFooter>
