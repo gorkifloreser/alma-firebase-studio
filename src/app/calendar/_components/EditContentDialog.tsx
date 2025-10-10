@@ -19,11 +19,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion, getActiveSocialConnection } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnection } from '../actions';
+import type { PostAnalysis } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -31,7 +32,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -123,7 +124,7 @@ export function EditContentDialog({
   const [isPublishing, startPublishing] = useTransition();
   const [isAnalyzing, startAnalyzing] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
-  const [analysisResult, setAnalysisResult] = useState<{ suggestions: PostSuggestion[], overall_feedback: string } | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<PostAnalysis | null>(null);
 
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -488,23 +489,45 @@ export function EditContentDialog({
                         <Bot className="mr-2 h-4 w-4" />
                         {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
                     </Button>
-                    {isAnalyzing && <Skeleton className="h-24 w-full" />}
-                    {analysisResult && (
-                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                             <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-300">
-                                    <Sparkles className="h-5 w-5" />
-                                    AI Suggestions
+                    {isAnalyzing && <Skeleton className="h-40 w-full" />}
+                     {analysisResult && (
+                        <Card className="border-border">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-primary" />
+                                    AI Analysis
                                 </CardTitle>
-                                <CardDescription className="text-blue-700 dark:text-blue-400">{analysisResult.overall_feedback}</CardDescription>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-primary">{analysisResult.overall_score}</span>
+                                    <span className="text-sm text-muted-foreground">/ 10</span>
+                                </div>
+                                </div>
+                                <CardDescription>{analysisResult.reasoning}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3 max-h-60 overflow-y-auto">
-                                {analysisResult.suggestions.map((s, i) => (
-                                    <div key={i} className="p-3 bg-background/50 rounded-md">
-                                        <p className="font-semibold flex items-center gap-2"><Lightbulb className="h-4 w-4 text-primary" />{s.suggestion}</p>
-                                        <p className="text-xs text-muted-foreground mt-1 pl-6">{s.reasoning}</p>
-                                    </div>
-                                ))}
+                            <CardContent className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                <div>
+                                    <h4 className="font-semibold text-sm mb-2">Strengths</h4>
+                                    <ul className="space-y-2">
+                                    {analysisResult.strengths.map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm">
+                                            <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0" />
+                                            <span>{item.point}</span>
+                                        </li>
+                                    ))}
+                                    </ul>
+                                </div>
+                                 <div>
+                                    <h4 className="font-semibold text-sm mb-2">Suggestions</h4>
+                                    <ul className="space-y-2">
+                                    {analysisResult.suggestions.map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm">
+                                            <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 flex-shrink-0" />
+                                            <span>{item.point}</span>
+                                        </li>
+                                    ))}
+                                    </ul>
+                                </div>
                             </CardContent>
                         </Card>
                     )}

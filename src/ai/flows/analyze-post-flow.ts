@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview An AI flow to analyze a social media post against audience personas
- * and provide actionable suggestions for improvement.
+ * and provide actionable suggestions for improvement, including scores and structured feedback.
  */
 
 import { ai } from '@/ai/genkit';
@@ -11,22 +11,27 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
-const SuggestionSchema = z.object({
-  type: z.enum(['tone', 'content', 'clarity', 'engagement', 'cta']).describe('The category of the suggestion.'),
-  suggestion: z.string().describe('A concrete, actionable suggestion to improve the post.'),
-  reasoning: z.string().describe("A brief explanation of why this suggestion is being made, referencing the audience's characteristics."),
+// New schemas for structured feedback
+const PointSchema = z.object({
+  point: z.string().describe("A single, concise point about the post's strength or weakness."),
 });
 
+const StrengthSchema = PointSchema;
+const SuggestionSchema = PointSchema;
+
 const AnalyzePostOutputSchema = z.object({
-  suggestions: z.array(SuggestionSchema).describe('A list of 1-3 suggestions to improve the post.'),
-  overall_feedback: z.string().describe("A brief, encouraging summary of the post's strengths and areas for improvement."),
+  overall_score: z.number().min(1).max(10).describe("A score from 1-10 evaluating the post's overall effectiveness based on the criteria."),
+  strengths: z.array(StrengthSchema).describe("A list of 2-3 things the post does well, each with a checkmark icon."),
+  suggestions: z.array(SuggestionSchema).describe("A list of 2-3 actionable suggestions for improvement, each with a warning or info icon."),
+  reasoning: z.string().describe("A brief, encouraging summary explaining the scores and main opportunities."),
 });
+
+export type PostAnalysis = z.infer<typeof AnalyzePostOutputSchema>;
 
 const AnalyzePostInputSchema = z.object({
   postText: z.string(),
 });
 export type AnalyzePostInput = z.infer<typeof AnalyzePostInputSchema>;
-export type PostSuggestion = z.infer<typeof SuggestionSchema>;
 
 
 const analysisPrompt = ai.definePrompt({
@@ -39,9 +44,9 @@ const analysisPrompt = ai.definePrompt({
         })
     },
     output: { schema: AnalyzePostOutputSchema },
-    prompt: `You are an expert social media strategist and copy editor with a deep understanding of empathetic, audience-centric communication.
+    prompt: `You are an expert social media strategist specializing in organic growth for conscious brands.
 
-**Your Goal:** Analyze the provided social media post text and give 1-3 actionable suggestions for improvement based on how well it aligns with the brand's target audience personas.
+Your Goal: Analyze the provided social media post based on three core pillars: Audience Attention, Virality Potential, and Content Value. Provide a score, strengths, and actionable suggestions.
 
 ---
 **1. The Brand's Audience Personas (Your Primary Focus):**
@@ -56,13 +61,27 @@ const analysisPrompt = ai.definePrompt({
 
 **YOUR TASK:**
 
-1.  **Analyze Alignment:** Carefully read the post and compare its tone, language, and message against the goals, pain points, and values of the audience personas.
-2.  **Generate Suggestions:** Based on your analysis, provide 1-3 concrete, actionable suggestions for improving the post. For each suggestion, specify the 'type' and provide a clear 'reasoning' that connects it back to a specific audience persona.
-    *   **Types**: 'tone', 'content', 'clarity', 'engagement', 'cta'.
-    *   **Good Suggestion Example**: "Change 'Book a call' to 'Schedule a free clarity call'. This wording is less transactional and aligns better with Holistic Helen's goal of finding gentle guidance."
-3.  **Provide Overall Feedback:** Write a brief, encouraging summary (1-2 sentences) of what the post does well and its main opportunity for improvement.
+Evaluate the post against the following three pillars and then formulate your response.
 
-Return the result in the specified JSON format.
+**Pillar 1: Audience Attention (Reach)**
+- Does the opening line immediately grab the attention of the target audience?
+- Does it speak directly to their known pain points or aspirations?
+
+**Pillar 2: Virality Potential (Hook)**
+- Does the post have a strong "hook"? Is it controversial, surprising, relatable, or exceptionally valuable?
+- Does it encourage sharing or saving?
+
+**Pillar 3: Content Value**
+- Does the post deliver on its initial promise?
+- Does it teach, inspire, entertain, or build trust in a meaningful way?
+- Is there a clear takeaway for the reader?
+
+**Now, construct your response in the specified JSON format:**
+
+1.  **overall_score**: Assign a score from 1 to 10. A 10 means it's a perfect post that excels in all three pillars. A 1 means it has significant issues.
+2.  **strengths**: List 2-3 specific things the post does well. These should be positive, concrete points. (e.g., "The hook is highly relatable to 'Holistic Helen's' journey.").
+3.  **suggestions**: List 2-3 actionable, concrete suggestions for improvement. These should be constructive and easy to implement. (e.g., "Add a specific question at the end to boost engagement.").
+4.  **reasoning**: Write a brief (2-3 sentences) encouraging summary that explains your scoring and highlights the biggest opportunity for growth.
 `,
 });
 
@@ -83,7 +102,7 @@ export const analyzePostFlow = ai.defineFlow(
       .eq('user_id', user.id)
       .single();
 
-    if (brandHeartError || !brandHeart || !brandHeart.audience || brandHeart.audience.length === 0) {
+    if (brandHeartError || !brandHeart || !brandHeart.audience || (Array.isArray(brandHeart.audience) && brandHeart.audience.length === 0)) {
       throw new Error('Audience personas not found. Please define at least one audience profile in your Brand Heart.');
     }
     
@@ -97,6 +116,6 @@ export const analyzePostFlow = ai.defineFlow(
   }
 );
 
-export async function analyzePost(input: AnalyzePostInput) {
+export async function analyzePost(input: AnalyzePostInput): Promise<PostAnalysis> {
     return analyzePostFlow(input);
 }
