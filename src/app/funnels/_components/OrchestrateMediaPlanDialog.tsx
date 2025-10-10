@@ -558,7 +558,7 @@ export function OrchestrateMediaPlanDialog({
     };
     
     const renderGenerateView = () => (
-        <div className="max-h-[70vh] flex flex-col">
+        <div className="max-h-[70vh] flex flex-col py-4">
             <div className="flex-shrink-0">
                 <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
             </div>
@@ -566,59 +566,61 @@ export function OrchestrateMediaPlanDialog({
             {isGenerating && <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
 
             {!isGenerating && !currentPlan && (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-lg text-foreground">Generate a New Campaign</h3>
-                    <div className="grid gap-6 text-left my-6 max-w-md w-full">
-                        <div className="space-y-2">
-                            <Label htmlFor="plan-title">Campaign Title</Label>
-                            <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="dates">Campaign Dates</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button id="dates" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {dateRange?.from ? (dateRange.to ? (<>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="language-select">Campaign Language</Label>
-                            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                                <SelectTrigger id="language-select"><SelectValue placeholder="Select a language" /></SelectTrigger>
-                                <SelectContent>{languageList.map((lang) => (<SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>))}</SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Select Target Channels</Label>
-                            <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
-                                {isDataLoading ? (
-                                    <div className="col-span-2 space-y-2">
-                                        <Skeleton className="h-6 w-full" />
-                                        <Skeleton className="h-6 w-full" />
-                                    </div>
-                                ) : availableChannels.length > 0 ? (
-                                    availableChannels.map(c => (
-                                        <div key={c} className="flex items-center space-x-2">
-                                            <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
-                                            <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
+                <div className="flex-1 overflow-y-auto pr-2">
+                    <div className="flex flex-col items-center justify-center text-center">
+                        <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
+                        <h3 className="font-semibold text-lg text-foreground">Generate a New Campaign</h3>
+                        <div className="grid gap-6 text-left my-6 max-w-md w-full">
+                            <div className="space-y-2">
+                                <Label htmlFor="plan-title">Campaign Title</Label>
+                                <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="dates">Campaign Dates</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button id="dates" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dateRange?.from ? (dateRange.to ? (<>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="language-select">Campaign Language</Label>
+                                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                                    <SelectTrigger id="language-select"><SelectValue placeholder="Select a language" /></SelectTrigger>
+                                    <SelectContent>{languageList.map((lang) => (<SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>))}</SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Select Target Channels</Label>
+                                <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
+                                    {isDataLoading ? (
+                                        <div className="col-span-2 space-y-2">
+                                            <Skeleton className="h-6 w-full" />
+                                            <Skeleton className="h-6 w-full" />
                                         </div>
-                                    ))
-                                ) : (
-                                    <p className="col-span-2 text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>
-                                )}
+                                    ) : availableChannels.length > 0 ? (
+                                        availableChannels.map(c => (
+                                            <div key={c} className="flex items-center space-x-2">
+                                                <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
+                                                <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="col-span-2 text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
+                        <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                            {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                        </Button>
                     </div>
-                    <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                        {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                    </Button>
                 </div>
             )}
             
