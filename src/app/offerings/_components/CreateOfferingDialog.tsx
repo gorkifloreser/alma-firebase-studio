@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { createOffering, updateOffering, translateText, uploadSingleOfferingMedia, deleteOfferingMedia, generateOfferingDraft, getOffering } from '../actions';
 import type { Offering, OfferingMedia, OfferingSchedule, PricePoint } from '../actions';
-import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Trash2, PlusCircle } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Clock, Bot, Wand2, Trash2, PlusCircle, MapPin } from 'lucide-react';
 import { languages } from '@/lib/languages';
 import { currencies } from '@/lib/currencies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -123,6 +123,7 @@ interface CreateOfferingDialogProps {
     profile: Profile;
     onOfferingSaved: () => void;
     offeringToEdit: OfferingWithMedia | null;
+    preselectedDate?: Date;
 }
 
 export function CreateOfferingDialog({
@@ -131,6 +132,7 @@ export function CreateOfferingDialog({
     profile,
     onOfferingSaved,
     offeringToEdit,
+    preselectedDate,
 }: CreateOfferingDialogProps) {
     const [offering, setOffering] = useState<OfferingFormData>(initialOfferingState);
     const [aiPrompt, setAiPrompt] = useState('');
@@ -157,11 +159,20 @@ export function CreateOfferingDialog({
                 })),
             });
         } else {
-            setOffering(initialOfferingState);
+             const newSchedule: OfferingSchedule = {
+                prices: [{ price: null, label: '', currency: 'USD' }],
+                event_date: preselectedDate || null,
+                duration: null,
+                frequency: 'One-time',
+                location_label: null,
+                location_address: null,
+                location_gmaps_url: null,
+            };
+            setOffering({ ...initialOfferingState, type: preselectedDate ? 'Event' : 'Service', offering_schedules: preselectedDate ? [newSchedule] : [] });
             setEventFrequency('One-time');
         }
         setAiPrompt('');
-    }, [offeringToEdit]);
+    }, [offeringToEdit, preselectedDate]);
 
     useEffect(() => {
         if (isOpen) {
@@ -561,6 +572,23 @@ export function CreateOfferingDialog({
                                                 <div className="space-y-2">
                                                     <Label>Duration</Label>
                                                     <Input value={schedule.duration || ''} onChange={e => handleScheduleChange(scheduleIndex, 'duration', e.target.value)} placeholder="e.g., 2 hours" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4 pt-4">
+                                                <Label className="text-md font-semibold flex items-center gap-2"><MapPin className="h-5 w-5" /> Location (Optional)</Label>
+                                                <div className="p-3 border rounded-lg space-y-3 bg-secondary/30">
+                                                    <div className="space-y-2">
+                                                        <Label>Location Label</Label>
+                                                        <Input value={schedule.location_label || ''} onChange={e => handleScheduleChange(scheduleIndex, 'location_label', e.target.value)} placeholder="e.g., My Studio, Online" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Address</Label>
+                                                        <Input value={schedule.location_address || ''} onChange={e => handleScheduleChange(scheduleIndex, 'location_address', e.target.value)} placeholder="e.g., 123 Main St, Anytown" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Google Maps URL</Label>
+                                                        <Input value={schedule.location_gmaps_url || ''} onChange={e => handleScheduleChange(scheduleIndex, 'location_gmaps_url', e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <Separator/>

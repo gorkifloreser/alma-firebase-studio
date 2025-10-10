@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -15,9 +14,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
-import { Moon, Sun, LogOut, Settings } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Moon, Sun, LogOut, Settings, Monitor } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -25,10 +27,12 @@ import { logout } from './actions';
 import Link from 'next/link';
 import type { Profile } from '@/app/settings/actions';
 
+type Theme = "light" | "dark" | "system";
+
 export function UserNav() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>('system');
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -47,26 +51,21 @@ export function UserNav() {
     };
     fetchUserAndProfile();
 
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      setIsDarkMode(true);
-    } else {
-      document.documentElement.classList.remove('dark');
-      setIsDarkMode(false);
+    const storedTheme = localStorage.getItem('theme') as Theme | null;
+    if (storedTheme) {
+      setTheme(storedTheme);
     }
   }, []);
 
-  const toggleTheme = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+  useEffect(() => {
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.classList.toggle('dark', systemTheme === 'dark');
     } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
     }
-    setIsDarkMode(!isDarkMode);
-  };
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const handleLogout = async () => {
     await logout();
@@ -101,18 +100,30 @@ export function UserNav() {
                 <span>Settings</span>
               </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center">
-                {isDarkMode ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
-                <span>Dark Mode</span>
-              </div>
-              <Switch
-                checked={isDarkMode}
-                onCheckedChange={toggleTheme}
-              />
-            </div>
-          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              {theme === 'light' && <Sun className="mr-2 h-4 w-4" />}
+              {theme === 'dark' && <Moon className="mr-2 h-4 w-4" />}
+              {theme === 'system' && <Monitor className="mr-2 h-4 w-4" />}
+              <span>Theme</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => setTheme('light')}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  <span>Light</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                  <Moon className="mr-2 h-4 w-4" />
+                  <span>Dark</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('system')}>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  <span>System</span>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>

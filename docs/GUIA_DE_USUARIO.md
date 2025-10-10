@@ -1,6 +1,6 @@
-# Guía de Usuario de la Aplicación Alma
+# Guía de Usuario de la Aplicación Regen MKT
 
-Bienvenido a Alma. Esta guía te mostrará cómo utilizar la aplicación paso a paso para sacar el máximo provecho de sus funcionalidades. El flujo de trabajo está diseñado para construir tu estrategia de marketing desde la base (tu marca) hasta la ejecución (tu calendario de contenidos).
+Bienvenido a Regen MKT. Esta guía te mostrará cómo utilizar la aplicación paso a paso para sacar el máximo provecho de sus funcionalidades. El flujo de trabajo está diseñado para construir tu estrategia de marketing desde la base (tu marca) hasta la ejecución (tu calendario de contenidos).
 
 ## Flujo de Trabajo General
 
@@ -9,7 +9,7 @@ El orden recomendado para usar la aplicación, especialmente la primera vez, es 
 1.  **Brand Heart** (Corazón de Marca)
 2.  **Offerings** (Ofertas)
 3.  **Funnels** (Embudos de Venta)
-4.  **Media Plan** (Plan de Medios)
+4.  **Campaign Orchestrator** (Orquestador de Campañas)
 5.  **Calendar** (Calendario)
 
 ---
@@ -50,14 +50,14 @@ Con tus ofertas creadas, ahora puedes generar un "Magic Funnel", que es una estr
 5.  **Generación:** Haz clic en el botón **"Generar"**. La IA creará una estrategia y los pasos del embudo, que podría incluir una Landing Page.
 6.  **Revisa y Edita:** Una vez generado, podrás ver los detalles del funnel. Busca opciones para **"Ver Landing Page"** o **"Editar Pasos"** si necesitas hacer ajustes.
 
-### Paso 4: Plan de Medios y Contenido (Media Plan)
+### Paso 4: Campañas y Contenido (Campaign Orchestrator)
 
-El funnel define la estrategia; el plan de medios la convierte en contenido concreto para tus canales.
+El funnel define la estrategia; la campaña la convierte en contenido concreto para tus canales.
 
-1.  **Navegación:** Haz clic en **"Media Plan"** en el menú lateral.
-2.  **Acción:** Es probable que veas una opción para **"Crear Plan de Medios"** o que se te pida seleccionar el "Funnel" para el cual quieres generar el plan.
+1.  **Navegación:** Haz clic en **"Campaign Orchestrator"** en el menú lateral.
+2.  **Acción:** Es probable que veas una opción para **"Crear Campaña"** o que se te pida seleccionar el "Funnel" para el cual quieres generar la campaña.
 3.  **Selecciona el Funnel:** Elige el funnel que creaste en el paso anterior.
-4.  **Generación:** Haz clic en **"Generar Plan de Medios"**. La aplicación creará una serie de borradores de contenido (publicaciones para redes sociales, correos, etc.) adaptados a cada etapa del funnel y a tus canales.
+4.  **Generación:** Haz clic en **"Generar Campaña"**. La aplicación creará una serie de borradores de contenido (publicaciones para redes sociales, correos, etc.) adaptados a cada etapa del funnel y a tus canales.
 5.  **Revisión y Aprobación:**
     *   Navega por los contenidos generados.
     *   Haz clic en cada uno para **"Editar"** el texto, las imágenes o los prompts creativos.
@@ -69,7 +69,7 @@ Aquí es donde todo cobra vida. El calendario te permite visualizar y gestionar 
 
 1.  **Navegación:** Ve a la sección **"Calendar"** en el menú lateral.
 2.  **Vista:** Verás una vista de calendario (mensual, semanal o diaria).
-3.  **Contenido Programado:** El contenido que aprobaste en el "Media Plan" aparecerá automáticamente en las fechas sugeridas en el calendario.
+3.  **Contenido Programado:** El contenido que aprobaste en el **"Orquestador de Campañas"** aparecerá automáticamente en las fechas sugeridas en el calendario.
 4.  **Ajustes:**
     *   **Arrastrar y Soltar:** Si quieres cambiar la fecha de una publicación, simplemente haz clic sobre ella y arrástrala a un nuevo día.
     *   **Editar:** Haz clic en un elemento del calendario para abrir sus detalles y hacer ediciones de último minuto.

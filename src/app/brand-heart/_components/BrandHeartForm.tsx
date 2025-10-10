@@ -6,18 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
 import { MultiContactEditor } from './MultiContactEditor';
-import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo } from '../actions';
+import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo, AudiencePersona } from '../actions';
 
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
 type TranslateTextAction = typeof translateText;
 
-type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info'>;
+type BrandHeartFields = Omit<BrandHeartData, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'logo_url' | 'brand_name' | 'visual_identity' | 'contact_info' | 'audience'>;
 
 export interface BrandHeartFormProps {
     profile: Profile | null;
@@ -35,6 +34,7 @@ const initialBrandHeartState: BrandHeartData = {
     vision: { primary: '', secondary: '' },
     values: { primary: '', secondary: '' },
     tone_of_voice: { primary: '', secondary: '' },
+    audience: [],
     visual_identity: { primary: '', secondary: '' },
     contact_info: [],
 };
@@ -58,11 +58,11 @@ export function BrandHeartForm({
         setLogoFile(file);
     };
 
-    const handleFieldChange = (field: keyof BrandHeartFields | 'visual_identity', language: 'primary' | 'secondary', value: string) => {
+    const handleFieldChange = (field: keyof BrandHeartData, language: 'primary' | 'secondary', value: string) => {
         setBrandHeart(prev => ({
             ...prev,
             [field]: {
-                ...(prev[field]),
+                ...((prev[field] as object) || {}),
                 [language]: value
             }
         }));
@@ -82,8 +82,8 @@ export function BrandHeartForm({
         
         formData.append('brand_name', brandHeart.brand_name || '');
         (Object.keys(brandHeart) as Array<keyof BrandHeartData>).forEach(key => {
-            if (key === 'contact_info') {
-                 formData.append('contact_info', JSON.stringify(brandHeart.contact_info));
+            if (key === 'contact_info' || key === 'audience') {
+                 formData.append(key, JSON.stringify(brandHeart[key]));
             } else if (typeof brandHeart[key] === 'object' && brandHeart[key] !== null) {
                 const bilingualValue = brandHeart[key] as { primary: string | null, secondary: string | null };
                 if (bilingualValue.primary) {
@@ -117,7 +117,7 @@ export function BrandHeartForm({
         });
     };
     
-    const handleAutoTranslate = async (fieldId: keyof BrandHeartFields | 'visual_identity') => {
+    const handleAutoTranslate = async (fieldId: keyof BrandHeartData) => {
         if (!profile?.secondary_language) return;
 
         const fieldData = (brandHeart as any)[fieldId];
@@ -133,7 +133,7 @@ export function BrandHeartForm({
             return;
         }
 
-        setIsTranslating(fieldId);
+        setIsTranslating(fieldId as string);
         try {
             const result = await translateTextAction({ text: primaryText, targetLanguage });
             setBrandHeart((prev: any) => ({
@@ -157,19 +157,22 @@ export function BrandHeartForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-2">
-                <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
-                <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleBrandNameChange} />
+            <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="space-y-2 flex-shrink-0">
+                    <Label className="text-lg font-semibold">Brand Logo</Label>
+                    <Avatar
+                        url={brandHeart?.logo_url}
+                        isUploading={isSaving}
+                        onFileSelect={handleFileSelect}
+                        accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                    />
+                </div>
+                <div className="space-y-2 w-full">
+                    <Label htmlFor="brand_name" className="text-lg font-semibold">Brand Name</Label>
+                    <Input id="brand_name" name="brand_name" value={brandHeart?.brand_name || ''} onChange={handleBrandNameChange} />
+                </div>
             </div>
-            <div className="space-y-2">
-                 <Label className="text-lg font-semibold">Brand Logo</Label>
-                 <Avatar
-                    url={brandHeart?.logo_url}
-                    isUploading={isSaving}
-                    onFileSelect={handleFileSelect}
-                    accept="image/png, image/jpeg, image/gif, image/svg+xml"
-                />
-            </div>
+
             <BilingualFormField 
                 id="brand_brief" 
                 label="Brand Brief" 

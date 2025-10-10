@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
 import { generateContentForOffering as genContentFlow, GenerateContentInput, GenerateContentOutput } from '@/ai/flows/generate-content-flow';
-import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
+import { generateCreativeForOffering as genCreativeFlow, GenerateCreativeInput, GenerateCreativeOutput, CarouselSlide, VideoScene } from '@/ai/flows/generate-creative-flow';
 import { generateOfferingDraft as genOfferingDraftFlow, GenerateOfferingDraftInput, OfferingDraft } from '@/ai/flows/generate-offering-draft-flow';
 import { generateImageDescriptionDirect as genImageDescDirect, GenerateImageDescriptionDirectInput, GenerateImageDescriptionDirectOutput } from '@/ai/direct/generate-image-description-direct';
 import { saveContent as saveContentAction } from '@/app/artisan/actions';
@@ -250,6 +250,84 @@ export async function updateOffering(offeringId: string, offeringData: UpsertOff
     revalidatePath('/offerings');
     return getOffering(offeringId).then(o => o!);
 }
+
+/**
+ * Adds a new schedule to an existing offering.
+ */
+export async function addScheduleToOffering(offeringId: string, scheduleData: Omit<OfferingSchedule, 'id'>): Promise<OfferingSchedule> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = {
+        ...scheduleData,
+        offering_id: offeringId,
+        user_id: user.id,
+        event_date: scheduleData.event_date ? scheduleData.event_date.toISOString() : null,
+    };
+
+    const { data: newSchedule, error } = await supabase
+        .from('offering_schedules')
+        .insert(payload)
+        .select()
+        .single();
+    
+    if (error) {
+        console.error('Error adding schedule to offering:', error.message);
+        throw new Error('Could not add schedule.');
+    }
+
+    revalidatePath('/offerings');
+    return newSchedule;
+}
+
+export async function updateOfferingSchedule(scheduleId: string, scheduleData: Partial<Omit<OfferingSchedule, 'id'>>): Promise<OfferingSchedule> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const payload = { ...scheduleData, updated_at: new Date().toISOString() };
+    if (scheduleData.event_date) {
+        payload.event_date = scheduleData.event_date.toISOString();
+    }
+
+    const { data, error } = await supabase
+        .from('offering_schedules')
+        .update(payload)
+        .eq('id', scheduleId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+        
+    if (error) {
+        console.error(`Error updating schedule ${scheduleId}:`, error);
+        throw new Error(`Could not update event schedule: ${error.message}`);
+    }
+
+    revalidatePath('/offerings');
+    return data;
+}
+
+export async function deleteOfferingSchedule(scheduleId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('offering_schedules')
+        .delete()
+        .eq('id', scheduleId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error(`Error deleting schedule ${scheduleId}:`, error);
+        throw new Error(`Could not delete event schedule: ${error.message}`);
+    }
+
+    revalidatePath('/offerings');
+    return { message: 'Event date deleted successfully.' };
+}
+
 
 /**
  * Deletes an offering for the currently authenticated user, including its media from storage.

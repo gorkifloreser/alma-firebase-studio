@@ -10,6 +10,7 @@ import { z } from 'genkit';
 import { getBrandHeart, BrandHeartData } from '@/app/brand-heart/actions';
 import { getViralHooks, type ViralHook } from '@/app/viral-hooks/actions';
 import { createClient } from '@/lib/supabase/server';
+import { googleAI } from '@genkit-ai/googleai';
 
 
 const AdaptedHookSchema = z.object({
@@ -32,6 +33,7 @@ const AdaptHooksOutputSchema = z.object({
 
 const adapterPrompt = ai.definePrompt({
     name: 'viralHookAdapterPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),

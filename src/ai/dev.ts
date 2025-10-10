@@ -16,3 +16,5 @@ import './flows/adapt-viral-hooks-flow';
 import './flows/generate-value-content-flow';
 import './flows/generate-value-content-types';
 import './flows/create-content-from-testimonial-flow';
+import './flows/adapt-value-strategies-flow';
+import './flows/generate-audience-flow';

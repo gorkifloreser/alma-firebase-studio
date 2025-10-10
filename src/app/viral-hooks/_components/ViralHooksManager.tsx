@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -189,7 +190,7 @@ const AdaptedHookCard = ({
                 <Textarea 
                     value={hook.adapted_hook}
                     onChange={e => handleAdaptedHookChange(hook.id, 'adapted_hook', e.target.value)}
-                    className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1"
+                    className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1 resize-none"
                 />
                 <div className="flex gap-2 flex-shrink-0 ml-4">
                     <Badge variant="outline" className="text-blue-600 border-blue-600/50">{hook.relevance_score}/10 Relevance</Badge>
@@ -419,9 +420,25 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                     </p>
                 </div>
                 <div className="flex gap-2">
-                     <Button onClick={handleGenerateStrategy} variant="outline" className="gap-2" disabled={isGenerating}>
-                        {isGenerating ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Strategy</>}
-                    </Button>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="gap-2" disabled={isGenerating}>
+                                {isGenerating ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Strategy</>}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Generation</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Generating a new Top 10 list will overwrite any existing adapted hooks you have. Are you sure you want to continue?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleGenerateStrategy}>Generate</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <Button onClick={() => handleOpenDialog(null)} className="gap-2">
                         <PlusCircle className="h-5 w-5" />
                         New Custom Hook
@@ -464,7 +481,7 @@ export function ViralHooksManager({ initialViralHooks, initialAdaptedHooks, acti
                             {customHooks.map(hook => <HookCard key={hook.id} hook={hook} isCustom={true} />)}
                         </div>
                      ) : (
-                        <p className="text-muted-foreground text-center py-8">You haven&apos;t created any custom hooks yet.</p>
+                        <p className="text-muted-foreground text-center py-8">You haven't created any custom hooks yet.</p>
                      )}
                 </div>
 

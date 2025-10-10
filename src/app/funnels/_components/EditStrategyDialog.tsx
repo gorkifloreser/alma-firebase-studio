@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -116,7 +117,7 @@ export function EditStrategyDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="text-primary"/>
-                        Edit Strategy Blueprint
+                        Edit Strategy
                     </DialogTitle>
                     <DialogDescription>
                         Refine the high-level strategy for your campaign.

@@ -41,7 +41,7 @@ const GenerateFunnelInputSchema = z.object({
   funnelType: z.string().describe("The name of the funnel model being used, e.g., 'Lead Magnet'."),
   funnelPrinciples: z.string().describe("The core principles or strategy of the funnel model."),
   goal: z.string().describe("The specific goal of this strategy."),
-  channels: z.array(z.string()).describe('The marketing channels to focus on for this strategy.'),
+  channels: z.array(z.string()).optional().describe('The marketing channels to focus on for this strategy.'),
 });
 export type GenerateFunnelInput = z.infer<typeof GenerateFunnelInputSchema>;
 
@@ -57,13 +57,12 @@ const prompt = ai.definePrompt({
           funnelType: z.string(),
           funnelPrinciples: z.string(),
           goal: z.string(),
-          channels: z.array(z.string()),
       })
   },
   output: { schema: GenerateFunnelOutputSchema },
-  prompt: `You are a world-class marketing strategist who specializes in creating authentic, customer-centric marketing strategies based on psychology and the "Who -> How -> What -> Where" model. Your primary goal is to sound like the brand you are representing, using their unique tone of voice.
+  prompt: `You are a world-class marketing strategist who specializes in creating authentic, customer-centric marketing strategies based on psychology. Your primary goal is to sound like the brand you are representing, using their unique tone of voice.
 
-Your task is to create a high-level STRATEGY BLUEPRINT (the "How") for a marketing campaign. This is not about writing the final copy; it's about defining the psychological journey for the customer in a way that is authentic to the brand.
+Your task is to create a high-level STRATEGY BLUEPRINT for a marketing campaign. This is not about writing the final copy; it's about defining the psychological journey for the customer in a way that is authentic to the brand.
 
 **The "Who" (The Brand's Soul - This is your most important input):**
 - Brand Name: {{brandHeart.brand_name}}
@@ -79,8 +78,6 @@ Your task is to create a high-level STRATEGY BLUEPRINT (the "How") for a marketi
 {{#if offering.contextual_notes}}
 - Important Contextual Notes: {{offering.contextual_notes}}
 {{/if}}
-
-**The "Where" (Target Channels):** {{#each channels}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
 **The Goal:** {{goal}}
 
@@ -105,8 +102,6 @@ For each stage of the journey, you must define:
 
 **CRUCIAL FINAL STEP:** The fifth and final stage of your generated strategy MUST ALWAYS be "Harvesting the Glow (Advocacy)". Its objective is to automate the collection of testimonials and reviews from satisfied customers. Its conceptual steps should include ideas for sending personalized emails or messages asking for a review on social media, Google Maps, or the brand's website. This creates a regenerative loop where customer success becomes new marketing content.
 
-The strategy should be channel-aware but focused on the psychological journey. The conceptual steps should be versatile enough to be adapted to the selected channels.
-
 Generate this entire plan in the **{{primaryLanguage}}** language.
 
 Return the result in the specified JSON format.`,
@@ -119,7 +114,7 @@ const generateFunnelFlow = ai.defineFlow(
     inputSchema: GenerateFunnelInputSchema,
     outputSchema: GenerateFunnelOutputSchema,
   },
-  async ({ offeringId, funnelType, funnelPrinciples, goal, channels }) => {
+  async ({ offeringId, funnelType, funnelPrinciples, goal }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -141,24 +136,41 @@ const generateFunnelFlow = ai.defineFlow(
     const languages = await import('@/lib/languages');
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
 
-    const { output } = await prompt({
+    const promptContext = {
         primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,
         brandHeart,
         offering,
         funnelType,
         funnelPrinciples,
         goal,
-        channels,
-    });
+    };
+    
+    // AI Best Practice: Log the input context for verification
+    console.log('--- AI CONTEXT FOR FUNNEL GENERATION ---');
+    console.log('Funnel Type:', funnelType);
+    console.log('Goal:', goal);
+    console.log('Offering Title:', offering.title.primary);
+    console.log('Tone of Voice:', brandHeart.tone_of_voice.primary);
+    console.log('Audience:', JSON.stringify(brandHeart.audience, null, 2));
+    console.log('------------------------------------');
+
+
+    const { output } = await prompt(promptContext);
     
     if (!output) {
       throw new Error('The AI model did not return a response.');
     }
+    
+    // AI Best Practice: Log the raw output for verification
+    console.log('--- RAW AI OUTPUT FROM FUNNEL GENERATION ---');
+    console.log(JSON.stringify(output, null, 2));
+    console.log('------------------------------------');
+
 
     return output;
   }
 );
 
-export async function generateFunnelPreview(input: GenerateFunnelInput): Promise<GenerateFunnelOutput> {
+export async function generateFunnelPreview(input: Omit<GenerateFunnelInput, 'channels'> & { channels?: string[] }): Promise<GenerateFunnelOutput> {
     return generateFunnelFlow(input);
 }

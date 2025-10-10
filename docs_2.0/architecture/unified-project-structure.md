@@ -1,7 +1,7 @@
 # Unified Project Structure
 
 ```
-alma-app/
+regen-mkt/
 ├── src/
 │   ├── app/            # Next.js App Router
 │   ├── components/     # Shared React components

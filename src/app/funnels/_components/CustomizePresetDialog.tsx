@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -68,13 +69,13 @@ export function CustomizePresetDialog({
                     await updateCustomFunnelPreset(preset.id, formData);
                      toast({
                         title: 'Template Updated!',
-                        description: 'Your custom funnel template has been saved.',
+                        description: 'Your custom strategy template has been saved.',
                     });
                 } else {
                     await saveCustomFunnelPreset(formData);
                     toast({
                         title: 'Template Saved!',
-                        description: 'Your new funnel template has been created.',
+                        description: 'Your new strategy template has been created.',
                     });
                 }
                 onPresetSaved();
@@ -94,7 +95,7 @@ export function CustomizePresetDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>{mode === 'edit' ? 'Edit' : 'Customize'} Funnel Template</DialogTitle>
+                    <DialogTitle>{mode === 'edit' ? 'Edit' : 'Customize'} Strategy Template</DialogTitle>
                     <DialogDescription>
                        {mode === 'edit' ? 'Update the details of your custom template.' : 'Edit the details and save it as your own new template.'}
                     </DialogDescription>

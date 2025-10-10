@@ -1,8 +1,8 @@
-# Alma App UI/UX Specification
+# Regen MKT UI/UX Specification
 
 ## Introduction
 
-This document defines the user experience goals, information architecture, user flows, and visual design specifications for the Alma App's user interface. It serves as the foundation for visual design and frontend development, ensuring a cohesive and user-centered experience that feels calm, creative, and empowering.
+This document defines the user experience goals, information architecture, user flows, and visual design specifications for the Regen MKT's user interface. It serves as the foundation for visual design and frontend development, ensuring a cohesive and user-centered experience that feels calm, creative, and empowering.
 
 ### Overall UX Goals & Principles
 
@@ -31,7 +31,7 @@ This document defines the user experience goals, information architecture, user 
 ## Branding & Style Guide
 
 ### Visual Identity
-The visual identity of the Alma App will be organic, soulful, and minimalist. The design will evoke a sense of calm and creativity, using soft textures and clean typography to create a digital sanctuary for the user. A key visual element will be the use of subtle, slow-moving **mesh gradients** in soft pastel colors to create a calming, ethereal aura in backgrounds and decorative elements.
+The visual identity of the Regen MKT will be organic, soulful, and minimalist. The design will evoke a sense of calm and creativity, using soft textures and clean typography to create a digital sanctuary for the user. A key visual element will be the use of subtle, slow-moving **mesh gradients** in soft pastel colors to create a calming, ethereal aura in backgrounds and decorative elements.
 
 ### Design System & Technology
 To achieve this vision, the UI will be built using **Tailwind CSS**. We will create a custom, expressive design system on top of Tailwind's utility-first framework to ensure a bespoke aesthetic while maintaining consistency. A **dark mode** will be a core feature from the outset.

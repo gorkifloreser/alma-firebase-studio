@@ -1,3 +1,5 @@
+
+
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -14,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2 } from 'lucide-react';
+import { PlusCircle, GitBranch, Edit, Trash, MoreVertical, Copy, User, Wand2, LayoutGrid, Rows, ChevronsRight, BrainCircuit, Star, Save, Lightbulb, BadgeHelp, TrendingUp, CircleDashed, Users, AlertTriangle, Sparkles } from 'lucide-react';
 import { CreateFunnelDialog } from './CreateFunnelDialog';
 import {
   DropdownMenu,
@@ -39,9 +41,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrchestrateMediaPlanDialog } from './OrchestrateMediaPlanDialog';
 import { ViralHooksManager } from '@/app/viral-hooks/_components/ViralHooksManager';
-import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset } from '../actions';
+import type { Funnel, FunnelPreset, getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, ValueStrategy, AdaptedValueStrategy, updateAdaptedValueStrategy, deleteAdaptedValueStrategy } from '../actions';
 import type { ViralHook, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, getAdaptedHooks, generateAndGetAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook, getViralHooks } from '@/app/viral-hooks/actions';
 import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 
 
 interface FunnelsClientPageProps {
@@ -49,6 +54,8 @@ interface FunnelsClientPageProps {
     initialFunnelPresets: FunnelPreset[];
     initialViralHooks: ViralHook[];
     initialAdaptedHooks: AdaptedHook[];
+    initialValueStrategies: ValueStrategy[];
+    initialAdaptedValueStrategies: AdaptedValueStrategy[];
     offeringIdFilter: string | undefined;
     getViralHooks: typeof getViralHooks;
     actions: {
@@ -65,14 +72,110 @@ interface FunnelsClientPageProps {
         createAdaptedHook: typeof createAdaptedHook;
         updateAdaptedHook: typeof updateAdaptedHook;
         deleteAdaptedHook: typeof deleteAdaptedHook;
+        generateAndGetAdaptedValueStrategies: () => Promise<{ topStrategies: AdaptedValueStrategy[] }>;
+        updateAdaptedValueStrategy: typeof updateAdaptedValueStrategy;
+        deleteAdaptedValueStrategy: typeof deleteAdaptedValueStrategy;
     }
 }
+
+const ValueStrategyCard = ({ strategy }: { strategy: ValueStrategy }) => {
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <Badge variant="secondary" className="w-fit">{strategy.virality_axis}</Badge>
+                <CardTitle className="mt-2">{strategy.content_method}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow space-y-4">
+                <div>
+                    <h4 className="font-semibold text-sm">Value Purpose</h4>
+                    <p className="text-muted-foreground text-sm">{strategy.value_purpose}</p>
+                </div>
+                 <div>
+                    <h4 className="font-semibold text-sm">Practical Example</h4>
+                    <p className="text-muted-foreground text-sm italic">"{strategy.practical_example}"</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+const AdaptedValueStrategyCard = ({
+    strategy,
+    isSaving,
+    isDeleting,
+    isDirty,
+    onFieldChange,
+    onSave,
+    onDelete,
+}: {
+    strategy: AdaptedValueStrategy;
+    isSaving: boolean;
+    isDeleting: boolean;
+    isDirty: boolean;
+    onFieldChange: (field: keyof AdaptedValueStrategy, value: string) => void;
+    onSave: () => void;
+    onDelete: () => void;
+}) => (
+    <Card className="bg-muted/30">
+        <CardHeader>
+            <div className="flex justify-between items-start">
+                <Textarea
+                    value={strategy.adapted_method}
+                    onChange={e => onFieldChange('adapted_method', e.target.value)}
+                    className="text-lg font-bold border-0 focus-visible:ring-1 focus-visible:ring-primary p-1 -ml-1 resize-none"
+                />
+                <div className="flex gap-2 flex-shrink-0 ml-4">
+                    <Badge variant="outline" className="text-blue-600 border-blue-600/50">{strategy.relevance_score}/10 Relevance</Badge>
+                </div>
+            </div>
+            <CardDescription>Original: "{strategy.original_method}"</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Accordion type="single" collapsible defaultValue="strategy">
+                <AccordionItem value="strategy">
+                    <AccordionTrigger>Actionable Strategy</AccordionTrigger>
+                    <AccordionContent>
+                        <Textarea
+                            value={strategy.strategy}
+                            onChange={e => onFieldChange('strategy', e.target.value)}
+                            className="text-sm text-muted-foreground w-full"
+                            rows={3}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="visual">
+                    <AccordionTrigger>Visual Prompt</AccordionTrigger>
+                    <AccordionContent>
+                        <Textarea
+                            value={strategy.visual_prompt}
+                            onChange={e => onFieldChange('visual_prompt', e.target.value)}
+                            className="text-sm font-mono text-muted-foreground bg-secondary w-full"
+                            rows={4}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+            <AlertDialog>
+                <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash className="mr-2 h-4 w-4" /> Delete</Button></AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Delete this adapted strategy?</AlertDialogTitle><AlertDialogDescription>This will permanently remove this strategy from your list.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={onDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">{isDeleting ? 'Deleting...' : 'Delete'}</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {isDirty && <Button size="sm" onClick={onSave} disabled={isSaving}><Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}</Button>}
+        </CardFooter>
+    </Card>
+);
 
 export function FunnelsClientPage({
     initialFunnels,
     initialFunnelPresets,
     initialViralHooks,
     initialAdaptedHooks,
+    initialValueStrategies,
+    initialAdaptedValueStrategies,
     offeringIdFilter,
     actions,
     getViralHooks,
@@ -87,8 +190,36 @@ export function FunnelsClientPage({
     const [presetToCustomize, setPresetToCustomize] = useState<FunnelPreset | null>(null);
     const [customizeMode, setCustomizeMode] = useState<'clone' | 'edit'>('clone');
     const [isDeleting, startDeleting] = useTransition();
+    const [strategyView, setStrategyView] = useState<'grid' | 'list'>('grid');
+    const [activeTab, setActiveTab] = useState('my-strategies');
+    
+    // State for Value Strategies
+    const [adaptedValueStrategies, setAdaptedValueStrategies] = useState(initialAdaptedValueStrategies);
+    const [isGeneratingValueStrategies, startGeneratingValueStrategies] = useTransition();
+    const [dirtyAdaptedValueStrategies, setDirtyAdaptedValueStrategies] = useState<Set<number>>(new Set());
+
     const router = useRouter();
     const { toast } = useToast();
+
+     useEffect(() => {
+        const savedView = localStorage.getItem('strategy-view');
+        if (savedView === 'grid' || savedView === 'list') {
+            setStrategyView(savedView);
+        }
+        const savedTab = localStorage.getItem('ai-strategist-tab');
+        if (savedTab) {
+            setActiveTab(savedTab);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('strategy-view', strategyView);
+    }, [strategyView]);
+
+     useEffect(() => {
+        localStorage.setItem('ai-strategist-tab', activeTab);
+    }, [activeTab]);
+
 
     const { globalPresets, customPresets } = useMemo(() => {
         const global = funnelPresets.filter(p => p.user_id === null);
@@ -130,7 +261,7 @@ export function FunnelsClientPage({
         startDeleting(async () => {
             try {
                 await actions.deleteFunnel(funnelId);
-                toast({ title: 'Success!', description: 'The funnel has been deleted.' });
+                toast({ title: 'Success!', description: 'The strategy has been deleted.' });
                 handleDataRefresh();
             } catch (error: any) {
                 toast({
@@ -180,6 +311,56 @@ export function FunnelsClientPage({
                     title: 'Deletion Failed',
                     description: error.message,
                 });
+            }
+        });
+    };
+    
+    const handleGenerateValueStrategy = () => {
+        startGeneratingValueStrategies(async () => {
+            try {
+                const result = await actions.generateAndGetAdaptedValueStrategies();
+                setAdaptedValueStrategies(result.topStrategies);
+                toast({ title: "Value Strategy Generated!", description: "The AI has created a custom Top 10 value strategy for your brand."});
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Value Strategy Generation Failed', description: error.message });
+            }
+        });
+    };
+    
+    const handleAdaptedValueStrategyChange = (id: number, field: keyof AdaptedValueStrategy, value: string) => {
+        setAdaptedValueStrategies(prev => 
+            prev.map(s => s.id === id ? { ...s, [field]: value } : s)
+        );
+        setDirtyAdaptedValueStrategies(prev => new Set(prev).add(id));
+    };
+
+    const handleSaveAdaptedValueStrategy = (id: number) => {
+        const strategyToSave = adaptedValueStrategies.find(s => s.id === id);
+        if (!strategyToSave) return;
+        
+        startDeleting(async () => { // re-using the transition state for saving
+            try {
+                await actions.updateAdaptedValueStrategy(id, strategyToSave);
+                setDirtyAdaptedValueStrategies(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(id);
+                    return newSet;
+                });
+                toast({ title: "Strategy Updated", description: "Your changes have been saved." });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+            }
+        });
+    };
+
+    const handleDeleteAdaptedValueStrategy = (id: number) => {
+        startDeleting(async () => {
+            try {
+                await actions.deleteAdaptedValueStrategy(id);
+                setAdaptedValueStrategies(prev => prev!.filter(s => s.id !== id));
+                toast({ title: 'Strategy Deleted', description: 'The adapted strategy has been removed.' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
             }
         });
     };
@@ -248,7 +429,7 @@ export function FunnelsClientPage({
                 <div>
                     <h1 className="text-3xl font-bold">AI Strategist</h1>
                     <p className="text-muted-foreground">
-                        Create, manage, and orchestrate strategic marketing funnels and viral hooks.
+                        Create, manage, and orchestrate strategic marketing strategies and viral hooks.
                     </p>
                 </div>
                 <Button onClick={handleOpenCreateDialog} className="gap-2">
@@ -257,14 +438,75 @@ export function FunnelsClientPage({
                 </Button>
             </header>
             
-            <Tabs defaultValue="my-strategies" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="flex justify-center">
                     <TabsList>
                         <TabsTrigger value="my-strategies">My AI Strategies</TabsTrigger>
                         <TabsTrigger value="viral-hooks">Viral Hooks Library</TabsTrigger>
+                        <TabsTrigger value="value-strategies">Value Strategies</TabsTrigger>
                         <TabsTrigger value="templates">Strategy Templates</TabsTrigger>
                     </TabsList>
                 </div>
+                <TabsContent value="value-strategies" className="mt-6">
+                     <div className="space-y-8">
+                        <header className="flex items-center justify-between">
+                            <div className="max-w-2xl">
+                                <h2 className="text-2xl font-bold">Adapted Value Strategies</h2>
+                                <p className="text-muted-foreground mt-1">
+                                   Your Top 10 value strategies, personalized by the AI for your brand.
+                                </p>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" className="gap-2" disabled={isGeneratingValueStrategies}>
+                                        {isGeneratingValueStrategies ? <><BrainCircuit className="h-5 w-5 animate-spin" /> Generating...</> : <><BrainCircuit className="h-5 w-5"/> Generate Top 10 Value Strategy</>}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Generation</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Generating a new Top 10 list will overwrite any existing adapted value strategies you have. Are you sure you want to continue?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleGenerateValueStrategy}>Generate</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </header>
+                         {(adaptedValueStrategies && adaptedValueStrategies.length > 0) && (
+                            <div className="space-y-6">
+                                <h3 className="text-2xl font-bold flex items-center gap-2">
+                                    <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
+                                    Top 10 Value Strategies for Your Brand
+                                </h3>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {adaptedValueStrategies.map(strategy => 
+                                        <AdaptedValueStrategyCard 
+                                            key={strategy.id}
+                                            strategy={strategy} 
+                                            isSaving={isDeleting}
+                                            isDeleting={isDeleting}
+                                            isDirty={dirtyAdaptedValueStrategies.has(strategy.id)}
+                                            onFieldChange={(field, value) => handleAdaptedValueStrategyChange(strategy.id, field, value)}
+                                            onSave={() => handleSaveAdaptedValueStrategy(strategy.id)}
+                                            onDelete={() => handleDeleteAdaptedValueStrategy(strategy.id)}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <Separator />
+                        <h2 className="text-2xl font-bold pt-4">Global Value Strategy Library</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {initialValueStrategies.map(strategy => (
+                                <ValueStrategyCard key={strategy.id} strategy={strategy} />
+                            ))}
+                        </div>
+                    </div>
+                </TabsContent>
                  <TabsContent value="viral-hooks" className="mt-6">
                     <ViralHooksManager
                         initialViralHooks={initialViralHooks}
@@ -291,73 +533,83 @@ export function FunnelsClientPage({
                     </div>
                 </TabsContent>
                 <TabsContent value="my-strategies" className="mt-6">
+                    <div className="flex justify-end mb-4">
+                        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                            <Button variant={strategyView === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setStrategyView('grid')}><LayoutGrid className="h-4 w-4"/></Button>
+                            <Button variant={strategyView === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setStrategyView('list')}><Rows className="h-4 w-4"/></Button>
+                        </div>
+                    </div>
                     {funnels.length > 0 ? (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className={strategyView === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
                                 {funnels.map(funnel => (
                                     <Card key={funnel.id} className="flex flex-col group">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <CardTitle className="text-xl">{funnel.name}</CardTitle>
-                                                    <CardDescription>
-                                                        For: {funnel.offerings?.title.primary || 'N/A'}
-                                                    </CardDescription>
-                                                </div>
-                                                <GitBranch className="h-8 w-8 text-muted-foreground" />
+                                         <div className={strategyView === 'list' ? 'flex justify-between items-center' : ''}>
+                                            <div className="flex-1">
+                                                <CardHeader>
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <CardTitle className="text-xl">{funnel.name}</CardTitle>
+                                                            <CardDescription>
+                                                                For: {funnel.offerings?.title.primary || 'N/A'}
+                                                            </CardDescription>
+                                                        </div>
+                                                        <GitBranch className="h-8 w-8 text-muted-foreground" />
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="flex-grow">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
+                                                    </p>
+                                                </CardContent>
                                             </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-sm text-muted-foreground">
-                                                Type: <span className="font-medium text-foreground">{funnelPresets.find(p=> p.id === funnel.preset_id)?.title || 'General'}</span>
-                                            </p>
-                                        </CardContent>
-                                        <CardFooter className="mt-auto pt-4 flex justify-between">
-                                            <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
-                                                <Wand2 className="mr-2 h-4 w-4" />
-                                                Media Orchestrator
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Strategy</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                                                <Trash className="mr-2 h-4 w-4" />
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This will permanently delete the funnel and all its associated content. This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    onClick={() => handleFunnelDelete(funnel.id)}
-                                                                    disabled={isDeleting}
-                                                                    className="bg-destructive hover:bg-destructive/90"
-                                                                >
-                                                                    {isDeleting ? 'Deleting...' : 'Delete'}
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </CardFooter>
+                                            <CardFooter className="mt-auto pt-4 flex justify-end gap-2">
+                                                <Button onClick={() => handleOpenOrchestrateDialog(funnel)}>
+                                                    <Wand2 className="mr-2 h-4 w-4" />
+                                                    Campaign Orchestrator
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => handleOpenEditDialog(funnel)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Strategy</span>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                                    <Trash className="mr-2 h-4 w-4" />
+                                                                    <span>Delete</span>
+                                                                </DropdownMenuItem>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete the strategy and all its associated content. This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        onClick={() => handleFunnelDelete(funnel.id)}
+                                                                        disabled={isDeleting}
+                                                                        className="bg-destructive hover:bg-destructive/90"
+                                                                    >
+                                                                        {isDeleting ? 'Deleting...' : 'Delete'}
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </CardFooter>
+                                         </div>
                                     </Card>
                                 ))}
                             </div>

@@ -68,6 +68,7 @@ const generateChannelPlanPrompt = ai.definePrompt({
           campaignLanguage: z.string(),
           brandHeart: z.any(),
           offering: z.any(),
+          isEvent: z.boolean(),
           strategy: z.any(),
           topAdaptedHooks: z.array(z.any()), // New input for viral hooks
           channel: z.string(),
@@ -78,67 +79,69 @@ const generateChannelPlanPrompt = ai.definePrompt({
       })
   },
   output: { schema: ChannelPlanSchema },
-  prompt: `You are an expert viral marketing copywriter and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
+  prompt: `You are an expert marketing strategist and AI prompt engineer with a deep understanding of authentic, heart-centered marketing. You are fluent in both {{primaryLanguage}} and {{#if secondaryLanguage}}{{secondaryLanguage}}{{else}}{{primaryLanguage}}{{/if}}.
 
-**HIERARCHY OF IMPORTANCE (Your 4-Step Thought Process):**
-1.  **Lead with a Viral Hook**: Start with a hook from the provided Top 10 list.
-2.  **Infuse Brand Soul**: Adapt the hook to the brand's unique tone and values.
-3.  **Showcase the Offering**: Ensure the content clearly communicates the value of the offering.
-4.  **Adapt to Channel & Strategy**: Refine the final output based on the channel's best practices and the strategic goal of the funnel stage.
+**YOUR GOAL:** Create a time-sensitive, strategic content plan for the '{{channel}}' channel, based on the provided campaign dates and event details.
 
 **CRITICAL INSTRUCTION: You must generate the entire output in the following language: {{campaignLanguage}}**
 
 ---
-**INPUT #1: THE TOP 10 ADAPTED VIRAL HOOKS (Your Primary Inspiration)**
+**INPUT #1: CAMPAIGN TIMELINE (Your Guide for "WHEN")**
+- Campaign Start Date: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}}
+- Campaign End Date: {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
+{{#if isEvent}}
+- Event Date (if applicable): {{#if offering.offering_schedules.[0].event_date}}{{offering.offering_schedules.[0].event_date}}{{else}}N/A{{/if}}
+{{/if}}
+---
+**INPUT #2: THE TOP 10 ADAPTED VIRAL HOOKS (Your Primary Inspiration for "WHAT")**
 {{#each topAdaptedHooks}}
 - **Hook**: "{{this.adapted_hook}}" (Strategy: {{this.strategy}}, Visuals: {{this.visual_prompt}})
 {{/each}}
 ---
-**INPUT #2: THE BRAND'S SOUL (The "Who" - Your Guide for TONE and VOICE)**
+**INPUT #3: THE BRAND'S SOUL (The "Who" - Your Guide for TONE and VOICE)**
 - Brand Name: {{brandHeart.brand_name}}
 - **Tone of Voice:** {{brandHeart.tone_of_voice.primary}}
-- **Values & Mission:** {{brandHeart.values.primary}} & {{brandHeart.mission.primary}}
-- Brand Brief ({{primaryLanguage}}): {{brandHeart.brand_brief.primary}}
-{{#if brandHeart.brand_brief.secondary}}- Brand Brief ({{secondaryLanguage}}): {{brandHeart.brand_brief.secondary}}{{/if}}
 - **Visual Identity:** {{brandHeart.visual_identity.primary}}
-- **Contact Info:** {{#each brandHeart.contact_info}} {{this.type}}: {{this.value}} {{/each}}
 ---
-**INPUT #3: THE OFFERING (The "What")**
-- Title ({{primaryLanguage}}): {{offering.title.primary}}
-{{#if offering.title.secondary}}- Title ({{secondaryLanguage}}): {{offering.title.secondary}}{{/if}}
-- Description ({{primaryLanguage}}): {{offering.description.primary}}
-{{#if offering.description.secondary}}- Description ({{secondaryLanguage}}): {{offering.description.secondary}}{{/if}}
-- Contextual Notes: {{offering.contextual_notes}}
+**INPUT #4: THE OFFERING (The "What" - The Core Subject)**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+- Type: {{offering.type}}
 - **Value Content (Key Talking Points):** 
 {{#each offering.value_content}}
     - **Type**: {{this.type}}, **Concept**: {{this.concept}}, **Developed Content**: {{this.developed_content}}
 {{/each}}
 ---
-**INPUT #4: STRATEGIC CONTEXT (The "How", "When", and "Where")**
+**INPUT #5: STRATEGIC CONTEXT (The "How" and "Where")**
 - Strategy Blueprint Stages:
 {{#each strategy.strategy_brief.strategy}}
   - **Stage: {{this.stageName}}** (Objective: {{this.objective}})
 {{/each}}
-- Campaign Dates: {{#if startDate}}{{startDate}}{{else}}Not specified{{/if}} to {{#if endDate}}{{endDate}}{{else}}Not specified{{/if}}
 - Channel for this plan: **'{{channel}}'**
 - Best practices for '{{channel}}': "{{bestPractices}}"
 ---
 
-**YOUR TASK: Create Authentic, VIRAL Content Packages**
+**YOUR TASK: Create Time-Aware, Authentic, VIRAL Content Packages**
 
-Based on all the provided context and following the hierarchy of importance, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint, making sure to use a **different viral hook** from the list for each stage to ensure variety.
+Based on all the provided context, generate a list of concrete content packages for the **'{{channel}}' channel ONLY**. Create one content package for each stage in the blueprint, making sure to use a **different viral hook** from the list for each stage.
+
+{{#if isEvent}}
+**Crucially, you MUST use the Campaign Timeline and Event Date to suggest realistic and strategic dates for each post.** For example, suggest awareness posts near the start date, urgency posts near the end date, and "thank you" or "recap" posts after the event date.
+{{else}}
+**Crucially, you MUST use the Campaign Timeline to suggest realistic and strategic dates for each post.** Distribute the posts evenly throughout the campaign duration.
+{{/if}}
 
 Each package MUST contain:
 1.  **offering_id**: '{{offering.id}}'.
 2.  **user_channel_settings**: { "channel_name": '{{channel}}' }.
 3.  **format**: Choose the best visual format for this content from this list: [{{#each validFormats}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].
-4.  **copy**: Write compelling, direct-response ad copy. **This is crucial:** Start with a hook from the provided list, then seamlessly weave in the Brand's Soul, the Offering's value (using the Value Content talking points), and a clear call to action that aligns with the channel and funnel stage.
+4.  **copy**: Write compelling, direct-response ad copy. Start with a hook from the provided list, then seamlessly weave in the Brand's Soul, the Offering's value, and a clear call to action.
 5.  **hashtags**: A space-separated list of 5-10 relevant hashtags.
-6.  **creative_prompt**: A detailed, visually rich prompt for an AI image/video generator. This prompt MUST be inspired by the chosen hook's visual strategy and infused with the brand's specific visual identity.
+6.  **creative_prompt**: A detailed, visually rich prompt for an AI image/video generator, inspired by the chosen hook's visual strategy and infused with the brand's specific visual identity.
 7.  **stage_name**: The name of the blueprint stage this item belongs to.
-8.  **objective**: **Generate a NEW, specific goal for THIS content piece** that aligns with the stage's objective. Example: "To build immediate trust by showcasing a powerful customer transformation story."
-9.  **concept**: **Generate a NEW, specific concept for THIS content piece** based on the chosen viral hook and the offering's value content. Example: "Hook: 'This shouldn't have worked... but it did.' Concept: Tell the story of a customer who was skeptical about [Offering Benefit] but got [Specific Result]."
-10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z').
+8.  **objective**: **Generate a NEW, specific goal for THIS content piece** that aligns with the stage's objective.
+9.  **concept**: **Generate a NEW, specific concept for THIS content piece** based on the chosen viral hook and the offering's value content.
+10. **suggested_post_at**: Suggest an ideal post date/time in ISO 8601 format (e.g., '2025-10-26T14:30:00Z'). **This MUST be a logical date within the campaign timeline.**
 
 Generate this entire plan in the **{{campaignLanguage}}** language. Return the result as a flat array of plan items in the specified JSON format.`,
 });
@@ -227,7 +230,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     ] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
         supabase.from('profiles').select('primary_language, secondary_language').eq('id', user.id).single(),
-        supabase.from('funnels').select(`*, offerings (*)`).eq('id', funnelId).eq('user_id', user.id).single(),
+        supabase.from('funnels').select(`*, offerings (*, offering_schedules(*))`).eq('id', funnelId).eq('user_id', user.id).single(),
         supabase.from('user_channel_settings').select('channel_name, best_practices').eq('user_id', user.id),
         supabase.from('adapted_viral_hooks').select('*').eq('user_id', user.id).limit(10),
     ]);
@@ -242,7 +245,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     }
     
     const strategyBrief = strategy.strategy_brief as unknown as GenerateFunnelOutput;
-    const channels = requestedChannels || strategyBrief?.channels || [];
+    const channels = requestedChannels || [];
     const offering = strategy.offerings;
 
     if (channels.length === 0) {
@@ -255,6 +258,7 @@ const generateMediaPlanFlow = ai.defineFlow(
     const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
     const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
     const secondaryLanguage = profile.secondary_language ? languageNames.get(profile.secondary_language) : undefined;
+    const isEvent = offering.type === 'Event';
 
     // Create a parallel generation task for each channel
     const channelPromises = channels.map(channel => {
@@ -266,6 +270,7 @@ const generateMediaPlanFlow = ai.defineFlow(
             campaignLanguage: languageNames.get(campaignLanguage || profile.primary_language) || campaignLanguage || primaryLanguage,
             brandHeart,
             offering,
+            isEvent,
             strategy,
             topAdaptedHooks: adaptedHooks, // Pass the hooks to the prompt
             channel,

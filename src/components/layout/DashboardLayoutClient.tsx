@@ -59,14 +59,22 @@ export function DashboardLayoutClient({
         <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-transparent")}>
           <SidebarHeader className="h-16 flex items-center justify-between p-4">
               <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
-                <div className="bg-primary rounded-lg p-1.5">
-                   <Infinity className="h-5 w-5 text-primary-foreground" />
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                  <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill />
+                    </div>
+                  </div>
                 </div>
-                <span className="font-bold text-lg">alma AI</span>
+                <span className="font-bold text-lg">Regen MKT</span>
               </div>
                <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
-                <div className="bg-primary rounded-lg p-1.5">
-                   <Infinity className="h-5 w-5 text-primary-foreground" />
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                  <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill />
+                    </div>
+                  </div>
                 </div>
               </div>
           </SidebarHeader>

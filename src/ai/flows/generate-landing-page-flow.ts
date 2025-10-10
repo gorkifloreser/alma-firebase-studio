@@ -55,12 +55,20 @@ Generate a complete, self-contained HTML file for a landing page. The landing pa
 - Contextual Notes: {{offering.contextual_notes}}
 {{/if}}
 
+{{#if offering.offering_media}}
+**Available Media (Use these image URLs in \`<img>\` tags where appropriate):**
+{{#each offering.offering_media}}
+- URL: {{this.media_url}} (Description: {{this.description}})
+{{/each}}
+{{/if}}
+
+
 **Requirements for the HTML:**
 1.  **Single File:** The entire output must be a single HTML file.
 2.  **Tailwind CSS:** Use Tailwind CSS utility classes for ALL styling. You can assume Tailwind is available. Use classes for layout (flexbox, grid), spacing (p-*, m-*), typography (text-*, font-*), colors, etc.
 3.  **Responsive Design:** The layout must be **mobile-first** and **fully responsive**. Use Tailwind's responsive prefixes (e.g., \`md:\`, \`lg:\`) to create a great experience on both mobile and desktop screens.
 4.  **Structure:** Include at least these sections:
-    *   A compelling hero section with a strong headline and a call-to-action (CTA).
+    *   A compelling hero section with a strong headline and a call-to-action (CTA). If media is available, use a relevant image.
     *   A features or benefits section.
     *   A section with more details about the offering.
     *   A final CTA section.
@@ -84,7 +92,7 @@ const generateLandingPageFlow = ai.defineFlow(
 
     const [{ data: brandHeart, error: brandHeartError }, { data: offering, error: offeringError }] = await Promise.all([
         supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
-        supabase.from('offerings').select('*').eq('id', offeringId).single(),
+        supabase.from('offerings').select('*, offering_media(*)').eq('id', offeringId).single(),
     ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found.');

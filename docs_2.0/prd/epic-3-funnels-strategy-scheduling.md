@@ -22,11 +22,11 @@
         *   The visual editor will be implemented using the **Puck** open-source library.
         *   A set of custom, Tailwind CSS-styled React components will be created for use within the Puck editor to ensure brand consistency.
 
-**Story 3.3: Create a Holistic, Multi-Channel Media Plan (Module 4)**
-*   **As a Conscious Creator,** I want the AI to create a content plan that suggests specific pieces for social media, email, and WhatsApp, **so that** I have a clear, holistic strategy for promoting my "Offerings" across all my key channels.
+**Story 3.3: Create a Holistic, Multi-Channel Campaign (Module 4)**
+*   **As a Conscious Creator,** I want the AI to create a content campaign that suggests specific pieces for social media, email, and WhatsApp, **so that** I have a clear, holistic strategy for promoting my "Offerings" across all my key channels.
     *   **Acceptance Criteria:**
-        1.  A new "Media Plan" page is created and is a protected route.
-        2.  A "Generate Plan" button triggers the AI to analyze all "Offerings" marked as "active".
+        1.  A new "Campaign Orchestrator" page is created and is a protected route.
+        2.  A "Generate Campaign" button triggers the AI to analyze all "Offerings" marked as "active".
         3.  The AI generates a list of suggested content pieces for the upcoming week, **explicitly tailored for different channels.**
         4.  The plan is displayed in a clear, organized list, grouped by channel (e.g., "Social Media," "Email," "WhatsApp").
         5.  Example plan items could be:

@@ -32,6 +32,7 @@ export type MediaPlanItem = {
     status: string; 
     user_channel_id: number | null;
     user_channel_settings: { channel_name: string } | null;
+    video_script: any[] | null; // Added
 };
 
 export type MediaPlan = {
@@ -44,6 +45,11 @@ export type MediaPlan = {
     campaign_end_date: string | null;
     media_plan_items: MediaPlanItem[] | null;
 };
+
+export type OfferingSchedule = {
+    id: string;
+    event_date: string | null;
+}
 
 export type Funnel = {
     id: string;
@@ -58,6 +64,7 @@ export type Funnel = {
     offerings: {
         id: string;
         title: { primary: string | null };
+        offering_schedules: OfferingSchedule[] | null;
     } | null;
     media_plans: MediaPlan[] | null;
 }
@@ -71,3 +78,24 @@ export type FunnelPreset = {
     best_for: string;
     principles: string;
 };
+
+export type ValueStrategy = {
+    id: number;
+    virality_axis: string;
+    content_method: string;
+    value_purpose: string;
+    practical_example: string;
+};
+
+export type AdaptedValueStrategy = {
+    id: number;
+    user_id: string;
+    original_id: number;
+    original_method: string;
+    relevance_score: number;
+    adapted_method: string;
+    strategy: string;
+    visual_prompt: string;
+    created_at: string;
+};
+

@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, MoreVertical, ShoppingBag, GitBranch, Copy, BookHeart, LayoutGrid, Calendar } from 'lucide-react';
 import { CreateOfferingDialog } from './CreateOfferingDialog';
 import { OfferingDetailDialog } from './OfferingDetailDialog';
+import { CreateEventInstanceDialog } from './CreateEventInstanceDialog';
+import { EditEventInstanceDialog } from './EditEventInstanceDialog';
+import { DndContext, type DragEndEvent } from '@dnd-kit/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,15 +30,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from '@/components/ui/select';
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import type { Offering, OfferingMedia, ValueContentBlock } from '../actions';
-import type { getOfferings, deleteOffering } from '../actions';
+import type { Offering, OfferingMedia, OfferingSchedule } from '../actions';
+import type { getOfferings, deleteOffering, updateOfferingSchedule } from '../actions';
 import type { Funnel } from '@/app/funnels/actions';
 import type { getProfile } from '@/app/settings/actions';
 import { EventCalendarView } from './EventCalendarView';
-
+import { format, isSameDay, parseISO, setHours, setMinutes } from 'date-fns';
+import { Clock } from 'lucide-react';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 type OfferingWithMedia = Offering & { offering_media: OfferingMedia[] };
@@ -48,21 +53,61 @@ interface OfferingsClientPageProps {
     actions: {
         getOfferings: typeof getOfferings;
         deleteOffering: typeof deleteOffering;
+        updateOfferingSchedule: typeof updateOfferingSchedule;
         [key: string]: Function; // for other actions
     }
 }
+
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hours = Math.floor(i / 2);
+  const minutes = (i % 2) * 30;
+  const time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return { value: time, label: format(new Date(2000, 0, 1, hours, minutes), 'p') };
+});
+
 
 export function OfferingsClientPage({ initialOfferings, initialFunnels, profile, actions }: OfferingsClientPageProps) {
     const [offerings, setOfferings] = useState(initialOfferings);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+    const [isInstanceDialogOpen, setIsInstanceDialogOpen] = useState(false);
+    const [isEditInstanceDialogOpen, setIsEditInstanceDialogOpen] = useState(false);
     const [isDeleting, startDeleting] = useTransition();
+    const [isScheduling, startScheduling] = useTransition();
     const [offeringToEdit, setOfferingToEdit] = useState<OfferingWithMedia | null>(null);
     const [offeringToView, setOfferingToView] = useState<OfferingWithMedia | null>(null);
+    const [scheduleToEdit, setScheduleToEdit] = useState<OfferingSchedule | null>(null);
+    const [preselectedDate, setPreselectedDate] = useState<Date | undefined>(undefined);
     const [activeTab, setActiveTab] = useState('all');
     const [eventView, setEventView] = useState<'grid' | 'calendar'>('grid');
+
+    const [isConfirmTimeOpen, setIsConfirmTimeOpen] = useState(false);
+    const [itemToReschedule, setItemToReschedule] = useState<{scheduleId: string, newDate: Date} | null>(null);
+    const [newTime, setNewTime] = useState('09:00');
+
     const router = useRouter();
     const { toast } = useToast();
+
+    // Effect to read from localStorage on initial client-side render
+    useEffect(() => {
+        const savedTab = localStorage.getItem('offerings-active-tab');
+        if (savedTab) {
+            setActiveTab(savedTab);
+        }
+        const savedEventView = localStorage.getItem('offerings-event-view');
+        if (savedEventView === 'grid' || savedEventView === 'calendar') {
+            setEventView(savedEventView);
+        }
+    }, []);
+
+    // Effect to save to localStorage whenever state changes
+    useEffect(() => {
+        localStorage.setItem('offerings-active-tab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        localStorage.setItem('offerings-event-view', eventView);
+    }, [eventView]);
 
     const fetchOfferings = async () => {
         try {
@@ -73,13 +118,20 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         }
     };
 
-    const handleOpenCreateDialog = () => {
+    const handleOpenCreateDialog = (date?: Date) => {
         setOfferingToEdit(null);
+        setPreselectedDate(date);
         setIsCreateDialogOpen(true);
+    };
+
+    const handleOpenInstanceDialog = (date: Date) => {
+        setPreselectedDate(date);
+        setIsInstanceDialogOpen(true);
     };
 
     const handleOpenEditDialog = (offering: OfferingWithMedia) => {
         setOfferingToEdit(offering);
+        setPreselectedDate(undefined);
         setIsCreateDialogOpen(true);
     };
     
@@ -93,6 +145,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             }
         };
         setOfferingToEdit(clonedOffering as OfferingWithMedia);
+        setPreselectedDate(undefined);
         setIsCreateDialogOpen(true);
     };
 
@@ -100,6 +153,19 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         setOfferingToView(offering);
         setIsDetailDialogOpen(true);
     };
+
+    const handleOpenEditInstanceDialog = (offeringId: string, scheduleId: string) => {
+        const offering = offerings.find(o => o.id === offeringId);
+        if (offering) {
+            const schedule = offering.offering_schedules.find(s => s.id === scheduleId);
+            if (schedule) {
+                setOfferingToEdit(offering); // Set the parent offering for context
+                setScheduleToEdit(schedule);
+                setIsEditInstanceDialogOpen(true);
+            }
+        }
+    };
+
 
     const handleOfferingSaved = () => {
         setIsCreateDialogOpen(false);
@@ -109,6 +175,22 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
             description: `Your offering has been ${offeringToEdit ? 'updated' : 'created'}.`,
         });
     };
+    
+    const handleEventInstanceCreated = () => {
+        setIsInstanceDialogOpen(false);
+        fetchOfferings();
+        toast({
+            title: 'Success!',
+            description: 'A new date has been added to your event offering.',
+        });
+    };
+
+    const handleEventInstanceUpdated = () => {
+        setIsEditInstanceDialogOpen(false);
+        fetchOfferings();
+        toast({ title: 'Success!', description: 'The event date has been updated.' });
+    };
+
 
     const handleOfferingDelete = (offeringId: string) => {
         startDeleting(async () => {
@@ -127,26 +209,78 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
         router.push(`/funnels?offeringId=${offeringId}`);
     }
 
-    const filteredOfferings = offerings.filter(offering => {
-        if (activeTab === 'all') return true;
-        if (activeTab === 'value-content') return offering.type === 'Value Content';
-        return offering.type.toLowerCase() === activeTab;
-    });
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || !active) return;
+        
+        const scheduleId = active.id as string;
+        const targetDayId = over.id as string;
+        
+        const sourceType = active.data.current?.type;
+        const targetType = over.data.current?.type;
+        
+        if (sourceType === 'calendarEvent' && targetType === 'calendarDay') {
+            const targetDate = over.data.current?.date as Date;
+            const originalSchedule = active.data.current?.schedule as OfferingSchedule;
+
+            if (originalSchedule && originalSchedule.event_date && isSameDay(parseISO(originalSchedule.event_date as unknown as string), targetDate)) {
+                return; // Dropped on the same day
+            }
+            
+            setItemToReschedule({ scheduleId, newDate: targetDate });
+            const originalTime = originalSchedule?.event_date ? format(parseISO(originalSchedule.event_date as unknown as string), 'HH:mm') : '09:00';
+            setNewTime(originalTime);
+            setIsConfirmTimeOpen(true);
+        }
+    };
+    
+    const handleConfirmReschedule = () => {
+        if (!itemToReschedule) return;
+
+        const { scheduleId, newDate } = itemToReschedule;
+        const [hours, minutes] = newTime.split(':').map(Number);
+        const finalDate = setHours(setMinutes(newDate, minutes), hours);
+        
+        startScheduling(async () => {
+            try {
+                await actions.updateOfferingSchedule(scheduleId, { event_date: finalDate });
+                toast({ title: "Event Rescheduled!", description: "The event's date and time have been updated." });
+                fetchOfferings();
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Rescheduling Failed', description: error.message });
+            } finally {
+                setIsConfirmTimeOpen(false);
+                setItemToReschedule(null);
+            }
+        });
+    };
+
+    const { filteredOfferings, eventTemplates } = useMemo(() => {
+        const events = offerings.filter(o => o.type === 'Event');
+        const filtered = offerings.filter(offering => {
+            if (activeTab === 'all') return true;
+            if (activeTab === 'value-content') return offering.type === 'Value Content';
+            return offering.type.toLowerCase() === activeTab;
+        });
+        return { filteredOfferings: filtered, eventTemplates: events };
+    }, [offerings, activeTab]);
 
     return (
+        <DndContext onDragEnd={handleDragEnd}>
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold">Offerings</h1>
                     <p className="text-muted-foreground">Manage your products, services, and events.</p>
                 </div>
-                <Button onClick={handleOpenCreateDialog} className="gap-2">
+                <Button onClick={() => handleOpenCreateDialog()} className="gap-2">
                     <PlusCircle className="h-5 w-5" />
                     New Offering
                 </Button>
             </header>
 
-            <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
                  <div className="flex justify-between items-center">
                     <TabsList>
                         <TabsTrigger value="all">All</TabsTrigger>
@@ -166,7 +300,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                  <div className="mt-6">
                     <TabsContent value={activeTab} className="mt-0">
                         {activeTab === 'event' && eventView === 'calendar' ? (
-                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenDetailDialog} />
+                            <EventCalendarView events={filteredOfferings} onEventClick={handleOpenEditInstanceDialog} onAddEvent={handleOpenInstanceDialog} />
                         ) : filteredOfferings.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredOfferings.map(offering => (
@@ -267,7 +401,24 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 profile={profile}
                 onOfferingSaved={handleOfferingSaved}
                 offeringToEdit={offeringToEdit}
+                preselectedDate={preselectedDate}
             />
+            <CreateEventInstanceDialog 
+                isOpen={isInstanceDialogOpen}
+                onOpenChange={setIsInstanceDialogOpen}
+                eventTemplates={eventTemplates}
+                preselectedDate={preselectedDate}
+                onEventInstanceCreated={handleEventInstanceCreated}
+            />
+             {offeringToEdit && scheduleToEdit && (
+                <EditEventInstanceDialog
+                    isOpen={isEditInstanceDialogOpen}
+                    onOpenChange={setIsEditInstanceDialogOpen}
+                    offering={offeringToEdit}
+                    schedule={scheduleToEdit}
+                    onEventInstanceUpdated={handleEventInstanceUpdated}
+                />
+            )}
             {offeringToView && (
                 <OfferingDetailDialog
                     isOpen={isDetailDialogOpen}
@@ -282,6 +433,42 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                     isDeleting={isDeleting}
                 />
             )}
+             <Dialog open={isConfirmTimeOpen} onOpenChange={setIsConfirmTimeOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm New Event Time</DialogTitle>
+                        <DialogDescription>
+                            You moved this event to {itemToReschedule?.newDate ? format(itemToReschedule.newDate, 'PPP') : ''}. Please select a time.
+                        </DialogDescription>
+                    </DialogHeader>
+                     <div className="py-4">
+                        <Select value={newTime} onValueChange={setNewTime}>
+                            <SelectTrigger className="w-full">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <SelectValue placeholder="Select a time" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {timeOptions.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmTimeOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirmReschedule} disabled={isScheduling}>
+                            {isScheduling ? 'Saving...' : 'Confirm and Reschedule'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
+        </DndContext>
     );
 }
+
+    

@@ -5,13 +5,14 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
-import { getBrandHeart, updateBrandHeart, translateText } from '../brand-heart/actions';
+import { getBrandHeart, updateBrandHeart, translateText, generateAudienceSuggestion } from '../brand-heart/actions';
 import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../knowledge-base/actions';
 import { getUserChannels, updateUserChannels, updateChannelBestPractices, getSocialConnections, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
 import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
+import { AudienceForm } from './_components/AudienceForm';
 
-export default async function BrandPage() {
+export default async function BrandHeartPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -35,6 +36,14 @@ export default async function BrandPage() {
             languageNames,
             updateBrandHeartAction: updateBrandHeart,
             translateTextAction: translateText,
+        },
+        audience: {
+            profile,
+            brandHeart,
+            languageNames,
+            updateBrandHeartAction: updateBrandHeart,
+            translateTextAction: translateText,
+            generateAudienceAction: generateAudienceSuggestion,
         },
         knowledgeBase: {
             initialDocuments: documents,

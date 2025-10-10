@@ -32,6 +32,15 @@ const CarouselSlideSchema = z.object({
 });
 export type CarouselSlide = z.infer<typeof CarouselSlideSchema>;
 
+const VideoSceneSchema = z.object({
+    scene_description: z.string().describe("A brief description of what happens in this scene."),
+    video_prompt: z.string().describe("A detailed, ready-to-use prompt for an AI video generator to create this specific 2-3 second clip."),
+    cover_image_prompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the cover image or first frame for this scene."),
+    video_url: z.string().optional(),
+    cover_image_url: z.string().optional(),
+});
+export type VideoScene = z.infer<typeof VideoSceneSchema>;
+
 const GenerateCreativeOutputSchema = z.object({
   content: z.object({
       primary: z.string().describe('The marketing content in the primary language.'),
@@ -40,7 +49,7 @@ const GenerateCreativeOutputSchema = z.object({
   imageUrl: z.string().optional().describe('The URL of the generated image. This will be a data URI.'),
   finalPrompt: z.string().optional().describe("The final, full prompt that was sent to the image generation model."),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
-  videoUrl: z.string().optional().describe('The data URI of the generated video.'),
+  videoScript: z.array(VideoSceneSchema).optional().describe("A storyboard of video scenes, each with prompts and generated URLs."),
   landingPageHtml: z.string().optional().describe('The generated HTML content for the landing page.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
@@ -135,15 +144,15 @@ const carouselPrompt = ai.definePrompt({
             })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique, final creative prompt for its image.'),
         })
     },
-  prompt: `You are a marketing expert and AI prompt engineer specializing in creating engaging social media carousels.
+  prompt: `You are an expert marketing strategist and AI prompt engineer specializing in creating visually cohesive and highly engaging social media carousels.
 
-**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt**.
+**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt** that maintains stylistic consistency and leaves room for text overlays.
 
 ---
 **1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
-- **Visual Identity:** {{brandHeart.visual_identity.primary}}
+- **Visual Identity (The North Star for ALL Images):** {{brandHeart.visual_identity.primary}}
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
@@ -153,27 +162,88 @@ const carouselPrompt = ai.definePrompt({
 {{#if basePrompt}}
 - "{{basePrompt}}"
 {{else}}
-- Create a carousel that tells a story about the offering, starting with the problem or desire, showing the transformation, and ending with a call to action.
+- Create a carousel that tells a story about the offering, starting with a problem or desire, showing the transformation, and ending with a call to action.
 {{/if}}
 
 ---
 **YOUR TASK:**
 
-Based on all the information above, create a 3-5 slide carousel script. For each slide:
+Based on all the information above, create a 3-5 slide carousel script. For each slide, you must adhere to these two critical rules for the \`creativePrompt\`:
+
+**Rule #1: VISUAL COHESION**
+- All \`creativePrompt\` fields MUST share a consistent artistic style, color palette, and mood. Use the brand's **Visual Identity** as the primary guide for this. The entire carousel must feel like a single, unified piece of art.
+
+**Rule #2: COMPOSITION FOR TEXT**
+- Each \`creativePrompt\` MUST instruct the AI to compose the image with significant "negative space" or a clean area at the top. The main subject should be framed in the lower two-thirds of the image. This is crucial for adding text overlays later. Use phrases like "negative space at the top", "frame the subject in the lower two-thirds", or "composition leaves ample clean space at the top for text".
+
+For each slide, generate:
 1.  **title:** A short, punchy title.
 2.  **body:** Brief, engaging body text.
-3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator (like DALL-E or Midjourney). This prompt MUST incorporate the specific subject for that slide (derived from the user's creative brief), the brand's visual identity, and the aspect ratio if provided. Do NOT include placeholders.
+3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator that follows the two rules above, incorporating the specific subject for that slide, the brand's visual identity, and the aspect ratio.
 
-   **CRUCIAL RULE:** You MUST base each slide's \`creativePrompt\` directly on the corresponding instructions found in the user's 'Creative Brief'. If the user's brief describes 'Slide 1' as 'a close-up of a cup', your \`creativePrompt\` for the first slide MUST describe a close-up of a cup, enhanced with the brand's aesthetic. Do NOT invent new scenarios.
-
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist flat-lay of a journal and a steaming mug of cacao on a rustic wooden table, embodying a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, framed in the lower two-thirds of the image leaving ample negative space at the top. The image should embody a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
 
 Generate the carousel slides in the specified JSON format.`,
 });
 
 
+const videoPlanPrompt = ai.definePrompt({
+    name: 'generateVideoPlanPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    input: {
+        schema: z.object({
+            brandHeart: z.any(),
+            offering: z.any(),
+            basePrompt: z.string().optional(),
+            aspectRatio: z.string().optional(),
+        })
+    },
+    output: {
+        schema: z.object({
+            scenes: z.array(VideoSceneSchema.pick({
+                scene_description: true,
+                video_prompt: true,
+                cover_image_prompt: true,
+            })).describe("An array of 3-5 video scenes that tell a cohesive story."),
+        })
+    },
+    prompt: `You are a viral video director and AI prompt engineer. Your goal is to create a storyboard for a short, compelling video ad.
+
+**Your Mission:** Break down the user's creative brief into a sequence of 3-5 distinct scenes. For each scene, you must generate a description, a video generation prompt, and a cover image prompt.
+
+---
+**1. THE BRAND's SOUL (Tone & Visuals):**
+- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
+- **Visual Identity (The North Star for ALL visuals):** {{brandHeart.visual_identity.primary}}
+
+**2. THE OFFERING (The Subject):**
+- Title: {{offering.title.primary}}
+- Description: {{offering.description.primary}}
+
+**3. THE USER's CREATIVE BRIEF (The Story):**
+{{#if basePrompt}}
+- "{{basePrompt}}"
+{{else}}
+- Create a short, viral-style video that tells a story about the offering. Start with a hook, present a problem, show the transformation/solution offered, and end on a high note.
+{{/if}}
+
+---
+**YOUR TASK:**
+
+Create a storyboard with 3-5 scenes. For each scene, you must generate:
+
+1.  **scene_description:** A brief (1-2 sentence) description of the action or mood of this scene.
+2.  **video_prompt:** A detailed, ready-to-use prompt for an AI video generator (like Veo) to create a **2-3 second video clip**. This prompt must be visually rich, include the aspect ratio, and be consistent with the brand's **Visual Identity**.
+3.  **cover_image_prompt:** A detailed, ready-to-use prompt for an AI image generator (like Imagen) to create the **first frame or cover image** for this scene. This must be visually consistent with the video prompt and the brand's identity.
+
+**CRITICAL RULE FOR ALL PROMPTS:** Maintain a consistent artistic style, color palette, and mood across all scenes. Use the brand's **Visual Identity** as the primary guide. The entire video must feel like a single, unified piece.
+
+Generate the storyboard in the specified JSON format.
+`,
+});
+
+
 const defaultImageGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering. The image should be magnetic and aligned with a regenerative marketing philosophy.`;
-const defaultVideoGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a visually stunning, high-quality, 5-second video for the following offering. The video should be cinematic, magnetic and aligned with a regenerative marketing philosophy.`;
 
 
 export const generateCreativeFlow = ai.defineFlow(
@@ -246,45 +316,51 @@ export const generateCreativeFlow = ai.defineFlow(
     }
     
     if (creativeTypes.includes('video')) {
-        console.log('[generateCreativeFlow] Video generation requested.');
-        const videoBasePrompt = userCreativePrompt || defaultVideoGenPromptTemplate(brandHeart, offering);
-        console.log('[generateCreativeFlow] Video base prompt:', videoBasePrompt);
+        const videoBasePrompt = userCreativePrompt || 'Create a short, viral-style video about this offering.';
         
-        const videoPromptPayload: (MediaPart | { text: string })[] = [{ text: videoBasePrompt }];
-        if (referenceImageUrl) {
-            videoPromptPayload.unshift({ media: { url: referenceImageUrl, contentType: 'image/jpeg' } });
-        }
+        visualPromises.push(videoPlanPrompt({
+            brandHeart,
+            offering,
+            basePrompt: videoBasePrompt,
+            aspectRatio
+        }).then(async ({ output: planOutput }) => {
+            if (!planOutput?.scenes) throw new Error('Video plan generation failed.');
 
-        visualPromises.push(ai.generate({
-            model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-2.0-generate-001'),
-            prompt: videoPromptPayload,
-            config: {
-                aspectRatio: aspectRatio,
-            },
-        }).then(async ({ operation }) => {
-            console.log('[generateCreativeFlow] Video generation initiated. Operation object received.');
-            if (!operation) throw new Error('Expected video operation.');
-            let checkCount = 0;
-            while (!operation.done) {
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                operation = await ai.checkOperation(operation);
-                checkCount++;
-                console.log(`[generateCreativeFlow] Video operation status check #${checkCount}: done = ${operation.done}`);
-            }
-            if (operation.error) {
-                console.error('[generateCreativeFlow] Video generation failed:', operation.error);
-                throw new Error(`Video generation failed: ${operation.error.message}`);
-            }
-            console.log('[generateCreativeFlow] Video operation finished. Output:', operation.output);
-            const video = operation.output?.message?.content.find(p => !!p.media);
-            if (!video || !video.media?.url) {
-                console.error('[generateCreativeFlow] ERROR: Generated video media part not found in operation result.');
-                throw new Error('Generated video not found.');
-            }
-            console.log('[generateCreativeFlow] Video media part found. Starting download process.');
-            return { videoUrl: await downloadVideo(video) };
+            const scenePromises = planOutput.scenes.map(async (scene) => {
+                const videoGenPromise = ai.generate({
+                    model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-2.0-generate-001'),
+                    prompt: [{ text: scene.video_prompt }],
+                    config: { aspectRatio, durationSeconds: 3 },
+                });
+
+                const imageGenPromise = ai.generate({
+                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
+                    prompt: scene.cover_image_prompt,
+                });
+
+                const [{ operation: videoOperation }, { media: imageMedia }] = await Promise.all([videoGenPromise, imageGenPromise]);
+                
+                if (!videoOperation) throw new Error('Expected video operation.');
+                let checkedOp = videoOperation;
+                while (!checkedOp.done) {
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    checkedOp = await ai.checkOperation(checkedOp);
+                }
+                if (checkedOp.error) throw new Error(`Video scene generation failed: ${checkedOp.error.message}`);
+                
+                const video = checkedOp.output?.message?.content.find(p => !!p.media);
+                
+                return {
+                    ...scene,
+                    video_url: video ? await downloadVideo(video) : undefined,
+                    cover_image_url: imageMedia?.url,
+                };
+            });
+
+            return { videoScript: await Promise.all(scenePromises) };
         }));
     }
+
 
     if (creativeTypes.includes('image')) {
         const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
@@ -350,7 +426,7 @@ export const generateCreativeFlow = ai.defineFlow(
         }
     });
     
-    console.log('[generateCreativeFlow] FINAL OUTPUT to be sent to client:', { ...output, videoUrl: output.videoUrl ? `data:video/mp4;base64,...[${output.videoUrl.length}]` : null });
+    console.log('[generateCreativeFlow] FINAL OUTPUT to be sent to client:', { ...output, videoScript: output.videoScript ? `[${output.videoScript.length} scenes]` : null });
     return output;
   }
 );

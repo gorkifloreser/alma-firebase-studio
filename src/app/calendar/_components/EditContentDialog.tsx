@@ -21,7 +21,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -487,7 +487,7 @@ export function EditContentDialog({
             </AlertDialog>
           <div className="flex gap-2">
              <Button variant="secondary" onClick={handlePublishNow} disabled={isPublishing || isSaving}>
-                {isPublishing ? 'Publishing...' : 'Publish Now'}
+                 {isPublishing ? 'Publishing...' : <SendHorizonal className="mr-2 h-4 w-4" />} Publish Now
              </Button>
              <Button onClick={handleSave} disabled={isSaving || isPublishing}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
