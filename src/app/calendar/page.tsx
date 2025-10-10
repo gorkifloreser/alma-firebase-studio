@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition, useCallback } from 'react';
@@ -345,9 +344,9 @@ export default function CalendarPage() {
                             </TabsList>
                         </div>
                         <TabsContent value="calendar" className="mt-6">
-                            <div className="flex-1 flex flex-col">
-                                <div className="flex items-center justify-between flex-row pb-6">
-                                    <h2 className="text-2xl font-bold">{headerLabel}</h2>
+                            <Card>
+                                <CardHeader className="flex items-center justify-between flex-row">
+                                    <CardTitle className="text-2xl font-bold">{headerLabel}</CardTitle>
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                                             <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
@@ -374,8 +373,8 @@ export default function CalendarPage() {
                                             <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex-1 flex flex-col">
+                                </CardHeader>
+                                <CardContent className="p-0">
                                     <div className="grid grid-cols-7 border-b">
                                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                                             <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
@@ -408,8 +407,8 @@ export default function CalendarPage() {
                                             })
                                         )}
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         </TabsContent>
                         <TabsContent value="metrics" className="mt-6">
                              <Card className="text-center py-20">
