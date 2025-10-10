@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnections, rewritePost } from '../actions';
 import type { PostAnalysis } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
