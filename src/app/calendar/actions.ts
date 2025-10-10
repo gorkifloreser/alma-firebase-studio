@@ -106,7 +106,21 @@ export async function getContent(): Promise<CalendarItem[]> {
     }
     
     console.log(`[actions.ts:getContent] SUCCESS: Fetched ${data.length} items from the database.`);
-    return data as CalendarItem[];
+    
+    const processedData = data.map(item => {
+        let slides = item.carousel_slides;
+        if (typeof slides === 'string') {
+            try {
+                slides = JSON.parse(slides);
+            } catch (e) {
+                console.error('Failed to parse carousel_slides:', e);
+                slides = null;
+            }
+        }
+        return { ...item, carousel_slides: slides };
+    });
+
+    return processedData as CalendarItem[];
 }
 
 export async function getContentItem(mediaPlanItemId: string): Promise<CalendarItem | null> {

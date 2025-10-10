@@ -334,7 +334,7 @@ export function EditContentDialog({
                 <Carousel className="w-full h-full">
                     <CarouselContent>
                         {editableSlides.map((slide: any, index: number) => (
-                            slide && <CarouselItem key={index} className="relative w-full h-full">
+                            slide && <CarouselItem key={index} className="relative w-full aspect-square">
                                 {slide.imageUrl ? (
                                     <Image src={slide.imageUrl} alt={slide.title || `Slide ${index}`} fill className="object-cover" />
                                 ) : (

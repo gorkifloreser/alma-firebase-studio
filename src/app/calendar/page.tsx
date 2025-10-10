@@ -104,13 +104,15 @@ const CalendarEvent = ({ item, onClick }: { item: CalendarItem, onClick: () => v
         }
     }
 
+    const thumbnailUrl = item.image_url || (item.carousel_slides && Array.isArray(item.carousel_slides) && item.carousel_slides.length > 0 && item.carousel_slides[0].imageUrl);
+
     return (
         <div ref={setNodeRef} style={style} className="relative group/event">
              <Card className="overflow-hidden hover:shadow-md transition-shadow bg-secondary/30 relative">
                 <div className="flex flex-col">
-                     {item.image_url ? (
+                     {thumbnailUrl ? (
                         <div className="relative w-full aspect-video bg-muted">
-                            <Image src={item.image_url} alt="thumbnail" layout="fill" className="object-cover" />
+                            <Image src={thumbnailUrl} alt="thumbnail" layout="fill" className="object-cover" />
                         </div>
                      ) : (
                         <div className="aspect-video bg-muted flex items-center justify-center">
