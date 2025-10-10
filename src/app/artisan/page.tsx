@@ -1,4 +1,7 @@
-
+// GEMINI_SAFE_START
+// @functional: This component and its related features are considered functionally complete.
+// Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
+// Last verified: 2025-10-02
 
 'use client';
 
@@ -503,12 +506,6 @@ export default function ArtisanPage() {
             if (result.content) setEditableContent(result.content);
             if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
             if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
-            if (result.carouselSlides && result.carouselSlides.length > 0) {
-                 setEditableContent(prev => ({
-                    primary: result.carouselSlides!.map(s => `[${s.title}]\n${s.body}`).join('\n\n'),
-                    secondary: prev?.secondary || null,
-                 }));
-            }
 
             toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
         } catch (error: any) {
@@ -557,7 +554,7 @@ export default function ArtisanPage() {
                         contentBody: editableContent,
                         imageUrl: creative?.imageUrl || null,
                         carouselSlides: creative?.carouselSlides || null,
-                        videoScript: creative?.videoUrl ? [{ scene_description: "Main video", video_prompt: "N/A", cover_image_prompt: "N/A", video_url: creative.videoUrl }] : null,
+                        videoScript: creative?.videoScript || null,
                         landingPageHtml: editableHtml,
                         status: status,
                         scheduledAt: scheduleDate?.toISOString(),
@@ -951,3 +948,5 @@ export default function ArtisanPage() {
         </DashboardLayout>
     );
 }
+
+// GEMINI_SAFE_END

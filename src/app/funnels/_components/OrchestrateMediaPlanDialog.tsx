@@ -1,5 +1,4 @@
-
-
+// GEMINI_SAFE_START
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
 // Last verified: 2025-10-02
@@ -54,44 +53,6 @@ import { mediaFormatConfig } from '@/lib/media-formats';
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 
 
-interface RegenerateDialogProps {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    onConfirm: (hint: string) => void;
-    isRegenerating: boolean;
-}
-
-function RegenerateDialog({ isOpen, onOpenChange, onConfirm, isRegenerating }: RegenerateDialogProps) {
-    const [hint, setHint] = useState('');
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Regenerate Content Idea</DialogTitle>
-                    <DialogDescription>
-                        Give the AI some hints on what you'd like to change. For example: "make it more human" or "the carousel should have 8 slides".
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <Textarea
-                        value={hint}
-                        onChange={(e) => setHint(e.target.value)}
-                        placeholder="Your hints here..."
-                        className="h-24"
-                    />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={() => onConfirm(hint)} disabled={isRegenerating}>
-                        {isRegenerating ? 'Regenerating...' : <><RefreshCw className="mr-2 h-4 w-4" /> Regenerate</>}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 interface OrchestrateMediaPlanDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
@@ -143,19 +104,9 @@ export function OrchestrateMediaPlanDialog({
     const [selectedLanguage, setSelectedLanguage] = useState<string>('');
     const [planStatusFilter, setPlanStatusFilter] = useState<'active' | 'archived'>('active');
     
-    const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false);
-    const [itemToRegenerate, setItemToRegenerate] = useState<PlanItemWithStatus | null>(null);
-
-    const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
-
     const { toast } = useToast();
     
     const languageNames = new Map(languageList.map(l => [l.value, l.label]));
-
-    const hasUnsavedChanges = useMemo(() => {
-        // A plan is considered unsaved if it exists in the state but hasn't been given a persistent ID from the DB yet.
-        return !!currentPlan && !planIdToEdit;
-    }, [currentPlan, planIdToEdit]);
 
     useEffect(() => {
         if (isOpen) {
@@ -181,7 +132,7 @@ export function OrchestrateMediaPlanDialog({
                 setSelectedLanguage(p?.primary_language || 'en');
             });
 
-            if (!planIdToEdit && !currentPlan && view !== 'generate') {
+            if (!planIdToEdit && !currentPlan) {
                 const hasActivePlans = fullFunnelData.media_plans?.some(p => (p.status || 'active') === 'active');
                 const newViewState = hasActivePlans ? 'list' : 'generate';
                 setView(newViewState);
@@ -380,26 +331,21 @@ export function OrchestrateMediaPlanDialog({
         });
     };
     
-    const handleRegenerateItem = async (userHint: string) => {
-        if (!itemToRegenerate) return;
-        
-        setIsRegenerating(prev => ({ ...prev, [itemToRegenerate.id]: true }));
+    const handleRegenerateItem = async (itemToRegen: PlanItemWithStatus) => {
+        setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
         try {
             const newItem = await regeneratePlanItem({ 
                 funnelId: funnel.id, 
-                channel: itemToRegenerate.user_channel_settings!.channel_name, 
-                stageName: itemToRegenerate.stage_name,
-                userHint,
+                channel: itemToRegen.user_channel_settings!.channel_name, 
+                stageName: itemToRegen.stage_name,
             });
             
-            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegenerate.id ? { ...item, ...newItem, status: 'draft' } : item));
+            setCurrentPlan(prev => prev!.map(item => item.id === itemToRegen.id ? { ...item, ...newItem, status: 'draft' } : item));
             toast({ title: 'Item Regenerated!', description: 'The content idea has been updated.'});
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Regeneration Failed', description: error.message });
         } finally {
-            setIsRegenerating(prev => ({ ...prev, [itemToRegenerate.id]: false }));
-            setIsRegenerateDialogOpen(false);
-            setItemToRegenerate(null);
+            setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: false }));
         }
     };
 
@@ -502,14 +448,6 @@ export function OrchestrateMediaPlanDialog({
                 : [...prev, channel]
         );
     }
-    
-    const handleAttemptClose = () => {
-        if (hasUnsavedChanges) {
-            setIsConfirmCloseOpen(true);
-        } else {
-            onOpenChange(false);
-        }
-    };
 
     const renderListView = () => {
         if (isDataLoading) {
@@ -621,73 +559,72 @@ export function OrchestrateMediaPlanDialog({
     };
     
     const renderGenerateView = () => (
-        <div className="max-h-[70vh] flex flex-col pt-4">
-             {((fullFunnelData?.media_plans ?? []).length > 0) && (
-                <div className="flex-shrink-0">
-                    <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
-                </div>
-            )}
+        <div className="max-h-[70vh] flex flex-col">
+            <div className="flex-shrink-0">
+                <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
+            </div>
             
             {isGenerating && <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
 
             {!isGenerating && !currentPlan && (
-                <div className="flex-1 overflow-y-auto pr-2">
-                    <div className="flex flex-col items-center justify-center text-center">
-                        <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
-                        <h3 className="font-semibold text-lg text-foreground">Generate a New Campaign</h3>
-                        <div className="grid gap-6 text-left my-6 max-w-md w-full">
-                            <div className="space-y-2">
-                                <Label htmlFor="plan-title">Campaign Title</Label>
-                                <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="dates">Campaign Dates</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button id="dates" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {dateRange?.from ? (dateRange.to ? (<>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="language-select">Campaign Language</Label>
-                                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                                    <SelectTrigger id="language-select"><SelectValue placeholder="Select a language" /></SelectTrigger>
-                                    <SelectContent>{languageList.map((lang) => (<SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>))}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Select Target Channels</Label>
-                                <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
-                                    {isDataLoading ? (
-                                        <div className="col-span-2 space-y-2">
-                                            <Skeleton className="h-6 w-full" />
-                                            <Skeleton className="h-6 w-full" />
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <Stars className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-lg text-foreground">Generate a New Campaign</h3>
+                    <div className="grid gap-6 text-left my-6 max-w-md w-full">
+                        <div className="space-y-2">
+                            <Label htmlFor="plan-title">Campaign Title</Label>
+                            <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="dates">Campaign Dates</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button id="dates" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dateRange?.from ? (dateRange.to ? (<>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</>) : (format(dateRange.from, "LLL dd, y"))) : (<span>Pick a date range</span>)}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="language-select">Campaign Language</Label>
+                            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                                <SelectTrigger id="language-select"><SelectValue placeholder="Select a language" /></SelectTrigger>
+                                <SelectContent>{languageList.map((lang) => (<SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>))}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Select Target Channels</Label>
+                            <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
+                                {isDataLoading ? (
+                                    <div className="col-span-2 space-y-2">
+                                        <Skeleton className="h-6 w-full" />
+                                        <Skeleton className="h-6 w-full" />
+                                    </div>
+                                ) : availableChannels.length > 0 ? (
+                                    availableChannels.map(c => (
+                                        <div key={c} className="flex items-center space-x-2">
+                                            <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
+                                            <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
                                         </div>
-                                    ) : availableChannels.length > 0 ? (
-                                        availableChannels.map(c => (
-                                            <div key={c} className="flex items-center space-x-2">
-                                                <Checkbox id={`c-${c}`} checked={selectedChannels.includes(c)} onCheckedChange={() => handleChannelToggle(c)} />
-                                                <Label htmlFor={`c-${c}`} className="capitalize cursor-pointer">{c.replace(/_/g, ' ')}</Label>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="col-span-2 text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>
-                                    )}
-                                </div>
+                                    ))
+                                ) : (
+                                    <p className="col-span-2 text-muted-foreground text-center text-sm">No channels enabled. Go to Accounts to enable them.</p>
+                                )}
                             </div>
                         </div>
                     </div>
+                    <Button className="mt-2" onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                        {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                    </Button>
                 </div>
             )}
             
             {currentPlan && (
-                 <div className="flex-1 flex flex-col overflow-hidden pt-4">
+                 <div className="flex-1 flex flex-col overflow-hidden py-4">
                     <div className="flex-shrink-0 flex justify-between items-center mb-4">
                          <Input id="plan-title" value={planTitle} onChange={(e) => setPlanTitle(e.target.value)} className="text-xl font-bold" />
                     </div>
@@ -712,40 +649,36 @@ export function OrchestrateMediaPlanDialog({
                                     <div className="space-y-4">{groupedByChannel[c]?.map((item) => {
                                         const postDate = item.suggested_post_at ? parseISO(item.suggested_post_at) : null;
                                         const timeValue = postDate && isValid(postDate) ? format(postDate, "HH:mm") : "";
-                                        const isLocked = item.status === 'approved' || item.status === 'scheduled' || item.status === 'published';
-                                        const StatusIcon = isLocked ? CheckCircle2 : CircleDashed;
-                                        const statusColor = isLocked ? 'text-green-500' : 'text-muted-foreground';
-
+                                        const StatusIcon = item.status === 'approved' ? CheckCircle2 : item.status === 'scheduled' ? CalendarIcon : CircleDashed;
+                                        const statusColor = item.status === 'approved' ? 'text-green-500' : item.status === 'scheduled' ? 'text-blue-500' : 'text-muted-foreground';
 
                                         return (
-                                        <div key={item.id} className={cn("p-4 border rounded-lg space-y-4 relative transition-all", isLocked && "bg-muted/30")}>
+                                        <div key={item.id} className="p-4 border rounded-lg space-y-4 relative transition-all">
                                             <div className="absolute top-2 right-2 flex items-center gap-2">
                                                 <div className="flex items-center gap-1.5 text-xs font-semibold">
                                                   <StatusIcon className={cn("h-4 w-4", statusColor)} />
                                                   <span className={statusColor}>{item.status}</span>
                                                 </div>
-                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setItemToRegenerate(item); setIsRegenerateDialogOpen(true); }} disabled={isRegenerating[item.id] || isLocked}>
-                                                    {isRegenerating[item.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                                </Button>
-                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)} disabled={isLocked}><Trash2 className="h-4 w-4" /></Button>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleRegenerateItem(item)} disabled={isRegenerating[item.id]}><RefreshCw className={`h-4 w-4 ${isRegenerating[item.id] ? 'animate-spin' : ''}`} /></Button>
+                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <Label htmlFor={`stage_name-${item.id}`}>Strategy Stage</Label>
-                                                    <Input id={`stage_name-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" disabled={isLocked}/>
+                                                    <Input id={`stage_name-${item.id}`} value={item.stage_name || ''} onChange={(e) => handleItemChange(item.id, 'stage_name', e.target.value)} className="font-semibold bg-muted/50" />
                                                 </div>
-                                                <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof" disabled={isLocked}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2} disabled={isLocked}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)} disabled={isLocked}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
-                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} disabled={isLocked}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} disabled={isLocked}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} disabled={isLocked}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
+                                                <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
+                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
+                                                <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>
                                                 <div className="space-y-2">
                                                     <Label>Suggested Post Time</Label>
                                                     <div className="flex items-center gap-2">
                                                         <Popover>
                                                             <PopoverTrigger asChild>
-                                                            <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")} disabled={isLocked}>
+                                                            <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !postDate && "text-muted-foreground")}>
                                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                                 {postDate && isValid(postDate) ? format(postDate, "PPP") : <span>Pick a date</span>}
                                                             </Button>
@@ -754,7 +687,7 @@ export function OrchestrateMediaPlanDialog({
                                                             <Calendar mode="single" selected={postDate && isValid(postDate) ? postDate : undefined} onSelect={(date) => handleItemChange(item.id, 'suggested_post_at', date?.toISOString() || '')} initialFocus />
                                                             </PopoverContent>
                                                         </Popover>
-                                                        <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]" disabled={isLocked}/>
+                                                        <Input type="time" value={timeValue} onChange={(e) => handleItemChange(item.id, 'suggested_post_at', e.target.value)} className="w-[120px]"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -772,83 +705,34 @@ export function OrchestrateMediaPlanDialog({
     );
     
     return (
-        <>
-            <Dialog open={isOpen} onOpenChange={handleAttemptClose}>
-                <DialogContent className="sm:max-w-7xl max-h-[90vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
-                        <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
-                    </DialogHeader>
-                    
-                    {view === 'list' ? renderListView() : renderGenerateView()}
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-7xl">
+                <DialogHeader>
+                     <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
+                     <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
+                </DialogHeader>
+                
+                {view === 'list' ? renderListView() : renderGenerateView()}
 
-                    <DialogFooter className="mt-auto pt-4 border-t flex justify-between">
-                         <Button variant="ghost" onClick={handleAttemptClose}>Cancel</Button>
-
-                        {view === 'generate' && !currentPlan && (
-                             <div className="flex justify-end">
-                                <Button onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                                    {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                                </Button>
-                            </div>
-                        )}
-                        {view === 'generate' && currentPlan && (
-                            <div className="flex gap-2">
-                                <Button variant="secondary" onClick={handleSave} disabled={isSaving || isGenerating}>
-                                    {isSaving ? 'Saving...' : 'Save Campaign Draft'}
-                                </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            disabled={isSaving || isGenerating || !activeTab}
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                        >
-                                            <CheckCheck className="mr-2 h-4 w-4" />
-                                            {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Approve Campaign for '{activeTab}'?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                 Once approved, the items for the '{activeTab}' channel can no longer be edited here and will be sent to the AI Artisan. This action cannot be undone.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleBulkApproveChannel} className="bg-primary hover:bg-primary/90">
-                                                Confirm & Approve
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            
-            <AlertDialog open={isConfirmCloseOpen} onOpenChange={setIsConfirmCloseOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            If you close now, your generated campaign will be lost. Save your campaign first if you want to keep your changes.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onOpenChange(false)}>Close Anyway</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            
-            <RegenerateDialog 
-                isOpen={isRegenerateDialogOpen}
-                onOpenChange={setIsRegenerateDialogOpen}
-                onConfirm={handleRegenerateItem}
-                isRegenerating={!!itemToRegenerate && !!isRegenerating[itemToRegenerate.id]}
-            />
-        </>
+                <DialogFooter className="mt-4 pt-4 border-t">
+                    {view === 'generate' && currentPlan && (
+                        <>
+                            <Button onClick={handleSave} disabled={isSaving || isGenerating}>
+                                {isSaving ? 'Saving...' : 'Save Campaign'}
+                            </Button>
+                            <Button
+                                onClick={handleBulkApproveChannel}
+                                disabled={isSaving || isGenerating || !activeTab}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <CheckCheck className="mr-2 h-4 w-4" />
+                                {isCurrentChannelApproved ? `Update '${activeTab}' Queue` : `Approve '${activeTab}' for Artisan`}
+                            </Button>
+                        </>
+                    )}
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
+// GEMINI_SAFE_END
