@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -16,7 +17,6 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -32,7 +32,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X, Film, PlusSquare, Image as ImageIcon } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X, Film, PlusSquare, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -93,6 +93,7 @@ const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: stri
     }
     if (provider.toLowerCase().includes('instagram')) return <Instagram className="h-5 w-5" />;
     if (provider.toLowerCase().includes('facebook')) return <Facebook className="h-5 w-5" />;
+    if (provider.toLowerCase().includes('whatsapp')) return <MessageSquare className="h-5 w-5" />;
     return <Sparkles className="h-5 w-5" />;
 };
 
@@ -170,8 +171,8 @@ export function EditContentDialog({
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setEditableFormat(contentItem.format || 'Post');
-        setAnalysisResult(null);
-        setSuggestedRewrite(null);
+        analysisResult && setAnalysisResult(null);
+        suggestedRewrite && setSuggestedRewrite(null);
     }
   }, [contentItem]);
   
@@ -394,16 +395,17 @@ export function EditContentDialog({
                         <Label>Publishing to</Label>
                         {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
                             <div className="flex items-center gap-2 flex-wrap">
-                                {activeMetaConnection?.instagram_account_id && (
-                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} size="icon" className="h-12 w-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
-                                        <Instagram className="h-6 w-6" />
+                                {activeConnections.map(conn => (
+                                    <Button
+                                        key={conn.id}
+                                        variant={selectedChannelId === conn.id ? 'default' : 'outline'}
+                                        size="icon"
+                                        className="h-12 w-12 transition-all duration-200"
+                                        onClick={() => setSelectedChannelId(conn.id)}
+                                    >
+                                        <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url}/>
                                     </Button>
-                                )}
-                                {activeMetaConnection && (
-                                     <Button variant={selectedChannelId === activeMetaConnection.id ? 'default' : 'outline'} size="icon" className="h-12 w-12" onClick={() => setSelectedChannelId(activeMetaConnection!.id)}>
-                                        <Facebook className="h-6 w-6" />
-                                    </Button>
-                                )}
+                                ))}
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground">No active social account. Please connect one in Accounts.</p>
@@ -418,8 +420,12 @@ export function EditContentDialog({
                             <SelectContent>
                                 {formatOptions.map(option => {
                                     const Icon = option.icon;
+                                    const isVideo = contentItem.video_url;
+                                    const isImage = contentItem.image_url || contentItem.carousel_slides;
+                                    const isDisabled = (option.value === 'Reel' && !isVideo) || (option.value === 'Story' && !isVideo && !isImage);
+
                                     return (
-                                        <SelectItem key={option.value} value={option.value}>
+                                        <SelectItem key={option.value} value={option.value} disabled={isDisabled}>
                                             <div className="flex items-center gap-3">
                                                 <Icon className="h-5 w-5 text-muted-foreground" />
                                                 <div>
