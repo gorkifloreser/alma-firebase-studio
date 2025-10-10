@@ -786,13 +786,15 @@ export function OrchestrateMediaPlanDialog({
                          <Button variant="ghost" onClick={handleAttemptClose}>Cancel</Button>
 
                         {view === 'generate' && !currentPlan && (
-                             <Button onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
-                                {isGenerating ? 'Generating...' : 'Generate Campaign'}
-                            </Button>
+                             <div className="flex justify-end">
+                                <Button onClick={handleGeneratePlan} disabled={isGenerating || !dateRange?.from || !dateRange?.to || !planTitle.trim() || selectedChannels.length === 0}>
+                                    {isGenerating ? 'Generating...' : 'Generate Campaign'}
+                                </Button>
+                            </div>
                         )}
                         {view === 'generate' && currentPlan && (
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={handleSave} disabled={isSaving || isGenerating}>
+                                <Button onClick={handleSave} disabled={isSaving || isGenerating}>
                                     {isSaving ? 'Saving...' : 'Save Campaign'}
                                 </Button>
                                 <Button
