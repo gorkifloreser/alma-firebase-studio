@@ -25,8 +25,8 @@ const GenerateCreativeInputSchema = z.object({
 export type GenerateCreativeInput = z.infer<typeof GenerateCreativeInputSchema>;
 
 const CarouselSlideSchema = z.object({
-    title: z.string(),
-    body: z.string(),
+    title: z.string().describe("The main title text to be overlaid on the image."),
+    body: z.string().describe("The main body text (copy) for the social media post description, not for the image."),
     imageUrl: z.string().optional().describe("The URL of the generated image for this slide. This will be a data URI."),
     finalPrompt: z.string().optional().describe("The final, full prompt that was sent to the image generation model."),
 });
@@ -138,21 +138,25 @@ const carouselPrompt = ai.definePrompt({
     output: {
         schema: z.object({
             slides: z.array(z.object({
-                title: z.string(),
-                body: z.string(),
-                creativePrompt: z.string().describe("A detailed, final, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. This prompt must be a fusion of the brand's aesthetic, the offering, the art style, the aspect ratio, and the user's creative brief. It should be self-contained and ready for generation."),
-            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique, final creative prompt for its image.'),
+                title: z.string().describe("The short, catchy title text to be overlaid on the image."),
+                body: z.string().describe("The descriptive text for the social media post's caption, NOT for the image."),
+                creativePrompt: z.string().describe("A detailed, final, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. This prompt must instruct the model to generate the background image AND overlay the 'title' text prominently at the top, and a footer with '@floreserLosCabos' at the bottom."),
+            })).describe('An array of 3-5 carousel slides, each with a title for the image, a body for the post copy, and a complete, final creative prompt for generating the image with overlaid text.'),
         })
     },
   prompt: `You are an expert marketing strategist and AI prompt engineer specializing in creating visually cohesive and highly engaging social media carousels.
 
-**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate a title, body copy, and a **complete, final, detailed image generation prompt** that maintains stylistic consistency and leaves room for text overlays.
+**Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate:
+1. A short **title** (for the image overlay).
+2. A longer **body** (for the social media post's description text).
+3. A **complete, final, detailed creativePrompt** that instructs an image model to generate a beautiful background AND overlay the 'title' and footer text.
 
 ---
 **1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
 - **Visual Identity (The North Star for ALL Images):** {{brandHeart.visual_identity.primary}}
+- **Handle/Footer:** @floreserLosCabos
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
@@ -168,82 +172,28 @@ const carouselPrompt = ai.definePrompt({
 ---
 **YOUR TASK:**
 
-Based on all the information above, create a 3-5 slide carousel script. For each slide, you must adhere to these two critical rules for the \`creativePrompt\`:
+Generate a 3-5 slide carousel script. For each slide, provide the following fields:
+1.  **title:** A short, punchy title. This text will be overlaid on the image.
+2.  **body:** The descriptive text for the post's caption. This text does NOT go on the image. It should expand on the slide's title.
+3.  **creativePrompt:** This is the most important part. Create a **final, complete, and detailed prompt** for an image generation model like Imagen. This prompt must:
+    - Describe a beautiful, on-brand background image based on the brand's **Visual Identity** and the slide's concept.
+    - Explicitly instruct the model to overlay the **'title'** text at the **top center** of the image in a clear, stylish font.
+    - Explicitly instruct the model to overlay the footer text **'@floreserLosCabos'** at the **bottom** of the image.
 
-**Rule #1: VISUAL COHESION**
-- All \`creativePrompt\` fields MUST share a consistent artistic style, color palette, and mood. Use the brand's **Visual Identity** as the primary guide for this. The entire carousel must feel like a single, unified piece of art.
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, with the text 'Nourish Your Soul' at the top center. The image should embody a soulful, authentic feeling, with earthy tones and soft natural light. Footer text '@floreserLosCabos' at the bottom.{{#if aspectRatio}} ar {{aspectRatio}}{{/if}}"
 
-**Rule #2: COMPOSITION FOR TEXT**
-- Each \`creativePrompt\` MUST instruct the AI to compose the image with significant "negative space" or a clean area at the top. The main subject should be framed in the lower two-thirds of the image. This is crucial for adding text overlays later. Use phrases like "negative space at the top", "frame the subject in the lower two-thirds", or "composition leaves ample clean space at the top for text".
-
-For each slide, generate:
-1.  **title:** A short, punchy title.
-2.  **body:** Brief, engaging body text.
-3.  **creativePrompt:** A **final, complete, and detailed prompt** for an AI image generator that follows the two rules above, incorporating the specific subject for that slide, the brand's visual identity, and the aspect ratio.
-
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, framed in the lower two-thirds of the image leaving ample negative space at the top. The image should embody a soulful and authentic feeling, with earthy tones and soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
-
-Generate the carousel slides in the specified JSON format.`,
-});
-
-
-const videoPlanPrompt = ai.definePrompt({
-    name: 'generateVideoPlanPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
-    input: {
-        schema: z.object({
-            brandHeart: z.any(),
-            offering: z.any(),
-            basePrompt: z.string().optional(),
-            aspectRatio: z.string().optional(),
-        })
-    },
-    output: {
-        schema: z.object({
-            scenes: z.array(VideoSceneSchema.pick({
-                scene_description: true,
-                video_prompt: true,
-                cover_image_prompt: true,
-            })).describe("An array of 3-5 video scenes that tell a cohesive story."),
-        })
-    },
-    prompt: `You are a viral video director and AI prompt engineer. Your goal is to create a storyboard for a short, compelling video ad.
-
-**Your Mission:** Break down the user's creative brief into a sequence of 3-5 distinct scenes. For each scene, you must generate a description, a video generation prompt, and a cover image prompt.
-
----
-**1. THE BRAND's SOUL (Tone & Visuals):**
-- Tone of Voice: {{brandHeart.tone_of_voice.primary}}
-- **Visual Identity (The North Star for ALL visuals):** {{brandHeart.visual_identity.primary}}
-
-**2. THE OFFERING (The Subject):**
-- Title: {{offering.title.primary}}
-- Description: {{offering.description.primary}}
-
-**3. THE USER's CREATIVE BRIEF (The Story):**
-{{#if basePrompt}}
-- "{{basePrompt}}"
-{{else}}
-- Create a short, viral-style video that tells a story about the offering. Start with a hook, present a problem, show the transformation/solution offered, and end on a high note.
-{{/if}}
-
----
-**YOUR TASK:**
-
-Create a storyboard with 3-5 scenes. For each scene, you must generate:
-
-1.  **scene_description:** A brief (1-2 sentence) description of the action or mood of this scene.
-2.  **video_prompt:** A detailed, ready-to-use prompt for an AI video generator (like Veo) to create a **2-3 second video clip**. This prompt must be visually rich, include the aspect ratio, and be consistent with the brand's **Visual Identity**.
-3.  **cover_image_prompt:** A detailed, ready-to-use prompt for an AI image generator (like Imagen) to create the **first frame or cover image** for this scene. This must be visually consistent with the video prompt and the brand's identity.
-
-**CRITICAL RULE FOR ALL PROMPTS:** Maintain a consistent artistic style, color palette, and mood across all scenes. Use the brand's **Visual Identity** as the primary guide. The entire video must feel like a single, unified piece.
-
-Generate the storyboard in the specified JSON format.
+Generate the carousel slides in the specified JSON format.
 `,
 });
 
 
-const defaultImageGenPromptTemplate = (brandHeart: any, offering: any) => `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering. The image should be magnetic and aligned with a regenerative marketing philosophy.`;
+const videoPlanPrompt = z.object({
+    scenes: z.array(VideoSceneSchema.pick({
+        scene_description: true,
+        video_prompt: true,
+        cover_image_prompt: true,
+    })).describe("An array of 3-5 video scenes that tell a cohesive story."),
+});
 
 
 export const generateCreativeFlow = ai.defineFlow(
@@ -318,11 +268,37 @@ export const generateCreativeFlow = ai.defineFlow(
     if (creativeTypes.includes('video')) {
         const videoBasePrompt = userCreativePrompt || 'Create a short, viral-style video about this offering.';
         
-        visualPromises.push(videoPlanPrompt({
-            brandHeart,
-            offering,
-            basePrompt: videoBasePrompt,
-            aspectRatio
+        visualPromises.push(ai.generate({
+            prompt: `You are a viral video director and AI prompt engineer. Your goal is to create a storyboard for a short, compelling video ad.
+
+**Your Mission:** Break down the user's creative brief into a sequence of 3-5 distinct scenes. For each scene, you must generate a description, a video generation prompt, and a cover image prompt.
+
+---
+**1. THE BRAND's SOUL (Tone & Visuals):**
+- Tone of Voice: ${brandHeart.tone_of_voice.primary}
+- **Visual Identity (The North Star for ALL visuals):** ${brandHeart.visual_identity.primary}
+
+**2. THE OFFERING (The Subject):**
+- Title: ${offering.title.primary}
+- Description: ${offering.description.primary}
+
+**3. THE USER's CREATIVE BRIEF (The Story):**
+${videoBasePrompt}
+---
+**YOUR TASK:**
+
+Create a storyboard with 3-5 scenes. For each scene, you must generate:
+
+1.  **scene_description:** A brief (1-2 sentence) description of the action or mood of this scene.
+2.  **video_prompt:** A detailed, ready-to-use prompt for an AI video generator (like Veo) to create a **2-3 second video clip**. This prompt must be visually rich, include the aspect ratio, and be consistent with the brand's **Visual Identity**.
+3.  **cover_image_prompt:** A detailed, ready-to-use prompt for an AI image generator (like Imagen) to create the **first frame or cover image** for this scene. This must be visually consistent with the video prompt and the brand's identity.
+
+**CRITICAL RULE FOR ALL PROMPTS:** Maintain a consistent artistic style, color palette, and mood across all scenes. Use the brand's **Visual Identity** as the primary guide. The entire video must feel like a single, unified piece.
+
+Generate the storyboard in the specified JSON format.
+`,
+            model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+            output: { schema: videoPlanPrompt },
         }).then(async ({ output: planOutput }) => {
             if (!planOutput?.scenes) throw new Error('Video plan generation failed.');
 
@@ -363,7 +339,7 @@ export const generateCreativeFlow = ai.defineFlow(
 
 
     if (creativeTypes.includes('image')) {
-        const imageBasePrompt = userCreativePrompt || defaultImageGenPromptTemplate(brandHeart, offering);
+        const imageBasePrompt = userCreativePrompt || `Generate a stunning, high-quality, and visually appealing advertisement image for the following offering. The image should be magnetic and aligned with a regenerative marketing philosophy.`;
 
         visualPromises.push(masterImagePrompt({ brandHeart, offering, basePrompt: imageBasePrompt, aspectRatio }).then(async ({ output: promptOutput }) => {
             if (!promptOutput) {
@@ -402,7 +378,7 @@ export const generateCreativeFlow = ai.defineFlow(
                     const finalSlidePrompt = slide.creativePrompt; // The prompt is now final and complete from the carouselPrompt
 
                     const { media } = await ai.generate({
-                        model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
+                        model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-3.0-generate-002'), // Using Imagen 3 for text on image
                         prompt: finalSlidePrompt,
                     });
                     

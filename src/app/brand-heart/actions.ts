@@ -1,6 +1,6 @@
 
 'use server';
-
+// GEMINI_SAFE_START
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { translateFlow, TranslateInput, TranslateOutput } from '@/ai/flows/translate-flow';
@@ -206,3 +206,4 @@ export async function generateAudienceSuggestion(input: GenerateAudienceInput): 
         throw new Error(`Failed to generate audience suggestion: ${error.message}`);
     }
 }
+// GEMINI_SAFE_END

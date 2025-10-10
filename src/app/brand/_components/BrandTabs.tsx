@@ -1,6 +1,6 @@
 
 'use client';
-
+// GEMINI_SAFE_START
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
@@ -139,3 +139,4 @@ declare module "@/app/accounts/_components/AccountsClientPage" {
         getSocialConnections: any;
     }
 }
+// GEMINI_SAFE_END

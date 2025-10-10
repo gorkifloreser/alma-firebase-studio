@@ -1,5 +1,5 @@
 
-
+// GEMINI_SAFE_START
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -72,3 +72,4 @@ export default async function BrandHeartPage() {
         </DashboardLayout>
     );
 }
+// GEMINI_SAFE_END
