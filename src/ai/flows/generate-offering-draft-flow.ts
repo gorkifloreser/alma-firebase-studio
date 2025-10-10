@@ -18,6 +18,9 @@ const OfferingScheduleDraftSchema = z.object({
   event_date: z.string().optional().describe("If this variant is an event with a specific date, extract it in YYYY-MM-DDTHH:mm:ss.sssZ format."),
   duration: z.string().optional().describe("If this variant has a specific duration, extract it."),
   frequency: z.string().optional().describe("If this variant has a specific frequency, extract it."),
+  location_label: z.string().optional().describe("If the event has a location name (e.g., 'My Studio', 'Online'), extract it. MUST be null if not specified."),
+  location_address: z.string().optional().describe("If a physical address is mentioned, extract it. MUST be null if not specified."),
+  location_gmaps_url: z.string().optional().describe("If a Google Maps URL is provided, extract it. MUST be null if not specified."),
 });
 
 const OfferingDraftSchema = z.object({
@@ -70,6 +73,11 @@ Based on the user's idea and their Brand Heart, generate the following:
     - **event_date**: If it's an event with a specific date, provide it in ISO 8601 format.
     - **duration**: If a duration is mentioned for this variant.
     - **frequency**: If a frequency is mentioned for this variant.
+    - **location_label**: The name of the location, if any (e.g., 'My Studio', 'Online').
+    - **location_address**: The physical address, if any.
+    - **location_gmaps_url**: The Google Maps URL, if any.
+
+**CRITICAL RULE**: For any of the above fields that are not mentioned in the user's idea, you MUST return null. Do not invent information. Do not use an empty object.
 
 **Example:**
 User prompt: "Ceremonial Grade Cacao in three presentations: cacao nibs 100 grams $170 MXN, cacao powder $180 MXN and cacao tablets $190 MXN"

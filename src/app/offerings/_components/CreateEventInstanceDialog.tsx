@@ -49,6 +49,7 @@ interface CreateEventInstanceDialogProps {
     eventTemplates: Offering[];
     preselectedDate?: Date;
     onEventInstanceCreated: () => void;
+    onOpenNewOfferingDialog: () => void;
 }
 
 export function CreateEventInstanceDialog({
@@ -56,7 +57,8 @@ export function CreateEventInstanceDialog({
     onOpenChange,
     eventTemplates,
     preselectedDate,
-    onEventInstanceCreated
+    onEventInstanceCreated,
+    onOpenNewOfferingDialog
 }: CreateEventInstanceDialogProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [schedule, setSchedule] = useState<Omit<OfferingSchedule, 'id'>>(initialScheduleState);
@@ -127,9 +129,7 @@ export function CreateEventInstanceDialog({
 
     const handleCreateNewTemplate = () => {
         onOpenChange(false);
-        // TODO: Wire this up to open the "New Offering" dialog.
-        // This will require passing a new prop like `onOpenNewOfferingDialog`
-        // from the parent component.
+        onOpenNewOfferingDialog();
     };
 
     const handleSubmit = () => {
@@ -176,7 +176,7 @@ export function CreateEventInstanceDialog({
                                 onClick={handleCreateNewTemplate}
                                 className="text-primary hover:underline"
                             >
-                                Create New Event Template
+                                Create New Offering (Event)
                             </button>
                         </p>
                     </div>

@@ -160,8 +160,8 @@ export function OfferingDetailDialog({ isOpen, onOpenChange, offering, profile, 
                                                     {schedule.location_label && (
                                                         <DetailItem icon={MapPin} label="Location">
                                                             <div className="flex flex-col">
-                                                                <span>{schedule.location_label}</span>
-                                                                {schedule.location_address && <span className="text-sm text-muted-foreground">{schedule.location_address}</span>}
+                                                                <span>{typeof schedule.location_label === 'string' ? schedule.location_label : ''}</span>
+                                                                {schedule.location_address && <span className="text-sm text-muted-foreground">{typeof schedule.location_address === 'string' ? schedule.location_address : ''}</span>}
                                                                 {schedule.location_gmaps_url && <a href={schedule.location_gmaps_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">View on Map</a>}
                                                             </div>
                                                         </DetailItem>
