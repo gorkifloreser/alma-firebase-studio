@@ -30,6 +30,7 @@ export type PostAnalysis = z.infer<typeof AnalyzePostOutputSchema>;
 
 const AnalyzePostInputSchema = z.object({
   postText: z.string(),
+  hashtags: z.string().optional(),
 });
 export type AnalyzePostInput = z.infer<typeof AnalyzePostInputSchema>;
 
@@ -40,13 +41,14 @@ const analysisPrompt = ai.definePrompt({
     input: {
         schema: z.object({
             postText: z.string(),
+            hashtags: z.string().optional(),
             brandHeart: z.any(),
         })
     },
     output: { schema: AnalyzePostOutputSchema },
     prompt: `You are an expert social media strategist specializing in organic growth for conscious brands.
 
-Your Goal: Analyze the provided social media post based on three core pillars: Audience Attention, Virality Potential, and Content Value. Provide a score, strengths, and actionable suggestions.
+Your Goal: Analyze the provided social media post based on four core pillars: Audience Attention, Virality Potential, Content Value, and Hashtag Quality. Provide a score, strengths, and actionable suggestions.
 
 ---
 **1. The Brand's Audience Personas (Your Primary Focus):**
@@ -56,12 +58,13 @@ Your Goal: Analyze the provided social media post based on three core pillars: A
 {{/each}}
 ---
 **2. The Social Media Post to Analyze:**
-"{{postText}}"
+- **Post Copy:** "{{postText}}"
+- **Hashtags:** "{{hashtags}}"
 ---
 
 **YOUR TASK:**
 
-Evaluate the post against the following three pillars and then formulate your response.
+Evaluate the post against the following four pillars and then formulate your response.
 
 **Pillar 1: Audience Attention (Reach)**
 - Does the opening line immediately grab the attention of the target audience?
@@ -76,11 +79,16 @@ Evaluate the post against the following three pillars and then formulate your re
 - Does it teach, inspire, entertain, or build trust in a meaningful way?
 - Is there a clear takeaway for the reader?
 
+**Pillar 4: Hashtag Quality**
+- Are the hashtags relevant to the content and the target audience?
+- Is there a good mix of broad, niche, and community-specific hashtags?
+- Is the quantity appropriate (not too few, not too many)?
+
 **Now, construct your response in the specified JSON format:**
 
-1.  **overall_score**: Assign a score from 1 to 10. A 10 means it's a perfect post that excels in all three pillars. A 1 means it has significant issues.
+1.  **overall_score**: Assign a score from 1 to 10. A 10 means it's a perfect post that excels in all four pillars. A 1 means it has significant issues.
 2.  **strengths**: List 2-3 specific things the post does well. These should be positive, concrete points. (e.g., "The hook is highly relatable to 'Holistic Helen's' journey.").
-3.  **suggestions**: List 2-3 actionable, concrete suggestions for improvement. These should be constructive and easy to implement. (e.g., "Add a specific question at the end to boost engagement.").
+3.  **suggestions**: List 2-3 actionable, concrete suggestions for improvement. These should be constructive and easy to implement. (e.g., "Add a specific question at the end to boost engagement.", "Replace #love with a more niche hashtag like #cacaoceremony.").
 4.  **reasoning**: Write a brief (2-3 sentences) encouraging summary that explains your scoring and highlights the biggest opportunity for growth.
 `,
 });
@@ -91,7 +99,7 @@ export const analyzePostFlow = ai.defineFlow(
     inputSchema: AnalyzePostInputSchema,
     outputSchema: AnalyzePostOutputSchema,
   },
-  async ({ postText }) => {
+  async ({ postText, hashtags }) => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -106,7 +114,7 @@ export const analyzePostFlow = ai.defineFlow(
       throw new Error('Audience personas not found. Please define at least one audience profile in your Brand Heart.');
     }
     
-    const { output } = await analysisPrompt({ postText, brandHeart });
+    const { output } = await analysisPrompt({ postText, hashtags, brandHeart });
 
     if (!output) {
       throw new Error('The AI model did not return an analysis.');

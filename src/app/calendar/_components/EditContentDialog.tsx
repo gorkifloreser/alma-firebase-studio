@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Input } from '@/components/ui/input';
 
 
 interface EditContentDialogProps {
@@ -119,6 +120,7 @@ export function EditContentDialog({
   const [editableContent, setEditableContent] = useState(getInitialContent());
   const [editableSlides, setEditableSlides] = useState(() => parseCarouselSlides(contentItem?.carousel_slides));
   const [editableScheduledAt, setEditableScheduledAt] = useState<Date | null>(null);
+  const [editableHashtags, setEditableHashtags] = useState(contentItem?.hashtags || '');
   const [isSaving, startSaving] = useTransition();
   const [isDeleting, startDeleting] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
@@ -164,6 +166,7 @@ export function EditContentDialog({
   useEffect(() => {
     if (contentItem) {
         setEditableContent(getInitialContent());
+        setEditableHashtags(contentItem.hashtags || '');
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setAnalysisResult(null); // Reset analysis on item change
@@ -209,15 +212,15 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id'>> = {};
+        const updates: Partial<Pick<CalendarItem, 'copy' | 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id'>> = {};
         
         if (editableContent) {
             updates.content_body = editableContent;
-            updates.copy = editableContent.primary; // Also update the flat `copy` field for compatibility
+            updates.copy = editableContent.primary;
         }
+        if (editableHashtags) updates.hashtags = editableHashtags;
         if (editableSlides) updates.carousel_slides = editableSlides;
 
-        // Set user_channel_id based on the active connection, NOT the selected channel within it
         if(activeConnection) updates.user_channel_id = activeConnection.id;
 
 
@@ -226,7 +229,6 @@ export function EditContentDialog({
             updates.status = 'scheduled';
         } else {
             updates.scheduled_at = null;
-            // If it was scheduled, and now has no date, move it back to 'approved'
             if (contentItem.status === 'scheduled') {
                 updates.status = 'approved';
             }
@@ -290,7 +292,7 @@ export function EditContentDialog({
     startAnalyzing(async () => {
         setAnalysisResult(null);
         try {
-            const result = await analyzePost({ postText: editableContent.primary! });
+            const result = await analyzePost({ postText: editableContent.primary!, hashtags: editableHashtags || '' });
             setAnalysisResult(result);
             toast({ title: 'Analysis Complete', description: "The AI has provided feedback on your post."});
         } catch (error: any) {
@@ -320,7 +322,6 @@ export function EditContentDialog({
         if (!suggestedRewrite) return;
         handleContentChange('primary', suggestedRewrite);
         setSuggestedRewrite(null);
-        // Automatically re-rate the post
         handleAnalyzePost();
     };
 
@@ -364,7 +365,7 @@ export function EditContentDialog({
                 />
             );
         }
-        return null; // No visual content
+        return null;
     };
 
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
@@ -380,9 +381,9 @@ export function EditContentDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
-          <CardDescription>
+          <DialogDescription>
             For offering: <span className="font-semibold">{contentItem.offerings?.title?.primary || '...'}</span>
-          </CardDescription>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto flex-1 pr-6">
@@ -443,6 +444,16 @@ export function EditContentDialog({
                         placeholder="Your post copy will appear here..."
                     />
                 )}
+                 <div className="space-y-2">
+                    <Label htmlFor="hashtags">Hashtags</Label>
+                    <Input
+                        id="hashtags"
+                        value={editableHashtags || ''}
+                        onChange={(e) => setEditableHashtags(e.target.value)}
+                        placeholder="#hashtags #go #here"
+                        className="text-sm"
+                    />
+                </div>
                  {editableSlides && editableSlides.length > 0 && (
                     <div className="w-full mt-2 space-y-4 pt-4 border-t">
                         <h4 className="font-semibold text-sm">Carousel Slide Text</h4>
@@ -473,7 +484,7 @@ export function EditContentDialog({
                  <div className="pt-4">
                     <Accordion type="single" collapsible>
                         <AccordionItem value="item-1" className="border-b-0">
-                            <AccordionTrigger asChild>
+                             <AccordionTrigger asChild>
                                 <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
                                     <Bot className="mr-2 h-4 w-4" />
                                     {isAnalyzing ? 'Analyzing...' : 'Rate post with AI'}
@@ -651,4 +662,3 @@ export function EditContentDialog({
     </Dialog>
   );
 }
-
