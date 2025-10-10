@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
 import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
@@ -363,13 +363,15 @@ export function EditContentDialog({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="channel-select">Channel</Label>
-                    <Select value={contentItem.user_channel_settings?.channel_name || ''} disabled>
+                    <Select value={contentItem.user_channel_settings?.channel_name || 'none'} disabled>
                         <SelectTrigger id="channel-select"><SelectValue placeholder="N/A" /></SelectTrigger>
                         <SelectContent>
-                            {contentItem.user_channel_settings?.channel_name && (
+                            {contentItem.user_channel_settings?.channel_name ? (
                                 <SelectItem value={contentItem.user_channel_settings.channel_name}>
                                     {contentItem.user_channel_settings.channel_name}
                                 </SelectItem>
+                            ) : (
+                                <SelectItem value="none">Not specified</SelectItem>
                             )}
                         </SelectContent>
                     </Select>
@@ -547,3 +549,5 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+
+    
