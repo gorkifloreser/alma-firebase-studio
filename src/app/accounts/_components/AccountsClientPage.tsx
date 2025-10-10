@@ -280,6 +280,14 @@ export function AccountsClientPage({
                                  <Button variant="link" size="sm" onClick={handleMetaDisconnect} className="p-0 h-auto text-destructive" disabled={isSaving}>
                                     Disconnect Meta
                                 </Button>
+                                 {account.best_practices !== null && (
+                                     <BestPracticesEditor 
+                                        channelId={account.id} 
+                                        initialValue={account.best_practices}
+                                        onSave={handleSaveBestPractices}
+                                        isSaving={isSaving}
+                                    />
+                                 )}
                             </div>
                         ) : (
                              <Button onClick={handleMetaConnect} className="w-full">
@@ -355,3 +363,5 @@ export function AccountsClientPage({
         </div>
     );
 }
+
+    
