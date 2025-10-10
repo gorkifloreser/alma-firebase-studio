@@ -560,7 +560,9 @@ export function OrchestrateMediaPlanDialog({
     const renderGenerateView = () => (
         <div className="max-h-[70vh] flex flex-col py-4">
             <div className="flex-shrink-0">
-                <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
+                {(fullFunnelData?.media_plans ?? []).length > 0 && (
+                    <Button variant="ghost" onClick={() => { setView('list'); setCurrentPlan(null); setPlanIdToEdit(null); }} className="self-start mb-4"><ArrowLeft className="mr-2 h-4 w-4"/> Back to List</Button>
+                )}
             </div>
             
             {isGenerating && <div className="space-y-4 p-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
@@ -707,7 +709,7 @@ export function OrchestrateMediaPlanDialog({
     
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-7xl">
+            <DialogContent className="sm:max-w-7xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                      <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/>Campaign Orchestrator</DialogTitle>
                      <DialogDescription>Generate, edit, and approve the tactical content pieces for the "{funnel.name}" strategy.</DialogDescription>
@@ -715,7 +717,7 @@ export function OrchestrateMediaPlanDialog({
                 
                 {view === 'list' ? renderListView() : renderGenerateView()}
 
-                <DialogFooter className="mt-4 pt-4 border-t">
+                <DialogFooter className="mt-auto pt-4 border-t">
                     {view === 'generate' && currentPlan && (
                         <>
                             <Button onClick={handleSave} disabled={isSaving || isGenerating}>
