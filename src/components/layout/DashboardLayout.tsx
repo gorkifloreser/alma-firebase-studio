@@ -1,11 +1,118 @@
+'use client';
 
-import { DashboardLayoutClient } from './DashboardLayoutClient';
+import * as React from 'react';
+import {
+  Sidebar,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import {
+  LayoutDashboard,
+  Infinity,
+  FileText,
+  CreditCard,
+  BarChart2,
+  Heart,
+  ShoppingBag,
+  BrainCircuit,
+  Users,
+  GitBranch,
+  Wand2,
+  Star,
+} from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { Card } from '@/components/ui/card';
+import { UserNav } from '@/components/auth/UserNav';
+import { cn } from '@/lib/utils';
+
+const menuItems = [
+    { href: '/user-guide', label: 'User Guide', icon: LayoutDashboard },
+    { href: '/brand', label: 'Brand Heart', icon: Heart },
+    { href: '/offerings', label: 'Offerings', icon: ShoppingBag },
+    { href: '/funnels', label: 'AI Strategist', icon: GitBranch },
+    { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
+    { href: '/calendar', label: 'AI Social Manager', icon: Users },
+    { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
+];
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  console.log('[DashboardLayout - Server] Rendering server layout wrapper.');
-  return <DashboardLayoutClient>{children}</DashboardLayoutClient>;
+  const pathname = usePathname();
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-background">
+        <Sidebar collapsible="icon" className={cn("group-data-[variant=inset]:hidden", "bg-transparent")}>
+          <SidebarHeader className="h-16 flex items-center justify-between p-4">
+              <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                  <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill />
+                    </div>
+                  </div>
+                </div>
+                <span className="font-bold text-lg">Regen MKT</span>
+              </div>
+               <div className="hidden items-center gap-2 group-data-[collapsible=icon]:flex">
+                <div className="h-8 w-8 bg-primary rounded-md flex items-center justify-center">
+                  <div className="relative h-full w-full">
+                    <div className="p-1.5 relative h-full w-full">
+                      <Image src="/regen-logo-light.svg" alt="Regen MKT Logo" fill />
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </SidebarHeader>
+          <SidebarContent className="flex-1 p-2">
+            <SidebarMenu>
+              {menuItems.map((item) => {
+                const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
+                return (
+                    <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                        href={item.href}
+                        isActive={isActive}
+                        asChild
+                        tooltip={item.label}
+                    >
+                    <a href={item.href}>
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.label}</span>
+                    </a>
+                    </SidebarMenuButton>
+                    </SidebarMenuItem>
+                );
+                })}
+            </SidebarMenu>
+
+             <div className="mt-auto p-4 group-data-[collapsible=icon]:hidden">
+                <Card className="rounded-2xl bg-black/10 text-center p-4 border-none text-sidebar-foreground backdrop-blur-sm">
+                    <p className="font-bold">Join our waiting list</p>
+                    <Button size="sm" className="mt-4 btn-primary-gradient">Join Now</Button>
+                </Card>
+             </div>
+
+          </SidebarContent>
+        </Sidebar>
+        <main className="flex-1">
+          <header className="h-16 flex items-center justify-between px-4 border-b">
+              <SidebarTrigger />
+              <UserNav />
+          </header>
+          {children}
+        </main>
+      </div>
+    </SidebarProvider>
+  );
 }
