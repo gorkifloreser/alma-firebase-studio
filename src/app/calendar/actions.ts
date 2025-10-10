@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { MediaPlanItem } from '@/app/funnels/types';
+import type { MediaPlanItem as MediaPlanItemType } from '@/app/funnels/types';
 import { publishPost } from '@/app/services/publisher';
 import { analyzePostFlow, type AnalyzePostInput, type PostAnalysis } from '@/ai/flows/analyze-post-flow';
 import { rewritePostFlow, type RewritePostInput, type RewritePostOutput } from '@/ai/flows/rewrite-post-flow';
@@ -11,7 +11,7 @@ import { rewritePostFlow, type RewritePostInput, type RewritePostOutput } from '
 export type { PostAnalysis };
 
 
-export type CalendarItem = MediaPlanItem & {
+export type CalendarItem = MediaPlanItemType & {
     // Fields from the new, consolidated media_plan_items table
     content_body: { primary: string | null; secondary: string | null; } | null;
     image_url: string | null;
@@ -169,16 +169,26 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
+    // Create a clean payload with only the fields that should be updated.
     const payload: { [key: string]: any } = {
-        ...updates,
-        copy: updates.content_body?.primary, // Ensure copy is synced with primary content
         updated_at: new Date().toISOString(),
     };
-    
-    // Remove the copy field if content_body is not being updated to avoid conflicts
-    if (!updates.content_body) {
-        delete payload.copy;
+
+    // Explicitly map allowed fields from the 'updates' object to the payload.
+    if (updates.content_body !== undefined) {
+        payload.content_body = updates.content_body;
+        // Also update the 'copy' field for searchability, derived from the primary content.
+        payload.copy = updates.content_body?.primary;
     }
+    if (updates.hashtags !== undefined) payload.hashtags = updates.hashtags;
+    if (updates.carousel_slides !== undefined) payload.carousel_slides = updates.carousel_slides;
+    if (updates.image_url !== undefined) payload.image_url = updates.image_url;
+    if (updates.video_script !== undefined) payload.video_script = updates.video_script;
+    if (updates.landing_page_html !== undefined) payload.landing_page_html = updates.landing_page_html;
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.scheduled_at !== undefined) payload.scheduled_at = updates.scheduled_at;
+    if (updates.user_channel_id !== undefined) payload.user_channel_id = updates.user_channel_id;
+    if (updates.format !== undefined) payload.format = updates.format;
 
     const { data, error } = await supabase
         .from('media_plan_items')
