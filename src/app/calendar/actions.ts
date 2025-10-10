@@ -224,7 +224,7 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string):
 }
 
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'media_format' | 'aspect_ratio'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
@@ -254,7 +254,7 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
     }
     
     // Add other fields to payload, excluding image fields handled above
-    const otherFields: (keyof typeof updates)[] = ['content_body', 'hashtags', 'video_script', 'video_url', 'landing_page_html', 'status', 'scheduled_at', 'user_channel_id', 'format'];
+    const otherFields: (keyof typeof updates)[] = ['content_body', 'hashtags', 'video_script', 'video_url', 'landing_page_html', 'status', 'scheduled_at', 'user_channel_id', 'media_format', 'aspect_ratio'];
     otherFields.forEach(field => {
         if (updates[field] !== undefined) {
             payload[field] = updates[field];
@@ -392,5 +392,3 @@ export async function rewritePost(input: RewritePostInput): Promise<RewritePostO
     return rewritePostFlow(input);
 }
 // GEMINI_SAFE_END
-
-    
