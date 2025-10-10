@@ -9,7 +9,7 @@ interface MediaPlanItem {
   user_id: string;
   user_channel_settings: {
     channel_name: string;
-  } | null;
+  } | null; // Changed to allow null
 }
 
 interface SocialConnection {
@@ -198,18 +198,19 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
     console.log(`[publishPost] Initiating publish for post ID: ${postId}`);
     
     // Fetch the post with its related user_channel_id first.
+    // Use a LEFT JOIN (the default) instead of an INNER JOIN to handle cases where the link might be missing.
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
-        .select(`*, user_channel_settings!inner(id, channel_name)`)
+        .select(`*, user_channel_settings(id, channel_name)`)
         .eq('id', postId)
         .single();
     
     if (postError || !post) {
-        throw new Error(`Post with ID ${postId} not found or is missing channel link. Error: ${postError?.message}`);
+        throw new Error(`Post with ID ${postId} not found. Error: ${postError?.message}`);
     }
 
     if (!post.user_channel_settings) {
-         throw new Error(`Post with ID ${postId} is missing channel information.`);
+         throw new Error(`Publishing failed: The information for the destination channel is missing from this post. Please edit the post and select a channel.`);
     }
 
     console.log(`[publishPost] Found post for channel: ${post.user_channel_settings.channel_name}`, post);
