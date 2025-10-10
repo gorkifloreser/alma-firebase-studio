@@ -14,14 +14,15 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Mail, Instagram, MessageSquare, Sparkles, Pencil, Calendar as CalendarIcon, Globe, CheckCheck, AlertTriangle, Clock, GripVertical, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EditContentDialog } from './_components/EditContentDialog';
-import Image from 'next/image';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { EditContentDialog } from './_components/EditContentDialog';
+import Image from 'next/image';
 
 
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -331,72 +332,95 @@ export default function CalendarPage() {
         <DashboardLayout>
             <DndContext onDragEnd={handleDragEnd}>
                 <Toaster />
-                 <div className="p-4 sm:p-6 lg:p-8 flex flex-col h-full">
-                    <Card className="flex-1 flex flex-col">
-                        <CardHeader className="flex items-center justify-between flex-row">
-                             <CardTitle className="text-2xl font-bold">{headerLabel}</CardTitle>
-                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                                    <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
-                                    <Button variant={view === 'month' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('month')}>Month</Button>
+                 <div className="p-4 sm:p-6 lg:p-8 flex flex-col h-full space-y-8">
+                    <header>
+                        <h1 className="text-3xl font-bold">AI Social Manager</h1>
+                        <p className="text-muted-foreground">Plan, analyze, and publish your social media content.</p>
+                    </header>
+                    <Tabs defaultValue="calendar" className="w-full">
+                        <div className="flex justify-center">
+                            <TabsList>
+                                <TabsTrigger value="calendar" className="gap-2"><CalendarIcon className="h-4 w-4"/> Calendar</TabsTrigger>
+                                <TabsTrigger value="metrics" className="gap-2"><BarChart2 className="h-4 w-4"/> Social Metrics</TabsTrigger>
+                            </TabsList>
+                        </div>
+                        <TabsContent value="calendar" className="mt-6">
+                            <div className="flex-1 flex flex-col">
+                                <div className="flex items-center justify-between flex-row pb-6">
+                                    <h2 className="text-2xl font-bold">{headerLabel}</h2>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                                            <Button variant={view === 'week' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('week')}>Week</Button>
+                                            <Button variant={view === 'month' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('month')}>Month</Button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft /></Button>
+                                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline">
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        <span>Go to date</span>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={currentDate}
+                                                        onSelect={handleDateSelect}
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
+                                        </div>
+                                    </div>
                                 </div>
-                                 <div className="flex items-center gap-2">
-                                     <Button variant="outline" size="icon" onClick={handlePrev}><ChevronLeft /></Button>
-                                     <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline">
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                <span>Go to date</span>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar
-                                                mode="single"
-                                                selected={currentDate}
-                                                onSelect={handleDateSelect}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <Button variant="outline" size="icon" onClick={handleNext}><ChevronRight /></Button>
+                                <div className="flex-1 flex flex-col">
+                                    <div className="grid grid-cols-7 border-b">
+                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                            <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-7 flex-1">
+                                        {isLoading ? (
+                                            Array.from({ length: view === 'week' ? 7 : 35 }).map((_, i) => (
+                                                <div key={i} className={cn("relative flex flex-col p-2 border-t border-l", dayHeightClass)}>
+                                                    <Skeleton className="h-5 w-5 mb-2" />
+                                                    <Skeleton className="h-20 w-full" />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            calendarDays.map(day => {
+                                                const dayContent = scheduledOrPublished.filter(item => {
+                                                    const displayDate = item.published_at || item.scheduled_at;
+                                                    return displayDate && isSameDay(parseISO(displayDate), day);
+                                                });
+                                                return (
+                                                    <CalendarDay 
+                                                        key={day.toString()} 
+                                                        day={day}
+                                                        content={dayContent}
+                                                        isCurrentMonth={isSameMonth(day, currentDate)}
+                                                        onEventClick={handleEventClick}
+                                                        heightClass={dayHeightClass}
+                                                    />
+                                                );
+                                            })
+                                        )}
+                                    </div>
                                 </div>
-                             </div>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col p-0">
-                            <div className="grid grid-cols-7 border-b">
-                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                                    <div key={day} className="p-2 text-center font-medium text-sm border-l">{day}</div>
-                                ))}
                             </div>
-                             <div className="grid grid-cols-7 flex-1">
-                                {isLoading ? (
-                                    Array.from({ length: view === 'week' ? 7 : 35 }).map((_, i) => (
-                                         <div key={i} className={cn("relative flex flex-col p-2 border-t border-l", dayHeightClass)}>
-                                            <Skeleton className="h-5 w-5 mb-2" />
-                                            <Skeleton className="h-20 w-full" />
-                                         </div>
-                                    ))
-                                ) : (
-                                    calendarDays.map(day => {
-                                        const dayContent = scheduledOrPublished.filter(item => {
-                                            const displayDate = item.published_at || item.scheduled_at;
-                                            return displayDate && isSameDay(parseISO(displayDate), day);
-                                        });
-                                        return (
-                                            <CalendarDay 
-                                                key={day.toString()} 
-                                                day={day}
-                                                content={dayContent}
-                                                isCurrentMonth={isSameMonth(day, currentDate)}
-                                                onEventClick={handleEventClick}
-                                                heightClass={dayHeightClass}
-                                            />
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </TabsContent>
+                        <TabsContent value="metrics" className="mt-6">
+                             <Card className="text-center py-20">
+                                <CardHeader>
+                                    <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                                    <CardTitle className="mt-4 text-2xl font-bold">Social Metrics Coming Soon</CardTitle>
+                                    <CardDescription>Analytics and performance reports for your connected social media accounts will be available here.</CardDescription>
+                                </CardHeader>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </DndContext>
             <Dialog open={isConfirmTimeOpen} onOpenChange={setIsConfirmTimeOpen}>
