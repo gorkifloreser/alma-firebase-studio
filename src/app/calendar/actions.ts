@@ -52,17 +52,31 @@ export async function getActiveSocialConnections(): Promise<SocialConnection[]> 
     if (!user) return [];
 
     const { data, error } = await supabase
-        .from('social_connections')
-        .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active, instagram_account_id')
+        .from('user_channel_settings')
+        .select('id, channel_name, connections')
         .eq('user_id', user.id);
-        // .eq('is_active', true); This was too restrictive. Get all and let user choose.
 
     if (error) {
         console.error('Error fetching active social connections:', error.message);
         return [];
     }
 
-    return data;
+    const activeConnections: SocialConnection[] = [];
+    data.forEach(channelSetting => {
+        if (channelSetting.connections && Array.isArray(channelSetting.connections)) {
+            const activeConnectionInChannel = channelSetting.connections.find(conn => conn.is_active);
+            if (activeConnectionInChannel) {
+                activeConnections.push({
+                    id: channelSetting.id, // This is the user_channel_setting id
+                    user_id: user.id,
+                    provider: channelSetting.channel_name,
+                    ...activeConnectionInChannel
+                });
+            }
+        }
+    });
+
+    return activeConnections;
 }
 
 

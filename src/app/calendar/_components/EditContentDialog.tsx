@@ -405,9 +405,8 @@ export function EditContentDialog({
                                 {activeConnections.map(conn => (
                                     <SelectItem key={conn.id} value={String(conn.id)}>
                                         <div className="flex items-center gap-2">
-                                            <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url}/>
-                                            <span>{conn.account_name}</span>
-                                            <span className="text-muted-foreground capitalize">({conn.provider})</span>
+                                            <ChannelIcon provider={conn.provider} />
+                                            <span className="capitalize">{conn.provider}</span>
                                         </div>
                                     </SelectItem>
                                 ))}
