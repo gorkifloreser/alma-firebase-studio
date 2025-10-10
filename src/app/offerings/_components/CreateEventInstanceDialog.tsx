@@ -125,6 +125,13 @@ export function CreateEventInstanceDialog({
         setSchedule(prev => ({ ...prev, prices: prev.prices.filter((_, i) => i !== priceIndex) }));
     };
 
+    const handleCreateNewTemplate = () => {
+        onOpenChange(false);
+        // TODO: Wire this up to open the "New Offering" dialog.
+        // This will require passing a new prop like `onOpenNewOfferingDialog`
+        // from the parent component.
+    };
+
     const handleSubmit = () => {
         if (!selectedTemplateId) {
             toast({ variant: 'destructive', title: 'Please select an event template.' });
@@ -162,6 +169,16 @@ export function CreateEventInstanceDialog({
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Didn't find the event?{' '}
+                            <button
+                                type="button"
+                                onClick={handleCreateNewTemplate}
+                                className="text-primary hover:underline"
+                            >
+                                Create New Event Template
+                            </button>
+                        </p>
                     </div>
 
                     <Separator />
