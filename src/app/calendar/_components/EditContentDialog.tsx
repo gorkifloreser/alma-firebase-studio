@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
+  AlertDialogTrigger,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -19,11 +20,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnection } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, getActiveSocialConnection, rewritePost } from '../actions';
 import type { PostAnalysis } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -32,7 +32,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 interface EditContentDialogProps {
@@ -50,7 +51,6 @@ interface EditContentDialogProps {
   contentItem: CalendarItem | null;
   onContentUpdated: (contentItem: CalendarItem) => void;
   onContentDeleted: (itemId: string) => void;
-  socialConnections: SocialConnection[];
 }
 
 type Profile = {
@@ -123,8 +123,10 @@ export function EditContentDialog({
   const [isDeleting, startDeleting] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
   const [isAnalyzing, startAnalyzing] = useTransition();
+  const [isRewriting, startRewriting] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [analysisResult, setAnalysisResult] = useState<PostAnalysis | null>(null);
+  const [suggestedRewrite, setSuggestedRewrite] = useState<string | null>(null);
 
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -165,6 +167,7 @@ export function EditContentDialog({
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setAnalysisResult(null); // Reset analysis on item change
+        setSuggestedRewrite(null); // Reset rewrite suggestion
     }
   }, [contentItem]);
   
@@ -263,8 +266,6 @@ export function EditContentDialog({
   const handlePublishNow = () => {
     startPublishing(async () => {
       try {
-        // Here we would pass the selected channel ('instagram' or 'facebook') to the publish action
-        // For now, the action defaults to Instagram if available
         const result = await publishNow(contentItem.id);
         const updatedItem = await updateContent(contentItem.id, { status: 'published', published_at: new Date().toISOString() });
         onContentUpdated(updatedItem);
@@ -297,6 +298,31 @@ export function EditContentDialog({
         }
     });
   };
+  
+    const handleRewritePost = () => {
+        if (!editableContent?.primary || !analysisResult?.suggestions) return;
+        
+        startRewriting(async () => {
+            setSuggestedRewrite(null);
+            try {
+                const result = await rewritePost({
+                    originalText: editableContent.primary!,
+                    suggestions: analysisResult.suggestions.map(s => s.point),
+                });
+                setSuggestedRewrite(result.rewrittenText);
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Rewrite Failed', description: error.message });
+            }
+        });
+    };
+    
+    const acceptRewrite = () => {
+        if (!suggestedRewrite) return;
+        handleContentChange('primary', suggestedRewrite);
+        setSuggestedRewrite(null);
+        // Automatically re-rate the post
+        handleAnalyzePost();
+    };
 
     const renderVisualContent = () => {
         if (editableSlides && Array.isArray(editableSlides) && editableSlides.length > 0) {
@@ -444,6 +470,78 @@ export function EditContentDialog({
                         ))}
                     </div>
                  )}
+                 <div className="pt-4">
+                    <Accordion type="single" collapsible>
+                        <AccordionItem value="item-1" className="border-b-0">
+                            <AccordionTrigger asChild>
+                                <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
+                                    <Bot className="mr-2 h-4 w-4" />
+                                    {isAnalyzing ? 'Analyzing...' : 'Rate post with AI'}
+                                </Button>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-4">
+                               {isAnalyzing ? <Skeleton className="h-40 w-full" /> : analysisResult && (
+                                    <Card className="border-border">
+                                        <CardHeader>
+                                            <div className="flex items-center justify-between">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Sparkles className="h-5 w-5 text-primary" />
+                                                AI Analysis
+                                            </CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-2xl font-bold text-primary">{analysisResult.overall_score}</span>
+                                                <span className="text-sm text-muted-foreground">/ 10</span>
+                                            </div>
+                                            </div>
+                                            <CardDescription>{analysisResult.reasoning}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                            <div>
+                                                <h4 className="font-semibold text-sm mb-2">Strengths</h4>
+                                                <ul className="space-y-2">
+                                                {analysisResult.strengths.map((item, i) => (
+                                                    <li key={i} className="flex items-start gap-2 text-sm">
+                                                        <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0" />
+                                                        <span>{item.point}</span>
+                                                    </li>
+                                                ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-sm mb-2">Suggestions</h4>
+                                                <ul className="space-y-2">
+                                                {analysisResult.suggestions.map((item, i) => (
+                                                    <li key={i} className="flex items-start gap-2 text-sm">
+                                                        <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 flex-shrink-0" />
+                                                        <span>{item.point}</span>
+                                                    </li>
+                                                ))}
+                                                </ul>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="pt-4 flex-col items-stretch gap-4">
+                                            {isRewriting ? <Skeleton className="h-20 w-full" /> : suggestedRewrite ? (
+                                                <div className="space-y-2">
+                                                    <Label className="font-semibold">Suggested Rewrite</Label>
+                                                    <div className="p-3 border rounded-md bg-secondary text-sm">{suggestedRewrite}</div>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button variant="ghost" size="sm" onClick={() => setSuggestedRewrite(null)}><X className="mr-2 h-4 w-4"/> Reject</Button>
+                                                        <Button size="sm" onClick={acceptRewrite}><Check className="mr-2 h-4 w-4"/> Accept</Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <Button variant="secondary" onClick={handleRewritePost} disabled={isRewriting}>
+                                                    <Sparkles className="mr-2 h-4 w-4" />
+                                                    Improve with AI
+                                                </Button>
+                                            )}
+                                        </CardFooter>
+                                    </Card>
+                                )}
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                 </div>
             </div>
 
             <div className="md:col-span-2 space-y-4">
@@ -483,55 +581,6 @@ export function EditContentDialog({
                             <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
                     </CardFooter>
                 </Card>
-
-                 <div className="space-y-4 pt-4">
-                    <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
-                        <Bot className="mr-2 h-4 w-4" />
-                        {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
-                    </Button>
-                    {isAnalyzing && <Skeleton className="h-40 w-full" />}
-                     {analysisResult && (
-                        <Card className="border-border">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-primary" />
-                                    AI Analysis
-                                </CardTitle>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-primary">{analysisResult.overall_score}</span>
-                                    <span className="text-sm text-muted-foreground">/ 10</span>
-                                </div>
-                                </div>
-                                <CardDescription>{analysisResult.reasoning}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                                <div>
-                                    <h4 className="font-semibold text-sm mb-2">Strengths</h4>
-                                    <ul className="space-y-2">
-                                    {analysisResult.strengths.map((item, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm">
-                                            <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 flex-shrink-0" />
-                                            <span>{item.point}</span>
-                                        </li>
-                                    ))}
-                                    </ul>
-                                </div>
-                                 <div>
-                                    <h4 className="font-semibold text-sm mb-2">Suggestions</h4>
-                                    <ul className="space-y-2">
-                                    {analysisResult.suggestions.map((item, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm">
-                                            <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 flex-shrink-0" />
-                                            <span>{item.point}</span>
-                                        </li>
-                                    ))}
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                 </div>
             </div>
         </div>
 
@@ -602,3 +651,4 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+

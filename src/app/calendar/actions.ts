@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { MediaPlanItem } from '@/app/funnels/types';
 import { publishPost } from '@/app/services/publisher';
-import { analyzePostFlow, type AnalyzePostInput } from '@/ai/flows/analyze-post-flow';
-export type { PostSuggestion } from '@/ai/flows/analyze-post-flow';
+import { analyzePostFlow, type AnalyzePostInput, type PostAnalysis } from '@/ai/flows/analyze-post-flow';
+import { rewritePostFlow, type RewritePostInput, type RewritePostOutput } from '@/ai/flows/rewrite-post-flow';
+
+export type { PostAnalysis };
 
 
 export type CalendarItem = MediaPlanItem & {
@@ -288,6 +290,14 @@ export async function getSocialMetrics() {
 /**
  * Invokes the Genkit flow to analyze post content.
  */
-export async function analyzePost(input: AnalyzePostInput) {
+export async function analyzePost(input: AnalyzePostInput): Promise<PostAnalysis> {
     return analyzePostFlow(input);
+}
+
+
+/**
+ * Invokes the Genkit flow to rewrite a post based on suggestions.
+ */
+export async function rewritePost(input: RewritePostInput): Promise<RewritePostOutput> {
+    return rewritePostFlow(input);
 }
