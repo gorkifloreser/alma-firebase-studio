@@ -31,7 +31,7 @@ import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 interface EditContentDialogProps {
@@ -364,12 +364,14 @@ export function EditContentDialog({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="channel-select">Channel</Label>
-                    <Select value={contentItem.user_channel_settings?.channel_name || ''} disabled>
-                        <SelectTrigger id="channel-select"><SelectValue/></SelectTrigger>
+                    <Select value={contentItem.user_channel_settings?.channel_name} disabled>
+                        <SelectTrigger id="channel-select"><SelectValue placeholder="N/A" /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value={contentItem.user_channel_settings?.channel_name || ''}>
-                                {contentItem.user_channel_settings?.channel_name || 'N/A'}
-                            </SelectItem>
+                            {contentItem.user_channel_settings?.channel_name && (
+                                <SelectItem value={contentItem.user_channel_settings.channel_name}>
+                                    {contentItem.user_channel_settings.channel_name}
+                                </SelectItem>
+                            )}
                         </SelectContent>
                     </Select>
                 </div>
