@@ -182,32 +182,75 @@ export async function unscheduleContent(mediaPlanItemId: string): Promise<{ mess
     return { message: "Content unscheduled and returned to the 'Approved' list." };
 }
 
+async function uploadBase64Image(supabase: any, base64: string, userId: string): Promise<string> {
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
+    // A more generic path since we don't have offeringId here
+    const filePath = `${userId}/calendar_uploads/${crypto.randomUUID()}.png`;
+    
+    const base64Data = base64.split(';base64,').pop();
+    if (!base64Data) {
+        throw new Error('Invalid Base64 image data.');
+    }
+    
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, buffer, {
+            contentType: 'image/png',
+            upsert: false
+        });
 
-export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
+    if (uploadError) {
+        throw new Error(`Image upload failed: ${uploadError.message}`);
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    return publicUrl;
+}
+
+
+export async function updateContent(mediaPlanItemId: string, updates: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'image_url' | 'video_script' | 'video_url' | 'landing_page_html' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>>): Promise<CalendarItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    // Create a clean payload with only the fields that should be updated.
     const payload: { [key: string]: any } = {
         updated_at: new Date().toISOString(),
     };
 
-    // Explicitly map allowed fields from the 'updates' object to the payload.
-    if (updates.content_body !== undefined) {
-        payload.content_body = updates.content_body;
-        // Also update the 'copy' field for searchability, derived from the primary content.
-        payload.copy = updates.content_body?.primary;
+    if (updates.image_url && updates.image_url.startsWith('data:image')) {
+        payload.image_url = await uploadBase64Image(supabase, updates.image_url, user.id);
+    } else if (updates.image_url !== undefined) {
+        payload.image_url = updates.image_url;
     }
-    if (updates.hashtags !== undefined) payload.hashtags = updates.hashtags;
-    if (updates.carousel_slides !== undefined) payload.carousel_slides = updates.carousel_slides;
-    if (updates.image_url !== undefined) payload.image_url = updates.image_url;
-    if (updates.video_script !== undefined) payload.video_script = updates.video_script;
-    if (updates.landing_page_html !== undefined) payload.landing_page_html = updates.landing_page_html;
-    if (updates.status !== undefined) payload.status = updates.status;
-    if (updates.scheduled_at !== undefined) payload.scheduled_at = updates.scheduled_at;
-    if (updates.user_channel_id !== undefined) payload.user_channel_id = updates.user_channel_id;
-    if (updates.format !== undefined) payload.format = updates.format;
+    
+    if (updates.carousel_slides && Array.isArray(updates.carousel_slides)) {
+        payload.carousel_slides = await Promise.all(
+            updates.carousel_slides.map(async (slide) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id);
+                    return { ...slide, imageUrl: newUrl };
+                }
+                return slide;
+            })
+        );
+    } else if (updates.carousel_slides !== undefined) {
+         payload.carousel_slides = updates.carousel_slides;
+    }
+    
+    // Add other fields to payload, excluding image fields handled above
+    const otherFields: (keyof typeof updates)[] = ['content_body', 'hashtags', 'video_script', 'video_url', 'landing_page_html', 'status', 'scheduled_at', 'user_channel_id', 'format'];
+    otherFields.forEach(field => {
+        if (updates[field] !== undefined) {
+            payload[field] = updates[field];
+        }
+    });
+     
+    // Also update the 'copy' field for searchability, derived from the primary content.
+    if (payload.content_body?.primary) {
+        payload.copy = payload.content_body.primary;
+    }
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -335,3 +378,5 @@ export async function rewritePost(input: RewritePostInput): Promise<RewritePostO
     return rewritePostFlow(input);
 }
 // GEMINI_SAFE_END
+
+    

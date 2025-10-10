@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -534,6 +535,16 @@ export default function ArtisanPage() {
         startSaving(async () => {
             try {
                 let updatedItem: CalendarItem;
+
+                let dynamicFormat = '';
+                if(creative?.videoUrl) dynamicFormat = 'Reel/Short';
+                else if (creative?.carouselSlides) dynamicFormat = 'Carousel';
+                else if (creative?.imageUrl) dynamicFormat = 'Image';
+                else if (creative?.landingPageHtml) dynamicFormat = 'Landing Page';
+                else dynamicFormat = 'Text Post';
+
+                const formatString = `${dimension} ${dynamicFormat}`;
+                
                 if (savedContent) {
                     updatedItem = await updateContent(savedContent.id, {
                         content_body: editableContent,
@@ -543,6 +554,7 @@ export default function ArtisanPage() {
                         landing_page_html: editableHtml,
                         status: status,
                         scheduled_at: scheduleDate?.toISOString(),
+                        format: formatString,
                     });
                      toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
                 } else {
@@ -558,6 +570,7 @@ export default function ArtisanPage() {
                         landingPageHtml: editableHtml,
                         status: status,
                         scheduledAt: scheduleDate?.toISOString(),
+                        format: formatString,
                     });
                     
                     if (selectedArtisanItemId) {
@@ -950,3 +963,5 @@ export default function ArtisanPage() {
 }
 
 // GEMINI_SAFE_END
+
+    

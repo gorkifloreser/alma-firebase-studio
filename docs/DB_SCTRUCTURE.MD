@@ -248,8 +248,11 @@ CREATE TABLE public.user_channel_settings (
   best_practices text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  user_channel_id bigint,
+  connections jsonb DEFAULT '[]'::jsonb,
   CONSTRAINT user_channel_settings_pkey PRIMARY KEY (id),
-  CONSTRAINT user_channel_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+  CONSTRAINT user_channel_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_channel_settings_user_channel_id_fkey FOREIGN KEY (user_channel_id) REFERENCES public.user_channels(id)
 );
 CREATE TABLE public.user_channels (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
