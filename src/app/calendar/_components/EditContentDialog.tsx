@@ -21,9 +21,10 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogFooter,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -227,15 +228,16 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const updatedContent = await updateContent(contentItem.id, {
-            content_body: editableContent,
-            hashtags: editableHashtags,
-            carousel_slides: editableSlides,
-            status: editableScheduledAt ? 'scheduled' : contentItem.status === 'scheduled' ? 'approved' : contentItem.status,
-            scheduled_at: editableScheduledAt?.toISOString(),
-            user_channel_id: selectedChannelId,
-            format: editableFormat,
-        });
+        const updatedItem = {
+          content_body: editableContent,
+          hashtags: editableHashtags,
+          carousel_slides: editableSlides,
+          status: editableScheduledAt ? 'scheduled' : contentItem.status === 'scheduled' ? 'approved' : contentItem.status,
+          scheduled_at: editableScheduledAt?.toISOString(),
+          user_channel_id: selectedChannelId,
+          format: editableFormat,
+        };
+        const updatedContent = await updateContent(contentItem.id, updatedItem);
         onContentUpdated(updatedContent);
         onOpenChange(false);
         toast({ title: 'Success!', description: 'Your post has been updated.' });
