@@ -2,6 +2,7 @@
 'use client';
 // GEMINI_SAFE_START
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
 import { KnowledgeBaseClientPage } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
@@ -27,18 +28,26 @@ interface BrandTabsProps {
 const BRAND_HEART_TAB_STORAGE_KEY = 'brand-heart-active-tab';
 
 export function BrandTabs({ data }: BrandTabsProps) {
-    const [activeTab, setActiveTab] = useState('brand-heart');
+    const searchParams = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'brand-heart';
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     useEffect(() => {
         const savedTab = localStorage.getItem(BRAND_HEART_TAB_STORAGE_KEY);
-        if (savedTab) {
+        // The URL param should take precedence over localStorage
+        if (initialTab && initialTab !== savedTab) {
+            localStorage.setItem(BRAND_HEART_TAB_STORAGE_KEY, initialTab);
+            setActiveTab(initialTab);
+        } else if (savedTab && !initialTab) {
             setActiveTab(savedTab);
         }
-    }, []);
+    }, [initialTab]);
 
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         localStorage.setItem(BRAND_HEART_TAB_STORAGE_KEY, value);
+        // Update URL without reloading page
+        window.history.pushState(null, '', `/brand?tab=${value}`);
     };
 
     return (
@@ -86,7 +95,17 @@ export function BrandTabs({ data }: BrandTabsProps) {
                      <KnowledgeBaseClientPage {...data.knowledgeBase} />
                 </TabsContent>
                 <TabsContent value="accounts" className="mt-6">
-                     <AccountsClientPage {...data.accounts} />
+                    <Card>
+                        <CardHeader>
+                             <CardTitle>Accounts & Integrations</CardTitle>
+                            <CardDescription>
+                                Select your active marketing channels and customize their AI instructions.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <AccountsClientPage {...data.accounts} />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>
@@ -130,13 +149,12 @@ declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {
 declare module "@/app/accounts/_components/AccountsClientPage" {
     export interface AccountsClientPageProps {
         initialUserChannels: any[];
-        socialConnections: any[];
         updateUserChannelsAction: any;
         updateChannelBestPracticesAction: any;
         getMetaOAuthUrl: any;
         disconnectMetaAccount: any;
         setActiveConnection: any;
-        getSocialConnections: any;
+        getUserChannels: any;
     }
 }
 // GEMINI_SAFE_END

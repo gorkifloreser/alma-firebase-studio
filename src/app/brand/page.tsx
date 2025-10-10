@@ -7,10 +7,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { getProfile } from '@/app/settings/actions';
 import { getBrandHeart, updateBrandHeart, translateText, generateAudienceSuggestion } from '../brand-heart/actions';
 import { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../knowledge-base/actions';
-import { getUserChannels, updateUserChannels, updateChannelBestPractices, getSocialConnections, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
+import { getUserChannels, updateUserChannels, updateChannelBestPractices, getMetaOAuthUrl, disconnectMetaAccount, setActiveConnection } from '../accounts/actions';
 import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
-import { AudienceForm } from './_components/AudienceForm';
 
 export default async function BrandHeartPage() {
     const supabase = createClient();
@@ -19,16 +18,17 @@ export default async function BrandHeartPage() {
         redirect('/login');
     }
 
-    const [profile, brandHeart, documents, userChannels, socialConnections] = await Promise.all([
+    // Fetch all necessary data in parallel
+    const [profile, brandHeart, documents, userChannels] = await Promise.all([
         getProfile(),
         getBrandHeart(),
         getBrandDocuments(),
         getUserChannels(),
-        getSocialConnections(),
     ]);
 
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
+    // Consolidate all props for BrandTabs
     const tabData = {
         brandHeart: {
             profile,
@@ -40,9 +40,7 @@ export default async function BrandHeartPage() {
         audience: {
             profile,
             brandHeart,
-            languageNames,
             updateBrandHeartAction: updateBrandHeart,
-            translateTextAction: translateText,
             generateAudienceAction: generateAudienceSuggestion,
         },
         knowledgeBase: {
@@ -55,13 +53,12 @@ export default async function BrandHeartPage() {
         },
         accounts: {
             initialUserChannels: userChannels,
-            socialConnections: socialConnections,
             updateUserChannelsAction: updateUserChannels,
             updateChannelBestPracticesAction: updateChannelBestPractices,
             getMetaOAuthUrl: getMetaOAuthUrl,
             disconnectMetaAccount: disconnectMetaAccount,
             setActiveConnection: setActiveConnection,
-            getSocialConnections: getSocialConnections,
+            getUserChannels: getUserChannels,
         },
     };
 

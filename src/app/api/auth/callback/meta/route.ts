@@ -56,97 +56,68 @@ export async function GET(req: NextRequest) {
         const pagesRes = await fetch(pagesUrl);
         const pagesData = await pagesRes.json();
         if (pagesData.error) throw new Error(`Fetching pages error: ${pagesData.error.message}`);
+        
+        let facebookConnections: any[] = [];
+        let instagramConnections: any[] = [];
 
-        const foundConnections: any[] = [];
         if (pagesData.data && pagesData.data.length > 0) {
             pagesData.data.forEach((page: any) => {
                 // Add Facebook Page connection
-                foundConnections.push({
+                facebookConnections.push({
                     provider: 'facebook',
                     account_id: page.id,
                     account_name: page.name,
-                    access_token: page.access_token, // This is a page-specific token
+                    access_token: page.access_token,
                     account_picture_url: page.picture?.data?.url || null,
                     is_active: false,
                 });
                 // Add Instagram connection if it exists
                 if (page.instagram_business_account) {
-                    foundConnections.push({
+                    instagramConnections.push({
                         provider: 'instagram',
                         account_id: page.instagram_business_account.id,
                         account_name: page.instagram_business_account.username,
-                        access_token: page.access_token, // Use the same page token
+                        access_token: page.access_token,
                         account_picture_url: page.instagram_business_account.profile_picture_url || null,
                         is_active: false,
+                        instagram_account_id: page.instagram_business_account.id,
                     });
                 }
             });
-             console.log(`[META AUTH] Step 2 Success: Found ${foundConnections.length} potential connections.`);
+             console.log(`[META AUTH] Step 2 Success: Found ${facebookConnections.length} FB pages and ${instagramConnections.length} IG accounts.`);
         } else {
             console.log('[META AUTH] Step 2: No Facebook Pages found.');
         }
-        
-        if (foundConnections.length === 0) {
-            throw new Error('No social accounts (Instagram or Facebook pages) found to connect. Please ensure you have an Instagram Business account linked to a Facebook Page.');
-        }
 
-        // Step 3: Update user_channel_settings
-        console.log('[META AUTH] Step 3: Upserting connections into user_channel_settings...');
-        const providersToUpdate = [...new Set(foundConnections.map(c => c.provider))]; // ['facebook', 'instagram']
+        // Set the first found account of each type to active
+        if (facebookConnections.length > 0) facebookConnections[0].is_active = true;
+        if (instagramConnections.length > 0) instagramConnections[0].is_active = true;
 
-        for (const provider of providersToUpdate) {
-            const connectionsForProvider = foundConnections.filter(c => c.provider === provider);
-            
-            // Get the existing settings for this channel
-            const { data: channelSetting, error: fetchError } = await supabase
+        // Step 3: Update user_channel_settings with the new connections JSONB
+        if (facebookConnections.length > 0) {
+            const { error: fbError } = await supabase
                 .from('user_channel_settings')
-                .select('id, connections')
+                .update({ connections: facebookConnections })
                 .eq('user_id', user.id)
-                .eq('channel_name', provider)
-                .single();
-
-            if (fetchError || !channelSetting) {
-                console.warn(`[META AUTH] No channel setting found for provider '${provider}'. Skipping update for this provider.`);
-                continue;
-            }
-
-            let existingConnections = (channelSetting.connections || []) as any[];
-            let newConnections = [...existingConnections];
-            let madeChanges = false;
-            let firstNewConnection = true;
-
-            connectionsForProvider.forEach(newConn => {
-                const existingIndex = newConnections.findIndex(c => c.account_id === newConn.account_id);
-                if (existingIndex > -1) {
-                    // Update existing connection
-                    newConnections[existingIndex] = { ...newConnections[existingIndex], ...newConn };
-                } else {
-                    // Add new connection
-                    newConnections.push(newConn);
-                }
-                madeChanges = true;
-            });
-            
-            // Set the first IG account as active if it's the first time connecting
-            const hasActiveConnection = newConnections.some(c => c.is_active);
-            if (!hasActiveConnection && newConnections.length > 0) {
-                newConnections[0].is_active = true;
-            }
-
-            if (madeChanges) {
-                 const { error: updateError } = await supabase
-                    .from('user_channel_settings')
-                    .update({ connections: newConnections })
-                    .eq('id', channelSetting.id);
-
-                if (updateError) {
-                    console.error(`[META AUTH] Step 3 FAILED for provider '${provider}':`, updateError);
-                    throw new Error(`Failed to save ${provider} connections: ${updateError.message}`);
-                }
-                console.log(`[META AUTH] Step 3 Success for provider '${provider}'.`);
-            }
+                .eq('channel_name', 'facebook');
+            if (fbError) throw new Error(`Failed to save Facebook connections: ${fbError.message}`);
+            console.log('[META AUTH] Step 3: Successfully updated Facebook channel settings.');
         }
         
+        if (instagramConnections.length > 0) {
+             const { error: igError } = await supabase
+                .from('user_channel_settings')
+                .update({ connections: instagramConnections })
+                .eq('user_id', user.id)
+                .eq('channel_name', 'instagram');
+            if (igError) throw new Error(`Failed to save Instagram connections: ${igError.message}`);
+             console.log('[META AUTH] Step 3: Successfully updated Instagram channel settings.');
+        }
+        
+        if (facebookConnections.length === 0 && instagramConnections.length === 0) {
+             throw new Error('No social accounts (Instagram or Facebook pages) found to connect. Please ensure you have an Instagram Business account linked to a Facebook Page.');
+        }
+
         redirectUrl.searchParams.set('status', 'success');
         redirectUrl.searchParams.set('message', 'Successfully connected your Meta account(s).');
         return NextResponse.redirect(redirectUrl);
@@ -158,5 +129,3 @@ export async function GET(req: NextRequest) {
         return NextResponse.redirect(redirectUrl);
     }
 }
-
-    

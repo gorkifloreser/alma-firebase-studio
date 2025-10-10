@@ -3,7 +3,29 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Account } from './_components/AccountsClientPage';
+
+// Matches the structure inside the JSONB array
+export type SocialConnection = {
+    provider: string;
+    is_active: boolean;
+    account_id: string;
+    access_token: string;
+    account_name: string;
+    account_picture_url: string | null;
+    instagram_account_id?: string; // For Meta's structure
+};
+
+// Represents a row in the user_channel_settings table
+export type UserChannelSetting = {
+    id: number;
+    user_id: string;
+    channel_name: string;
+    best_practices: string;
+    created_at: string;
+    updated_at: string;
+    connections: SocialConnection[] | null;
+};
+
 
 const defaultBestPractices: Record<string, string> = {
     instagram: "Call to Action: Use 'Link in bio!' for external links. Visually-driven content is key. Use relevant hashtags. Carousels are effective for storytelling.",
@@ -18,17 +40,17 @@ const defaultBestPractices: Record<string, string> = {
 
 
 /**
- * Fetches the list of enabled channels for the current user, including their best practices.
- * @returns {Promise<Account[]>} A promise that resolves to an array of channel objects.
+ * Fetches the list of all channel settings for the current user.
+ * @returns {Promise<UserChannelSetting[]>} A promise that resolves to an array of channel setting objects.
  */
-export async function getUserChannels(): Promise<Account[]> {
+export async function getUserChannels(): Promise<UserChannelSetting[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
     const { data, error } = await supabase
         .from('user_channel_settings')
-        .select('channel_name, best_practices')
+        .select('*')
         .eq('user_id', user.id);
 
     if (error) {
@@ -36,70 +58,58 @@ export async function getUserChannels(): Promise<Account[]> {
         throw new Error("Could not fetch user channels.");
     }
     
-    // The component expects the `id` field, so we map `channel_name` to `id`.
-    return data.map(row => ({
-        id: row.channel_name,
-        name: row.channel_name,
-        description: '',
-        icon: '',
-        category: 'social', // This field is just for the UI and not stored in DB, so a default is fine
-        status: 'available',
-        best_practices: row.best_practices,
-    }));
+    return data;
 }
 
 
 /**
  * Updates the list of enabled channels for the current user.
- * This function performs a "delete all and insert new" operation.
- * When a new channel is inserted, it's populated with default best practices.
- * @param {string[]} selectedChannels - An array of channel names to be enabled.
- * @returns {Promise<Account[]>} The updated list of user channels.
+ * This is now an upsert operation.
+ * @param {string[]} selectedChannels - An array of channel names to be enabled/kept.
+ * @returns {Promise<UserChannelSetting[]>} The updated list of user channels.
  */
-export async function updateUserChannels(selectedChannels: string[]): Promise<Account[]> {
+export async function updateUserChannels(selectedChannels: string[]): Promise<UserChannelSetting[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
     
+    // Delete channels that are NOT in the selected list
     const { error: deleteError } = await supabase
         .from('user_channel_settings')
         .delete()
-        .eq('user_id', user.id);
-
+        .eq('user_id', user.id)
+        .not('channel_name', 'in', `(${selectedChannels.map(c => `'${c}'`).join(',')})`);
+    
     if (deleteError) {
-        console.error("Error deleting old channels:", deleteError);
-        throw new Error("Could not update channels (delete step failed).");
+        console.warn("Could not delete deselected channels, continuing with upsert:", deleteError.message);
     }
 
     if (selectedChannels.length > 0) {
-        const channelsToInsert = selectedChannels.map(channelName => ({
+        const channelsToUpsert = selectedChannels.map(channelName => ({
             user_id: user.id,
             channel_name: channelName,
             best_practices: defaultBestPractices[channelName] || `Default best practices for ${channelName}.`,
         }));
 
-        const { error: insertError } = await supabase
+        const { error: upsertError } = await supabase
             .from('user_channel_settings')
-            .insert(channelsToInsert);
+            .upsert(channelsToUpsert, { onConflict: 'user_id, channel_name' });
 
-        if (insertError) {
-            console.error("Error inserting new channels:", insertError);
-            throw new Error("Could not update channels (insert step failed).");
+        if (upsertError) {
+            console.error("Error upserting channels:", upsertError);
+            throw new Error("Could not update channels (upsert step failed).");
         }
     }
 
-    revalidatePath('/accounts');
-    return getUserChannels(); // Return the newly updated list
+    revalidatePath('/brand');
+    return getUserChannels();
 }
 
 
 /**
  * Updates the best_practices for a specific channel for the current user.
- * @param {string} channelName - The name of the channel to update.
- * @param {string} bestPractices - The new best practices text.
- * @returns {Promise<Account>} The single updated channel object.
  */
-export async function updateChannelBestPractices(channelName: string, bestPractices: string): Promise<Account> {
+export async function updateChannelBestPractices(channelId: number, bestPractices: string): Promise<UserChannelSetting> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
@@ -108,7 +118,7 @@ export async function updateChannelBestPractices(channelName: string, bestPracti
         .from('user_channel_settings')
         .update({ best_practices: bestPractices, updated_at: new Date().toISOString() })
         .eq('user_id', user.id)
-        .eq('channel_name', channelName)
+        .eq('id', channelId)
         .select()
         .single();
     
@@ -117,52 +127,10 @@ export async function updateChannelBestPractices(channelName: string, bestPracti
         throw new Error("Could not update best practices.");
     }
     
-    revalidatePath('/accounts');
-
-    return {
-        id: data.channel_name,
-        name: data.channel_name,
-        description: '',
-        icon: '',
-        category: 'social',
-        status: 'available',
-        best_practices: data.best_practices,
-    };
+    revalidatePath('/brand');
+    return data;
 }
 
-
-export type SocialConnection = {
-    id: number;
-    user_id: string;
-    provider: string;
-    access_token: string;
-    refresh_token: string | null;
-    expires_at: string | null;
-    account_id: string | null;
-    account_name: string | null;
-    account_picture_url: string | null;
-    instagram_account_id?: string | null;
-    is_active: boolean;
-    created_at: string;
-}
-
-export async function getSocialConnections(): Promise<SocialConnection[]> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-
-    const { data, error } = await supabase
-        .from('social_connections')
-        .select('*')
-        .eq('user_id', user.id);
-
-    if (error) {
-        console.error('Error fetching social connections:', error.message);
-        throw new Error(`Failed to fetch social connections: ${error.message}`);
-    }
-
-    return data || [];
-}
 
 export async function getMetaOAuthUrl(): Promise<{ url: string }> {
     const appId = process.env.META_APP_ID;
@@ -172,70 +140,67 @@ export async function getMetaOAuthUrl(): Promise<{ url: string }> {
         throw new Error("Meta application credentials are not configured in the environment.");
     }
 
-    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,pages_manage_posts';
+    const scope = 'instagram_basic,pages_show_list,instagram_content_publish,pages_read_engagement,pages_manage_posts,business_management';
     const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code`;
 
     return { url };
 }
 
-export async function disconnectMetaAccount(provider: string): Promise<{ message: string }> {
+export async function disconnectMetaAccount(provider: string): Promise<void> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
+    // This action now clears the `connections` JSONB for the relevant channel
     const { error } = await supabase
-        .from('social_connections')
-        .delete()
+        .from('user_channel_settings')
+        .update({ connections: [] })
         .eq('user_id', user.id)
-        .eq('provider', provider);
+        .eq('channel_name', provider);
     
     if (error) {
         console.error(`Error disconnecting ${provider} account:`, error);
         throw new Error(`Failed to disconnect ${provider} account.`);
     }
 
-    revalidatePath('/accounts');
-    return { message: `${provider} account disconnected successfully.` };
+    revalidatePath('/brand');
 }
 
-export async function setActiveConnection(connectionId: number): Promise<SocialConnection[]> {
+export async function setActiveConnection(channelId: number, accountIdToActivate: string): Promise<UserChannelSetting> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
 
-    // Find the provider of the connection being activated
-    const { data: connection, error: fetchError } = await supabase
-        .from('social_connections')
-        .select('provider')
-        .eq('id', connectionId)
+    // Get the current connections for the channel
+    const { data: channelSetting, error: fetchError } = await supabase
+        .from('user_channel_settings')
+        .select('connections')
+        .eq('id', channelId)
         .eq('user_id', user.id)
         .single();
     
-    if (fetchError || !connection) {
-        throw new Error("Connection not found or you don't have permission to access it.");
+    if (fetchError || !channelSetting) {
+        throw new Error("Channel setting not found or you don't have permission to access it.");
     }
     
-    // Deactivate all connections for this provider for the user
-    const { error: deactivateError } = await supabase
-        .from('social_connections')
-        .update({ is_active: false })
-        .eq('user_id', user.id)
-        .eq('provider', connection.provider);
+    const updatedConnections = (channelSetting.connections || []).map(conn => ({
+        ...conn,
+        is_active: conn.account_id === accountIdToActivate
+    }));
 
-    if (deactivateError) {
-        throw new Error(`Failed to deactivate other connections: ${deactivateError.message}`);
-    }
-
-    // Activate the selected connection
-    const { error: activateError } = await supabase
-        .from('social_connections')
-        .update({ is_active: true })
-        .eq('id', connectionId);
+    // Update the entire connections array
+    const { data: updatedChannel, error: updateError } = await supabase
+        .from('user_channel_settings')
+        .update({ connections: updatedConnections })
+        .eq('id', channelId)
+        .select()
+        .single();
         
-    if (activateError) {
-        throw new Error(`Failed to activate selected connection: ${activateError.message}`);
+    if (updateError) {
+        throw new Error(`Failed to activate selected connection: ${updateError.message}`);
     }
 
-    revalidatePath('/accounts');
-    return getSocialConnections();
+    revalidatePath('/brand');
+    return updatedChannel;
 }
+    

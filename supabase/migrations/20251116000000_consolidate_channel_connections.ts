@@ -19,40 +19,23 @@ export async function up(db: Kysely<any>): Promise<void> {
     .onDelete('cascade')
     .execute();
 
-  // Step 2: Add connection-related columns to user_channel_settings
+  // Step 2: Add a JSONB column to user_channel_settings to store an array of connections
   await db.schema
     .alterTable('user_channel_settings')
-    .addColumn('provider', 'text')
-    .addColumn('access_token', 'text')
-    .addColumn('refresh_token', 'text')
-    .addColumn('expires_at', 'timestamp with time zone')
-    .addColumn('account_id', 'text')
-    .addColumn('account_name', 'text')
-    .addColumn('account_picture_url', 'text')
-    .addColumn('is_active', 'boolean', (col) => col.defaultTo(false).notNull())
-    .addColumn('instagram_account_id', 'text')
+    .addColumn('connections', 'jsonb', col => col.defaultTo(sql`'[]'::jsonb`))
     .execute();
+    
+   // Step 3: (Optional but good practice) Add a comment for clarity
+    await db.schema.raw(`
+        COMMENT ON COLUMN public.user_channel_settings.connections IS 'Stores an array of social media connection objects, e.g., multiple Instagram accounts, each with its own token, ID, and active status.';
+    `).execute();
 
-  // Step 3: (Optional but recommended) Backfill data from social_connections to user_channel_settings
-  // This is a conceptual step. The actual SQL would be complex and depends on existing data.
-  // For example:
-  // UPDATE user_channel_settings ucs SET ... FROM social_connections sc WHERE ucs.user_id = sc.user_id AND ucs.channel_name = sc.provider;
 
-  // Step 4: Drop the social_connections and user_channels tables
+  // Step 4: Drop the now redundant social_connections table
   await db.schema.dropTable('social_connections').ifExists().execute();
-  await db.schema.dropTable('user_channels').ifExists().execute();
 }
 
 export async function down(db: Kysely<any>): Promise<void> {
-  // Recreate user_channels table
-  await db.schema
-    .createTable('user_channels')
-    .addColumn('id', 'bigserial', (col) => col.primaryKey())
-    .addColumn('user_id', 'uuid', (col) => col.references('auth.users.id').onDelete('cascade').notNull())
-    .addColumn('channel_name', 'text', (col) => col.notNull())
-    .addColumn('created_at', 'timestamp with time zone', (col) => col.defaultTo('now()').notNull())
-    .execute();
-
   // Recreate social_connections table
   await db.schema
     .createTable('social_connections')
@@ -79,16 +62,6 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema
     .alterTable('user_channel_settings')
     .dropColumn('user_channel_id')
-    .dropColumn('provider')
-    .dropColumn('access_token')
-    .dropColumn('refresh_token')
-    .dropColumn('expires_at')
-    .dropColumn('account_id')
-    .dropColumn('account_name')
-    .dropColumn('account_picture_url')
-    .dropColumn('is_active')
-    .dropColumn('instagram_account_id')
+    .dropColumn('connections')
     .execute();
 }
-
-    

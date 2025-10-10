@@ -1,6 +1,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { UserChannelSetting } from '@/app/funnels/types';
+import type { UserChannelSetting, SocialConnection } from '@/app/accounts/actions';
 
 // Define interfaces to avoid circular dependencies
 interface MediaPlanItem {
@@ -11,16 +11,8 @@ interface MediaPlanItem {
   user_channel_id: number | null;
 }
 
-type Connection = {
-  provider: string;
-  access_token: string;
-  account_id: string | null;
-  instagram_account_id?: string | null;
-};
-
-
-async function publishToInstagram(post: MediaPlanItem, connection: Connection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
     
     console.log(`[IG Publish - ${post.id}] START`);
     
@@ -80,7 +72,7 @@ async function publishToInstagram(post: MediaPlanItem, connection: Connection): 
 }
 
 
-async function publishToFacebook(post: MediaPlanItem, connection: Connection): Promise<any> {
+async function publishToFacebook(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
   const { access_token: pageAccessToken, account_id: pageId } = connection;
   console.log(`[FB Publish - ${post.id}] START`);
 
@@ -99,7 +91,7 @@ async function publishToFacebook(post: MediaPlanItem, connection: Connection): P
   return data;
 }
 
-async function publishToWhatsapp(post: MediaPlanItem, connection: Connection): Promise<any> {
+async function publishToWhatsapp(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
     // ... Implementation unchanged
     return { success: true, message: "Simulated WhatsApp message sent." };
 }
@@ -118,7 +110,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
     }
     
     const channelSettings = post.user_channel_settings as UserChannelSetting;
-    if (!channelSettings || !channelSettings.connections || channelSettings.connections.length === 0) {
+    if (!channelSettings.connections || channelSettings.connections.length === 0) {
         throw new Error(`Publishing failed: No social accounts are connected for the '${channelSettings.channel_name}' channel.`);
     }
 
@@ -131,7 +123,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
 
     switch(channelSettings.channel_name) {
         case 'instagram':
-            await publishToInstagram(post as MediaPlanItem, { ...activeConnection, account_id: activeConnection.account_id });
+            await publishToInstagram(post as MediaPlanItem, activeConnection);
             break;
         case 'facebook':
             await publishToFacebook(post as MediaPlanItem, activeConnection);
@@ -144,5 +136,3 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
             throw new Error(`Publishing to '${channelSettings.channel_name}' is not supported yet.`);
     }
 }
-
-    
