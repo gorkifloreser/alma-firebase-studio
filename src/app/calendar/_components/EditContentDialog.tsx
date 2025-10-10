@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -22,7 +23,6 @@ import {
   AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -227,25 +227,15 @@ export function EditContentDialog({
   const handleSave = () => {
     startSaving(async () => {
       try {
-        const payload: Partial<Pick<CalendarItem, 'content_body' | 'hashtags' | 'carousel_slides' | 'status' | 'scheduled_at' | 'user_channel_id' | 'format'>> = {};
-        
-        if (editableContent) payload.content_body = editableContent;
-        if (editableHashtags) payload.hashtags = editableHashtags;
-        if (editableSlides) payload.carousel_slides = editableSlides;
-        if (selectedChannelId) payload.user_channel_id = selectedChannelId;
-        if (editableFormat) payload.format = editableFormat;
-
-        if (editableScheduledAt) {
-            payload.scheduled_at = editableScheduledAt.toISOString();
-            payload.status = 'scheduled';
-        } else {
-            payload.scheduled_at = null;
-            if (contentItem.status === 'scheduled') {
-                payload.status = 'approved';
-            }
-        }
-        
-        const updatedContent = await updateContent(contentItem.id, payload);
+        const updatedContent = await updateContent(contentItem.id, {
+            content_body: editableContent,
+            hashtags: editableHashtags,
+            carousel_slides: editableSlides,
+            status: editableScheduledAt ? 'scheduled' : contentItem.status === 'scheduled' ? 'approved' : contentItem.status,
+            scheduled_at: editableScheduledAt?.toISOString(),
+            user_channel_id: selectedChannelId,
+            format: editableFormat,
+        });
         onContentUpdated(updatedContent);
         onOpenChange(false);
         toast({ title: 'Success!', description: 'Your post has been updated.' });

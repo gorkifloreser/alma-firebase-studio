@@ -197,11 +197,9 @@ async function publishToWhatsapp(post: MediaPlanItem, connection: SocialConnecti
 export async function publishPost(postId: string, supabase: SupabaseClient): Promise<void> {
     console.log(`[publishPost] Initiating publish for post ID: ${postId}`);
     
-    // Fetch the post with its related user_channel_id first.
-    // Use a LEFT JOIN (the default) instead of an INNER JOIN to handle cases where the link might be missing.
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
-        .select(`*, user_channel_settings(id, channel_name)`)
+        .select(`*, user_channel_settings (id, channel_name)`)
         .eq('id', postId)
         .single();
     
@@ -209,30 +207,37 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
         throw new Error(`Post with ID ${postId} not found. Error: ${postError?.message}`);
     }
 
-    if (!post.user_channel_settings) {
-         throw new Error(`Publishing failed: The information for the destination channel is missing from this post. Please edit the post and select a channel.`);
+    if (!post.user_channel_id) {
+         throw new Error(`Publishing failed: The destination channel has not been selected for this post. Please edit the post and choose a channel.`);
     }
 
-    console.log(`[publishPost] Found post for channel: ${post.user_channel_settings.channel_name}`, post);
-
-    const channel = post.user_channel_settings.channel_name.toLowerCase();
+    console.log(`[publishPost] Found post. Destination channel ID: ${post.user_channel_id}`);
 
     const { data: connection, error: connectionError } = await supabase
         .from('social_connections')
-        .select('access_token, account_id, instagram_account_id')
+        .select('provider, access_token, account_id, instagram_account_id')
         .eq('user_id', post.user_id)
-        .eq('is_active', true)
-        .eq('provider', channel === 'instagram' || channel === 'facebook' ? 'meta' : channel) // Map IG/FB to 'meta' provider
+        .eq('id', post.user_channel_id)
         .single();
 
     if (connectionError || !connection) {
-        throw new Error(`No active connection found for user ${post.user_id} and channel ${channel}.`);
+        throw new Error(`No active and valid connection found for the selected destination channel (ID: ${post.user_channel_id}).`);
     }
-    console.log(`[publishPost] Found active connection for user.`);
+    console.log(`[publishPost] Found active connection for user. Provider: ${connection.provider}`);
+
+    const channel = connection.provider.toLowerCase();
 
     switch(channel) {
+        case 'meta':
+            // The connection is for Meta, now decide if it's IG or FB
+            if (connection.instagram_account_id) {
+                 await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
+            } else {
+                 await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
+            }
+            break;
         case 'instagram':
-            await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
+             await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
             break;
         case 'facebook':
             await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
@@ -241,7 +246,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
             await publishToWhatsapp(post as MediaPlanItem, connection as SocialConnection);
             break;
         default:
-            console.log(`Publishing for channel '${channel}' is not yet supported.`);
-            break;
+            console.log(`Publishing for channel type '${channel}' is not yet supported.`);
+            throw new Error(`Publishing to '${channel}' is not supported yet.`);
     }
 }
