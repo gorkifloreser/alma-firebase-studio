@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { MediaPlanItem } from '@/app/funnels/types';
 import { publishPost } from '@/app/services/publisher';
+import { analyzePostFlow, type AnalyzePostInput } from '@/ai/flows/analyze-post-flow';
+export type { PostSuggestion } from '@/ai/flows/analyze-post-flow';
 
 
 export type CalendarItem = MediaPlanItem & {
@@ -277,4 +279,12 @@ export async function getSocialMetrics() {
             { name: 'Post 5', engagement: 180, reach: 3100 },
         ],
     };
+}
+
+
+/**
+ * Invokes the Genkit flow to analyze post content.
+ */
+export async function analyzePost(input: AnalyzePostInput) {
+    return analyzePostFlow(input);
 }

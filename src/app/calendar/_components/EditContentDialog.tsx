@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection } from '../actions';
+import { updateContent, type CalendarItem, deleteContentItem, publishNow, SocialConnection, analyzePost, PostSuggestion } from '../actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getProfile } from '@/app/settings/actions';
@@ -21,7 +21,7 @@ import { languages } from '@/lib/languages';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -101,7 +101,10 @@ export function EditContentDialog({
   const [isSaving, startSaving] = useTransition();
   const [isDeleting, startDeleting] = useTransition();
   const [isPublishing, startPublishing] = useTransition();
+  const [isAnalyzing, startAnalyzing] = useTransition();
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [analysisResult, setAnalysisResult] = useState<{ suggestions: PostSuggestion[], overall_feedback: string } | null>(null);
+
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
@@ -128,6 +131,7 @@ export function EditContentDialog({
         setEditableContent(getInitialContent());
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
+        setAnalysisResult(null); // Reset analysis on item change
     }
   }, [contentItem]);
 
@@ -238,6 +242,23 @@ export function EditContentDialog({
     });
   };
   
+  const handleAnalyzePost = () => {
+    if (!editableContent?.primary) {
+        toast({ variant: 'destructive', title: 'Cannot Analyze', description: 'There is no primary content to analyze.'});
+        return;
+    }
+    startAnalyzing(async () => {
+        setAnalysisResult(null);
+        try {
+            const result = await analyzePost({ postText: editableContent.primary! });
+            setAnalysisResult(result);
+            toast({ title: 'Analysis Complete', description: "The AI has provided feedback on your post."});
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: 'Analysis Failed', description: error.message });
+        }
+    });
+  };
+
     const renderVisualContent = () => {
         if (editableSlides && Array.isArray(editableSlides) && editableSlides.length > 0) {
             return (
@@ -291,7 +312,7 @@ export function EditContentDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Edit Post</DialogTitle>
           <DialogDescription>
@@ -464,6 +485,33 @@ export function EditContentDialog({
                         </Select>
                     </div>
                 </div>
+
+                 <div className="space-y-4 pt-4">
+                    <Button variant="outline" className="w-full" onClick={handleAnalyzePost} disabled={isAnalyzing}>
+                        <Bot className="mr-2 h-4 w-4" />
+                        {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                    </Button>
+                    {isAnalyzing && <Skeleton className="h-24 w-full" />}
+                    {analysisResult && (
+                        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                             <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                                    <Sparkles className="h-5 w-5" />
+                                    AI Suggestions
+                                </CardTitle>
+                                <CardDescription className="text-blue-700 dark:text-blue-400">{analysisResult.overall_feedback}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {analysisResult.suggestions.map((s, i) => (
+                                    <div key={i} className="p-3 bg-background/50 rounded-md">
+                                        <p className="font-semibold flex items-center gap-2"><Lightbulb className="h-4 w-4 text-primary" />{s.suggestion}</p>
+                                        <p className="text-xs text-muted-foreground mt-1 pl-6">{s.reasoning}</p>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+                 </div>
             </div>
         </div>
 

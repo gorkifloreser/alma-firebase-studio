@@ -18,3 +18,4 @@ import './flows/generate-value-content-types';
 import './flows/create-content-from-testimonial-flow';
 import './flows/adapt-value-strategies-flow';
 import './flows/generate-audience-flow';
+import './flows/analyze-post-flow';
