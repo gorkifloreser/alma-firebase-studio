@@ -7,12 +7,12 @@ interface MediaPlanItem {
   copy: string | null;
   image_url: string | null;
   user_id: string;
-  user_channel_settings: {
-    channel_name: string;
-  } | null; // Changed to allow null
+  user_channel_id: number | null;
 }
 
 interface SocialConnection {
+  id: number;
+  provider: string;
   access_token: string;
   account_id: string | null;
   instagram_account_id: string | null;
@@ -49,7 +49,10 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
     console.log(`[IG Publish - ${post.id}] Step 1: Request Caption: "${post.copy?.substring(0, 50)}..."`);
 
 
-    const containerResponse = await fetch(`${containerUrl}?${containerParams.toString()}`, { method: 'POST' });
+    const containerResponse = await fetch(containerUrl, {
+      method: 'POST',
+      body: containerParams
+    });
     const containerData = await containerResponse.json();
     console.log(`[IG Publish - ${post.id}] Step 1 Response:`, JSON.stringify(containerData, null, 2));
 
@@ -91,7 +94,7 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
         access_token: pageAccessToken,
     });
     
-    const publishResponse = await fetch(`${publishUrl}?${publishParams.toString()}`, { method: 'POST' });
+    const publishResponse = await fetch(publishUrl, { method: 'POST', body: publishParams });
     const publishData = await publishResponse.json();
     console.log(`[IG Publish - ${post.id}] Step 3 Response:`, JSON.stringify(publishData, null, 2));
 
@@ -135,7 +138,7 @@ async function publishToFacebook(post: MediaPlanItem, connection: SocialConnecti
   console.log(`[FB Publish - ${post.id}] Request Message: "${post.copy?.substring(0, 50)}..."`);
 
 
-  const response = await fetch(`${url}?${params.toString()}`, { method: 'POST' });
+  const response = await fetch(`${url}`, { method: 'POST', body: params });
   const data = await response.json();
   console.log(`[FB Publish - ${post.id}] API Response:`, JSON.stringify(data, null, 2));
 
@@ -199,7 +202,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
     
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
-        .select(`*, user_channel_settings (id, channel_name)`)
+        .select(`id, copy, image_url, user_id, user_channel_id`)
         .eq('id', postId)
         .single();
     
@@ -215,7 +218,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
 
     const { data: connection, error: connectionError } = await supabase
         .from('social_connections')
-        .select('provider, access_token, account_id, instagram_account_id')
+        .select('id, provider, access_token, account_id, instagram_account_id')
         .eq('user_id', post.user_id)
         .eq('id', post.user_channel_id)
         .single();
@@ -236,6 +239,7 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
                  await publishToFacebook(post as MediaPlanItem, connection as SocialConnection);
             }
             break;
+        // Legacy direct connections (if any)
         case 'instagram':
              await publishToInstagram(post as MediaPlanItem, connection as SocialConnection);
             break;

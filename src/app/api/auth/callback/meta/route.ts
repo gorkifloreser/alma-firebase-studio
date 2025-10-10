@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error_description');
 
-    const redirectUrl = new URL('/accounts', req.nextUrl.origin);
+    const redirectUrl = new URL('/brand?tab=accounts', req.nextUrl.origin);
 
     if (error) {
         console.error('[META AUTH] OAuth Error received from Meta:', error);
@@ -88,78 +88,41 @@ export async function GET(req: NextRequest) {
                 socialConnections.push({
                     user_id: user.id,
                     provider: 'meta',
-                    access_token: page.access_token,
+                    access_token: page.access_token, // This is a page-specific token
                     expires_at: expiresAt.toISOString(),
-                    account_id: page.instagram_business_account?.id || page.id,
+                    account_id: page.id, // Facebook Page ID
                     instagram_account_id: page.instagram_business_account?.id || null,
                     account_name: page.instagram_business_account?.username || page.name,
                     account_picture_url: page.instagram_business_account?.profile_picture_url || page.picture?.data?.url || null,
-                    is_active: false,
+                    is_active: false, // Defer setting active
                 });
             });
             console.log(`[META AUTH] Step 3 Success: Found ${socialConnections.length} Facebook/Instagram accounts.`);
         } else {
              console.log('[META AUTH] Step 3: No Facebook Pages found.');
         }
-
-        // // Step 4: Get WhatsApp Business Accounts (COMMENTED OUT)
-        // console.log('[META AUTH] Step 4: Fetching WhatsApp Business accounts...');
-        // const wabaUrl = `https://graph.facebook.com/v19.0/me/whatsapp_business_accounts?access_token=${access_token}`;
-        // const wabaRes = await fetch(wabaUrl);
-        // const wabaData = await wabaRes.json();
-        // console.log('[META AUTH] Step 4 Response:', JSON.stringify(wabaData, null, 2));
-
-        // if (wabaData.error) throw new Error(`Fetching WhatsApp accounts error: ${wabaData.error.message}`);
-
-        // if (wabaData.data && wabaData.data.length > 0) {
-        //     for (const waba of wabaData.data) {
-        //         console.log(`[META AUTH] Step 4.1: Fetching phone numbers for WABA ID ${waba.id}`);
-        //         const phonesUrl = `https://graph.facebook.com/v19.0/${waba.id}/phone_numbers?access_token=${access_token}`;
-        //         const phonesRes = await fetch(phonesUrl);
-        //         const phonesData = await phonesRes.json();
-        //         console.log(`[META AUTH] Step 4.1 Response for ${waba.id}:`, JSON.stringify(phonesData, null, 2));
-                
-        //         if (phonesData.data) {
-        //             phonesData.data.forEach((phone: any) => {
-        //                  socialConnections.push({
-        //                     user_id: user.id,
-        //                     provider: 'whatsapp',
-        //                     access_token: access_token, // Use the user's long-lived token for WhatsApp
-        //                     expires_at: expiresAt.toISOString(),
-        //                     account_id: phone.id, // Phone Number ID
-        //                     account_name: phone.display_phone_number,
-        //                     account_picture_url: null, // No picture for phone numbers
-        //                     is_active: false,
-        //                 });
-        //             });
-        //         }
-        //     }
-        //     console.log(`[META AUTH] Step 4 Success: Processed WhatsApp numbers.`);
-        // } else {
-        //     console.log('[META AUTH] Step 4: No WhatsApp Business Accounts found.');
-        // }
         
         if (socialConnections.length === 0) {
             throw new Error('No social accounts (Instagram or Facebook) found to connect.');
         }
 
-        // Step 5: Determine which accounts to set as active
-        console.log('[META AUTH] Step 5: Determining which accounts to activate...');
-        const firstIgIndex = socialConnections.findIndex(acc => acc.provider === 'meta' && acc.instagram_account_id);
+        // Step 4: Deactivate all existing Meta connections for the user
+        console.log('[META AUTH] Step 4: Deactivating existing Meta connections...');
+        await supabase
+            .from('social_connections')
+            .update({ is_active: false })
+            .eq('user_id', user.id)
+            .eq('provider', 'meta');
+            
+        // Step 5: Set the first Instagram account (if available) as active, otherwise the first Facebook page.
+        const firstIgIndex = socialConnections.findIndex(acc => acc.instagram_account_id);
         if (firstIgIndex !== -1) {
             socialConnections[firstIgIndex].is_active = true;
             console.log(`[META AUTH] Step 5: Activating Meta account with Instagram: ${socialConnections[firstIgIndex].account_name}`);
-        } else if (socialConnections.some(acc => acc.provider === 'meta')) {
-            const firstMetaIndex = socialConnections.findIndex(acc => acc.provider === 'meta');
-            socialConnections[firstMetaIndex].is_active = true;
-            console.log(`[META AUTH] Step 5: No Instagram account found. Activating first Facebook page: ${socialConnections[firstMetaIndex].account_name}`);
+        } else {
+            socialConnections[0].is_active = true;
+            console.log(`[META AUTH] Step 5: No Instagram account found. Activating first Facebook page: ${socialConnections[0].account_name}`);
         }
-        
-        // const firstWaIndex = socialConnections.findIndex(acc => acc.provider === 'whatsapp');
-        // if (firstWaIndex !== -1) {
-        //     socialConnections[firstWaIndex].is_active = true;
-        //     console.log(`[META AUTH] Step 5: Activating WhatsApp number: ${socialConnections[firstWaIndex].account_name}`);
-        // }
 
         console.log('[META AUTH] Step 6: Final records to be upserted:', JSON.stringify(socialConnections, null, 2));
 
@@ -167,7 +130,7 @@ export async function GET(req: NextRequest) {
         console.log(`[META AUTH] Step 7: Upserting accounts into the database...`);
         const { error: dbError } = await supabase
             .from('social_connections')
-            .upsert(socialConnections, { onConflict: 'user_id, account_id, provider' });
+            .upsert(socialConnections, { onConflict: 'user_id, account_id, provider', ignoreDuplicates: false });
         
         if (dbError) {
             console.error('[META AUTH] Database upsert error:', dbError);

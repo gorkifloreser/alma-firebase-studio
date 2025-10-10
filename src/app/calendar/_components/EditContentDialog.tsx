@@ -121,7 +121,7 @@ export function EditContentDialog({
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
   const [activeConnections, setActiveConnections] = useState<SocialConnection[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
   const getInitialContent = () => {
     if (!contentItem) return { primary: '', secondary: '' };
@@ -130,7 +130,7 @@ export function EditContentDialog({
     }
     return {
         primary: contentItem.copy || '',
-        secondary: contentItem.content_body?.secondary || '',
+        secondary: '', // Legacy content_body might not exist
     };
   };
 
@@ -164,9 +164,9 @@ export function EditContentDialog({
                 setProfile(profileData);
                 setActiveConnections(connectionsData);
                 if (contentItem?.user_channel_id) {
-                    setSelectedChannelId(contentItem.user_channel_id);
+                    setSelectedChannelId(String(contentItem.user_channel_id));
                 } else if (connectionsData.length > 0) {
-                    setSelectedChannelId(connectionsData[0].id);
+                    setSelectedChannelId(String(connectionsData[0].id));
                 }
             } catch (error) {
                 console.error("Failed to fetch initial data for dialog", error);
@@ -185,8 +185,8 @@ export function EditContentDialog({
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
         setEditableScheduledAt(contentItem.scheduled_at ? parseISO(contentItem.scheduled_at) : null);
         setEditableFormat(contentItem.format || 'Post');
-        analysisResult && setAnalysisResult(null);
-        suggestedRewrite && setSuggestedRewrite(null);
+        setAnalysisResult(null);
+        setSuggestedRewrite(null);
     }
   }, [contentItem]);
   
@@ -194,8 +194,8 @@ export function EditContentDialog({
 
   const handleContentChange = (language: 'primary' | 'secondary', value: string) => {
     setEditableContent(prev => ({
-        primary: null,
-        secondary: null,
+        primary: prev?.primary || '',
+        secondary: prev?.secondary || '',
         ...prev,
         [language]: value
     }));
@@ -234,7 +234,7 @@ export function EditContentDialog({
           carousel_slides: editableSlides,
           status: editableScheduledAt ? 'scheduled' : contentItem.status === 'scheduled' ? 'approved' : contentItem.status,
           scheduled_at: editableScheduledAt?.toISOString(),
-          user_channel_id: selectedChannelId,
+          user_channel_id: selectedChannelId ? Number(selectedChannelId) : null,
           format: editableFormat,
         };
         const updatedContent = await updateContent(contentItem.id, updatedItem);
@@ -374,10 +374,10 @@ export function EditContentDialog({
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
   
-  const activeMetaConnection = activeConnections.find(c => c.provider === 'meta');
-  const postUser = activeMetaConnection?.account_name || profile?.full_name || 'Your Brand';
-  const postUserHandle = activeMetaConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
-  const postUserAvatar = activeMetaConnection?.account_picture_url || profile?.avatar_url;
+  const activeConnectionForPreview = activeConnections.find(c => String(c.id) === selectedChannelId);
+  const postUser = activeConnectionForPreview?.account_name || profile?.full_name || 'Your Brand';
+  const postUserHandle = activeConnectionForPreview?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
+  const postUserAvatar = activeConnectionForPreview?.account_picture_url || profile?.avatar_url;
 
 
   return (
@@ -395,15 +395,15 @@ export function EditContentDialog({
                     <Label>Publishing to</Label>
                     {isLoading ? <Skeleton className="h-10 w-full" /> : activeConnections.length > 0 ? (
                         <Select
-                            value={selectedChannelId?.toString()}
-                            onValueChange={(val) => setSelectedChannelId(Number(val))}
+                            value={selectedChannelId || ''}
+                            onValueChange={(val) => setSelectedChannelId(val)}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a channel..." />
                             </SelectTrigger>
                             <SelectContent>
                                 {activeConnections.map(conn => (
-                                    <SelectItem key={conn.id} value={conn.id.toString()}>
+                                    <SelectItem key={conn.id} value={String(conn.id)}>
                                         <div className="flex items-center gap-2">
                                             <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url}/>
                                             <span>{conn.account_name}</span>

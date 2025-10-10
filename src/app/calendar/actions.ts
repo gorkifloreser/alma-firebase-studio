@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -53,8 +54,8 @@ export async function getActiveSocialConnections(): Promise<SocialConnection[]> 
     const { data, error } = await supabase
         .from('social_connections')
         .select('id, user_id, provider, account_id, account_name, account_picture_url, is_active, instagram_account_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('user_id', user.id);
+        // .eq('is_active', true); This was too restrictive. Get all and let user choose.
 
     if (error) {
         console.error('Error fetching active social connections:', error.message);
