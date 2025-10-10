@@ -88,13 +88,22 @@ const parseCarouselSlides = (slides: any): any[] | null => {
 }
 
 const ChannelIcon = ({ provider, imageUrl }: { provider: string, imageUrl?: string | null }) => {
+    const Icon =
+        provider.toLowerCase().includes('instagram') ? Instagram :
+        provider.toLowerCase().includes('facebook') ? Facebook :
+        provider.toLowerCase().includes('whatsapp') ? MessageSquare :
+        Sparkles;
+    
     if (imageUrl) {
-        return <AvatarImage src={imageUrl} className="w-full h-full object-cover" />;
+        return (
+            <Avatar className="h-5 w-5">
+                <AvatarImage src={imageUrl} />
+                <AvatarFallback><Icon /></AvatarFallback>
+            </Avatar>
+        );
     }
-    if (provider.toLowerCase().includes('instagram')) return <Instagram className="h-5 w-5" />;
-    if (provider.toLowerCase().includes('facebook')) return <Facebook className="h-5 w-5" />;
-    if (provider.toLowerCase().includes('whatsapp')) return <MessageSquare className="h-5 w-5" />;
-    return <Sparkles className="h-5 w-5" />;
+    
+    return <Icon className="h-5 w-5" />;
 };
 
 
@@ -388,8 +397,9 @@ export function EditContentDialog({
             For offering: <span className="font-semibold">{contentItem.offerings?.title?.primary || '...'}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-8 py-4 overflow-y-auto pr-6">
-            <div className="md:col-span-3 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 py-4 flex-1 min-h-0">
+            <div className="md:col-span-3 space-y-4 overflow-y-auto pr-4">
+                {/* 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Publishing to</Label>
@@ -440,6 +450,7 @@ export function EditContentDialog({
                         </Select>
                     </div>
                 </div>
+                */}
 
                  <div className="space-y-2">
                     <Label htmlFor="post-copy">Post Copy</Label>
@@ -567,7 +578,7 @@ export function EditContentDialog({
                  </div>
             </div>
 
-            <div className="md:col-span-2 space-y-4 sticky top-0">
+            <div className="md:col-span-2 space-y-4 sticky top-0 overflow-y-auto">
                 <Card className="w-full max-w-sm mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
