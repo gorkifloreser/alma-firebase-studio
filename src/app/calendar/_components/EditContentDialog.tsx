@@ -1,4 +1,5 @@
 
+      
 'use client';
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -34,14 +35,12 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageCircle, Send, Bookmark, Calendar as CalendarIcon, Trash2, SendHorizonal, Bot, Sparkles, Lightbulb, Instagram, Facebook, CheckCircle, AlertTriangle, Check, X, Film, PlusSquare, Image as ImageIcon } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, setHours, setMinutes, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 
@@ -107,8 +106,7 @@ export function EditContentDialog({
   onContentDeleted,
 }: EditContentDialogProps) {
   const [profile, setProfile] = useState<Profile>(null);
-  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<number | null>(null);
+  const [activeConnection, setActiveConnection] = useState<SocialConnection | null>(null);
 
   const getInitialContent = () => {
     if (!contentItem) return { primary: '', secondary: '' };
@@ -144,25 +142,12 @@ export function EditContentDialog({
         if(isOpen) {
             setIsLoading(true);
             try {
-                const [profileData, connectionsData] = await Promise.all([
+                const [profileData, connectionData] = await Promise.all([
                     getProfile(),
                     getActiveSocialConnection()
                 ]);
                 setProfile(profileData);
-                setSocialConnections(connectionsData);
-
-                // Set initial channel selection based on the content item or the first active connection
-                if(contentItem?.user_channel_id) {
-                    setSelectedChannelId(contentItem.user_channel_id);
-                } else if (connectionsData.length > 0) {
-                    const activeConnection = connectionsData.find(c => c.is_active);
-                    if (activeConnection) {
-                        setSelectedChannelId(activeConnection.id);
-                    } else {
-                        setSelectedChannelId(connectionsData[0].id);
-                    }
-                }
-
+                setActiveConnection(connectionData);
             } catch (error) {
                 console.error("Failed to fetch initial data for dialog", error);
             } finally {
@@ -231,7 +216,7 @@ export function EditContentDialog({
         }
         if (editableHashtags) updates.hashtags = editableHashtags;
         if (editableSlides) updates.carousel_slides = editableSlides;
-        if (selectedChannelId) updates.user_channel_id = selectedChannelId;
+        if (activeConnection) updates.user_channel_id = activeConnection.id;
         if (editableFormat) updates.format = editableFormat;
 
 
@@ -382,7 +367,6 @@ export function EditContentDialog({
   const primaryLangName = languageNames.get(profile?.primary_language || 'en') || 'Primary';
   const secondaryLangName = profile?.secondary_language ? languageNames.get(profile.secondary_language) || 'Secondary' : null;
   
-  const activeConnection = socialConnections.find(sc => sc.id === selectedChannelId);
   const postUser = activeConnection?.account_name || profile?.full_name || 'Your Brand';
   const postUserHandle = activeConnection?.account_name || (profile?.full_name || 'yourbrand').toLowerCase().replace(/\s/g, '');
   const postUserAvatar = activeConnection?.account_picture_url || profile?.avatar_url;
@@ -402,24 +386,17 @@ export function EditContentDialog({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Publishing to</Label>
-                        {isLoading ? <Skeleton className="h-10 w-full" /> : socialConnections.length > 0 ? (
+                        {isLoading ? <Skeleton className="h-12 w-full" /> : activeConnection ? (
                             <div className="flex items-center gap-2 flex-wrap">
-                                {socialConnections.map(conn => (
-                                    <Button
-                                        key={conn.id}
-                                        variant={selectedChannelId === conn.id ? 'default' : 'outline'}
-                                        className="gap-2 h-12"
-                                        onClick={() => setSelectedChannelId(conn.id)}
-                                    >
-                                        <Avatar className="h-6 w-6">
-                                            <ChannelIcon provider={conn.provider} imageUrl={conn.account_picture_url} />
-                                        </Avatar>
-                                        {conn.account_name}
-                                    </Button>
-                                ))}
+                                 <Button variant='default' className="gap-2 h-12">
+                                     <Avatar className="h-6 w-6">
+                                        <ChannelIcon provider={activeConnection.provider} imageUrl={activeConnection.account_picture_url} />
+                                     </Avatar>
+                                     {activeConnection.account_name}
+                                 </Button>
                             </div>
                         ) : (
-                            <p className="text-sm text-muted-foreground">No social accounts found. Please connect one in Accounts.</p>
+                            <p className="text-sm text-muted-foreground">No active social account. Please connect one in Accounts.</p>
                         )}
                     </div>
                      <div className="space-y-2">
@@ -448,37 +425,16 @@ export function EditContentDialog({
                     </div>
                 </div>
 
-                {secondaryLangName ? (
-                    <Tabs defaultValue="primary" className="w-full">
-                        <TabsList>
-                            <TabsTrigger value="primary">{primaryLangName}</TabsTrigger>
-                            <TabsTrigger value="secondary">{secondaryLangName}</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="primary" className="mt-4">
-                            <Textarea 
-                                value={editableContent?.primary || ''}
-                                onChange={(e) => handleContentChange('primary', e.target.value)}
-                                className="w-full text-sm min-h-[150px]"
-                                placeholder="Your post copy will appear here..."
-                            />
-                        </TabsContent>
-                        <TabsContent value="secondary" className="mt-4">
-                            <Textarea
-                                value={editableContent?.secondary || ''}
-                                onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                className="w-full text-sm min-h-[150px]"
-                                placeholder={`Your ${secondaryLangName} post copy...`}
-                            />
-                        </TabsContent>
-                    </Tabs>
-                ) : (
+                 <div className="space-y-2">
+                    <Label htmlFor="post-copy">Post Copy</Label>
                     <Textarea 
+                        id="post-copy"
                         value={editableContent?.primary || ''}
                         onChange={(e) => handleContentChange('primary', e.target.value)}
                         className="w-full text-sm min-h-[150px]"
                         placeholder="Your post copy will appear here..."
                     />
-                )}
+                </div>
                  <div className="space-y-2">
                     <Label htmlFor="hashtags">Hashtags</Label>
                     <Input
@@ -495,13 +451,12 @@ export function EditContentDialog({
                         {editableSlides.map((slide, index) => (
                             <div key={index} className="space-y-2">
                                 <Label htmlFor={`slide-title-${index}`} className="text-xs font-bold">Slide {index + 1} Title</Label>
-                                <Textarea
+                                <Input
                                     id={`slide-title-${index}`}
                                     value={slide.title}
                                     onChange={(e) => handleCarouselSlideChange(index, 'title', e.target.value)}
                                     className="w-full text-sm"
                                     placeholder={`Title for slide ${index + 1}...`}
-                                    rows={1}
                                 />
                                 <Label htmlFor={`slide-body-${index}`} className="text-xs font-bold">Slide {index + 1} Body</Label>
                                 <Textarea
@@ -568,10 +523,14 @@ export function EditContentDialog({
                                             </div>
                                         </CardContent>
                                         <CardFooter className="pt-4 flex-col items-stretch gap-4">
-                                            {isRewriting ? <Skeleton className="h-20 w-full" /> : suggestedRewrite ? (
-                                                <div className="space-y-2">
+                                            {suggestedRewrite ? (
+                                                <div className="space-y-2 w-full">
                                                     <Label className="font-semibold">Suggested Rewrite</Label>
-                                                    <div className="p-3 border rounded-md bg-secondary text-sm">{suggestedRewrite}</div>
+                                                    <Textarea
+                                                        value={suggestedRewrite}
+                                                        onChange={(e) => setSuggestedRewrite(e.target.value)}
+                                                        className="h-32 bg-secondary"
+                                                    />
                                                     <div className="flex justify-end gap-2">
                                                         <Button variant="ghost" size="sm" onClick={() => setSuggestedRewrite(null)}><X className="mr-2 h-4 w-4"/> Reject</Button>
                                                         <Button size="sm" onClick={acceptRewrite}><Check className="mr-2 h-4 w-4"/> Accept</Button>
@@ -580,7 +539,7 @@ export function EditContentDialog({
                                             ) : (
                                                 <Button variant="secondary" onClick={handleRewritePost} disabled={isRewriting}>
                                                     <Sparkles className="mr-2 h-4 w-4" />
-                                                    Improve with AI
+                                                    {isRewriting ? 'Improving...' : 'Improve with AI'}
                                                 </Button>
                                             )}
                                         </CardFooter>
@@ -592,7 +551,7 @@ export function EditContentDialog({
                  </div>
             </div>
 
-            <div className="md:col-span-2 space-y-4">
+            <div className="md:col-span-2 space-y-4 sticky top-0">
                 <Card className="w-full max-w-sm mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         {isLoading ? <Skeleton className="h-10 w-10 rounded-full" /> : (
@@ -699,3 +658,5 @@ export function EditContentDialog({
     </Dialog>
   );
 }
+
+    
