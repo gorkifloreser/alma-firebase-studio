@@ -75,12 +75,12 @@ export async function GET(req: NextRequest) {
                 if (page.instagram_business_account) {
                     instagramConnections.push({
                         provider: 'instagram',
-                        account_id: page.instagram_business_account.id,
+                        account_id: page.instagram_business_account.id, // This is the IG Business Account ID
+                        instagram_account_id: page.instagram_business_account.id, // Storing it explicitly
                         account_name: page.instagram_business_account.username,
-                        access_token: page.access_token,
+                        access_token: page.access_token, // The page access token is used for IG API calls
                         account_picture_url: page.instagram_business_account.profile_picture_url || null,
                         is_active: false,
-                        instagram_account_id: page.instagram_business_account.id,
                     });
                 }
             });
