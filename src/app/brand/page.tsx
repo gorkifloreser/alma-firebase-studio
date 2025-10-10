@@ -12,7 +12,7 @@ import { languages } from '@/lib/languages';
 import { BrandTabs } from './_components/BrandTabs';
 import { AudienceForm } from './_components/AudienceForm';
 
-export default async function BrandPage() {
+export default async function BrandHeartPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
