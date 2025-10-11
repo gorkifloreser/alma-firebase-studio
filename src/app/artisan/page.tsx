@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -300,8 +301,9 @@ export default function ArtisanPage() {
     const [editableHashtags, setEditableHashtags] = useState('');
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
+    const [selectedCreativeFormat, setSelectedCreativeFormat] = useState<string>('text');
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('text');
-    const [dimension, setDimension] = useState<'1:1' | '4:5' | '9:16' | '16:9'>('1:1');
+    const [dimension, setDimension] = useState<string>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, startSaving] = useTransition();
@@ -385,21 +387,27 @@ export default function ArtisanPage() {
             }
 
             // Set format and dimension based on the selected item
-            const mediaFormat = (item.media_format || '').toLowerCase();
+            const mediaFormatValue = item.media_format || 'Text Post';
+            const allFormats = mediaFormatConfig.flatMap(cat => cat.formats);
+            const formatConfig = allFormats.find(f => f.value === mediaFormatValue);
+
+            if (formatConfig) {
+                setSelectedCreativeFormat(formatConfig.value);
+                setSelectedCreativeType(formatConfig.creativeType);
+            } else {
+                setSelectedCreativeFormat('Text Post');
+                setSelectedCreativeType('text');
+            }
+
             const aspectRatio = item.aspect_ratio;
+            if (aspectRatio && formatConfig?.aspect_ratios.some(ar => ar.value === aspectRatio)) {
+                setDimension(aspectRatio);
+            } else if (formatConfig?.aspect_ratios.length) {
+                setDimension(formatConfig.aspect_ratios[0].value);
+            } else {
+                setDimension('');
+            }
 
-            let newCreativeType: CreativeType = 'text';
-            if (mediaFormat.includes('video') || mediaFormat.includes('reel')) newCreativeType = 'video';
-            else if (mediaFormat.includes('carousel')) newCreativeType = 'carousel';
-            else if (mediaFormat.includes('image')) newCreativeType = 'image';
-            else if (mediaFormat.includes('landing')) newCreativeType = 'landing_page';
-            setSelectedCreativeType(newCreativeType);
-
-            if (aspectRatio === '1:1') setDimension('1:1');
-            else if (aspectRatio === '4:5') setDimension('4:5');
-            else if (aspectRatio === '9:16') setDimension('9:16');
-            else if (aspectRatio === '16:9') setDimension('16:9');
-            else setDimension('1:1');
 
             if (item.suggested_post_at && isValid(parseISO(item.suggested_post_at))) {
                 setScheduledAt(parseISO(item.suggested_post_at));
@@ -550,7 +558,7 @@ export default function ArtisanPage() {
                     landingPageHtml: editableHtml,
                     status: status,
                     scheduledAt: scheduleDate?.toISOString(),
-                    media_format: selectedCreativeType,
+                    media_format: selectedCreativeFormat,
                     aspect_ratio: dimension,
                 };
 
@@ -637,35 +645,6 @@ export default function ArtisanPage() {
         setEditableHashtags('');
         setIsDialogOpen(false);
     };
-    const availableCreativeOptions = useMemo(() => {
-        const currentChannel = (workflowMode === 'campaign' && selectedArtisanItemId) ? allArtisanItems.find(i => i.id === selectedArtisanItemId)?.user_channel_settings?.channel_name : null;
-        const baseOptions = [
-            { id: 'text', label: 'Text Only', icon: Type },
-            { id: 'image', label: 'Single Image', icon: ImageIcon },
-            { id: 'carousel', label: 'Carousel', icon: Layers },
-            { id: 'video', label: 'Video', icon: Video },
-            { id: 'landing_page', label: 'Landing Page', icon: Globe },
-        ];
-        
-        if (workflowMode === 'campaign' && currentChannel) {
-            const availableFormats = mediaFormatConfig
-                .flatMap(category => category.formats)
-                .filter(format => format.channels.includes(currentChannel.toLowerCase()));
-
-            const options = new Set<CreativeType>();
-            availableFormats.forEach(f => {
-                const formatValue = f.value.toLowerCase();
-                if (formatValue.includes('text')) options.add('text');
-                if (formatValue.includes('image')) options.add('image');
-                if (formatValue.includes('carousel')) options.add('carousel');
-                if (formatValue.includes('video')) options.add('video');
-                if (formatValue.includes('landing')) options.add('landing_page');
-            });
-            
-            return baseOptions.filter(opt => options.has(opt.id as CreativeType));
-        }
-        return baseOptions;
-    }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
 
     const finalPromptForCurrentVisual = useMemo(() => {
         if (!creative) return null;
@@ -716,6 +695,12 @@ export default function ArtisanPage() {
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
     const isUpdate = !!savedContent;
+    
+    const currentChannel = useMemo(() => {
+        if (workflowMode !== 'campaign' || !selectedArtisanItemId) return null;
+        const currentItem = allArtisanItems.find(item => item.id === selectedArtisanItemId);
+        return currentItem?.user_channel_settings?.channel_name || null;
+    }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
 
     return (
         <DashboardLayout>
@@ -884,8 +869,8 @@ export default function ArtisanPage() {
                                     setSelectedOfferingId={setSelectedOfferingId}
                                     creativePrompt={creativePrompt}
                                     setCreativePrompt={setCreativePrompt}
-                                    availableCreativeOptions={availableCreativeOptions}
-                                    selectedCreativeType={selectedCreativeType}
+                                    selectedCreativeFormat={selectedCreativeFormat}
+                                    setSelectedCreativeFormat={setSelectedCreativeFormat}
                                     setSelectedCreativeType={setSelectedCreativeType}
                                     dimension={dimension}
                                     setDimension={setDimension}
@@ -906,6 +891,7 @@ export default function ArtisanPage() {
                                     isSaved={!!savedContent}
                                     isUpdate={isUpdate}
                                     onDelete={handleDelete}
+                                    currentChannel={currentChannel}
                                 />
                             </aside>
                             <main className="space-y-6">
