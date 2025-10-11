@@ -234,16 +234,18 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Pi
     };
 
     if (updates.image_url && updates.image_url.startsWith('data:image')) {
-        payload.image_url = await uploadBase64Image(supabase, updates.image_url, user.id);
+        const offeringId = (await supabase.from('media_plan_items').select('offering_id').eq('id', mediaPlanItemId).single()).data?.offering_id || 'unknown_offering';
+        payload.image_url = await uploadBase64Image(supabase, updates.image_url, user.id, offeringId);
     } else if (updates.image_url !== undefined) {
         payload.image_url = updates.image_url;
     }
     
     if (updates.carousel_slides && Array.isArray(updates.carousel_slides)) {
+        const offeringId = (await supabase.from('media_plan_items').select('offering_id').eq('id', mediaPlanItemId).single()).data?.offering_id || 'unknown_offering';
         payload.carousel_slides = await Promise.all(
             updates.carousel_slides.map(async (slide) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id);
+                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, offeringId);
                     return { ...slide, imageUrl: newUrl };
                 }
                 return slide;
@@ -293,14 +295,63 @@ export async function deleteContentItem(mediaPlanItemId: string): Promise<{ mess
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    const { error } = await supabase
+    // 1. Fetch the item to get media URLs
+    const { data: itemToDelete, error: fetchError } = await supabase
+        .from('media_plan_items')
+        .select('image_url, carousel_slides')
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (fetchError) {
+        console.error("Error fetching content to delete from calendar:", fetchError);
+        throw new Error(`Failed to find content to delete. It may have already been removed. DB Error: ${fetchError.message}`);
+    }
+    
+    // 2. Collect all file paths from storage
+    const filePathsToDelete: string[] = [];
+    const bucketUrlPart = `/storage/v1/object/public/${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma'}/`;
+
+    if (itemToDelete.image_url && itemToDelete.image_url.includes(bucketUrlPart)) {
+        filePathsToDelete.push(itemToDelete.image_url.split(bucketUrlPart)[1]);
+    }
+    
+    if (itemToDelete.carousel_slides) {
+        const slides = typeof itemToDelete.carousel_slides === 'string'
+            ? JSON.parse(itemToDelete.carousel_slides)
+            : itemToDelete.carousel_slides;
+        
+        if (Array.isArray(slides)) {
+            for (const slide of slides) {
+                if (slide.imageUrl && slide.imageUrl.includes(bucketUrlPart)) {
+                    filePathsToDelete.push(slide.imageUrl.split(bucketUrlPart)[1]);
+                }
+            }
+        }
+    }
+
+    // 3. Delete files from Supabase Storage if any exist
+    if (filePathsToDelete.length > 0) {
+        console.log(`[ACTION: deleteContentItem] Deleting ${filePathsToDelete.length} files from storage...`);
+        const { error: storageError } = await supabase.storage
+            .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma')
+            .remove(filePathsToDelete);
+
+        if (storageError) {
+            console.error("Error deleting files from storage (calendar action):", storageError);
+            // Log and continue, to not block UI
+        }
+    }
+
+    // 4. Delete the database row
+    const { error: deleteError } = await supabase
         .from('media_plan_items')
         .delete()
         .eq('id', mediaPlanItemId)
         .eq('user_id', user.id);
     
-    if (error) {
-        console.error('Error deleting content item:', error);
+    if (deleteError) {
+        console.error('Error deleting content item:', deleteError);
         throw new Error('Could not delete the post.');
     }
 
@@ -392,5 +443,6 @@ export async function rewritePost(input: RewritePostInput): Promise<RewritePostO
     return rewritePostFlow(input);
 }
 // GEMINI_SAFE_END
+
 
     

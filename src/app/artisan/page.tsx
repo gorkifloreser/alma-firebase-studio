@@ -51,6 +51,11 @@ type MediaPlanSelectItem = {
 
 type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page' | 'text';
 
+// Represents the state of unsaved changes for different items.
+type DraftChanges = {
+  [itemId: string]: Partial<ArtisanItem & { copy: string | null; hashtags: string | null }>;
+};
+
 const MediaSelectionDialog = ({
     isOpen,
     onOpenChange,
@@ -297,7 +302,7 @@ export default function ArtisanPage() {
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
     const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
 
-    const [editableContent, setEditableContent] = useState('');
+    const [editableCopy, setEditableCopy] = useState('');
     const [editableHashtags, setEditableHashtags] = useState('');
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
@@ -319,13 +324,28 @@ export default function ArtisanPage() {
     const [isImageChatOpen, setIsImageChatOpen] = useState(false);
     const [imageToChat, setImageToChat] = useState<{url: string, slideIndex?: number} | null>(null);
     const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
-    const [isAddTextOpen, setIsAddTextOpen] = useState(false);
     
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-    const handleArtisanItemSelect = async (artisanItemId: string | null) => {
+    // --- FIX: Add draft state to hold unsaved changes ---
+    const [draftChanges, setDraftChanges] = useState<DraftChanges>({});
+
+    const updateDraft = useCallback((itemId: string, updates: Partial<ArtisanItem & { copy: string; hashtags: string; }>) => {
+        setDraftChanges(prev => ({
+            ...prev,
+            [itemId]: {
+                ...(prev[itemId] || {}),
+                ...updates,
+            },
+        }));
+    }, []);
+
+    // --- FIX: Memoize handler to prevent re-creation on every render ---
+    const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
+        console.log(`[SELECT] ----------------------------------------------------`);
+        console.log(`[SELECT] 1. handleArtisanItemSelect called for ID: ${artisanItemId}`);
         setCreative(null);
-        setEditableContent('');
+        setEditableCopy('');
         setEditableHashtags('');
         setEditableHtml(null);
         setScheduledAt(null);
@@ -336,58 +356,60 @@ export default function ArtisanPage() {
         if (!artisanItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
+            console.log('[SELECT] No ID provided. Resetting form.');
             return;
         }
 
         const item = allArtisanItems.find(q => q.id === artisanItemId);
+        console.log('[SELECT] 2. Found base item in allArtisanItems:', item);
+        
         if (item) {
             setIsLoading(true);
-            setCreativePrompt(item.creative_prompt || '');
-            setSelectedOfferingId(item.offering_id ?? undefined);
+            
+            // --- FIX: MERGE DRAFT CHANGES ---
+            const draft = draftChanges[artisanItemId] || {};
+            console.log('[SELECT] 3. Found draft changes for this item:', draft);
 
-            // If the item has been processed before, load its saved content.
+            const finalItemData = { ...item, ...draft };
+            console.log('[SELECT] 4. Merged base item with draft changes:', finalItemData);
+
+            setCreativePrompt(finalItemData.creative_prompt || '');
+            setSelectedOfferingId(finalItemData.offering_id ?? undefined);
+
+            let contentItem = null;
             if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
-                    const contentItem = await getContentItem(item.id);
-                    console.log("[DEBUG] Found saved contentItem in DB. Use this object to check what data is being populated to the form:", contentItem);
-                    if (contentItem) {
-                        setEditableContent(contentItem.copy || '');
-                        setEditableHashtags(contentItem.hashtags || '');
-
-                        let parsedSlides = contentItem.carousel_slides;
-                        if (typeof parsedSlides === 'string') {
-                            try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
-                        }
-
-                        setCreative({
-                            imageUrl: contentItem.image_url,
-                            carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
-                            videoScript: contentItem.video_script,
-                            landingPageHtml: contentItem.landing_page_html,
-                            content: contentItem.content_body,
-                            finalPrompt: contentItem.creative_prompt
-                        });
-                        
-                        if (contentItem.landing_page_html) setEditableHtml(contentItem.landing_page_html);
-                        setSavedContent(contentItem as unknown as CalendarItem);
-                    } else {
-                        // Fallback to base item data if contentItem is null
-                        setEditableContent(item.copy || '');
-                        setEditableHashtags(item.hashtags || '');
-                    }
+                    contentItem = await getContentItem(item.id);
+                    console.log('[SELECT] 5. Fetched full contentItem from DB:', contentItem);
                 } catch (error: any) {
                     toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
-                    setEditableContent(item.copy || '');
-                    setEditableHashtags(item.hashtags || '');
                 }
-            } else {
-                // For items not yet processed, use their base data.
-                setEditableContent(item.copy || '');
-                setEditableHashtags(item.hashtags || '');
+            }
+            
+            const sourceOfTruth = contentItem ? { ...finalItemData, ...contentItem, ...draft } : finalItemData;
+            console.log('[SELECT] 6. Determined final source of truth for UI:', sourceOfTruth);
+
+            setEditableCopy(sourceOfTruth.copy || '');
+            setEditableHashtags(sourceOfTruth.hashtags || '');
+            
+            let parsedSlides = sourceOfTruth.carousel_slides;
+            if (typeof parsedSlides === 'string') {
+                try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
             }
 
-            // Set format and dimension based on the selected item
-            const mediaFormatValue = item.media_format || 'Text Post';
+            setCreative({
+                imageUrl: sourceOfTruth.image_url,
+                carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
+                videoScript: sourceOfTruth.video_script,
+                landingPageHtml: sourceOfTruth.landing_page_html,
+                content: sourceOfTruth.content_body,
+                finalPrompt: sourceOfTruth.creative_prompt
+            });
+
+            if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
+            if(contentItem) setSavedContent(contentItem as unknown as CalendarItem);
+
+            const mediaFormatValue = finalItemData.media_format || 'Text Post';
             const allFormats = mediaFormatConfig.flatMap(cat => cat.formats);
             const formatConfig = allFormats.find(f => f.value === mediaFormatValue);
 
@@ -399,7 +421,7 @@ export default function ArtisanPage() {
                 setSelectedCreativeType('text');
             }
 
-            const aspectRatio = item.aspect_ratio;
+            const aspectRatio = finalItemData.aspect_ratio;
             if (aspectRatio && formatConfig?.aspect_ratios.some(ar => ar.value === aspectRatio)) {
                 setDimension(aspectRatio);
             } else if (formatConfig?.aspect_ratios.length) {
@@ -407,14 +429,15 @@ export default function ArtisanPage() {
             } else {
                 setDimension('');
             }
-
-
-            if (item.suggested_post_at && isValid(parseISO(item.suggested_post_at))) {
-                setScheduledAt(parseISO(item.suggested_post_at));
+            
+            if (sourceOfTruth.suggested_post_at && isValid(parseISO(sourceOfTruth.suggested_post_at))) {
+                setScheduledAt(parseISO(sourceOfTruth.suggested_post_at));
             }
+            console.log('[SELECT] 7. Form population complete.');
             setIsLoading(false);
+            console.log(`[SELECT] ----------------------------------------------------`);
         }
-    };
+    }, [allArtisanItems, toast, draftChanges]);
 
     useEffect(() => {
         if (workflowMode === 'campaign' && selectedCampaign) {
@@ -425,7 +448,8 @@ export default function ArtisanPage() {
             setFilteredArtisanItems(items);
             if (items.length > 0 && !items.find(i => i.id === selectedArtisanItemId)) {
                 handleArtisanItemSelect(items[0].id);
-            } else if (items.length === 0) {
+            }
+            else if (items.length === 0) {
                 handleArtisanItemSelect(null);
             }
         }
@@ -494,7 +518,7 @@ export default function ArtisanPage() {
         setIsLoading(true);
         setCreative(null);
         setEditableHtml(null);
-        setEditableContent('');
+        setEditableCopy('');
         setEditableHashtags('');
 
         try {
@@ -514,7 +538,7 @@ export default function ArtisanPage() {
             
             setCreative(result);
             if (result.content) {
-                setEditableContent(result.content.primary || '');
+                setEditableCopy(result.content.primary || '');
             }
             if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
             if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
@@ -534,7 +558,7 @@ export default function ArtisanPage() {
             return;
         }
 
-        const hasContentToSave = editableContent || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
+        const hasContentToSave = editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
 
         if (!hasContentToSave) {
              toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
@@ -544,32 +568,58 @@ export default function ArtisanPage() {
         startSaving(async () => {
             try {
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-                
-                const payload = {
+                const draft = selectedArtisanItemId ? draftChanges[selectedArtisanItemId] : {};
+
+                // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
+                const payload: any = {
                     offeringId: selectedOfferingId,
-                    copy: editableContent,
+                    copy: editableCopy,
                     hashtags: editableHashtags,
-                    creative_prompt: creativePrompt,
                     concept: currentItemDetails?.concept || 'Custom Content',
                     objective: currentItemDetails?.objective || null,
-                    imageUrl: creative?.imageUrl || null,
-                    carouselSlides: creative?.carouselSlides || null,
-                    videoScript: creative?.videoScript || null,
-                    landingPageHtml: editableHtml,
                     status: status,
                     scheduledAt: scheduleDate?.toISOString(),
                     media_format: selectedCreativeFormat,
                     aspect_ratio: dimension,
+                    ...draft,
                 };
 
-                let updatedItem: CalendarItem;
-                
+                // 1. Start with existing media from the last saved state to ensure we don't lose anything.
                 if (savedContent) {
-                    updatedItem = await updateContent(savedContent.id, payload);
+                    payload.imageUrl = savedContent.image_url;
+                    payload.carouselSlides = savedContent.carousel_slides;
+                    payload.videoScript = savedContent.video_script;
+                    payload.landingPageHtml = savedContent.landing_page_html;
+                }
+                
+                // 2. Layer the newly generated media on top, overwriting only what's new.
+                switch (selectedCreativeType) {
+                    case 'image':
+                        payload.imageUrl = creative?.imageUrl || payload.imageUrl;
+                        break;
+                    case 'carousel':
+                        payload.carouselSlides = creative?.carouselSlides || payload.carouselSlides;
+                        break;
+
+                    case 'video':
+                        payload.videoScript = creative?.videoScript || payload.videoScript;
+                        break;
+                    case 'landing_page':
+                        payload.landingPageHtml = editableHtml || payload.landingPageHtml;
+                        break;
+                }
+
+                let updatedItem: CalendarItem;
+                const isUpdate = (workflowMode === 'campaign' && !!selectedArtisanItemId) || (workflowMode === 'custom' && !!savedContent);
+                
+                if (isUpdate && (savedContent || selectedArtisanItemId)) {
+                    const itemId = savedContent?.id || selectedArtisanItemId!;
+                    updatedItem = await updateContent(itemId, payload);
+                    setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
                     toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
                 } else {
                     updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
-                    if (selectedArtisanItemId) {
+                    if (selectedArtisanItemId && !savedContent) {
                          await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
                          setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'ready_for_review'} : i));
                     }
@@ -577,6 +627,14 @@ export default function ArtisanPage() {
                 }
                 
                 setSavedContent(updatedItem as unknown as CalendarItem);
+
+                if (selectedArtisanItemId) {
+                    setDraftChanges(prev => {
+                        const newDrafts = { ...prev };
+                        delete newDrafts[selectedArtisanItemId];
+                        return newDrafts;
+                    });
+                }
                 
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
@@ -605,7 +663,7 @@ export default function ArtisanPage() {
     };
     
     const handleContentUpdated = (updatedItem: CalendarItem) => {
-        setEditableContent(updatedItem.copy || '');
+        setEditableCopy(updatedItem.copy || '');
         setEditableHashtags(updatedItem.hashtags || '');
         setSavedContent(updatedItem as unknown as CalendarItem);
         setIsEditDialogOpen(false);
@@ -641,7 +699,7 @@ export default function ArtisanPage() {
         setSelectedCampaign(null);
         setFilteredArtisanItems([]);
         handleArtisanItemSelect(null);
-        setEditableContent('');
+        setEditableCopy('');
         setEditableHashtags('');
         setIsDialogOpen(false);
     };
@@ -691,7 +749,7 @@ export default function ArtisanPage() {
     }, [itemsForSelectedCampaign]);
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const hasContent = !!(editableContent || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
+    const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
     const isUpdate = !!savedContent;
@@ -866,14 +924,30 @@ export default function ArtisanPage() {
                                     filteredArtisanItems={filteredArtisanItems}
                                     offerings={offerings}
                                     selectedOfferingId={selectedOfferingId}
-                                    setSelectedOfferingId={setSelectedOfferingId}
+                                    setSelectedOfferingId={(id) => {
+                                        setSelectedOfferingId(id);
+                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { offering_id: id });
+                                    }}
                                     creativePrompt={creativePrompt}
-                                    setCreativePrompt={setCreativePrompt}
+                                    setCreativePrompt={(value) => {
+                                        setCreativePrompt(value);
+                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { creative_prompt: value });
+                                    }}
                                     selectedCreativeFormat={selectedCreativeFormat}
-                                    setSelectedCreativeFormat={setSelectedCreativeFormat}
+                                    setSelectedCreativeFormat={(formatValue) => {
+                                        const format = mediaFormatConfig.flatMap(c => c.formats).find(f => f.value === formatValue);
+                                        if (format) {
+                                            setSelectedCreativeFormat(format.value);
+                                            setSelectedCreativeType(format.creativeType);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { media_format: format.value });
+                                        }
+                                    }}
                                     setSelectedCreativeType={setSelectedCreativeType}
                                     dimension={dimension}
-                                    setDimension={setDimension}
+                                    setDimension={(dim) => {
+                                        setDimension(dim);
+                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { aspect_ratio: dim });
+                                    }}
                                     scheduledAt={scheduledAt}
                                     handleDateTimeChange={(date, time) => {
                                         if (!date) return;
@@ -881,6 +955,7 @@ export default function ArtisanPage() {
                                         const newDate = new Date(date);
                                         newDate.setHours(hours, minutes);
                                         setScheduledAt(newDate);
+                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { suggested_post_at: newDate.toISOString() });
                                     }}
                                     handleGenerate={handleGenerate}
                                     isGenerateDisabled={isGenerateDisabled}
@@ -928,10 +1003,16 @@ export default function ArtisanPage() {
                                 )}
                                 {workflowMode && (
                                     <TextContentEditor
-                                        editableContent={editableContent}
+                                        editableContent={editableCopy}
                                         editableHashtags={editableHashtags}
-                                        onContentChange={setEditableContent}
-                                        onHashtagsChange={setEditableHashtags}
+                                        onContentChange={(value) => {
+                                            setEditableCopy(value);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { copy: value });
+                                        }}
+                                        onHashtagsChange={(value) => {
+                                            setEditableHashtags(value);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { hashtags: value });
+                                        }}
                                     />
                                 )}
                             </main>
@@ -944,5 +1025,6 @@ export default function ArtisanPage() {
 }
 
 // GEMINI_SAFE_END
+
 
     
