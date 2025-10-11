@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -211,10 +212,16 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
 
     const payload: { [key: string]: any } = { ...updates, updated_at: new Date().toISOString() };
 
-    // Ensure complex objects are stringified
-    if (updates.carouselSlides) payload.carousel_slides = JSON.stringify(updates.carouselSlides);
-    if (updates.videoScript) payload.video_script = JSON.stringify(updates.videoScript);
-    
+    // This is the fix: use the correct snake_case column names.
+    if ('carouselSlides' in payload) {
+        payload.carousel_slides = payload.carouselSlides ? JSON.stringify(payload.carouselSlides) : null;
+        delete payload.carouselSlides;
+    }
+    if ('videoScript' in payload) {
+        payload.video_script = payload.videoScript ? JSON.stringify(payload.videoScript) : null;
+        delete payload.videoScript;
+    }
+
     const { data, error } = await supabase
         .from('media_plan_items')
         .update(payload)
