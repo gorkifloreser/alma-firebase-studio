@@ -35,15 +35,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Bot,
-  Calendar as CalendarIcon,
-  CheckCircle2,
-  CircleDashed,
-  Images,
-  Wand2,
-  RefreshCw,
-  X,
-  GitBranch,
+    Bot,
+    Calendar as CalendarIcon,
+    CheckCircle2,
+    CircleDashed,
+    Images,
+    Wand2,
+    RefreshCw,
+    X,
+    GitBranch,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -317,3 +317,8 @@ type CreativeControlsProps = {
                             Delete Post
                         </Button>
                     )}
+                </CardFooter>
+            </Card>
+        );
+    };
+    
