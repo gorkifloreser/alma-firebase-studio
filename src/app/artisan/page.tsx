@@ -944,3 +944,5 @@ export default function ArtisanPage() {
 }
 
 // GEMINI_SAFE_END
+
+    
