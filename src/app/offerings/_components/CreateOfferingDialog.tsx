@@ -408,10 +408,10 @@ export function CreateOfferingDialog({
                         setEventFrequency(firstScheduleFrequency);
                         
                         const newSchedules = (result.schedules || []).map(s => ({
-                            prices: s.price ? [{ 
-                                price: s.price ?? null, 
-                                label: typeof s.price_label === 'string' ? s.price_label : '', 
-                                currency: typeof s.currency === 'string' ? s.currency : 'USD' 
+                            prices: s.price ? [{
+                                price: s.price ?? null,
+                                label: typeof s.price_label === 'string' ? s.price_label : '',
+                                currency: typeof s.currency === 'string' ? s.currency : 'USD'
                             }] : [],
                             event_date: s.event_date && isValid(parseISO(s.event_date)) ? parseISO(s.event_date) : null,
                             duration: typeof s.duration === 'string' ? s.duration : null,
@@ -457,7 +457,9 @@ export function CreateOfferingDialog({
         } else if (offering.type === 'Event' && offering.offering_schedules.length === 0) {
              addSchedule();
         }
-    }, [isOpen, offering.type, offering.offering_schedules.length, addSchedule]);
+    // addSchedule is not stable, but the condition protects from re-running.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, offering.type, offering.offering_schedules.length]);
 
     console.log("Final state before render:", JSON.stringify(offering, null, 2));
 
@@ -534,7 +536,7 @@ export function CreateOfferingDialog({
                             <h3 className="font-semibold text-lg">{offering.type === 'Event' ? 'Schedules & Pricing' : 'Pricing'}</h3>
 
                             {offering.type === 'Event' && (
-                                {/* <div className="space-y-2 max-w-xs">
+                                <div className="space-y-2 max-w-xs">
                                     <Label>Frequency</Label>
                                     <Select value={eventFrequency} onValueChange={setEventFrequency}>
                                         <SelectTrigger><SelectValue/></SelectTrigger>
@@ -546,7 +548,7 @@ export function CreateOfferingDialog({
                                             <SelectItem value="Yearly">Recurring (Yearly)</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </div> */}
+                                </div>
                             )}
                             
                             {schedulesToShow.map((schedule, scheduleIndex) => (

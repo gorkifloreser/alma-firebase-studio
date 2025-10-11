@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -59,9 +60,9 @@ const generateEventDraftPrompt = ai.definePrompt({
 
 Generate a full offering draft for an EVENT. You must extract event-specific details.
 - **schedules**: Create one entry for EACH distinct event date or time. For each entry, extract:
-  - event_date (in ISO 8601 format), duration, frequency.
-  - location_label, location_address, location_gmaps_url. If not specified, these MUST be null.
-  - price, price_label, currency. If not specified, these MUST be null.`
+  - event_date (in ISO 8601 format), duration (as a string), frequency (as a string, e.g., "One-time", "Weekly").
+  - location_label (as a string), location_address (as a string), location_gmaps_url (as a string). If not specified, these MUST be null.
+  - price (as a number), price_label (as a string), currency (as a string). If not specified, these MUST be null.`
 });
 
 // Specialist for Products/Services
@@ -74,8 +75,8 @@ const generateProductServiceDraftPrompt = ai.definePrompt({
 
 Generate a full offering draft for a PRODUCT or SERVICE. You must extract pricing information.
 - **schedules**: Create one entry for EACH distinct product variant or price point. For each entry, extract:
-  - price_label (e.g., "Cacao Nibs 100g", "Standard Tier"). THIS IS CRITICAL.
-  - price, currency. If not specified, these MUST be null.
+  - price_label (as a string, e.g., "Cacao Nibs 100g", "Standard Tier"). THIS IS CRITICAL.
+  - price (as a number), currency (as a string). If not specified, these MUST be null.
   - You MUST NOT generate event-related fields like event_date, duration, or location.`
 });
 
