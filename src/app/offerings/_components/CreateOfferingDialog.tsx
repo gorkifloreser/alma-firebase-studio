@@ -399,30 +399,32 @@ export function CreateOfferingDialog({
             toast({ variant: 'destructive', title: 'Please provide a prompt for the AI.' });
             return;
         }
-        startGenerating(async () => {
-            try {
-                const result = await generateOfferingDraft({ prompt: aiPrompt });
-                
-                const firstScheduleFrequency = result.schedules?.[0]?.frequency || 'One-time';
-                setEventFrequency(firstScheduleFrequency);
-                
-                const newSchedules = (result.schedules || []).map(s => ({
-                    prices: s.price ? [{
-                        price: s.price ?? null,
-                        label: typeof s.price_label === 'string' ? s.price_label : '',
-                        currency: typeof s.currency === 'string' ? s.currency : 'USD'
-                    }] : [],
-                    event_date: s.event_date && isValid(parseISO(s.event_date)) ? parseISO(s.event_date) : null,
-                    duration: typeof s.duration === 'string' ? s.duration : null,
-                    frequency: typeof s.frequency === 'string' ? s.frequency : (result.type === 'Event' ? 'One-time' : null
-                      ),
-                    location_label: typeof s.location_label === 'string' ? s.location_label : null,
-                    location_address: typeof s.location_address === 'string' ? s.location_address : null,
-                    location_gmaps_url: typeof s.location_gmaps_url === 'string' ? s.location_gmaps_url : null,
-                }));
-
-                setOffering(prev => ({
-                    ...prev,
+                startGenerating(async () => {
+                    try {
+                        const result = await generateOfferingDraft({ prompt: aiPrompt });
+                        console.log("Received AI Result in Frontend:", JSON.stringify(result, null, 2));
+                        
+                        const firstScheduleFrequency = result.schedules?.[0]?.frequency || 'One-time';
+                        setEventFrequency(firstScheduleFrequency);
+                        
+                        const newSchedules = (result.schedules || []).map(s => ({
+                            prices: s.price ? [{ 
+                                price: s.price ?? null, 
+                                label: typeof s.price_label === 'string' ? s.price_label : '', 
+                                currency: typeof s.currency === 'string' ? s.currency : 'USD' 
+                            }] : [],
+                            event_date: s.event_date && isValid(parseISO(s.event_date)) ? parseISO(s.event_date) : null,
+                            duration: typeof s.duration === 'string' ? s.duration : null,
+                            frequency: typeof s.frequency === 'string' ? s.frequency : (result.type === 'Event' ? 'One-time' : null),
+                            location_label: typeof s.location_label === 'string' ? s.location_label : null,
+                            location_address: typeof s.location_address === 'string' ? s.location_address : null,
+                            location_gmaps_url: typeof s.location_gmaps_url === 'string' ? s.location_gmaps_url : null,
+                        }));
+        
+                        console.log("Processed newSchedules in Frontend:", JSON.stringify(newSchedules, null, 2));
+        
+                        setOffering(prev => ({
+                            ...prev,
                     title: { ...prev.title, primary: result.title },
                     description: { ...prev.description, primary: result.description },
                     type: result.type,
@@ -457,6 +459,7 @@ export function CreateOfferingDialog({
         }
     }, [isOpen, offering.type, offering.offering_schedules.length, addSchedule]);
 
+    console.log("Final state before render:", JSON.stringify(offering, null, 2));
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
