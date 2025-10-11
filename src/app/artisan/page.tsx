@@ -297,7 +297,7 @@ export default function ArtisanPage() {
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
     const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
 
-    const [editableCopy, setEditableCopy] = useState('');
+    const [editableContent, setEditableContent] = useState('');
     const [editableHashtags, setEditableHashtags] = useState('');
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
@@ -323,9 +323,9 @@ export default function ArtisanPage() {
     
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-    const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
+    const handleArtisanItemSelect = async (artisanItemId: string | null) => {
         setCreative(null);
-        setEditableCopy('');
+        setEditableContent('');
         setEditableHashtags('');
         setEditableHtml(null);
         setScheduledAt(null);
@@ -351,7 +351,7 @@ export default function ArtisanPage() {
                     const contentItem = await getContentItem(item.id);
                     console.log("[DEBUG] Found saved contentItem in DB. Use this object to check what data is being populated to the form:", contentItem);
                     if (contentItem) {
-                        setEditableCopy(contentItem.copy || '');
+                        setEditableContent(contentItem.copy || '');
                         setEditableHashtags(contentItem.hashtags || '');
 
                         let parsedSlides = contentItem.carousel_slides;
@@ -372,17 +372,17 @@ export default function ArtisanPage() {
                         setSavedContent(contentItem as unknown as CalendarItem);
                     } else {
                         // Fallback to base item data if contentItem is null
-                        setEditableCopy(item.copy || '');
+                        setEditableContent(item.copy || '');
                         setEditableHashtags(item.hashtags || '');
                     }
                 } catch (error: any) {
                     toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
-                    setEditableCopy(item.copy || '');
+                    setEditableContent(item.copy || '');
                     setEditableHashtags(item.hashtags || '');
                 }
             } else {
                 // For items not yet processed, use their base data.
-                setEditableCopy(item.copy || '');
+                setEditableContent(item.copy || '');
                 setEditableHashtags(item.hashtags || '');
             }
 
@@ -414,7 +414,7 @@ export default function ArtisanPage() {
             }
             setIsLoading(false);
         }
-    }, [allArtisanItems, toast]);
+    };
 
     useEffect(() => {
         if (workflowMode === 'campaign' && selectedCampaign) {
@@ -494,7 +494,7 @@ export default function ArtisanPage() {
         setIsLoading(true);
         setCreative(null);
         setEditableHtml(null);
-        setEditableCopy('');
+        setEditableContent('');
         setEditableHashtags('');
 
         try {
@@ -514,7 +514,7 @@ export default function ArtisanPage() {
             
             setCreative(result);
             if (result.content) {
-                setEditableCopy(result.content.primary || '');
+                setEditableContent(result.content.primary || '');
             }
             if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
             if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
@@ -534,7 +534,7 @@ export default function ArtisanPage() {
             return;
         }
 
-        const hasContentToSave = editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
+        const hasContentToSave = editableContent || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
 
         if (!hasContentToSave) {
              toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
@@ -547,7 +547,7 @@ export default function ArtisanPage() {
                 
                 const payload = {
                     offeringId: selectedOfferingId,
-                    copy: editableCopy,
+                    copy: editableContent,
                     hashtags: editableHashtags,
                     creative_prompt: creativePrompt,
                     concept: currentItemDetails?.concept || 'Custom Content',
@@ -605,7 +605,7 @@ export default function ArtisanPage() {
     };
     
     const handleContentUpdated = (updatedItem: CalendarItem) => {
-        setEditableCopy(updatedItem.copy || '');
+        setEditableContent(updatedItem.copy || '');
         setEditableHashtags(updatedItem.hashtags || '');
         setSavedContent(updatedItem as unknown as CalendarItem);
         setIsEditDialogOpen(false);
@@ -641,7 +641,7 @@ export default function ArtisanPage() {
         setSelectedCampaign(null);
         setFilteredArtisanItems([]);
         handleArtisanItemSelect(null);
-        setEditableCopy('');
+        setEditableContent('');
         setEditableHashtags('');
         setIsDialogOpen(false);
     };
@@ -691,7 +691,7 @@ export default function ArtisanPage() {
     }, [itemsForSelectedCampaign]);
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
+    const hasContent = !!(editableContent || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
     
     const isUpdate = !!savedContent;
@@ -928,9 +928,9 @@ export default function ArtisanPage() {
                                 )}
                                 {workflowMode && (
                                     <TextContentEditor
-                                        editableContent={editableCopy}
+                                        editableContent={editableContent}
                                         editableHashtags={editableHashtags}
-                                        onContentChange={setEditableCopy}
+                                        onContentChange={setEditableContent}
                                         onHashtagsChange={setEditableHashtags}
                                     />
                                 )}
