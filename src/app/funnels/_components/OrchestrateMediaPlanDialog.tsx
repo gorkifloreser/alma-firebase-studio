@@ -144,7 +144,7 @@ export function OrchestrateMediaPlanDialog({
                 setSelectedLanguage(p?.primary_language || 'en');
             });
 
-            if (!planIdToEdit && !currentPlan) {
+            if (view !== 'generate' && !planIdToEdit && !currentPlan) {
                 const hasActivePlans = fullFunnelData.media_plans?.some(p => (p.status || 'active') === 'active');
                 const newViewState = hasActivePlans ? 'list' : 'generate';
                 setView(newViewState);
@@ -482,7 +482,7 @@ export function OrchestrateMediaPlanDialog({
                             <TabsTrigger value="archived">Archived</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button onClick={() => {
+                    <Button type="button" onClick={() => {
                         setCurrentPlan(null);
                         setPlanIdToEdit(null);
                         setView('generate');
