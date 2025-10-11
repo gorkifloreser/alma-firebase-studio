@@ -25,7 +25,7 @@ import { languages } from '@/lib/languages';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { format, parseISO, isValid } from 'date-fns';
-import { getFormatsForChannel } from '@/lib/media-formats';
+import { mediaFormatConfig } from '@/lib/media-formats';
 import { EditContentDialog } from '@/app/calendar/_components/EditContentDialog';
 import { CodeEditor } from './_components/CodeEditor';
 import { CreativeControls } from './_components/CreativeControls';
@@ -379,24 +379,21 @@ export default function ArtisanPage() {
                  setEditableContent({ primary: item.copy || '', secondary: null });
             }
     
-            const formatValue = (item.format || '').toLowerCase();
-            const channel = item.user_channel_settings?.channel_name || '';
-            const formatsForChannel = getFormatsForChannel(channel);
+            const mediaFormat = (item.media_format || '').toLowerCase();
+            const aspectRatio = item.aspect_ratio;
     
             let newCreativeType: CreativeType = 'image';
-            if (formatsForChannel.includes('Text Post')) newCreativeType = 'text';
-            if (formatValue.includes('video') || formatValue.includes('reel')) newCreativeType = 'video';
-            else if (formatValue.includes('carousel')) newCreativeType = 'carousel';
-            else if (formatValue.includes('landing')) newCreativeType = 'landing_page';
-            else if (formatValue.includes('text')) newCreativeType = 'text';
-            else if (formatsForChannel.some(f => f.toLowerCase().includes('image'))) newCreativeType = 'image';
+            if (mediaFormat.includes('video') || mediaFormat.includes('reel')) newCreativeType = 'video';
+            else if (mediaFormat.includes('carousel')) newCreativeType = 'carousel';
+            else if (mediaFormat.includes('landing')) newCreativeType = 'landing_page';
+            else if (mediaFormat.includes('text')) newCreativeType = 'text';
             
             setSelectedCreativeType(newCreativeType);
     
-            if (formatValue.includes('1:1') || formatValue.includes('square')) setDimension('1:1');
-            else if (formatValue.includes('4:5') || formatValue.includes('portrait')) setDimension('4:5');
-            else if (formatValue.includes('9:16') || formatValue.includes('story') || formatValue.includes('reel')) setDimension('9:16');
-            else if (formatValue.includes('16:9') || formatValue.includes('landscape')) setDimension('16:9');
+            if (aspectRatio === '1:1') setDimension('1:1');
+            else if (aspectRatio === '4:5') setDimension('4:5');
+            else if (aspectRatio === '9:16') setDimension('9:16');
+            else if (aspectRatio === '16:9') setDimension('16:9');
             else setDimension('1:1');
     
             if (item.suggested_post_at && isValid(parseISO(item.suggested_post_at))) {
@@ -674,20 +671,24 @@ export default function ArtisanPage() {
         ];
         
         if (workflowMode === 'campaign' && currentChannel) {
-            const formats = getFormatsForChannel(currentChannel);
+            const availableFormats = mediaFormatConfig
+                .flatMap(category => category.formats)
+                .filter(format => format.channels.includes(currentChannel.toLowerCase()));
+
             const options = new Set<CreativeType>();
-            formats.forEach(f => {
-                const format = f.toLowerCase();
-                if (format.includes('text post')) options.add('text');
-                if (format.includes('image')) options.add('image');
-                if (format.includes('carousel')) options.add('carousel');
-                if (format.includes('video') || format.includes('reel')) options.add('video');
-                if (format.includes('landing page')) options.add('landing_page');
+            availableFormats.forEach(f => {
+                const formatValue = f.value.toLowerCase();
+                if (formatValue.includes('text')) options.add('text');
+                if (formatValue.includes('image')) options.add('image');
+                if (formatValue.includes('carousel')) options.add('carousel');
+                if (formatValue.includes('video')) options.add('video');
+                if (formatValue.includes('landing')) options.add('landing_page');
             });
+            
             if (options.has('image') || options.has('carousel') || options.has('video')) {
                 options.add('text');
             }
-            return baseOptions.filter(opt => options.has(opt.id));
+            return baseOptions.filter(opt => options.has(opt.id as CreativeType));
         }
         return baseOptions;
     }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
