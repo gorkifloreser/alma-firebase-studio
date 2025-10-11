@@ -210,17 +210,30 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const payload: { [key: string]: any } = { ...updates, updated_at: new Date().toISOString() };
+    const payload: { [key: string]: any } = { updated_at: new Date().toISOString() };
+    
+    // Explicitly map camelCase to snake_case for all relevant fields
+    const mapping: { [key in keyof SaveContentInput]?: string } = {
+        imageUrl: 'image_url',
+        carouselSlides: 'carousel_slides',
+        videoScript: 'video_script',
+        landingPageHtml: 'landing_page_html',
+        scheduledAt: 'scheduled_at',
+        media_format: 'media_format',
+        aspect_ratio: 'aspect_ratio',
+    };
 
-    // This is the fix: use the correct snake_case column names.
-    if ('carouselSlides' in payload) {
-        payload.carousel_slides = payload.carouselSlides ? JSON.stringify(payload.carouselSlides) : null;
-        delete payload.carouselSlides;
+    for (const key in updates) {
+        const mappedKey = mapping[key as keyof typeof mapping] || key;
+        const value = updates[key as keyof typeof updates];
+        
+        if (key === 'carouselSlides' || key === 'videoScript') {
+            payload[mappedKey] = value ? JSON.stringify(value) : null;
+        } else {
+            payload[mappedKey] = value;
+        }
     }
-    if ('videoScript' in payload) {
-        payload.video_script = payload.videoScript ? JSON.stringify(payload.videoScript) : null;
-        delete payload.videoScript;
-    }
+
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -237,7 +250,7 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     
     revalidatePath('/artisan');
     revalidatePath('/calendar');
-    return data as unknown as ContentItem;
+    return data as ContentItem;
 }
 
 /**
