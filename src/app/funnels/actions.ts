@@ -313,27 +313,6 @@ export async function saveLandingPage({ funnelId, data }: SaveLandingPageParams)
     return { message: 'Landing page saved successfully.' };
 }
 
-
-export async function getLandingPage(funnelId: string): Promise<Data | null> {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-        .from('funnels')
-        .select('landing_page_content')
-        .eq('id', funnelId)
-        .eq('user_id', user.id)
-        .single();
-
-    if (error || !data) {
-        console.error('Error fetching landing page data:', error);
-        return null;
-    }
-
-    return data.landing_page_content as Data;
-}
-
 type SaveMediaPlanParams = {
     id: string | null; // ID of the media plan to update, or null for new
     funnelId: string;
@@ -677,4 +656,49 @@ export async function getAdaptedValueStrategies(): Promise<AdaptedValueStrategy[
         return [];
     }
     return data;
+}
+
+export async function updateAdaptedValueStrategy(id: number, strategyData: Partial<AdaptedValueStrategy>): Promise<AdaptedValueStrategy> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { adapted_method, strategy, visual_prompt } = strategyData;
+    const updatePayload = { adapted_method, strategy, visual_prompt };
+
+    const { data, error } = await supabase
+        .from('adapted_value_strategies')
+        .update(updatePayload)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+    
+    if (error) {
+        console.error("Error updating adapted value strategy:", error);
+        throw new Error("Could not update the adapted value strategy.");
+    }
+
+    revalidatePath('/funnels');
+    return data;
+}
+
+export async function deleteAdaptedValueStrategy(id: number): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated.");
+
+    const { error } = await supabase
+        .from('adapted_value_strategies')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+    
+    if (error) {
+        console.error("Error deleting adapted value strategy:", error);
+        throw new Error("Could not delete the adapted value strategy.");
+    }
+    
+    revalidatePath('/funnels');
+    return { message: "Adapted value strategy deleted successfully." };
 }
