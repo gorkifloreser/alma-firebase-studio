@@ -37,7 +37,7 @@ import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format, parseISO, isValid } from 'date-fns';
-import { getFormatsForChannel } from '@/lib/media-formats';
+import { getFormatsForChannel, mediaFormatConfig } from '@/lib/media-formats';
 import { EditContentDialog } from '@/app/calendar/_components/EditContentDialog';
 import { CodeEditor } from './CodeEditor';
 import { CreativeControls } from './CreativeControls';
@@ -95,6 +95,7 @@ export default function ArtisanClientPage({
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('text');
+    const [selectedCreativeFormat, setSelectedCreativeFormat] = useState<string>('text');
     const [dimension, setDimension] = useState<'1:1' | '4:5' | '9:16' | '16:9'>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [objective, setObjective] = useState('');
@@ -106,6 +107,10 @@ export default function ArtisanClientPage({
 
     const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
     const [globalTheme, setGlobalTheme] = useState<'light' | 'dark'>('light');
+    
+    const [isDirty, setIsDirty] = useState(false);
+    const [originalContentState, setOriginalContentState] = useState<any>(null);
+    const [pendingAction, setPendingAction] = useState<{ type: 'item' | 'channel', value: string | null } | null>(null);
     
     // Other dialog states (unchanged)
     // ...
@@ -123,13 +128,14 @@ export default function ArtisanClientPage({
         setScheduledAt(null);
         setObjective('');
         setConcept('');
-        setReferenceImageUrl(null);
         setSelectedArtisanItemId(artisanItemId);
         setSavedContent(null);
     
         if (!artisanItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
+            setOriginalContentState(null);
+            setIsDirty(false);
             return;
         }
     
@@ -138,68 +144,91 @@ export default function ArtisanClientPage({
 
         if (item) {
             setIsLoading(true);
-            setCreativePrompt(item.creative_prompt || '');
-            setSelectedOfferingId(item.offering_id ?? undefined);
-    
-            if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
-                try {
-                    const contentItem = await getContentItem(item.id);
-                    console.log("[DEBUG] Fetched contentItem from DB:", contentItem); // Enhanced log
-                    if (contentItem) {
-                        console.log(`[DEBUG] Populating form with contentItem data. Copy: "${contentItem.copy}", Hashtags: "${contentItem.hashtags}"`); // Enhanced log
-                        
-                        let finalCopy = contentItem.copy;
-                        if (!finalCopy && contentItem.content_body) {
-                            try {
-                                // Ensure content_body is treated as a string before parsing
-                                const parsedBody = JSON.parse(String(contentItem.content_body));
-                                finalCopy = parsedBody.primary || '';
-                                console.log('[DEBUG] Used fallback to parse content_body.primary.');
-                            } catch (e) {
-                                console.error('[DEBUG] Failed to parse content_body JSON:', e);
-                            }
-                        }
+            const contentItem = (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') 
+                ? await getContentItem(item.id) 
+                : null;
+            
+            const source = contentItem || item;
 
-                        // ... (parsing logic for visuals is unchanged)
-                        setCreative({
-                            // ...
-                        });
-                        setEditableContent(finalCopy || '');
-                        setEditableHashtags(contentItem.hashtags || '');
-                        setObjective(contentItem.objective || '');
-                        setConcept(contentItem.concept || '');
-                        if (contentItem.landing_page_html) setEditableHtml(contentItem.landing_page_html);
-                        setSavedContent(contentItem as unknown as CalendarItem);
-                    } else {
-                        console.log("[DEBUG] No saved contentItem found in DB, using base item data.");
-                        console.log(`[DEBUG] Values to be set -> Copy: "${item.copy}", Hashtags: "${item.hashtags}"`); // Enhanced log
-                        setEditableContent(item.copy || '');
-                        setEditableHashtags(item.hashtags || '');
-                        setObjective(item.objective || '');
-                        setConcept(item.concept || '');
-                    }
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
-                    setEditableContent(item.copy || '');
-                    setEditableHashtags(item.hashtags || '');
-                    setObjective(item.objective || '');
-                    setConcept(item.concept || '');
-                }
-            } else {
-                 console.log("[DEBUG] Item status is not 'ready_for_review' or similar. Using base item data."); // Enhanced log
-                 console.log(`[DEBUG] Values to be set -> Copy: "${item.copy}", Hashtags: "${item.hashtags}"`); // Enhanced log
-                 setEditableContent(item.copy || '');
-                 setEditableHashtags(item.hashtags || '');
-                 setObjective(item.objective || '');
-                 setConcept(item.concept || '');
-            }
-    
-            // ... (logic for setting creative type and dimension is unchanged)
+            setCreativePrompt(source.creative_prompt || '');
+            setSelectedOfferingId(source.offering_id ?? undefined);
+            setEditableContent(source.copy || '');
+            setEditableHashtags(source.hashtags || '');
+            setObjective(source.objective || '');
+            setConcept(source.concept || '');
+            if (source.landing_page_html) setEditableHtml(source.landing_page_html);
+            if (contentItem) setSavedContent(contentItem as unknown as CalendarItem);
+
+            const formatConfig = mediaFormatConfig.flatMap(c => c.formats).find(f => f.value === (source.media_format || 'Text Post'));
+            setSelectedCreativeFormat(formatConfig?.value || 'Text Post');
+            setSelectedCreativeType(formatConfig?.creativeType || 'text');
+            setDimension(source.aspect_ratio || formatConfig?.aspect_ratios[0]?.value || '1:1');
+            setScheduledAt(source.scheduled_at ? parseISO(source.scheduled_at) : null);
+
+            const creativeData = {
+                imageUrl: source.image_url || null,
+                carouselSlides: typeof source.carousel_slides === 'string' ? JSON.parse(source.carousel_slides) : (source.carousel_slides || null),
+                videoScript: typeof source.video_script === 'string' ? JSON.parse(source.video_script) : (source.video_script || null),
+                landingPageHtml: source.landing_page_html || null,
+            };
+            setCreative(creativeData);
+
+            const initialState = {
+                copy: source.copy || '',
+                hashtags: source.hashtags || '',
+                creativePrompt: source.creative_prompt || '',
+                html: source.landing_page_html || null,
+                format: formatConfig?.value || 'Text Post',
+                dimension: source.aspect_ratio || formatConfig?.aspect_ratios[0]?.value || '1:1',
+                scheduledAt: source.scheduled_at ? parseISO(source.scheduled_at) : null,
+                creative: creativeData,
+            };
+
+            setOriginalContentState(initialState);
+            setIsDirty(false);
             setIsLoading(false);
         } else {
             console.log('[DEBUG] No item found in allArtisanItems for the selected ID.'); // Enhanced log
         }
     }, [allArtisanItems, toast]);
+
+    useEffect(() => {
+        if (!originalContentState || isLoading || isSaving) {
+            setIsDirty(false);
+            return;
+        }
+    
+        const scheduleTimeChanged = (scheduledAt?.getTime() ?? null) !== (originalContentState.scheduledAt?.getTime() ?? null);
+    
+        const creativeChanged = 
+            creative?.imageUrl !== originalContentState.creative.imageUrl ||
+            JSON.stringify(creative?.carouselSlides) !== JSON.stringify(originalContentState.creative.carouselSlides) ||
+            JSON.stringify(creative?.videoScript) !== JSON.stringify(originalContentState.creative.videoScript);
+    
+        const hasChanged =
+            editableContent !== originalContentState.copy ||
+            editableHashtags !== originalContentState.hashtags ||
+            creativePrompt !== originalContentState.creativePrompt ||
+            editableHtml !== originalContentState.html ||
+            selectedCreativeFormat !== originalContentState.format ||
+            dimension !== originalContentState.dimension ||
+            scheduleTimeChanged ||
+            creativeChanged;
+    
+        setIsDirty(hasChanged);
+    }, [
+        editableContent,
+        editableHashtags,
+        creativePrompt,
+        editableHtml,
+        selectedCreativeFormat,
+        dimension,
+        scheduledAt,
+        creative,
+        originalContentState,
+        isLoading,
+        isSaving
+    ]);
 
     // ... (useEffect hooks are mostly unchanged)
 
@@ -235,7 +264,7 @@ export default function ArtisanClientPage({
         }
     };
 
-    const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
+    const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null, onComplete?: () => void) => {
         if (!selectedOfferingId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
             return;
@@ -264,7 +293,7 @@ export default function ArtisanClientPage({
                     landingPageHtml: editableHtml,
                     status: status,
                     scheduledAt: scheduleDate?.toISOString(),
-                    media_format: selectedCreativeType,
+                    media_format: selectedCreativeFormat,
                     aspect_ratio: dimension,
                 };
 
@@ -283,6 +312,10 @@ export default function ArtisanClientPage({
                 }
                 
                 setSavedContent(updatedItem as unknown as CalendarItem);
+                await handleArtisanItemSelect(updatedItem.id);
+                if (onComplete) {
+                    onComplete();
+                }
                 
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
@@ -310,6 +343,44 @@ export default function ArtisanClientPage({
         });
     };
 
+    const performChange = (type: 'item' | 'channel', value: string | null) => {
+        if (type === 'item') {
+            handleArtisanItemSelect(value);
+        } else if (type === 'channel') {
+            setChannelFilter(value as string);
+        }
+        setPendingAction(null);
+    };
+    
+    const handleAttemptChange = (type: 'item' | 'channel', value: string | null) => {
+        if (isDirty && selectedArtisanItemId) {
+            setPendingAction({ type, value });
+        } else {
+            performChange(type, value);
+        }
+    };
+    
+    const handleDialogAction = (action: 'save' | 'discard' | 'cancel') => {
+        if (!pendingAction) return;
+    
+        if (action === 'cancel') {
+            setPendingAction(null);
+            return;
+        }
+    
+        if (action === 'discard') {
+            setIsDirty(false);
+            performChange(pendingAction.type, pendingAction.value);
+            return;
+        }
+    
+        if (action === 'save') {
+            handleSave('ready_for_review', scheduledAt, () => {
+                performChange(pendingAction.type, pendingAction.value);
+            });
+        }
+    };
+
     // ... (other handlers like handleContentUpdated, handleCarouselSlideChange are simplified or removed)
 
     const hasContent = !!(editableContent || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl);
@@ -318,7 +389,24 @@ export default function ArtisanClientPage({
 
     return (
         <>
-            {/* Dialogs are unchanged */}
+            <AlertDialog open={!!pendingAction} onOpenChange={() => setPendingAction(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>You have unsaved changes!</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Your work on the current item has not been saved. What would you like to do?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button variant="ghost" onClick={() => handleDialogAction('cancel')}>Cancel</Button>
+                        <Button variant="destructive" onClick={() => handleDialogAction('discard')}>Discard Changes & Continue</Button>
+                        <Button onClick={() => handleDialogAction('save')} disabled={isSaving}>
+                            {isSaving ? 'Saving...' : 'Save & Continue'}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {/* Other Dialogs are unchanged */}
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 {/* Header is unchanged */}
                 {!workflowMode ? (
@@ -330,6 +418,8 @@ export default function ArtisanClientPage({
                             <aside className="space-y-8 lg:sticky top-24">
                                 <CreativeControls
                                     // ... (props are passed down)
+                                    setChannelFilter={(value) => handleAttemptChange('channel', value)}
+                                    handleArtisanItemSelect={(id) => handleAttemptChange('item', id)}
                                     isSaved={!!savedContent}
                                     onDelete={handleDelete}
                                 />
