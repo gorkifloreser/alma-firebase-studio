@@ -186,7 +186,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
             </CardHeader>
             <CardContent className="space-y-6">
                  {workflowMode === 'campaign' && (
-                    <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
+                    <Tabs value={channelFilter} onValueChange={(value) => setChannelFilter(value)} className="w-full">
                         <div className="flex justify-center">
                             <TabsList>
                                 <TabsTrigger value="all">Pending ({queueCount})</TabsTrigger>
