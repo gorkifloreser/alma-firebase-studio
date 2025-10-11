@@ -346,18 +346,35 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                 <Separator />
 
                 <div className="w-full flex items-center justify-between gap-2">
-                     <Button 
-                        onClick={() => handleSave('ready_for_review')} 
-                        variant={isUpdate ? "secondary" : "default"} 
-                        className="flex-grow" 
-                        disabled={isSaving || !hasContent}
-                    >
-                        <Save className="mr-2 h-4 w-4" />
-                        {isSaving ? (isUpdate ? 'Updating...' : 'Saving...') : (isUpdate ? 'Update Draft' : 'Save Draft')}
-                    </Button>
+                    {/* Show "Save" only for NEW custom content */}
+                    {workflowMode === 'custom' && !isUpdate && (
+                        <Button 
+                            onClick={() => handleSave('ready_for_review')} 
+                            className="flex-grow" 
+                            disabled={isSaving || !hasContent}
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            {isSaving ? 'Saving...' : 'Save Draft'}
+                        </Button>
+                    )}
+
+                    {/* Show "Update" for campaign content OR for saved custom content */}
+                    {(workflowMode === 'campaign' || isUpdate) && (
+                        <Button 
+                            onClick={() => handleSave('ready_for_review')} 
+                            variant="secondary"
+                            className="flex-grow" 
+                            disabled={isSaving || !hasContent}
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            {isSaving ? 'Updating...' : 'Update Draft'}
+                        </Button>
+                    )}
+
                     <Button onClick={() => handleSave('scheduled', scheduledAt)} className="flex-grow" disabled={isSaving || !hasContent || !scheduledAt}>
                         Schedule Post
                     </Button>
+                    
                     {isSaved && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>

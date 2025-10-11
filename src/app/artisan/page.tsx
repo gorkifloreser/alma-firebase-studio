@@ -327,68 +327,54 @@ export default function ArtisanPage() {
     
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-    // --- FIX: Add draft state to hold unsaved changes ---
-    const [draftChanges, setDraftChanges] = useState<DraftChanges>({});
+    const updateDraft = (itemId: string, updates: Partial<ArtisanItem & { copy: string; hashtags: string; }>) => {
+        // This function is now a no-op to prevent errors from stale calls,
+        // but the new architecture doesn't use it.
+    };
 
-    const updateDraft = useCallback((itemId: string, updates: Partial<ArtisanItem & { copy: string; hashtags: string; }>) => {
-        setDraftChanges(prev => ({
-            ...prev,
-            [itemId]: {
-                ...(prev[itemId] || {}),
-                ...updates,
-            },
-        }));
-    }, []);
+    // --- REFACTORED LOGIC TO PREVENT INFINITE LOOPS & RELY ON DB AS SOURCE OF TRUTH ---
 
-    // --- FIX: Memoize handler to prevent re-creation on every render ---
-    const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
-        console.log(`[SELECT] ----------------------------------------------------`);
-        console.log(`[SELECT] 1. handleArtisanItemSelect called for ID: ${artisanItemId}`);
+    const loadDataForArtisanItem = useCallback(async (artisanItemId: string | null) => {
         setCreative(null);
         setEditableCopy('');
         setEditableHashtags('');
         setEditableHtml(null);
         setScheduledAt(null);
         setReferenceImageUrl(null);
-        setSelectedArtisanItemId(artisanItemId);
         setSavedContent(null);
 
         if (!artisanItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
-            console.log('[SELECT] No ID provided. Resetting form.');
             return;
         }
 
         const item = allArtisanItems.find(q => q.id === artisanItemId);
-        console.log('[SELECT] 2. Found base item in allArtisanItems:', item);
-        
         if (item) {
             setIsLoading(true);
-            
-            // --- FIX: MERGE DRAFT CHANGES ---
-            const draft = draftChanges[artisanItemId] || {};
-            console.log('[SELECT] 3. Found draft changes for this item:', draft);
 
-            const finalItemData = { ...item, ...draft };
-            console.log('[SELECT] 4. Merged base item with draft changes:', finalItemData);
+            // Always start with the base item data
+            let sourceOfTruth: Partial<CalendarItem> = { 
+                ...item,
+                copy: item.copy || '',
+                hashtags: item.hashtags || '',
+            };
 
-            setCreativePrompt(finalItemData.creative_prompt || '');
-            setSelectedOfferingId(finalItemData.offering_id ?? undefined);
-
-            let contentItem = null;
+            // If it's a saved item, fetch the definitive version from the DB
             if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
-                    contentItem = await getContentItem(item.id);
-                    console.log('[SELECT] 5. Fetched full contentItem from DB:', contentItem);
+                    const contentItem = await getContentItem(item.id);
+                    if (contentItem) {
+                        sourceOfTruth = { ...sourceOfTruth, ...contentItem };
+                        setSavedContent(contentItem);
+                    }
                 } catch (error: any) {
                     toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
                 }
             }
             
-            const sourceOfTruth = contentItem ? { ...finalItemData, ...contentItem, ...draft } : finalItemData;
-            console.log('[SELECT] 6. Determined final source of truth for UI:', sourceOfTruth);
-
+            setCreativePrompt(sourceOfTruth.creative_prompt || '');
+            setSelectedOfferingId(sourceOfTruth.offering_id ?? undefined);
             setEditableCopy(sourceOfTruth.copy || '');
             setEditableHashtags(sourceOfTruth.hashtags || '');
             
@@ -398,18 +384,17 @@ export default function ArtisanPage() {
             }
 
             setCreative({
-                imageUrl: sourceOfTruth.image_url,
+                imageUrl: sourceOfTruth.image_url || null,
                 carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
-                videoScript: sourceOfTruth.video_script,
-                landingPageHtml: sourceOfTruth.landing_page_html,
-                content: sourceOfTruth.content_body,
-                finalPrompt: sourceOfTruth.creative_prompt
+                videoScript: sourceOfTruth.video_script || null,
+                landingPageHtml: sourceOfTruth.landing_page_html || null,
+                content: sourceOfTruth.content_body || null,
+                finalPrompt: sourceOfTruth.creative_prompt || null
             });
 
             if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
-            if(contentItem) setSavedContent(contentItem as unknown as CalendarItem);
 
-            const mediaFormatValue = finalItemData.media_format || 'Text Post';
+            const mediaFormatValue = sourceOfTruth.media_format || 'Text Post';
             const allFormats = mediaFormatConfig.flatMap(cat => cat.formats);
             const formatConfig = allFormats.find(f => f.value === mediaFormatValue);
 
@@ -421,7 +406,7 @@ export default function ArtisanPage() {
                 setSelectedCreativeType('text');
             }
 
-            const aspectRatio = finalItemData.aspect_ratio;
+            const aspectRatio = sourceOfTruth.aspect_ratio;
             if (aspectRatio && formatConfig?.aspect_ratios.some(ar => ar.value === aspectRatio)) {
                 setDimension(aspectRatio);
             } else if (formatConfig?.aspect_ratios.length) {
@@ -430,15 +415,15 @@ export default function ArtisanPage() {
                 setDimension('');
             }
             
-            if (sourceOfTruth.suggested_post_at && isValid(parseISO(sourceOfTruth.suggested_post_at))) {
-                setScheduledAt(parseISO(sourceOfTruth.suggested_post_at));
+            const scheduleDate = sourceOfTruth.scheduled_at || item.suggested_post_at;
+            if (scheduleDate && isValid(parseISO(scheduleDate))) {
+                setScheduledAt(parseISO(scheduleDate));
             }
-            console.log('[SELECT] 7. Form population complete.');
             setIsLoading(false);
-            console.log(`[SELECT] ----------------------------------------------------`);
         }
-    }, [allArtisanItems, toast, draftChanges]);
+    }, [allArtisanItems, toast]);
 
+    // Effect 1: Filter the items based on the selected campaign and channel.
     useEffect(() => {
         if (workflowMode === 'campaign' && selectedCampaign) {
             let items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
@@ -446,15 +431,27 @@ export default function ArtisanPage() {
                 items = items.filter(item => item.user_channel_settings?.channel_name === channelFilter);
             }
             setFilteredArtisanItems(items);
-            if (items.length > 0 && !items.find(i => i.id === selectedArtisanItemId)) {
-                handleArtisanItemSelect(items[0].id);
-            }
-            else if (items.length === 0) {
-                handleArtisanItemSelect(null);
-            }
+        } else {
+            setFilteredArtisanItems([]);
         }
-    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode, selectedArtisanItemId, handleArtisanItemSelect]);
+    }, [channelFilter, selectedCampaign, allArtisanItems, workflowMode]);
 
+    // Effect 2: Auto-select an item when the filtered list changes.
+    useEffect(() => {
+        const isSelectionInList = filteredArtisanItems.some(i => i.id === selectedArtisanItemId);
+
+        if (filteredArtisanItems.length > 0 && !isSelectionInList) {
+            setSelectedArtisanItemId(filteredArtisanItems[0].id);
+        } else if (filteredArtisanItems.length === 0 && selectedArtisanItemId !== null) {
+            setSelectedArtisanItemId(null);
+        }
+    }, [filteredArtisanItems, selectedArtisanItemId]);
+
+    // Effect 3: Load data for the selected item.
+    useEffect(() => {
+        loadDataForArtisanItem(selectedArtisanItemId);
+    }, [selectedArtisanItemId, loadDataForArtisanItem]);
+    
     useEffect(() => {
         async function fetchData() {
             setIsLoading(true);
@@ -480,551 +477,570 @@ export default function ArtisanPage() {
         const storedTheme = localStorage.getItem('theme');
         if (storedTheme) setGlobalTheme(storedTheme as 'light' | 'dark');
     }, [toast]);
-
-    const handleGenerate = async (regeneratePrompt?: string) => {
-        if (!selectedOfferingId) {
-            toast({ variant: 'destructive', title: 'Please select an offering.' });
-            return;
-        }
-
-        if (selectedCreativeType === 'carousel' && regeneratePrompt) {
-            const slideToRegen = creative?.carouselSlides?.[currentCarouselSlide];
-            if (slideToRegen) {
-                startSaving(async () => {
-                    try {
-                        const { imageUrl, finalPrompt } = await regenerateCarouselSlide({
-                            offeringId: selectedOfferingId,
-                            basePrompt: regeneratePrompt,
-                            aspectRatio: dimension,
-                        });
-
-                        setCreative(prev => {
-                            if (!prev || !prev.carouselSlides) return prev;
-                            const newSlides = [...prev.carouselSlides];
-                            newSlides[currentCarouselSlide] = { ...newSlides[currentCarouselSlide], imageUrl, finalPrompt };
-                            return { ...prev, carouselSlides: newSlides };
-                        });
-                        
-                        toast({ title: 'Slide Regenerated!', description: 'The image for the current slide has been updated.' });
-
-                    } catch(e: any) {
-                        toast({ variant: 'destructive', title: 'Regeneration Failed', description: e.message });
-                    }
-                });
+    
+        useEffect(() => {
+            async function fetchData() {
+                setIsLoading(true);
+                try {
+                    const [profileData, artisanItemsData, offeringsData, mediaPlansData] = await Promise.all([
+                        getProfile(),
+                        getArtisanItems(),
+                        getOfferings(),
+                        getMediaPlans(),
+                    ]);
+    
+                    setProfile(profileData);
+                    setAllArtisanItems(artisanItemsData);
+                    setOfferings(offeringsData);
+                    setMediaPlans(mediaPlansData);
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+            fetchData();
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) setGlobalTheme(storedTheme as 'light' | 'dark');
+        }, [toast]);
+    
+        const handleGenerate = async (regeneratePrompt?: string) => {
+            if (!selectedOfferingId) {
+                toast({ variant: 'destructive', title: 'Please select an offering.' });
                 return;
             }
-        }
-
-        setIsLoading(true);
-        setCreative(null);
-        setEditableHtml(null);
-        setEditableCopy('');
-        setEditableHashtags('');
-
-        try {
-            console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
-            const creativeTypes: CreativeType[] = [selectedCreativeType];
-            if (!['video', 'landing_page'].includes(selectedCreativeType) && !regeneratePrompt) {
-                creativeTypes.push('text');
-            }
-            
-            const result = await generateCreativeForOffering({
-                offeringId: selectedOfferingId,
-                creativeTypes: creativeTypes,
-                aspectRatio: dimension,
-                creativePrompt: regeneratePrompt || creativePrompt,
-                referenceImageUrl: referenceImageUrl || undefined,
-            });
-            
-            setCreative(result);
-            if (result.content) {
-                setEditableCopy(result.content.primary || '');
-            }
-            if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
-            if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
-
-            toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
-        } catch (error: any) {
-            console.error('[handleGenerate] -- ERROR --', error);
-            toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
-        if (!selectedOfferingId) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
-            return;
-        }
-
-        const hasContentToSave = editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
-
-        if (!hasContentToSave) {
-             toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
-            return;
-        }
-        
-        startSaving(async () => {
-            try {
-                const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-                const draft = selectedArtisanItemId ? draftChanges[selectedArtisanItemId] : {};
-
-                // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
-                const payload: any = {
-                    offeringId: selectedOfferingId,
-                    copy: editableCopy,
-                    hashtags: editableHashtags,
-                    concept: currentItemDetails?.concept || 'Custom Content',
-                    objective: currentItemDetails?.objective || null,
-                    status: status,
-                    scheduledAt: scheduleDate?.toISOString(),
-                    media_format: selectedCreativeFormat,
-                    aspect_ratio: dimension,
-                    ...draft,
-                };
-
-                // 1. Start with existing media from the last saved state to ensure we don't lose anything.
-                if (savedContent) {
-                    payload.imageUrl = savedContent.image_url;
-                    payload.carouselSlides = savedContent.carousel_slides;
-                    payload.videoScript = savedContent.video_script;
-                    payload.landingPageHtml = savedContent.landing_page_html;
-                }
-                
-                // 2. Layer the newly generated media on top, overwriting only what's new.
-                switch (selectedCreativeType) {
-                    case 'image':
-                        payload.imageUrl = creative?.imageUrl || payload.imageUrl;
-                        break;
-                    case 'carousel':
-                        payload.carouselSlides = creative?.carouselSlides || payload.carouselSlides;
-                        break;
-
-                    case 'video':
-                        payload.videoScript = creative?.videoScript || payload.videoScript;
-                        break;
-                    case 'landing_page':
-                        payload.landingPageHtml = editableHtml || payload.landingPageHtml;
-                        break;
-                }
-
-                let updatedItem: CalendarItem;
-                const isUpdate = (workflowMode === 'campaign' && !!selectedArtisanItemId) || (workflowMode === 'custom' && !!savedContent);
-                
-                if (isUpdate && (savedContent || selectedArtisanItemId)) {
-                    const itemId = savedContent?.id || selectedArtisanItemId!;
-                    updatedItem = await updateContent(itemId, payload);
-                    setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
-                    toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
-                } else {
-                    updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
-                    if (selectedArtisanItemId && !savedContent) {
-                         await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
-                         setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'ready_for_review'} : i));
-                    }
-                    toast({ title: status === 'scheduled' ? 'Scheduled!' : 'Approved!', description: `The content has been saved.` });
-                }
-                
-                setSavedContent(updatedItem as unknown as CalendarItem);
-
-                if (selectedArtisanItemId) {
-                    setDraftChanges(prev => {
-                        const newDrafts = { ...prev };
-                        delete newDrafts[selectedArtisanItemId];
-                        return newDrafts;
-                    });
-                }
-                
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
-            }
-        });
-    };
-
-    const handleDelete = () => {
-        if (!savedContent) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No saved content to delete.' });
-            return;
-        }
-        startSaving(async () => {
-            try {
-                await deleteContent(savedContent.id);
-                toast({ title: 'Content Deleted', description: 'The post has been successfully deleted.' });
-                // Reset the UI
-                const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
-                setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
-                handleArtisanItemSelect(allArtisanItems[nextItemIndex + 1]?.id || allArtisanItems[0]?.id || null);
-
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
-            }
-        });
-    };
     
-    const handleContentUpdated = (updatedItem: CalendarItem) => {
-        setEditableCopy(updatedItem.copy || '');
-        setEditableHashtags(updatedItem.hashtags || '');
-        setSavedContent(updatedItem as unknown as CalendarItem);
-        setIsEditDialogOpen(false);
-    };
+            if (selectedCreativeType === 'carousel' && regeneratePrompt) {
+                const slideToRegen = creative?.carouselSlides?.[currentCarouselSlide];
+                if (slideToRegen) {
+                    startSaving(async () => {
+                        try {
+                            const { imageUrl, finalPrompt } = await regenerateCarouselSlide({
+                                offeringId: selectedOfferingId,
+                                basePrompt: regeneratePrompt,
+                                aspectRatio: dimension,
+                            });
     
-    const handleNewUpload = (newMedia: OfferingMedia) => {
-        setOfferings(prev => prev.map(o => o.id === newMedia.offering_id ? { ...o, offering_media: [...o.offering_media, newMedia] } : o));
-    };
-
-    const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
-        setWorkflowMode('campaign');
-        setSelectedCampaign(campaign);
-        setIsLoading(true);
-        try {
-            const allItems = await getArtisanItems(campaign.id);
-            setAllArtisanItems(allItems);
-            setFilteredArtisanItems(allItems);
-            if (allItems.length > 0) {
-                handleArtisanItemSelect(allItems[0].id);
-            } else {
-                handleArtisanItemSelect(null);
-            }
-        } catch (error: any) {
-             toast({ variant: 'destructive', title: 'Error loading campaign', description: error.message });
-        } finally {
-            setIsLoading(false);
-            setIsDialogOpen(false);
-        }
-    };
-
-    const startCustomWorkflow = () => {
-        setWorkflowMode('custom');
-        setSelectedCampaign(null);
-        setFilteredArtisanItems([]);
-        handleArtisanItemSelect(null);
-        setEditableCopy('');
-        setEditableHashtags('');
-        setIsDialogOpen(false);
-    };
-
-    const finalPromptForCurrentVisual = useMemo(() => {
-        if (!creative) return null;
-        if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
-            return creative.carouselSlides[currentCarouselSlide]?.finalPrompt;
-        }
-        return creative.finalPrompt;
-    }, [creative, selectedCreativeType, currentCarouselSlide]);
-
-    const handleDownload = (url: string, filename: string) => {
-        fetch(url).then(res => res.blob()).then(blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = objectUrl;
-            a.download = `${filename}.${blob.type.split('/')[1] || 'media'}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(objectUrl);
-            toast({ title: 'Download Started', description: `Downloading ${filename}` });
-        }).catch(e => toast({ variant: 'destructive', title: 'Download Failed', description: e.message }));
-    };
-    
-    // --- DERIVED STATE ---
-    const itemsForSelectedCampaign = useMemo(() => {
-        if (workflowMode !== 'campaign' || !selectedCampaign) return [];
-        return allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
-    }, [workflowMode, selectedCampaign, allArtisanItems]);
-
-    const totalCampaignItems = itemsForSelectedCampaign.length;
-
-    const doneCount = useMemo(() => {
-        return itemsForSelectedCampaign.filter(item => 
-            item.status === 'ready_for_review' || 
-            item.status === 'scheduled' || 
-            item.status === 'published'
-        ).length;
-    }, [itemsForSelectedCampaign]);
-
-    const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
-    
-    const availableChannels = useMemo(() => {
-        return [...new Set(itemsForSelectedCampaign.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
-    }, [itemsForSelectedCampaign]);
-
-    const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
-    const currentOffering = offerings.find(o => o.id === selectedOfferingId);
-    
-    const isUpdate = !!savedContent;
-    
-    const currentChannel = useMemo(() => {
-        if (workflowMode !== 'campaign' || !selectedArtisanItemId) return null;
-        const currentItem = allArtisanItems.find(item => item.id === selectedArtisanItemId);
-        return currentItem?.user_channel_settings?.channel_name || null;
-    }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
-
-    return (
-        <DashboardLayout>
-            <Toaster />
-             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-xl">
-                    <DialogHeader>
-                        <DialogTitle>Choose Your Creative Workflow</DialogTitle>
-                        <DialogDescription>
-                            Start by selecting an existing media plan or create content freely.
-                        </DialogDescription>
-                    </DialogHeader>
-                     <div className="space-y-6 pt-4">
-                        <div
-                            className="flex items-center gap-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
-                            onClick={startCustomWorkflow}
-                        >
-                            <Wand2 className="w-8 h-8 text-primary flex-shrink-0" />
-                            <div>
-                                <h3 className="font-semibold">Freestyle Creation</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Generate any type of content for any of your offerings on the fly.
-                                </p>
-                            </div>
-                        </div>
-
-                         <div className="space-y-4">
-                             <h3 className="font-semibold flex items-center gap-2 text-foreground">
-                                 <Sparkles className="w-5 h-5 text-primary" />
-                                 From a Media Plan
-                            </h3>
-                             <p className="text-sm text-muted-foreground">
-                                Select one of your AI-generated media plans to work on its content queue.
-                            </p>
-                            <div className="space-y-2 pt-2">
-                                {isLoading ? (
-                                    <div className="space-y-2">
-                                        <Skeleton className="h-10 w-full" />
-                                        <Skeleton className="h-10 w-full" />
-                                        <Skeleton className="h-10 w-full" />
-                                    </div>
-                                ) : mediaPlans.length > 0 ? (
-                                    mediaPlans.map(plan => (
-                                        <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
-                                            {plan.title}
-                                        </Button>
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-center text-muted-foreground border p-4 rounded-md mt-2">No media plans found. Create one in the AI Strategist.</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-             </Dialog>
-            {savedContent && (
-                <EditContentDialog 
-                    isOpen={isEditDialogOpen} 
-                    onOpenChange={setIsEditDialogOpen} 
-                    contentItem={savedContent}
-                    onContentUpdated={handleContentUpdated}
-                    onContentDeleted={() => {
-                        setIsEditDialogOpen(false);
-                        const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
-                        setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
-                        handleArtisanItemSelect(allArtisanItems[nextItemIndex + 1]?.id || allArtisanItems[0]?.id || null);
-                    }}
-                />
-            )}
-             <RegenerateDialog 
-                isOpen={isRegenerateOpen}
-                onOpenChange={setIsRegenerateOpen}
-                originalPrompt={finalPromptForCurrentVisual}
-                onRegenerate={handleGenerate}
-             />
-             {imageToChat && (
-                <ImageChatDialog
-                    isOpen={isImageChatOpen}
-                    onOpenChange={setIsImageChatOpen}
-                    imageUrl={imageToChat.url}
-                    onImageUpdate={(newImageUrl) => {
-                         setCreative(prev => {
-                            if (!prev) return null;
-                            if (imageToChat.slideIndex !== undefined) {
-                                const newSlides = [...(prev.carouselSlides || [])];
-                                newSlides[imageToChat.slideIndex] = { ...newSlides[imageToChat.slideIndex], imageUrl: newImageUrl };
+                            setCreative(prev => {
+                                if (!prev || !prev.carouselSlides) return prev;
+                                const newSlides = [...prev.carouselSlides];
+                                newSlides[currentCarouselSlide] = { ...newSlides[currentCarouselSlide], imageUrl, finalPrompt };
                                 return { ...prev, carouselSlides: newSlides };
-                            }
-                            return { ...prev, imageUrl: newImageUrl };
-                        });
-                        setIsImageChatOpen(false);
-                    }}
-                />
-             )}
-
-
-            <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-                <header>
-                    <h1 className="text-3xl font-bold">AI Artisan</h1>
-                    <p className="text-muted-foreground">Your creative studio for generating, refining, and scheduling content.</p>
-                </header>
-
-                {!workflowMode ? (
-                     <Card className="text-center py-20">
-                        <CardHeader>
-                            <Workflow className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <CardTitle className="mt-4 text-2xl font-bold">Select a Workflow</CardTitle>
-                            <CardDescription>Choose a media plan or start a freestyle session to begin creating content.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button onClick={() => setIsDialogOpen(true)}>
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Choose Workflow
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-8">
-                        <div className="col-span-full">
-                            {workflowMode === 'campaign' && selectedCampaign ? (
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between">
-                                        <div>
-                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
-                                                <GitBranch className="h-4 w-4" />
-                                                Working on Campaign
-                                            </CardDescription>
-                                            <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
-                                    </CardHeader>
-                                </Card>
-                            ) : workflowMode === 'custom' ? (
-                                <Card>
-                                     <CardHeader className="flex flex-row items-center justify-between">
-                                        <div>
-                                            <CardDescription className="flex items-center gap-2 text-xs font-semibold">
-                                                <Wand2 className="h-4 w-4" />
-                                                Working in Freestyle Mode
-                                            </CardDescription>
-                                            <CardTitle className="text-lg">Custom Content Creation</CardTitle>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
-                                    </CardHeader>
-                                </Card>
-                            ) : null}
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <aside className="space-y-8 lg:sticky top-24">
-                                <CreativeControls
-                                    workflowMode={workflowMode}
-                                    allArtisanItems={allArtisanItems}
-                                    channelFilter={channelFilter}
-                                    setChannelFilter={setChannelFilter}
-                                    availableChannels={availableChannels}
-                                    queueCount={queueCount}
-                                    doneCount={doneCount}
-                                    totalCampaignItems={totalCampaignItems}
-                                    isLoading={isLoading}
-                                    selectedArtisanItemId={selectedArtisanItemId}
-                                    handleArtisanItemSelect={handleArtisanItemSelect}
-                                    filteredArtisanItems={filteredArtisanItems}
-                                    offerings={offerings}
-                                    selectedOfferingId={selectedOfferingId}
-                                    setSelectedOfferingId={(id) => {
-                                        setSelectedOfferingId(id);
-                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { offering_id: id });
-                                    }}
-                                    creativePrompt={creativePrompt}
-                                    setCreativePrompt={(value) => {
-                                        setCreativePrompt(value);
-                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { creative_prompt: value });
-                                    }}
-                                    selectedCreativeFormat={selectedCreativeFormat}
-                                    setSelectedCreativeFormat={(formatValue) => {
-                                        const format = mediaFormatConfig.flatMap(c => c.formats).find(f => f.value === formatValue);
-                                        if (format) {
-                                            setSelectedCreativeFormat(format.value);
-                                            setSelectedCreativeType(format.creativeType);
-                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { media_format: format.value });
-                                        }
-                                    }}
-                                    setSelectedCreativeType={setSelectedCreativeType}
-                                    dimension={dimension}
-                                    setDimension={(dim) => {
-                                        setDimension(dim);
-                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { aspect_ratio: dim });
-                                    }}
-                                    scheduledAt={scheduledAt}
-                                    handleDateTimeChange={(date, time) => {
-                                        if (!date) return;
-                                        const [hours, minutes] = time.split(':').map(Number);
-                                        const newDate = new Date(date);
-                                        newDate.setHours(hours, minutes);
-                                        setScheduledAt(newDate);
-                                        if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { suggested_post_at: newDate.toISOString() });
-                                    }}
-                                    handleGenerate={handleGenerate}
-                                    isGenerateDisabled={isGenerateDisabled}
-                                    isSaving={isSaving}
-                                    handleSave={handleSave}
-                                    hasContent={!!hasContent}
-                                    onSelectCampaign={() => setIsDialogOpen(true)}
-                                    isSaved={!!savedContent}
-                                    isUpdate={isUpdate}
-                                    onDelete={handleDelete}
-                                    currentChannel={currentChannel}
-                                />
-                            </aside>
-                            <main className="space-y-6">
-                                <PostPreview
-                                    profile={profile}
-                                    dimension={dimension}
-                                    isLoading={isLoading}
-                                    selectedCreativeType={selectedCreativeType}
-                                    creative={{
-                                        ...creative,
-                                        landingPageHtml: editableHtml ?? creative?.landingPageHtml
-                                    }}
-                                    isCodeEditorOpen={isCodeEditorOpen}
-                                    onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
-                                    onImageEdit={(url, slideIndex) => {
-                                        setImageToChat({url, slideIndex});
-                                        setIsImageChatOpen(true);
-                                    }}
-                                    onRegenerateClick={() => setIsRegenerateOpen(true)}
-                                    onCurrentSlideChange={setCurrentCarouselSlide}
-                                    onDownload={handleDownload}
-                                    onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
-                                    onAddText={() => {}}
-                                    onEditPost={() => setIsEditDialogOpen(true)}
-                                    isSaved={!!savedContent}
-                                />
-                                {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
-                                     <CodeEditor
-                                        code={editableHtml || ''}
-                                        setCode={setEditableHtml}
-                                        theme={globalTheme}
-                                        onClose={() => setIsCodeEditorOpen(false)}
-                                    />
-                                )}
-                                {workflowMode && (
-                                    <TextContentEditor
-                                        editableContent={editableCopy}
-                                        editableHashtags={editableHashtags}
-                                        onContentChange={(value) => {
-                                            setEditableCopy(value);
-                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { copy: value });
-                                        }}
-                                        onHashtagsChange={(value) => {
-                                            setEditableHashtags(value);
-                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { hashtags: value });
-                                        }}
-                                    />
-                                )}
-                            </main>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </DashboardLayout>
-    );
-}
-
-// GEMINI_SAFE_END
-
-
+                            });
+                            
+                            toast({ title: 'Slide Regenerated!', description: 'The image for the current slide has been updated.' });
     
+                        } catch(e: any) {
+                            toast({ variant: 'destructive', title: 'Regeneration Failed', description: e.message });
+                        }
+                    });
+                    return;
+                }
+            }
+    
+            setIsLoading(true);
+            setCreative(null);
+            setEditableHtml(null);
+            setEditableCopy('');
+            setEditableHashtags('');
+    
+            try {
+                console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
+                const creativeTypes: CreativeType[] = [selectedCreativeType];
+                if (!['video', 'landing_page'].includes(selectedCreativeType) && !regeneratePrompt) {
+                    creativeTypes.push('text');
+                }
+                
+                const result = await generateCreativeForOffering({
+                    offeringId: selectedOfferingId,
+                    creativeTypes: creativeTypes,
+                    aspectRatio: dimension,
+                    creativePrompt: regeneratePrompt || creativePrompt,
+                    referenceImageUrl: referenceImageUrl || undefined,
+                });
+                
+                setCreative(result);
+                if (result.content) {
+                    setEditableCopy(result.content.primary || '');
+                }
+                if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
+                if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
+    
+                toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
+            } catch (error: any) {
+                console.error('[handleGenerate] -- ERROR --', error);
+                toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+    
+        const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
+            if (!selectedOfferingId) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
+                return;
+            }
+    
+            const hasContentToSave = editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
+    
+            if (!hasContentToSave) {
+                 toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
+                return;
+            }
+            
+            startSaving(async () => {
+                try {
+                    const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
+                    const draft = selectedArtisanItemId ? draftChanges[selectedArtisanItemId] : {};
+    
+                    // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
+                    const payload: any = {
+                        offeringId: selectedOfferingId,
+                        copy: editableCopy,
+                        hashtags: editableHashtags,
+                        concept: currentItemDetails?.concept || 'Custom Content',
+                        objective: currentItemDetails?.objective || null,
+                        status: status,
+                        scheduledAt: scheduleDate?.toISOString(),
+                        media_format: selectedCreativeFormat,
+                        aspect_ratio: dimension,
+                        ...draft,
+                    };
+    
+                    // 1. Start with existing media from the last saved state to ensure we don't lose anything.
+                    if (savedContent) {
+                        payload.imageUrl = savedContent.image_url;
+                        payload.carouselSlides = savedContent.carousel_slides;
+                        payload.videoScript = savedContent.video_script;
+                        payload.landingPageHtml = savedContent.landing_page_html;
+                    }
+                    
+                    // 2. Layer the newly generated media on top, overwriting only what's new.
+                    switch (selectedCreativeType) {
+                        case 'image':
+                            payload.imageUrl = creative?.imageUrl || payload.imageUrl;
+                            break;
+                        case 'carousel':
+                            payload.carouselSlides = creative?.carouselSlides || payload.carouselSlides;
+                            break;
+    
+                        case 'video':
+                            payload.videoScript = creative?.videoScript || payload.videoScript;
+                            break;
+                        case 'landing_page':
+                            payload.landingPageHtml = editableHtml || payload.landingPageHtml;
+                            break;
+                    }
+    
+                    let updatedItem: CalendarItem;
+                    const isUpdate = (workflowMode === 'campaign' && !!selectedArtisanItemId) || (workflowMode === 'custom' && !!savedContent);
+                    
+                    if (isUpdate && (savedContent || selectedArtisanItemId)) {
+                        const itemId = savedContent?.id || selectedArtisanItemId!;
+                        updatedItem = await updateContent(itemId, payload);
+                        setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
+                        toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
+                    } else {
+                        updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
+                        if (selectedArtisanItemId && !savedContent) {
+                             await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
+                             setAllArtisanItems(prev => prev.map(i => i.id === selectedArtisanItemId ? {...i, status: 'ready_for_review'} : i));
+                        }
+                        toast({ title: status === 'scheduled' ? 'Scheduled!' : 'Approved!', description: `The content has been saved.` });
+                    }
+                    
+                    setSavedContent(updatedItem as unknown as CalendarItem);
+    
+                    if (selectedArtisanItemId) {
+                        setDraftChanges(prev => {
+                            const newDrafts = { ...prev };
+                            delete newDrafts[selectedArtisanItemId];
+                            return newDrafts;
+                        });
+                    }
+                    
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
+                }
+            });
+        };
+    
+        const handleDelete = () => {
+            if (!savedContent) {
+                toast({ variant: 'destructive', title: 'Error', description: 'No saved content to delete.' });
+                return;
+            }
+            startSaving(async () => {
+                try {
+                    await deleteContent(savedContent.id);
+                    toast({ title: 'Content Deleted', description: 'The post has been successfully deleted.' });
+                    // Reset the UI
+                    const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
+                    setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
+                    // The useEffect hooks will handle selecting the next item automatically
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+                }
+            });
+        };
+        
+        const handleContentUpdated = (updatedItem: CalendarItem) => {
+            setEditableCopy(updatedItem.copy || '');
+            setEditableHashtags(updatedItem.hashtags || '');
+            setSavedContent(updatedItem as unknown as CalendarItem);
+            setIsEditDialogOpen(false);
+        };
+        
+        const handleNewUpload = (newMedia: OfferingMedia) => {
+            setOfferings(prev => prev.map(o => o.id === newMedia.offering_id ? { ...o, offering_media: [...o.offering_media, newMedia] } : o));
+        };
+    
+        const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
+            setWorkflowMode('campaign');
+            setSelectedCampaign(campaign);
+            setIsLoading(true);
+            try {
+                const allItems = await getArtisanItems(campaign.id);
+                setAllArtisanItems(allItems);
+                // The useEffect hooks will handle filtering and selection
+            } catch (error: any) {
+                 toast({ variant: 'destructive', title: 'Error loading campaign', description: error.message });
+            } finally {
+                setIsLoading(false);
+                setIsDialogOpen(false);
+            }
+        };
+    
+        const startCustomWorkflow = () => {
+            setWorkflowMode('custom');
+            setSelectedCampaign(null);
+            setFilteredArtisanItems([]);
+            setSelectedArtisanItemId(null); // This will trigger the loading effect to clear the form
+            setEditableCopy('');
+            setEditableHashtags('');
+            setIsDialogOpen(false);
+        };
+    
+        const finalPromptForCurrentVisual = useMemo(() => {
+            if (!creative) return null;
+            if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
+                return creative.carouselSlides[currentCarouselSlide]?.finalPrompt;
+            }
+            return creative.finalPrompt;
+        }, [creative, selectedCreativeType, currentCarouselSlide]);
+    
+        const handleDownload = (url: string, filename: string) => {
+            fetch(url).then(res => res.blob()).then(blob => {
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = `${filename}.${blob.type.split('/')[1] || 'media'}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+                toast({ title: 'Download Started', description: `Downloading ${filename}` });
+            }).catch(e => toast({ variant: 'destructive', title: 'Download Failed', description: e.message }));
+        };
+        
+        // --- DERIVED STATE ---
+        const itemsForSelectedCampaign = useMemo(() => {
+            if (workflowMode !== 'campaign' || !selectedCampaign) return [];
+            return allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
+        }, [workflowMode, selectedCampaign, allArtisanItems]);
+    
+        const totalCampaignItems = itemsForSelectedCampaign.length;
+    
+        const doneCount = useMemo(() => {
+            return itemsForSelectedCampaign.filter(item => 
+                item.status === 'ready_for_review' || 
+                item.status === 'scheduled' || 
+                item.status === 'published'
+            ).length;
+        }, [itemsForSelectedCampaign]);
+    
+        const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
+        
+        const availableChannels = useMemo(() => {
+            return [...new Set(itemsForSelectedCampaign.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
+        }, [itemsForSelectedCampaign]);
+    
+        const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
+        const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
+        const currentOffering = offerings.find(o => o.id === selectedOfferingId);
+        
+        const isUpdate = !!savedContent;
+        
+        const currentChannel = useMemo(() => {
+            if (workflowMode !== 'campaign' || !selectedArtisanItemId) return null;
+            const currentItem = allArtisanItems.find(item => item.id === selectedArtisanItemId);
+            return currentItem?.user_channel_settings?.channel_name || null;
+        }, [workflowMode, selectedArtisanItemId, allArtisanItems]);
+    
+        return (
+            <DashboardLayout>
+                <Toaster />
+                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="sm:max-w-xl">
+                        <DialogHeader>
+                            <DialogTitle>Choose Your Creative Workflow</DialogTitle>
+                            <DialogDescription>
+                                Start by selecting an existing media plan or create content freely.
+                            </DialogDescription>
+                        </DialogHeader>
+                         <div className="space-y-6 pt-4">
+                            <div
+                                className="flex items-center gap-4 p-4 rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer hover:bg-muted/50"
+                                onClick={startCustomWorkflow}
+                            >
+                                <Wand2 className="w-8 h-8 text-primary flex-shrink-0" />
+                                <div>
+                                    <h3 className="font-semibold">Freestyle Creation</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Generate any type of content for any of your offerings on the fly.
+                                    </p>
+                                </div>
+                            </div>
+    
+                             <div className="space-y-4">
+                                 <h3 className="font-semibold flex items-center gap-2 text-foreground">
+                                     <Sparkles className="w-5 h-5 text-primary" />
+                                     From a Media Plan
+                                </h3>
+                                 <p className="text-sm text-muted-foreground">
+                                    Select one of your AI-generated media plans to work on its content queue.
+                                </p>
+                                <div className="space-y-2 pt-2">
+                                    {isLoading ? (
+                                        <div className="space-y-2">
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                    ) : mediaPlans.length > 0 ? (
+                                        mediaPlans.map(plan => (
+                                            <Button key={plan.id} variant="outline" className="w-full justify-start" onClick={() => startCampaignWorkflow(plan)}>
+                                                {plan.title}
+                                            </Button>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-center text-muted-foreground border p-4 rounded-md mt-2">No media plans found. Create one in the AI Strategist.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </DialogContent>
+                 </Dialog>
+                {savedContent && (
+                    <EditContentDialog 
+                        isOpen={isEditDialogOpen} 
+                        onOpenChange={setIsEditDialogOpen} 
+                        contentItem={savedContent}
+                        onContentUpdated={handleContentUpdated}
+                        onContentDeleted={() => {
+                            setIsEditDialogOpen(false);
+                            const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
+                            setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
+                            // The useEffect hooks will handle selecting the next item
+                        }}
+                    />
+                )}
+                 <RegenerateDialog 
+                    isOpen={isRegenerateOpen}
+                    onOpenChange={setIsRegenerateOpen}
+                    originalPrompt={finalPromptForCurrentVisual}
+                    onRegenerate={handleGenerate}
+                 />
+                 {imageToChat && (
+                    <ImageChatDialog
+                        isOpen={isImageChatOpen}
+                        onOpenChange={setIsImageChatOpen}
+                        imageUrl={imageToChat.url}
+                        onImageUpdate={(newImageUrl) => {
+                             setCreative(prev => {
+                                if (!prev) return null;
+                                if (imageToChat.slideIndex !== undefined) {
+                                    const newSlides = [...(prev.carouselSlides || [])];
+                                    newSlides[imageToChat.slideIndex] = { ...newSlides[imageToChat.slideIndex], imageUrl: newImageUrl };
+                                    return { ...prev, carouselSlides: newSlides };
+                                }
+                                return { ...prev, imageUrl: newImageUrl };
+                            });
+                            setIsImageChatOpen(false);
+                        }}
+                    />
+                 )}
+    
+    
+                <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+                    <header>
+                        <h1 className="text-3xl font-bold">AI Artisan</h1>
+                        <p className="text-muted-foreground">Your creative studio for generating, refining, and scheduling content.</p>
+                    </header>
+    
+                    {!workflowMode ? (
+                         <Card className="text-center py-20">
+                            <CardHeader>
+                                <Workflow className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <CardTitle className="mt-4 text-2xl font-bold">Select a Workflow</CardTitle>
+                                <CardDescription>Choose a media plan or start a freestyle session to begin creating content.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button onClick={() => setIsDialogOpen(true)}>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Choose Workflow
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="space-y-8">
+                            <div className="col-span-full">
+                                {workflowMode === 'campaign' && selectedCampaign ? (
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between">
+                                            <div>
+                                                <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                                    <GitBranch className="h-4 w-4" />
+                                                    Working on Campaign
+                                                </CardDescription>
+                                                <CardTitle className="text-lg">{selectedCampaign.title}</CardTitle>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change</Button>
+                                        </CardHeader>
+                                    </Card>
+                                ) : workflowMode === 'custom' ? (
+                                    <Card>
+                                         <CardHeader className="flex flex-row items-center justify-between">
+                                            <div>
+                                                <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                                                    <Wand2 className="h-4 w-4" />
+                                                    Working in Freestyle Mode
+                                                </CardDescription>
+                                                <CardTitle className="text-lg">Custom Content Creation</CardTitle>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>Change Workflow</Button>
+                                        </CardHeader>
+                                    </Card>
+                                ) : null}
+                            </div>
+    
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                <aside className="space-y-8 lg:sticky top-24">
+                                    <CreativeControls
+                                        workflowMode={workflowMode}
+                                        allArtisanItems={allArtisanItems}
+                                        channelFilter={channelFilter}
+                                        setChannelFilter={setChannelFilter}
+                                        availableChannels={availableChannels}
+                                        queueCount={queueCount}
+                                        doneCount={doneCount}
+                                        totalCampaignItems={totalCampaignItems}
+                                        isLoading={isLoading}
+                                        selectedArtisanItemId={selectedArtisanItemId}
+                                        handleArtisanItemSelect={setSelectedArtisanItemId} // Directly set the ID
+                                        filteredArtisanItems={filteredArtisanItems}
+                                        offerings={offerings}
+                                        selectedOfferingId={selectedOfferingId}
+                                        setSelectedOfferingId={(id) => {
+                                            setSelectedOfferingId(id);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { offering_id: id });
+                                        }}
+                                        creativePrompt={creativePrompt}
+                                        setCreativePrompt={(value) => {
+                                            setCreativePrompt(value);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { creative_prompt: value });
+                                        }}
+                                        selectedCreativeFormat={selectedCreativeFormat}
+                                        setSelectedCreativeFormat={(formatValue) => {
+                                            const format = mediaFormatConfig.flatMap(c => c.formats).find(f => f.value === formatValue);
+                                            if (format) {
+                                                setSelectedCreativeFormat(format.value);
+                                                setSelectedCreativeType(format.creativeType);
+                                                if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { media_format: format.value });
+                                            }
+                                        }}
+                                        setSelectedCreativeType={setSelectedCreativeType}
+                                        dimension={dimension}
+                                        setDimension={(dim) => {
+                                            setDimension(dim);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { aspect_ratio: dim });
+                                        }}
+                                        scheduledAt={scheduledAt}
+                                        handleDateTimeChange={(date, time) => {
+                                            if (!date) return;
+                                            const [hours, minutes] = time.split(':').map(Number);
+                                            const newDate = new Date(date);
+                                            newDate.setHours(hours, minutes);
+                                            setScheduledAt(newDate);
+                                            if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { suggested_post_at: newDate.toISOString() });
+                                        }}
+                                        handleGenerate={handleGenerate}
+                                        isGenerateDisabled={isGenerateDisabled}
+                                        isSaving={isSaving}
+                                        handleSave={handleSave}
+                                        hasContent={!!hasContent}
+                                        onSelectCampaign={() => setIsDialogOpen(true)}
+                                        isSaved={!!savedContent}
+                                        isUpdate={isUpdate}
+                                        onDelete={handleDelete}
+                                        currentChannel={currentChannel}
+                                    />
+                                </aside>
+                                <main className="space-y-6">
+                                    <PostPreview
+                                        profile={profile}
+                                        dimension={dimension}
+                                        isLoading={isLoading}
+                                        selectedCreativeType={selectedCreativeType}
+                                        creative={{
+                                            ...creative,
+                                            landingPageHtml: editableHtml ?? creative?.landingPageHtml
+                                        }}
+                                        isCodeEditorOpen={isCodeEditorOpen}
+                                        onCodeEditorToggle={() => setIsCodeEditorOpen(!isCodeEditorOpen)}
+                                        onImageEdit={(url, slideIndex) => {
+                                            setImageToChat({url, slideIndex});
+                                            setIsImageChatOpen(true);
+                                        }}
+                                        onRegenerateClick={() => setIsRegenerateOpen(true)}
+                                        onCurrentSlideChange={setCurrentCarouselSlide}
+                                        onDownload={handleDownload}
+                                        onSelectReferenceImage={() => setIsMediaSelectorOpen(true)}
+                                        onAddText={() => {}}
+                                        onEditPost={() => setIsEditDialogOpen(true)}
+                                        isSaved={!!savedContent}
+                                    />
+                                    {isCodeEditorOpen && selectedCreativeType === 'landing_page' && (
+                                         <CodeEditor
+                                            code={editableHtml || ''}
+                                            setCode={setEditableHtml}
+                                            theme={globalTheme}
+                                            onClose={() => setIsCodeEditorOpen(false)}
+                                        />
+                                    )}
+                                    {workflowMode && (
+                                        <TextContentEditor
+                                            editableContent={editableCopy}
+                                            editableHashtags={editableHashtags}
+                                            onContentChange={(value) => {
+                                                setEditableCopy(value);
+                                                if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { copy: value });
+                                            }}
+                                            onHashtagsChange={(value) => {
+                                                setEditableHashtags(value);
+                                                if (selectedArtisanItemId) updateDraft(selectedArtisanItemId, { hashtags: value });
+                                            }}
+                                        />
+                                    )}
+                                </main>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </DashboardLayout>
+        );
+    }
+    
+    // GEMINI_SAFE_END
+    
+            
