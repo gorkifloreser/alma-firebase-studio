@@ -13,7 +13,7 @@ import {
   type GenerateValueContentInput,
   GenerateValueContentOutputSchema,
   type GenerateValueContentOutput,
-} from './generate-value-content-types';
+} from './types';
 
 
 const prompt = ai.definePrompt({
