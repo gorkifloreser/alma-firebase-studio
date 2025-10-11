@@ -110,6 +110,10 @@ export default function ArtisanClientPage({
     // Other dialog states (unchanged)
     // ...
 
+    useEffect(() => {
+        console.log('[DEBUG] State for editableHashtags updated to:', editableHashtags);
+    }, [editableHashtags]);
+
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
         console.log(`[DEBUG] Item selected. ID: ${artisanItemId}`);
         setCreative(null);
@@ -143,11 +147,25 @@ export default function ArtisanClientPage({
                     console.log("[DEBUG] Fetched contentItem from DB:", contentItem); // Enhanced log
                     if (contentItem) {
                         console.log(`[DEBUG] Populating form with contentItem data. Copy: "${contentItem.copy}", Hashtags: "${contentItem.hashtags}"`); // Enhanced log
+                        
+                        let finalCopy = contentItem.copy;
+                        if (!finalCopy && contentItem.content_body) {
+                            try {
+                                // Ensure content_body is treated as a string before parsing
+                                const parsedBody = JSON.parse(String(contentItem.content_body));
+                                finalCopy = parsedBody.primary || '';
+                                console.log('[DEBUG] ');
+                                console.log('[DEBUG] Used fallback to parse content_body.primary.');
+                            } catch (e) {
+                                console.error('[DEBUG] Failed to parse content_body JSON:', e);
+                            }
+                        }
+
                         // ... (parsing logic for visuals is unchanged)
                         setCreative({
                             // ...
                         });
-                        setEditableContent(contentItem.copy || '');
+                        setEditableContent(finalCopy || '');
                         setEditableHashtags(contentItem.hashtags || '');
                         setObjective(contentItem.objective || '');
                         setConcept(contentItem.concept || '');
@@ -299,6 +317,8 @@ export default function ArtisanClientPage({
     
     // ... (other derived state variables are mostly unchanged)
 
+    console.log(`[DEBUG] ArtisanClientPage rendering. isLoading: ${isLoading}. Props for TextContentEditor:`, { editableContent, editableHashtags });
+
     return (
         <>
             {/* Dialogs are unchanged */}
@@ -340,12 +360,30 @@ export default function ArtisanClientPage({
                                         onClose={() => setIsCodeEditorOpen(false)}
                                     />
                                 )}
-                                <TextContentEditor
-                                    editableContent={editableContent}
-                                    editableHashtags={editableHashtags}
-                                    onContentChange={setEditableContent}
-                                    onHashtagsChange={setEditableHashtags}
-                                />
+                                {isLoading ? (
+                                    <Card>
+                                        <CardHeader>
+                                            <Skeleton className="h-6 w-1/3" />
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-1/4" />
+                                                <Skeleton className="h-28 w-full" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-1/4" />
+                                                <Skeleton className="h-20 w-full" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <TextContentEditor
+                                        editableContent={editableContent}
+                                        editableHashtags={editableHashtags}
+                                        onContentChange={setEditableContent}
+                                        onHashtagsChange={setEditableHashtags}
+                                    />
+                                )}
                             </main>
                         </div>
                     </div>

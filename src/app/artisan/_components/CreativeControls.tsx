@@ -106,6 +106,7 @@ type CreativeControlsProps = {
         onSelectCampaign: () => void;
         isSaved: boolean;
         onDelete: () => void;
+        isUpdate: boolean;
     };
     
     export const CreativeControls: React.FC<CreativeControlsProps> = ({
@@ -140,7 +141,8 @@ type CreativeControlsProps = {
         hasContent,
         onSelectCampaign,
         isSaved,
-        onDelete
+        onDelete,
+        isUpdate
     }) => {
         return (
             <Card>
@@ -152,7 +154,7 @@ type CreativeControlsProps = {
                         <Tabs value={channelFilter} onValueChange={setChannelFilter} className="w-full">
                             <div className="flex justify-center">
                                 <TabsList>
-                                    <TabsTrigger value="all">All ({queueCount})</TabsTrigger>
+                                    <TabsTrigger value="all">Pending ({queueCount})</TabsTrigger>
                                     {availableChannels.map(channel => (
                                         <TabsTrigger key={channel} value={channel} className="capitalize">{channel} ({allArtisanItems.filter(i => i.user_channel_settings?.channel_name === channel).length})</TabsTrigger>
                                     ))}
@@ -173,10 +175,8 @@ type CreativeControlsProps = {
                             </Label>
                             <Select onValueChange={(value) => handleArtisanItemSelect(value)} disabled={isLoading} value={selectedArtisanItemId || ''}>
                                 <SelectTrigger id="queue-select">
-                                    <SelectValue asChild>
-                                        <span className="truncate">
-                                            {filteredArtisanItems.find(item => item.id === selectedArtisanItemId)?.concept || "Select a content idea..."}
-                                        </span>
+                                    <SelectValue>
+                                        {filteredArtisanItems.find(item => item.id === selectedArtisanItemId)?.concept || "Select a content idea..."}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -312,13 +312,13 @@ type CreativeControlsProps = {
                     <Separator />
     
                     <div className="w-full grid grid-cols-2 gap-2">
-                        <Button 
+                         <Button 
                             onClick={() => handleSave('ready_for_review')} 
-                            variant={isSaved ? "outline" : "default"} 
+                            variant={isUpdate ? "secondary" : "default"} 
                             className="w-full" 
                             disabled={isSaving || !hasContent}
                         >
-                            {isSaving ? (isSaved ? 'Updating...' : 'Saving...') : (isSaved ? 'Update Draft' : 'Save Draft')}
+                            {isSaving ? (isUpdate ? 'Updating...' : 'Saving...') : (isUpdate ? 'Update Draft' : 'Save Draft')}
                         </Button>
                         <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContent || !scheduledAt}>
                             Schedule Post

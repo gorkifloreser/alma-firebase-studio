@@ -19,6 +19,7 @@ export const TextContentEditor: React.FC<TextContentEditorProps> = ({
     onContentChange,
     onHashtagsChange,
 }) => {
+    console.log('[DEBUG] TextContentEditor received props:', { editableContent, editableHashtags });
     return (
         <Card>
             <CardHeader>
