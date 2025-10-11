@@ -126,12 +126,8 @@ export const PostPreview = ({
     isLoading,
     selectedCreativeType,
     creative,
-    editableContent,
-    secondaryLangName,
     isCodeEditorOpen,
     onCodeEditorToggle,
-    handleContentChange,
-    handleCarouselSlideChange,
     onImageEdit,
     onRegenerateClick,
     onCurrentSlideChange,
@@ -146,12 +142,8 @@ export const PostPreview = ({
     isLoading: boolean,
     selectedCreativeType: CreativeType,
     creative: GenerateCreativeOutput | null,
-    editableContent: GenerateCreativeOutput['content'] | null,
-    secondaryLangName: string | null,
     isCodeEditorOpen: boolean,
     onCodeEditorToggle: () => void,
-    handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
-    handleCarouselSlideChange: (index: number, field: 'title' | 'body', value: string) => void;
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
     onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
@@ -363,22 +355,6 @@ export const PostPreview = ({
                                  <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" />
                             </button>
                         </div>
-                        
-                        {/* Editable Text Area at the bottom */}
-                         <div className="flex-1 flex flex-col justify-end p-4">
-                            <Textarea
-                                value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
-                                onChange={(e) => {
-                                    if (currentSlideData) {
-                                        handleCarouselSlideChange(current, 'body', e.target.value)
-                                    } else {
-                                        handleContentChange('primary', e.target.value)
-                                    }
-                                }}
-                                className="w-full text-lg text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
-                                placeholder="Your story text..."
-                            />
-                        </div>
                     </div>
                 </div>
             </TooltipProvider>
@@ -447,34 +423,6 @@ export const PostPreview = ({
                                 <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
                             </div>
                             <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                         <div className="w-full space-y-2">
-                            {currentSlideData ? (
-                                <Textarea
-                                    value={currentSlideData.body}
-                                    onChange={(e) => handleCarouselSlideChange(current, 'body', e.target.value)}
-                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                    placeholder={`Text for slide ${current + 1}...`}
-                                />
-                            ) : (
-                                <Textarea 
-                                    value={editableContent?.primary || ''}
-                                    onChange={(e) => handleContentChange('primary', e.target.value)}
-                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                    placeholder="Your post copy will appear here..."
-                                />
-                            )}
-                            {secondaryLangName && editableContent?.secondary && !currentSlideData && (
-                                <>
-                                    <Separator className="my-2"/>
-                                    <Textarea 
-                                        value={editableContent.secondary}
-                                        onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent text-muted-foreground"
-                                        placeholder={`Your ${secondaryLangName} post copy...`}
-                                    />
-                                </>
-                            )}
                         </div>
                     </CardFooter>
                 </Card>

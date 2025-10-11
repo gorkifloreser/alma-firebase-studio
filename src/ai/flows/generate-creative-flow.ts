@@ -306,7 +306,7 @@ Generate the storyboard in the specified JSON format.
                 const videoGenPromise = ai.generate({
                     model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-2.0-generate-001'),
                     prompt: [{ text: scene.video_prompt }],
-                    config: { aspectRatio, durationSeconds: 3 },
+                    config: { aspectRatio },
                 });
 
                 const imageGenPromise = ai.generate({
