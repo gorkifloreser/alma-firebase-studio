@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -481,7 +482,11 @@ export function OrchestrateMediaPlanDialog({
                             <TabsTrigger value="archived">Archived</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button onClick={() => setView('generate')} className="flex-shrink-0">
+                    <Button onClick={() => {
+                        setCurrentPlan(null);
+                        setPlanIdToEdit(null);
+                        setView('generate');
+                    }} className="flex-shrink-0">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Create New Campaign
                     </Button>
