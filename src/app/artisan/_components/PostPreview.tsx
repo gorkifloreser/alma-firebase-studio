@@ -291,17 +291,8 @@ export const PostPreview = ({
                          {renderVisualContent()}
                     </div>
                     
-                    {/* Action buttons */}
-                    <div className="absolute top-4 right-4 z-10">
-                        {isSaved && (
-                            <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onEditPost}>
-                                <Edit className="h-5 w-5" />
-                            </Button>
-                        )}
-                    </div>
-                    
-                     {hasVisuals && (
-                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {hasVisuals && (
+                        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full" onClick={() => onImageEdit(imageUrlToEdit!, current)}>
@@ -364,13 +355,6 @@ export const PostPreview = ({
     return (
         <TooltipProvider>
             <div className="relative">
-                {isSaved && (
-                    <div className="absolute top-2 right-2 z-10">
-                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onEditPost}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
                 <Card className="w-full max-w-md mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         <Avatar>
