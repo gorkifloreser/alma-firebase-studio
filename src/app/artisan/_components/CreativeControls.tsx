@@ -56,6 +56,7 @@ import {
     X,
     GitBranch,
     Trash2,
+    Save,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -311,44 +312,45 @@ type CreativeControlsProps = {
     
                     <Separator />
     
-                    <div className="w-full grid grid-cols-2 gap-2">
+                    <div className="w-full flex items-center justify-between gap-2">
                          <Button 
                             onClick={() => handleSave('ready_for_review')} 
                             variant={isUpdate ? "secondary" : "default"} 
-                            className="w-full" 
+                            className="flex-grow" 
                             disabled={isSaving || !hasContent}
                         >
+                            <Save className="mr-2 h-4 w-4" />
                             {isSaving ? (isUpdate ? 'Updating...' : 'Saving...') : (isUpdate ? 'Update Draft' : 'Save Draft')}
                         </Button>
-                        <Button onClick={() => handleSave('scheduled', scheduledAt)} className="w-full" disabled={isSaving || !hasContent || !scheduledAt}>
+                        <Button onClick={() => handleSave('scheduled', scheduledAt)} className="flex-grow" disabled={isSaving || !hasContent || !scheduledAt}>
                             Schedule Post
                         </Button>
+                        {isSaved && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" disabled={isSaving}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the
+                                            content from your media plan.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={onDelete}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </div>
-                    {isSaved && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" className="w-full" disabled={isSaving}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Post
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the
-                                        content from your media plan.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={onDelete}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                 </CardFooter>
             </Card>
         );
     };
+    
     
