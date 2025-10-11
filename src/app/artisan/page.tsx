@@ -12,9 +12,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
-import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem } from './actions';
+import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem, updateContent, deleteContent } from './actions';
 import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
-import { updateContent, type CalendarItem } from '../calendar/actions';
+import type { CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
 import type { GenerateCreativeOutput, CarouselSlide } from '@/ai/flows/generate-creative-flow';
@@ -284,7 +284,6 @@ export default function ArtisanPage() {
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [allArtisanItems, setAllArtisanItems] = useState<ArtisanItem[]>([]);
     const [mediaPlans, setMediaPlans] = useState<MediaPlanSelectItem[]>([]);
-    const [totalCampaignItems, setTotalCampaignItems] = useState(0);
     const [savedContent, setSavedContent] = useState<CalendarItem | null>(null);
 
     const [isDialogOpen, setIsDialogOpen] = useState(true);
@@ -365,6 +364,7 @@ export default function ArtisanPage() {
                             title: slide.title || '',
                             body: slide.body || '',
                             imageUrl: slide.imageUrl || slide.image_url || undefined,
+                            creativePrompt: slide.creativePrompt || undefined,
                             finalPrompt: slide.finalPrompt || undefined,
                         }));
 
@@ -373,15 +373,24 @@ export default function ArtisanPage() {
                             carouselSlides: mappedSlides,
                             videoScript: contentItem.video_script,
                             landingPageHtml: contentItem.landing_page_html,
+                            content: contentItem.content_body,
+                            finalPrompt: contentItem.creative_prompt
                         });
-                        setEditableCopy(contentItem.copy || '');
-                        setEditableHashtags(contentItem.hashtags || '');
+                        
+                        const fullCopy = contentItem.copy || '';
+                        const parts = fullCopy.split('\n\n');
+                        const copyText = parts.slice(0, -1).join('\n\n');
+                        const hashtagsText = parts.length > 1 ? parts[parts.length - 1] : '';
+
+                        setEditableCopy(copyText);
+                        setEditableHashtags(hashtagsText);
+                        
                         if (contentItem.landing_page_html) {
                             setEditableHtml(contentItem.landing_page_html);
                         }
                         setSavedContent(contentItem as unknown as CalendarItem);
                     } else {
-                        console.log("[DEBUG] No saved contentItem found in DB, using item data.");
+                        console.log("[DEBUG] No saved contentItem found in DB, using item data from plan.");
                         setEditableCopy(item.copy || '');
                         setEditableHashtags(item.hashtags || '');
                     }
@@ -391,7 +400,7 @@ export default function ArtisanPage() {
                     setEditableHashtags(item.hashtags || '');
                 }
             } else {
-                 console.log("[DEBUG] Item status is not review/scheduled/published. Using item data.");
+                 console.log("[DEBUG] Item status is not review/scheduled/published. Using item data from plan.");
                  setEditableCopy(item.copy || '');
                  setEditableHashtags(item.hashtags || '');
             }
@@ -505,11 +514,7 @@ export default function ArtisanPage() {
             console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
             const creativeTypes: CreativeType[] = [selectedCreativeType];
             if (!['video', 'landing_page'].includes(selectedCreativeType) && !regeneratePrompt) {
-                if (selectedCreativeType === 'text') {
-                    // Do nothing, just text
-                } else {
-                    creativeTypes.push('text');
-                }
+                creativeTypes.push('text');
             }
             
             const result = await generateCreativeForOffering({
@@ -523,8 +528,6 @@ export default function ArtisanPage() {
             setCreative(result);
             if (result.content) {
                 setEditableCopy(result.content.primary || '');
-                // Assuming the AI doesn't consistently return hashtags in the content object
-                // We leave hashtags blank for now, or you could try to extract them.
             }
             if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
             if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
@@ -554,9 +557,14 @@ export default function ArtisanPage() {
         startSaving(async () => {
             try {
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-                const payload: SaveContentInput = {
+                
+                const fullCopy = `${editableCopy}\n\n${editableHashtags}`;
+                
+                const payload = {
                     offeringId: selectedOfferingId,
-                    copy: `${editableCopy}\n\n${editableHashtags}`,
+                    copy: fullCopy,
+                    content_body: { primary: editableCopy, secondary: null },
+                    hashtags: editableHashtags,
                     creative_prompt: creativePrompt,
                     concept: currentItemDetails?.concept || 'Custom Content',
                     objective: currentItemDetails?.objective || null,
@@ -593,42 +601,66 @@ export default function ArtisanPage() {
     };
 
     const handleDelete = () => {
-        // Implementation remains the same
+        if (!savedContent) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No saved content to delete.' });
+            return;
+        }
+        startSaving(async () => {
+            try {
+                await deleteContent(savedContent.id);
+                toast({ title: 'Content Deleted', description: 'The post has been successfully deleted.' });
+                // Reset the UI
+                const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
+                setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
+                handleArtisanItemSelect(allArtisanItems[nextItemIndex + 1]?.id || allArtisanItems[0]?.id || null);
+
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
+            }
+        });
     };
     
     const handleContentUpdated = (updatedItem: CalendarItem) => {
-        // Implementation remains the same
+        const fullCopy = updatedItem.copy || '';
+        const parts = fullCopy.split('\n\n');
+        const copyText = parts.slice(0, -1).join('\n\n');
+        const hashtagsText = parts.length > 1 ? parts[parts.length - 1] : '';
+
+        setEditableCopy(copyText);
+        setEditableHashtags(hashtagsText);
+        setSavedContent(updatedItem as unknown as CalendarItem);
+        setIsEditDialogOpen(false);
     };
     
     const handleNewUpload = (newMedia: OfferingMedia) => {
-        // Implementation remains the same
+        setOfferings(prev => prev.map(o => o.id === newMedia.offering_id ? { ...o, offering_media: [...o.offering_media, newMedia] } : o));
     };
 
     const startCampaignWorkflow = async (campaign: MediaPlanSelectItem) => {
         setWorkflowMode('campaign');
         setSelectedCampaign(campaign);
-        const itemsForCampaign = allArtisanItems.filter(item => item.media_plan_id === campaign.id);
-        setFilteredArtisanItems(itemsForCampaign);
-        if (itemsForCampaign.length > 0) {
-            handleArtisanItemSelect(itemsForCampaign[0].id);
-        } else {
-            handleArtisanItemSelect(null);
-        }
+        setIsLoading(true);
         try {
-            const allItems = await getMediaPlanItems(campaign.id);
-            setTotalCampaignItems(allItems.length);
-        } catch (e) {
-            setTotalCampaignItems(itemsForCampaign.length);
+            const allItems = await getArtisanItems(campaign.id);
+            setAllArtisanItems(allItems);
+            setFilteredArtisanItems(allItems);
+            if (allItems.length > 0) {
+                handleArtisanItemSelect(allItems[0].id);
+            } else {
+                handleArtisanItemSelect(null);
+            }
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: 'Error loading campaign', description: error.message });
+        } finally {
+            setIsLoading(false);
+            setIsDialogOpen(false);
         }
-        setChannelFilter('all');
-        setIsDialogOpen(false);
     };
 
     const startCustomWorkflow = () => {
         setWorkflowMode('custom');
         setSelectedCampaign(null);
         setFilteredArtisanItems([]);
-        setTotalCampaignItems(0);
         handleArtisanItemSelect(null);
         setEditableCopy('');
         setEditableHashtags('');
@@ -685,19 +717,32 @@ export default function ArtisanPage() {
             toast({ title: 'Download Started', description: `Downloading ${filename}` });
         }).catch(e => toast({ variant: 'destructive', title: 'Download Failed', description: e.message }));
     };
+    
+    // --- DERIVED STATE ---
+    const itemsForSelectedCampaign = useMemo(() => {
+        if (workflowMode !== 'campaign' || !selectedCampaign) return [];
+        return allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
+    }, [workflowMode, selectedCampaign, allArtisanItems]);
+
+    const totalCampaignItems = itemsForSelectedCampaign.length;
+
+    const doneCount = useMemo(() => {
+        return itemsForSelectedCampaign.filter(item => 
+            item.status === 'ready_for_review' || 
+            item.status === 'scheduled' || 
+            item.status === 'published'
+        ).length;
+    }, [itemsForSelectedCampaign]);
+
+    const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
+    
+    const availableChannels = useMemo(() => {
+        return [...new Set(itemsForSelectedCampaign.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
+    }, [itemsForSelectedCampaign]);
 
     const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
-    const hasContent = editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript;
+    const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
     const currentOffering = offerings.find(o => o.id === selectedOfferingId);
-    const doneCount = totalCampaignItems > 0 ? allArtisanItems.filter(item => item.media_plan_id === selectedCampaign?.id && (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published')).length : 0;
-    const queueCount = totalCampaignItems > 0 ? totalCampaignItems - doneCount : 0;
-    const availableChannels = useMemo(() => {
-        if (selectedCampaign) {
-            const items = allArtisanItems.filter(item => item.media_plan_id === selectedCampaign.id);
-            return [...new Set(items.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
-        }
-        return [];
-    }, [allArtisanItems, selectedCampaign]);
     
     const isUpdate = !!savedContent;
 
@@ -760,8 +805,13 @@ export default function ArtisanPage() {
                     isOpen={isEditDialogOpen} 
                     onOpenChange={setIsEditDialogOpen} 
                     contentItem={savedContent}
-                    onContentUpdated={()=>{}}
-                    onContentDeleted={() => {}}
+                    onContentUpdated={handleContentUpdated}
+                    onContentDeleted={() => {
+                        setIsEditDialogOpen(false);
+                        const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
+                        setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
+                        handleArtisanItemSelect(allArtisanItems[nextItemIndex + 1]?.id || allArtisanItems[0]?.id || null);
+                    }}
                 />
             )}
              <RegenerateDialog 

@@ -35,6 +35,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
     Bot,
     Calendar as CalendarIcon,
     CheckCircle2,
@@ -44,6 +55,7 @@ import {
     RefreshCw,
     X,
     GitBranch,
+    Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -313,9 +325,27 @@ type CreativeControlsProps = {
                         </Button>
                     </div>
                     {isSaved && (
-                        <Button variant="destructive" className="w-full" onClick={onDelete} disabled={isSaving}>
-                            Delete Post
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" className="w-full" disabled={isSaving}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Post
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the
+                                        content from your media plan.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={onDelete}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     )}
                 </CardFooter>
             </Card>

@@ -90,13 +90,15 @@ export default function ArtisanClientPage({
     const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
     const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
 
-    const [editableCopy, setEditableCopy] = useState('');
+    const [editableContent, setEditableContent] = useState('');
     const [editableHashtags, setEditableHashtags] = useState('');
     const [creative, setCreative] = useState<GenerateCreativeOutput | null>(null);
     const [editableHtml, setEditableHtml] = useState<string | null>(null);
     const [selectedCreativeType, setSelectedCreativeType] = useState<CreativeType>('text');
     const [dimension, setDimension] = useState<'1:1' | '4:5' | '9:16' | '16:9'>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
+    const [objective, setObjective] = useState('');
+    const [concept, setConcept] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
@@ -111,10 +113,12 @@ export default function ArtisanClientPage({
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
         console.log(`[DEBUG] Item selected. ID: ${artisanItemId}`);
         setCreative(null);
-        setEditableCopy('');
+        setEditableContent('');
         setEditableHashtags('');
         setEditableHtml(null);
         setScheduledAt(null);
+        setObjective('');
+        setConcept('');
         setReferenceImageUrl(null);
         setSelectedArtisanItemId(artisanItemId);
         setSavedContent(null);
@@ -126,6 +130,8 @@ export default function ArtisanClientPage({
         }
     
         const item = allArtisanItems.find(q => q.id === artisanItemId);
+        console.log('[DEBUG] Found item in allArtisanItems:', item); // Enhanced log
+
         if (item) {
             setIsLoading(true);
             setCreativePrompt(item.creative_prompt || '');
@@ -134,34 +140,47 @@ export default function ArtisanClientPage({
             if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
                     const contentItem = await getContentItem(item.id);
-                    console.log("[DEBUG] Found saved contentItem in DB. Use this object to check what data is being populated to the form:", contentItem);
+                    console.log("[DEBUG] Fetched contentItem from DB:", contentItem); // Enhanced log
                     if (contentItem) {
+                        console.log(`[DEBUG] Populating form with contentItem data. Copy: "${contentItem.copy}", Hashtags: "${contentItem.hashtags}"`); // Enhanced log
                         // ... (parsing logic for visuals is unchanged)
                         setCreative({
                             // ...
                         });
-                        setEditableCopy(contentItem.copy || '');
+                        setEditableContent(contentItem.copy || '');
                         setEditableHashtags(contentItem.hashtags || '');
+                        setObjective(contentItem.objective || '');
+                        setConcept(contentItem.concept || '');
                         if (contentItem.landing_page_html) setEditableHtml(contentItem.landing_page_html);
                         setSavedContent(contentItem as unknown as CalendarItem);
                     } else {
-                        console.log("[DEBUG] No saved contentItem found in DB, using item data.");
-                        setEditableCopy(item.copy || '');
+                        console.log("[DEBUG] No saved contentItem found in DB, using base item data.");
+                        console.log(`[DEBUG] Values to be set -> Copy: "${item.copy}", Hashtags: "${item.hashtags}"`); // Enhanced log
+                        setEditableContent(item.copy || '');
                         setEditableHashtags(item.hashtags || '');
+                        setObjective(item.objective || '');
+                        setConcept(item.concept || '');
                     }
                 } catch (error: any) {
                     toast({ variant: 'destructive', title: 'Error loading saved content', description: error.message });
-                    setEditableCopy(item.copy || '');
+                    setEditableContent(item.copy || '');
                     setEditableHashtags(item.hashtags || '');
+                    setObjective(item.objective || '');
+                    setConcept(item.concept || '');
                 }
             } else {
-                 console.log("[DEBUG] Item status is not review/scheduled/published. Using item data.");
-                 setEditableCopy(item.copy || '');
+                 console.log("[DEBUG] Item status is not 'ready_for_review' or similar. Using base item data."); // Enhanced log
+                 console.log(`[DEBUG] Values to be set -> Copy: "${item.copy}", Hashtags: "${item.hashtags}"`); // Enhanced log
+                 setEditableContent(item.copy || '');
                  setEditableHashtags(item.hashtags || '');
+                 setObjective(item.objective || '');
+                 setConcept(item.concept || '');
             }
     
             // ... (logic for setting creative type and dimension is unchanged)
             setIsLoading(false);
+        } else {
+            console.log('[DEBUG] No item found in allArtisanItems for the selected ID.'); // Enhanced log
         }
     }, [allArtisanItems, toast]);
 
@@ -172,7 +191,7 @@ export default function ArtisanClientPage({
         setIsLoading(true);
         setCreative(null);
         setEditableHtml(null);
-        setEditableCopy('');
+        setEditableContent('');
         setEditableHashtags('');
 
         try {
@@ -184,7 +203,7 @@ export default function ArtisanClientPage({
             setCreative(result);
             if (result.content) {
                 // Assuming the AI returns a structure with copy and hashtags
-                setEditableCopy(result.content.primary || '');
+                setEditableContent(result.content.primary || '');
                 // This part might need adjustment based on actual AI output for hashtags
                 setEditableHashtags((result.content as any).hashtags || '');
             }
@@ -205,7 +224,7 @@ export default function ArtisanClientPage({
             return;
         }
 
-        const hasContentToSave = editableCopy || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl;
+        const hasContentToSave = editableContent || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl;
 
         if (!hasContentToSave) {
              toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
@@ -217,11 +236,11 @@ export default function ArtisanClientPage({
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
                 const payload = {
                     offeringId: selectedOfferingId,
-                    copy: editableCopy,
+                    copy: editableContent,
                     hashtags: editableHashtags,
                     creative_prompt: creativePrompt,
-                    concept: currentItemDetails?.concept || 'Custom Content',
-                    objective: currentItemDetails?.objective || null,
+                    concept: concept,
+                    objective: objective,
                     imageUrl: creative?.imageUrl || null,
                     carouselSlides: creative?.carouselSlides || null,
                     videoScript: creative?.videoScript || null,
@@ -276,7 +295,7 @@ export default function ArtisanClientPage({
 
     // ... (other handlers like handleContentUpdated, handleCarouselSlideChange are simplified or removed)
 
-    const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl);
+    const hasContent = !!(editableContent || editableHtml || creative?.imageUrl || creative?.carouselSlides || creative?.videoUrl);
     
     // ... (other derived state variables are mostly unchanged)
 
@@ -322,9 +341,9 @@ export default function ArtisanClientPage({
                                     />
                                 )}
                                 <TextContentEditor
-                                    copy={editableCopy}
-                                    hashtags={editableHashtags}
-                                    onCopyChange={setEditableCopy}
+                                    editableContent={editableContent}
+                                    editableHashtags={editableHashtags}
+                                    onContentChange={setEditableContent}
                                     onHashtagsChange={setEditableHashtags}
                                 />
                             </main>
