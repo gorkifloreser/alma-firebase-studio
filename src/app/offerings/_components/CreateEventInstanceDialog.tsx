@@ -49,6 +49,7 @@ interface CreateEventInstanceDialogProps {
     eventTemplates: Offering[];
     preselectedDate?: Date;
     onEventInstanceCreated: () => void;
+    onOpenNewOfferingDialog: () => void;
 }
 
 export function CreateEventInstanceDialog({
@@ -56,7 +57,8 @@ export function CreateEventInstanceDialog({
     onOpenChange,
     eventTemplates,
     preselectedDate,
-    onEventInstanceCreated
+    onEventInstanceCreated,
+    onOpenNewOfferingDialog
 }: CreateEventInstanceDialogProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [schedule, setSchedule] = useState<Omit<OfferingSchedule, 'id'>>(initialScheduleState);
@@ -125,6 +127,11 @@ export function CreateEventInstanceDialog({
         setSchedule(prev => ({ ...prev, prices: prev.prices.filter((_, i) => i !== priceIndex) }));
     };
 
+    const handleCreateNewTemplate = () => {
+        onOpenChange(false);
+        onOpenNewOfferingDialog();
+    };
+
     const handleSubmit = () => {
         if (!selectedTemplateId) {
             toast({ variant: 'destructive', title: 'Please select an event template.' });
@@ -162,6 +169,16 @@ export function CreateEventInstanceDialog({
                                 ))}
                             </SelectContent>
                         </Select>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Didn't find the event?{' '}
+                            <button
+                                type="button"
+                                onClick={handleCreateNewTemplate}
+                                className="text-primary hover:underline"
+                            >
+                                Create New Offering (Event)
+                            </button>
+                        </p>
                     </div>
 
                     <Separator />

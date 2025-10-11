@@ -58,6 +58,16 @@ interface OrchestrateMediaPlanDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     funnel: Funnel;
     onPlanSaved: (newFunnelData: Funnel) => void;
+    actions: {
+        getStrategy: typeof getStrategy;
+        saveMediaPlan: typeof saveMediaPlan;
+        archiveMediaPlan: typeof archiveMediaPlan;
+        deleteMediaPlan: typeof deleteMediaPlan;
+        generateMediaPlan: typeof generateMediaPlanAction;
+        regeneratePlanItem: typeof regeneratePlanItem;
+        addMultipleToArtisanQueue: typeof addMultipleToArtisanQueue;
+        getUserChannels: typeof getUserChannels;
+    }
 }
 
 type PlanItemWithStatus = PlanItem & {
@@ -80,6 +90,7 @@ export function OrchestrateMediaPlanDialog({
     onOpenChange,
     funnel: initialFunnel,
     onPlanSaved,
+    actions,
 }: OrchestrateMediaPlanDialogProps) {
     const [funnel, setFunnel] = useState<Funnel>(initialFunnel);
     const [fullFunnelData, setFullFunnelData] = useState<Funnel | null>(null);
@@ -111,13 +122,13 @@ export function OrchestrateMediaPlanDialog({
     useEffect(() => {
         if (isOpen) {
             setIsDataLoading(true);
-            getStrategy(funnel.id).then(({ data }) => {
+            actions.getStrategy(funnel.id).then(({ data }) => {
                 if (data) {
                     setFullFunnelData(data);
                 }
             }).finally(() => setIsDataLoading(false));
         }
-    }, [isOpen, funnel.id]);
+    }, [isOpen, funnel.id, actions]);
 
 
     useEffect(() => {
@@ -140,7 +151,7 @@ export function OrchestrateMediaPlanDialog({
                 setPlanIdToEdit(null);
             }
             
-            getUserChannels().then(channels => {
+            actions.getUserChannels().then(channels => {
                 const channelNames = channels.map(c => c.id);
                 setAvailableChannels(channelNames);
                 setSelectedChannels(fullFunnelData.strategy_brief?.channels?.filter(c => channelNames.includes(c)) || []);
@@ -188,7 +199,7 @@ export function OrchestrateMediaPlanDialog({
     const handleGeneratePlan = () => {
         startGenerating(async () => {
             try {
-                const result = await generateMediaPlanAction({
+                const result = await actions.generateMediaPlan({
                     funnelId: funnel.id,
                     startDate: dateRange?.from?.toISOString(),
                     endDate: dateRange?.to?.toISOString(),
@@ -228,7 +239,7 @@ export function OrchestrateMediaPlanDialog({
         await startSaving(async () => {
             try {
                 
-                savedPlan = await saveMediaPlan({
+                savedPlan = await actions.saveMediaPlan({
                     id: planIdToEdit,
                     funnelId: funnel.id,
                     title: planTitle,
@@ -248,7 +259,7 @@ export function OrchestrateMediaPlanDialog({
                     status: item.status || 'draft',
                 } as PlanItemWithStatus)));
 
-                const { data: updatedFunnel } = await getStrategy(funnel.id);
+                const { data: updatedFunnel } = await actions.getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -264,9 +275,9 @@ export function OrchestrateMediaPlanDialog({
     const handleArchivePlan = (planId: string) => {
         startArchiving(async () => {
             try {
-                await archiveMediaPlan(planId);
+                await actions.archiveMediaPlan(planId);
                 toast({ title: "Campaign Archived", description: "The campaign has been moved to the archive." });
-                const { data: updatedFunnel } = await getStrategy(funnel.id);
+                const { data: updatedFunnel } = await actions.getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -312,9 +323,9 @@ export function OrchestrateMediaPlanDialog({
     const handleDeletePlan = (planId: string) => {
         startDeleting(async () => {
             try {
-                await deleteMediaPlan(planId);
+                await actions.deleteMediaPlan(planId);
                 toast({ title: "Campaign Deleted", description: "The campaign has been successfully deleted." });
-                const { data: updatedFunnel } = await getStrategy(funnel.id);
+                const { data: updatedFunnel } = await actions.getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -334,7 +345,7 @@ export function OrchestrateMediaPlanDialog({
     const handleRegenerateItem = async (itemToRegen: PlanItemWithStatus) => {
         setIsRegenerating(prev => ({ ...prev, [itemToRegen.id]: true }));
         try {
-            const newItem = await regeneratePlanItem({ 
+            const newItem = await actions.regeneratePlanItem({ 
                 funnelId: funnel.id, 
                 channel: itemToRegen.user_channel_settings!.channel_name, 
                 stageName: itemToRegen.stage_name,
@@ -377,7 +388,7 @@ export function OrchestrateMediaPlanDialog({
         
         startSaving(async () => {
             try {
-                const { count } = await addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
+                const { count } = await actions.addMultipleToArtisanQueue(funnel.id, funnel.offering_id, itemIds);
                 
                 toast({ title: isCurrentChannelApproved ? 'Campaign Updated!' : 'Campaign Approved!', description: `${count} item(s) for ${activeTab} have been added/updated in the Artisan Queue.` });
                 
@@ -385,7 +396,7 @@ export function OrchestrateMediaPlanDialog({
                     itemIds.includes(item.id) ? { ...item, status: 'approved' } : item
                 ));
 
-                const { data: updatedFunnel } = await getStrategy(funnel.id);
+                const { data: updatedFunnel } = await actions.getStrategy(funnel.id);
                 if (updatedFunnel) {
                     onPlanSaved(updatedFunnel);
                     setFunnel(updatedFunnel);
@@ -427,7 +438,8 @@ export function OrchestrateMediaPlanDialog({
             id: `temp-${Date.now()}-${Math.random()}`,
             offering_id: funnel.offering_id || '',
             user_channel_settings: { channel_name: channel },
-            format: getFormatsForChannel(channel)[0] || 'Blog Post',
+            media_format: 'Image',
+            aspect_ratio: '1:1',
             copy: '',
             hashtags: '',
             creative_prompt: '',
@@ -669,7 +681,10 @@ export function OrchestrateMediaPlanDialog({
                                                 </div>
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
                                                 <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
-                                                <div className="space-y-1"><Label htmlFor={`format-${item.id}`}>Format</Label><Select value={item.format} onValueChange={(v) => handleItemChange(item.id, 'format', v)}><SelectTrigger id={`format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1"><Label htmlFor={`media_format-${item.id}`}>Format</Label><Select value={item.media_format} onValueChange={(v) => handleItemChange(item.id, 'media_format', v)}><SelectTrigger id={`media_format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
+                                                    <div className="space-y-1"><Label htmlFor={`aspect_ratio-${item.id}`}>Aspect Ratio</Label><Select value={item.aspect_ratio || ''} onValueChange={(v) => handleItemChange(item.id, 'aspect_ratio', v)}><SelectTrigger id={`aspect_ratio-${item.id}`}><SelectValue placeholder="Select ratio..." /></SelectTrigger><SelectContent><SelectItem value="1:1">1:1 (Square)</SelectItem><SelectItem value="4:5">4:5 (Portrait)</SelectItem><SelectItem value="9:16">9:16 (Story/Reel)</SelectItem><SelectItem value="16:9">16:9 (Landscape)</SelectItem></SelectContent></Select></div>
+                                                </div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`prompt-${item.id}`}>Creative AI Prompt</Label><Textarea id={`prompt-${item.id}`} value={item.creative_prompt} onChange={(e) => handleItemChange(item.id, 'creative_prompt', e.target.value)} className="text-sm font-mono" rows={3} /></div>

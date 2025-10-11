@@ -142,6 +142,8 @@ CREATE TABLE public.media_plan_items (
   carousel_slides_text text,
   landing_page_html text,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  media_format text,
+  aspect_ratio text,
   CONSTRAINT media_plan_items_pkey PRIMARY KEY (id),
   CONSTRAINT media_plan_items_media_plan_id_fkey FOREIGN KEY (media_plan_id) REFERENCES public.media_plans(id),
   CONSTRAINT media_plan_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),

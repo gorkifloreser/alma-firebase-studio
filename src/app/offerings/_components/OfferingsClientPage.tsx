@@ -409,6 +409,7 @@ export function OfferingsClientPage({ initialOfferings, initialFunnels, profile,
                 eventTemplates={eventTemplates}
                 preselectedDate={preselectedDate}
                 onEventInstanceCreated={handleEventInstanceCreated}
+                onOpenNewOfferingDialog={handleOpenCreateDialog}
             />
              {offeringToEdit && scheduleToEdit && (
                 <EditEventInstanceDialog

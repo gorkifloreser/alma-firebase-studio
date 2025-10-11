@@ -123,7 +123,8 @@ type SaveContentInput = {
     status: 'draft' | 'ready_for_review' | 'scheduled' | 'published';
     mediaPlanItemId?: string | null;
     scheduledAt?: string | null;
-    format?: string;
+    media_format?: string;
+    aspect_ratio?: string;
 };
 
 
@@ -177,7 +178,8 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         status, 
         scheduledAt,
         offeringId,
-        format,
+        media_format,
+        aspect_ratio,
     } = input;
 
     let currentMediaPlanItemId = mediaPlanItemId;
@@ -227,11 +229,9 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
             status: status,
             scheduled_at: scheduledAt || null,
             updated_at: new Date().toISOString(),
+            media_format: media_format,
+            aspect_ratio: aspect_ratio,
         };
-
-        if(format) {
-            payload.format = format;
-        }
     
     const { data, error } = await supabase
         .from('media_plan_items')
