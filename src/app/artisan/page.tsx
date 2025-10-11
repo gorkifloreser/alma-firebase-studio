@@ -1,4 +1,3 @@
-
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -323,7 +322,6 @@ export default function ArtisanPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
     const handleArtisanItemSelect = useCallback(async (artisanItemId: string | null) => {
-        console.log(`[DEBUG] Item selected. ID: ${artisanItemId}`);
         setCreative(null);
         setEditableCopy('');
         setEditableHashtags('');
@@ -332,65 +330,46 @@ export default function ArtisanPage() {
         setReferenceImageUrl(null);
         setSelectedArtisanItemId(artisanItemId);
         setSavedContent(null);
-    
+
         if (!artisanItemId) {
             setSelectedOfferingId(undefined);
             setCreativePrompt('');
             return;
         }
-    
+
         const item = allArtisanItems.find(q => q.id === artisanItemId);
         if (item) {
             setIsLoading(true);
             setCreativePrompt(item.creative_prompt || '');
             setSelectedOfferingId(item.offering_id ?? undefined);
-    
+
+            // If the item has been processed before, load its saved content.
             if (item.status === 'ready_for_review' || item.status === 'scheduled' || item.status === 'published') {
                 try {
                     const contentItem = await getContentItem(item.id);
                     console.log("[DEBUG] Found saved contentItem in DB. Use this object to check what data is being populated to the form:", contentItem);
                     if (contentItem) {
+                        setEditableCopy(contentItem.copy || '');
+                        setEditableHashtags(contentItem.hashtags || '');
+
                         let parsedSlides = contentItem.carousel_slides;
                         if (typeof parsedSlides === 'string') {
-                            try {
-                                parsedSlides = JSON.parse(parsedSlides);
-                            } catch (e) {
-                                console.error("Failed to parse carousel slides from string:", e);
-                                parsedSlides = [];
-                            }
+                            try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
                         }
-
-                        const mappedSlides = (Array.isArray(parsedSlides) ? parsedSlides : []).map((slide: any) => ({
-                            title: slide.title || '',
-                            body: slide.body || '',
-                            imageUrl: slide.imageUrl || slide.image_url || undefined,
-                            creativePrompt: slide.creativePrompt || undefined,
-                            finalPrompt: slide.finalPrompt || undefined,
-                        }));
 
                         setCreative({
                             imageUrl: contentItem.image_url,
-                            carouselSlides: mappedSlides,
+                            carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                             videoScript: contentItem.video_script,
                             landingPageHtml: contentItem.landing_page_html,
                             content: contentItem.content_body,
                             finalPrompt: contentItem.creative_prompt
                         });
                         
-                        const fullCopy = contentItem.copy || '';
-                        const parts = fullCopy.split('\n\n');
-                        const copyText = parts.slice(0, -1).join('\n\n');
-                        const hashtagsText = parts.length > 1 ? parts[parts.length - 1] : '';
-
-                        setEditableCopy(copyText);
-                        setEditableHashtags(hashtagsText);
-                        
-                        if (contentItem.landing_page_html) {
-                            setEditableHtml(contentItem.landing_page_html);
-                        }
+                        if (contentItem.landing_page_html) setEditableHtml(contentItem.landing_page_html);
                         setSavedContent(contentItem as unknown as CalendarItem);
                     } else {
-                        console.log("[DEBUG] No saved contentItem found in DB, using item data from plan.");
+                        // Fallback to base item data if contentItem is null
                         setEditableCopy(item.copy || '');
                         setEditableHashtags(item.hashtags || '');
                     }
@@ -400,28 +379,28 @@ export default function ArtisanPage() {
                     setEditableHashtags(item.hashtags || '');
                 }
             } else {
-                 console.log("[DEBUG] Item status is not review/scheduled/published. Using item data from plan.");
-                 setEditableCopy(item.copy || '');
-                 setEditableHashtags(item.hashtags || '');
+                // For items not yet processed, use their base data.
+                setEditableCopy(item.copy || '');
+                setEditableHashtags(item.hashtags || '');
             }
-    
+
+            // Set format and dimension based on the selected item
             const mediaFormat = (item.media_format || '').toLowerCase();
             const aspectRatio = item.aspect_ratio;
-    
+
             let newCreativeType: CreativeType = 'text';
             if (mediaFormat.includes('video') || mediaFormat.includes('reel')) newCreativeType = 'video';
             else if (mediaFormat.includes('carousel')) newCreativeType = 'carousel';
             else if (mediaFormat.includes('image')) newCreativeType = 'image';
             else if (mediaFormat.includes('landing')) newCreativeType = 'landing_page';
-            
             setSelectedCreativeType(newCreativeType);
-    
+
             if (aspectRatio === '1:1') setDimension('1:1');
             else if (aspectRatio === '4:5') setDimension('4:5');
             else if (aspectRatio === '9:16') setDimension('9:16');
             else if (aspectRatio === '16:9') setDimension('16:9');
             else setDimension('1:1');
-    
+
             if (item.suggested_post_at && isValid(parseISO(item.suggested_post_at))) {
                 setScheduledAt(parseISO(item.suggested_post_at));
             }
@@ -558,12 +537,9 @@ export default function ArtisanPage() {
             try {
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
                 
-                const fullCopy = `${editableCopy}\n\n${editableHashtags}`;
-                
                 const payload = {
                     offeringId: selectedOfferingId,
-                    copy: fullCopy,
-                    content_body: { primary: editableCopy, secondary: null },
+                    copy: editableCopy,
                     hashtags: editableHashtags,
                     creative_prompt: creativePrompt,
                     concept: currentItemDetails?.concept || 'Custom Content',
@@ -621,13 +597,8 @@ export default function ArtisanPage() {
     };
     
     const handleContentUpdated = (updatedItem: CalendarItem) => {
-        const fullCopy = updatedItem.copy || '';
-        const parts = fullCopy.split('\n\n');
-        const copyText = parts.slice(0, -1).join('\n\n');
-        const hashtagsText = parts.length > 1 ? parts[parts.length - 1] : '';
-
-        setEditableCopy(copyText);
-        setEditableHashtags(hashtagsText);
+        setEditableCopy(updatedItem.copy || '');
+        setEditableHashtags(updatedItem.hashtags || '');
         setSavedContent(updatedItem as unknown as CalendarItem);
         setIsEditDialogOpen(false);
     };
@@ -971,9 +942,9 @@ export default function ArtisanPage() {
                                 )}
                                 {workflowMode && (
                                     <TextContentEditor
-                                        copy={editableCopy}
-                                        hashtags={editableHashtags}
-                                        onCopyChange={setEditableCopy}
+                                        editableContent={editableCopy}
+                                        editableHashtags={editableHashtags}
+                                        onContentChange={setEditableCopy}
                                         onHashtagsChange={setEditableHashtags}
                                     />
                                 )}

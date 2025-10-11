@@ -154,7 +154,6 @@ export default function ArtisanClientPage({
                                 // Ensure content_body is treated as a string before parsing
                                 const parsedBody = JSON.parse(String(contentItem.content_body));
                                 finalCopy = parsedBody.primary || '';
-                                console.log('[DEBUG] ');
                                 console.log('[DEBUG] Used fallback to parse content_body.primary.');
                             } catch (e) {
                                 console.error('[DEBUG] Failed to parse content_body JSON:', e);
@@ -317,8 +316,6 @@ export default function ArtisanClientPage({
     
     // ... (other derived state variables are mostly unchanged)
 
-    console.log(`[DEBUG] ArtisanClientPage rendering. isLoading: ${isLoading}. Props for TextContentEditor:`, { editableContent, editableHashtags });
-
     return (
         <>
             {/* Dialogs are unchanged */}
@@ -360,30 +357,12 @@ export default function ArtisanClientPage({
                                         onClose={() => setIsCodeEditorOpen(false)}
                                     />
                                 )}
-                                {isLoading ? (
-                                    <Card>
-                                        <CardHeader>
-                                            <Skeleton className="h-6 w-1/3" />
-                                        </CardHeader>
-                                        <CardContent className="space-y-6">
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-4 w-1/4" />
-                                                <Skeleton className="h-28 w-full" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-4 w-1/4" />
-                                                <Skeleton className="h-20 w-full" />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <TextContentEditor
-                                        editableContent={editableContent}
-                                        editableHashtags={editableHashtags}
-                                        onContentChange={setEditableContent}
-                                        onHashtagsChange={setEditableHashtags}
-                                    />
-                                )}
+                                <TextContentEditor
+                                    editableContent={editableContent}
+                                    editableHashtags={editableHashtags}
+                                    onContentChange={setEditableContent}
+                                    onHashtagsChange={setEditableHashtags}
+                                />
                             </main>
                         </div>
                     </div>
