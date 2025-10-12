@@ -49,7 +49,6 @@ export function MultiContactEditor({ contacts, onContactsChange }: MultiContactE
 
     return (
         <div className="space-y-4">
-            <Label className="text-lg font-semibold">Contact Information</Label>
             <Card>
                 <CardContent className="p-4 space-y-4">
                     {contacts.length > 0 ? (

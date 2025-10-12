@@ -174,7 +174,7 @@ export function BrandHeartForm({
                 </div>
             </div>
 
-            <Accordion type="multiple" className="w-full space-y-4" defaultValue={['brand_brief', 'mission', 'vision', 'values', 'tone_of_voice', 'visual_identity', 'contact_info']}>
+            <Accordion type="multiple" className="w-full space-y-4">
                 <BilingualFormField 
                     id="brand_brief" 
                     label="Brand Brief" 
