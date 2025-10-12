@@ -360,43 +360,44 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
 
                     {/* Show "Update" for campaign content OR for saved custom content */}
                     {(workflowMode === 'campaign' || isUpdate) && (
-                        <Button 
-                            onClick={() => handleSave('ready_for_review')} 
-                            variant="secondary"
-                            className="flex-grow" 
-                            disabled={isSaving || !hasContent}
-                        >
-                            <Save className="mr-2 h-4 w-4" />
-                            {isSaving ? 'Updating...' : 'Update Draft'}
-                        </Button>
+                        <>
+                            {isSaved && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="icon" disabled={isSaving}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the
+                                                content from your media plan.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={onDelete}>Continue</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                            <Button 
+                                onClick={() => handleSave('ready_for_review')} 
+                                variant="secondary"
+                                className="flex-grow" 
+                                disabled={isSaving || !hasContent}
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                {isSaving ? 'Updating...' : 'Update Draft'}
+                            </Button>
+                        </>
                     )}
 
                     <Button onClick={() => handleSave('scheduled', scheduledAt)} className="flex-grow" disabled={isSaving || !hasContent || !scheduledAt}>
                         Schedule Post
                     </Button>
-                    
-                    {isSaved && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" disabled={isSaving}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the
-                                        content from your media plan.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={onDelete}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                 </div>
             </CardFooter>
         </Card>

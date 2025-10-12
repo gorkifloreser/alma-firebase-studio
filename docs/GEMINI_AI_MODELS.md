@@ -10,7 +10,12 @@
             "supportedGenerationMethods": [
                 "embedText",
                 "countTextTokens"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.5-pro-preview-03-25",
@@ -29,7 +34,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash-preview-05-20",
@@ -48,7 +58,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash",
@@ -67,7 +82,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash-lite-preview-06-17",
@@ -86,7 +106,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.5-pro-preview-05-06",
@@ -105,7 +130,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-pro-preview-06-05",
@@ -124,7 +154,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-pro",
@@ -143,7 +178,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.0-flash-exp",
@@ -160,7 +200,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 2000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash",
@@ -178,7 +223,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 2000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash-001",
@@ -196,7 +246,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 2000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash-exp-image-generation",
@@ -213,7 +268,22 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            },
+            "supportedAspectRatios": [
+                "21:9",
+                "16:9",
+                "4:3",
+                "3:2",
+                "9:16",
+                "3:4",
+                "2:3",
+                "1:1"
+            ]
         },
         {
             "name": "models/gemini-2.0-flash-lite-001",
@@ -231,7 +301,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash-lite",
@@ -249,7 +324,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash-preview-image-generation",
@@ -266,7 +346,22 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 64,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            },
+            "supportedAspectRatios": [
+                "21:9",
+                "16:9",
+                "4:3",
+                "3:2",
+                "9:16",
+                "3:4",
+                "2:3",
+                "1:1"
+            ]
         },
         {
             "name": "models/gemini-2.0-flash-lite-preview-02-05",
@@ -284,7 +379,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-flash-lite-preview",
@@ -302,7 +402,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 40,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.0-pro-exp",
@@ -321,7 +426,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.0-pro-exp-02-05",
@@ -340,7 +450,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-exp-1206",
@@ -359,12 +474,17 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.0-flash-thinking-exp-01-21",
             "version": "2.5-preview-05-20",
-            "displayName": "Gemini 2.5 Flash Preview 05-20",
+            "displayName": "Gemini 2.0 Flash Thinking Experimental 01-21",
             "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
             "inputTokenLimit": 1048576,
             "outputTokenLimit": 65536,
@@ -378,12 +498,17 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.0-flash-thinking-exp",
             "version": "2.5-preview-05-20",
-            "displayName": "Gemini 2.5 Flash Preview 05-20",
+            "displayName": "Gemini 2.0 Flash Thinking Experimental",
             "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
             "inputTokenLimit": 1048576,
             "outputTokenLimit": 65536,
@@ -397,12 +522,17 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.0-flash-thinking-exp-1219",
             "version": "2.5-preview-05-20",
-            "displayName": "Gemini 2.5 Flash Preview 05-20",
+            "displayName": "Gemini 2.0 Flash Thinking Experimental 1219",
             "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
             "inputTokenLimit": 1048576,
             "outputTokenLimit": 65536,
@@ -416,7 +546,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash-preview-tts",
@@ -432,7 +567,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 64,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 10,
+                "TPM": 10000,
+                "RPD": 100
+            }
         },
         {
             "name": "models/gemini-2.5-pro-preview-tts",
@@ -448,7 +588,12 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 64,
-            "maxTemperature": 2
+            "maxTemperature": 2,
+            "quotas": {
+                "RPM": 10,
+                "TPM": 10000,
+                "RPD": 50
+            }
         },
         {
             "name": "models/learnlm-2.0-flash-experimental",
@@ -478,7 +623,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemma-3-4b-it",
@@ -492,7 +642,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemma-3-12b-it",
@@ -506,7 +661,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemma-3-27b-it",
@@ -520,7 +680,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemma-3n-e4b-it",
@@ -534,7 +699,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemma-3n-e2b-it",
@@ -548,7 +718,12 @@
             ],
             "temperature": 1,
             "topP": 0.95,
-            "topK": 64
+            "topK": 64,
+            "quotas": {
+                "RPM": 30,
+                "TPM": 15000,
+                "RPD": 14400
+            }
         },
         {
             "name": "models/gemini-flash-latest",
@@ -567,7 +742,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-flash-lite-latest",
@@ -586,7 +766,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-pro-latest",
@@ -605,7 +790,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash-lite",
@@ -624,7 +814,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-2.5-flash-image-preview",
@@ -640,7 +835,22 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 64,
-            "maxTemperature": 1
+            "maxTemperature": 1,
+            "quotas": {
+                "RPM": 500,
+                "TPM": 500000,
+                "RPD": 2000
+            },
+            "supportedAspectRatios": [
+                "21:9",
+                "16:9",
+                "4:3",
+                "3:2",
+                "9:16",
+                "3:4",
+                "2:3",
+                "1:1"
+            ]
         },
         {
             "name": "models/gemini-2.5-flash-image",
@@ -656,7 +866,22 @@
             "temperature": 1,
             "topP": 0.95,
             "topK": 64,
-            "maxTemperature": 1
+            "maxTemperature": 1,
+            "quotas": {
+                "RPM": 500,
+                "TPM": 500000,
+                "RPD": 2000
+            },
+            "supportedAspectRatios": [
+                "21:9",
+                "16:9",
+                "4:3",
+                "3:2",
+                "9:16",
+                "3:4",
+                "2:3",
+                "1:1"
+            ]
         },
         {
             "name": "models/gemini-2.5-flash-preview-09-2025",
@@ -675,7 +900,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 1000,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-flash-lite-preview-09-2025",
@@ -694,7 +924,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 4000,
+                "TPM": 4000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-robotics-er-1.5-preview",
@@ -711,7 +946,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 300,
+                "TPM": 1000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/gemini-2.5-computer-use-preview-10-2025",
@@ -728,7 +968,12 @@
             "topP": 0.95,
             "topK": 64,
             "maxTemperature": 2,
-            "thinking": true
+            "thinking": true,
+            "quotas": {
+                "RPM": 150,
+                "TPM": 2000000,
+                "RPD": 10000
+            }
         },
         {
             "name": "models/embedding-001",
@@ -739,7 +984,12 @@
             "outputTokenLimit": 1,
             "supportedGenerationMethods": [
                 "embedContent"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/text-embedding-004",
@@ -750,7 +1000,12 @@
             "outputTokenLimit": 1,
             "supportedGenerationMethods": [
                 "embedContent"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-embedding-exp-03-07",
@@ -763,7 +1018,12 @@
                 "embedContent",
                 "countTextTokens",
                 "countTokens"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-embedding-exp",
@@ -776,7 +1036,12 @@
                 "embedContent",
                 "countTextTokens",
                 "countTokens"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/gemini-embedding-001",
@@ -790,7 +1055,12 @@
                 "countTextTokens",
                 "countTokens",
                 "asyncBatchEmbedContent"
-            ]
+            ],
+            "quotas": {
+                "RPM": 3000,
+                "TPM": 1000000,
+                "RPD": "*"
+            }
         },
         {
             "name": "models/aqa",
@@ -815,6 +1085,18 @@
             "outputTokenLimit": 8192,
             "supportedGenerationMethods": [
                 "predict"
+            ],
+            "quotas": {
+                "RPM": 20,
+                "TPM": "*",
+                "RPD": "*"
+            },
+            "supportedAspectRatios": [
+                "16:9",
+                "9:16",
+                "4:3",
+                "3:4",
+                "1:1"
             ]
         },
         {
@@ -826,6 +1108,52 @@
             "outputTokenLimit": 8192,
             "supportedGenerationMethods": [
                 "predict"
+            ],
+            "quotas": {
+                "RPM": 10,
+                "TPM": "*",
+                "RPD": 70
+            },
+            "supportedAspectRatios": [
+                "16:9",
+                "9:16",
+                "4:3",
+                "3:4",
+                "1:1"
+            ]
+        },
+        {
+            "name": "models/veo-3.0-generate-001",
+            "version": "001",
+            "displayName": "Veo 3.0",
+            "description": "Google's highest quality video generation model. Produces 1080p video with audio and lip-sync.",
+            "supportedGenerationMethods": [
+                "predict"
+            ],
+            "quotas": {
+                "RPM": 2,
+                "RPD": 50
+            },
+            "supportedAspectRatios": [
+                "16:9",
+                "9:16"
+            ]
+        },
+        {
+            "name": "models/veo-3.0-fast-generate-001",
+            "version": "001",
+            "displayName": "Veo 3.0 Fast",
+            "description": "Optimized for speed in video generation.",
+            "supportedGenerationMethods": [
+                "predict"
+            ],
+            "quotas": {
+                "RPM": 2,
+                "RPD": 50
+            },
+            "supportedAspectRatios": [
+                "16:9",
+                "9:16"
             ]
         }
     ],
