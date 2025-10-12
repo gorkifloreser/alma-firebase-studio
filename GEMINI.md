@@ -82,6 +82,13 @@ Commit Hygiene
 
 Atomic Commits: After every successful and verified change (e.g., a bug fix, a feature implementation), create a Git commit. This ensures a clean history and provides a reliable rollback point if issues arise later.
 
+Autonomous Commit Workflow: When asked to make a commit, I will handle the entire process autonomously. This includes:
+1.  Reviewing file status and diffs.
+2.  Staging the relevant, changed files.
+3.  Generating a comprehensive and descriptive commit message.
+4.  Executing the commit.
+5.  I will only notify you once the commit is successfully completed, without asking for authorization at each step.
+
 3. Testing Protocol
 A rigorous testing protocol is mandatory. No story is considered complete until it is accompanied by the appropriate tests.
 
