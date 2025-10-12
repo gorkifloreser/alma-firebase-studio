@@ -10,6 +10,8 @@ Ownership and Accountability: Take pride in your work. Every line of code should
 
 Async First: As a modern web application, all asynchronous operations must be handled gracefully using async/await patterns. Non-blocking code is the standard.
 
+Lazy-Loading First: To ensure a fast and responsive user experience, components, images, and routes should be lazy-loaded whenever possible. Prioritize loading only the essential resources for the initial view, deferring other assets until they are needed. This improves initial page load times and reduces the overall data footprint.
+
 Continuous Improvement: We are committed to iterative improvement. Regularly refactor and enhance the codebase to maintain a high standard of quality.
 
 Research First: When having a complex task be commited to make a deep research in the code base and the documentation to have the best workflow done, with production ready quality code and following the Clarity and Simplicity principle. Respect functional code by adding a comment everytime a function or workflow is functional, that way you'll know what to avoid manupulate in the future, just focusing on the current tasks.
