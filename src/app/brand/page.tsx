@@ -1,4 +1,3 @@
-
 // GEMINI_SAFE_START
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
@@ -18,11 +17,10 @@ export default async function BrandHeartPage() {
         redirect('/login');
     }
 
-    // Fetch all necessary data in parallel
-    const [profile, brandHeart, documents, userChannels] = await Promise.all([
+    // Fetch all necessary data in parallel, EXCEPT for knowledge base documents
+    const [profile, brandHeart, userChannels] = await Promise.all([
         getProfile(),
         getBrandHeart(),
-        getBrandDocuments(),
         getUserChannels(),
     ]);
 
@@ -44,7 +42,6 @@ export default async function BrandHeartPage() {
             generateAudienceAction: generateAudienceSuggestion,
         },
         knowledgeBase: {
-            initialDocuments: documents,
             getBrandDocumentsAction: getBrandDocuments,
             deleteBrandDocumentAction: deleteBrandDocument,
             uploadBrandDocumentAction: uploadBrandDocument,

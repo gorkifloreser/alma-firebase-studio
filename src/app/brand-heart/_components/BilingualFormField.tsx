@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Bot } from 'lucide-react';
 import type { getProfile, getBrandHeart } from '../actions';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type BrandHeartData = NonNullable<Awaited<ReturnType<typeof getBrandHeart>>>;
@@ -40,66 +40,70 @@ export function BilingualFormField({
 }: BilingualFormFieldProps) {
     
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <Label htmlFor={`${id}_primary`} className="text-lg font-semibold">{label}</Label>
-                <div className="flex items-center gap-2">
-                    {onGenerate && (
-                         <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => onGenerate(id)}
-                            disabled={isGenerating}
-                        >
-                            <Bot className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                            {isGenerating ? 'Generating...' : 'Generate with AI'}
-                        </Button>
-                    )}
-                    {profile?.secondary_language && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => handleAutoTranslate(id)}
-                            disabled={isTranslating === id}
-                        >
-                            <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
-                            {isTranslating === id ? 'Translating...' : 'Auto-translate'}
-                        </Button>
-                    )}
+        <AccordionItem value={id}>
+            <AccordionTrigger>
+                <div className="flex justify-between items-center w-full">
+                     <Label className="text-lg font-semibold cursor-pointer">{label}</Label>
+                     <div className="flex items-center gap-2 mr-4">
+                        {onGenerate && (
+                             <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={(e) => { e.stopPropagation(); onGenerate(id); }}
+                                disabled={isGenerating}
+                            >
+                                <Bot className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                {isGenerating ? 'Generating...' : 'Generate with AI'}
+                            </Button>
+                        )}
+                        {profile?.secondary_language && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={(e) => { e.stopPropagation(); handleAutoTranslate(id); }}
+                                disabled={isTranslating === id}
+                            >
+                                <Sparkles className={`h-4 w-4 ${isTranslating === id ? 'animate-spin' : ''}`} />
+                                {isTranslating === id ? 'Translating...' : 'Auto-translate'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                <div>
-                     {profile?.secondary_language && (
-                        <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
-                    )}
-                    <Textarea 
-                        id={`${id}_primary`} 
-                        name={`${id}_primary`} 
-                        value={value?.primary || ''} 
-                        onChange={(e) => onFieldChange(id, 'primary', e.target.value)} 
-                        className="mt-1" 
-                        rows={5} 
-                    />
-                </div>
-                {profile?.secondary_language && (
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4">
+                <div className={`grid gap-4 ${profile?.secondary_language ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div>
-                        <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
+                         {profile?.secondary_language && (
+                            <Label htmlFor={`${id}_primary`} className="text-sm text-muted-foreground">Primary ({languageNames.get(profile?.primary_language || 'en')})</Label>
+                        )}
                         <Textarea 
-                            id={`${id}_secondary`} 
-                            name={`${id}_secondary`} 
-                            value={value?.secondary || ''} 
-                            onChange={(e) => onFieldChange(id, 'secondary', e.target.value)} 
+                            id={`${id}_primary`} 
+                            name={`${id}_primary`} 
+                            value={value?.primary || ''} 
+                            onChange={(e) => onFieldChange(id, 'primary', e.target.value)} 
                             className="mt-1" 
                             rows={5} 
                         />
                     </div>
-                )}
-            </div>
-        </div>
+                    {profile?.secondary_language && (
+                        <div>
+                            <Label htmlFor={`${id}_secondary`} className="text-sm text-muted-foreground">Secondary ({languageNames.get(profile.secondary_language)})</Label>
+                            <Textarea 
+                                id={`${id}_secondary`} 
+                                name={`${id}_secondary`} 
+                                value={value?.secondary || ''} 
+                                onChange={(e) => onFieldChange(id, 'secondary', e.target.value)} 
+                                className="mt-1" 
+                                rows={5} 
+                            />
+                        </div>
+                    )}
+                </div>
+            </AccordionContent>
+        </AccordionItem>
     );
 };

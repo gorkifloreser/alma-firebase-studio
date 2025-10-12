@@ -153,7 +153,7 @@ ALWAYS write a new test that captures the bug before fixing it. This ensures the
 
 ALWAYS write code to get the best performance on the website, no actions should take more than 2 seconds.
 
-If a fix is not found after three focused attempts, HALT and escalate with a summary of the actions taken.
+if a fix is not found after three focused attempts, HALT and escalate with a summary of the actions taken.
 
 5. Social Media & Third-Party API Integration Workflow
 Authentication MUST use OAuth 2.0: The authentication flow must be server-driven. The client redirects the user to the provider, but the exchange of the temporary code for an access token (which requires a client_secret) MUST happen in a server-side Next.js API Route (e.g., /app/api/auth/callback/meta).
