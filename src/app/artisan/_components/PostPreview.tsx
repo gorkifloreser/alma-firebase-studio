@@ -347,7 +347,7 @@ export const PostPreview = ({
                                 )}
                             </div>
                              <button className="p-2 pointer-events-auto">
-                                 <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" />
+                                 <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" title="Close Story" />
                             </button>
                         </div>
                     </div>
