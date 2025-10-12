@@ -1,4 +1,5 @@
 
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserChannelSetting, SocialConnection } from '@/app/accounts/actions';
 
@@ -36,7 +37,7 @@ async function pollContainerStatus(containerId: string, pageAccessToken: string)
 // --- INSTAGRAM PUBLISHING ---
 
 async function publishToInstagram(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
     if (!igUserId) throw new Error("Active Instagram connection is missing the Instagram User ID.");
     if (!post.image_url) throw new Error("Instagram posts require an image.");
     
@@ -57,7 +58,7 @@ async function publishToInstagram(post: MediaPlanItem, connection: SocialConnect
 }
 
 async function publishInstagramCarousel(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
     if (!igUserId) throw new Error("...missing Instagram User ID.");
     if (!post.carousel_slides?.length) throw new Error("...carousel post requires slides.");
 
@@ -86,7 +87,7 @@ async function publishInstagramCarousel(post: MediaPlanItem, connection: SocialC
 }
 
 async function publishInstagramReel(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
     if (!igUserId) throw new Error("...missing Instagram User ID.");
     if (!post.video_url) throw new Error("Instagram Reels require a video URL.");
 
@@ -111,7 +112,7 @@ async function publishInstagramReel(post: MediaPlanItem, connection: SocialConne
 }
 
 async function publishInstagramStory(post: MediaPlanItem, connection: SocialConnection): Promise<any> {
-    const { access_token: pageAccessToken, account_id: igUserId } = connection;
+    const { access_token: pageAccessToken, instagram_account_id: igUserId } = connection;
     if (!igUserId) throw new Error("...missing Instagram User ID.");
     if (!post.image_url && !post.video_url) throw new Error("...Story requires an image or video URL.");
 
@@ -214,10 +215,14 @@ async function publishFacebookReel(post: MediaPlanItem, connection: SocialConnec
 // --- MAIN PUBLISHER ---
 
 export async function publishPost(postId: string, supabase: SupabaseClient): Promise<void> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("User not authenticated.");
+
     const { data: post, error: postError } = await supabase
         .from('media_plan_items')
         .select(`*, user_channel_settings!inner(*)`)
         .eq('id', postId)
+        .eq('user_id', user.id) // Security: Ensure the post belongs to the user
         .single();
     
     if (postError || !post) throw new Error(`Post ${postId} not found. Error: ${postError?.message}`);
@@ -256,3 +261,5 @@ export async function publishPost(postId: string, supabase: SupabaseClient): Pro
             throw new Error(`Publishing to '${channelSettings.channel_name}' is not supported yet.`);
     }
 }
+
+    

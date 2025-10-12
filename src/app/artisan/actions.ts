@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -11,6 +12,20 @@ import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarousel
 
 import type { MediaPlanItem } from '@/app/funnels/actions';
 import type { CalendarItem as ContentItem } from '../calendar/actions';
+
+// Utility to convert camelCase keys to snake_case
+function toSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toSnakeCase(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      (acc as any)[snakeKey] = toSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
 
 export type ArtisanItem = MediaPlanItem & {
     offerings: {
@@ -115,13 +130,17 @@ export async function generateCreativePrompt(input: GenerateCreativePromptInput)
 
 type SaveContentInput = {
     offeringId: string;
-    contentBody: { primary: string | null; secondary: string | null; } | null;
+    mediaPlanItemId?: string | null;
+    copy: string | null;
+    hashtags: string | null;
+    creative_prompt: string | null;
+    concept: string | null;
+    objective: string | null;
     imageUrl: string | null;
     carouselSlides: CarouselSlide[] | null;
     videoScript: VideoScene[] | null;
     landingPageHtml: string | null;
     status: 'draft' | 'ready_for_review' | 'scheduled' | 'published';
-    mediaPlanItemId?: string | null;
     scheduledAt?: string | null;
     media_format?: string;
     aspect_ratio?: string;
@@ -157,102 +176,185 @@ async function uploadBase64Image(supabase: any, base64: string, userId: string, 
 
 
 /**
- * Saves or updates content within a media plan item.
- * @param {SaveContentInput} input - The content data to save.
- * @returns {Promise<ContentItem>} The updated media plan item, which now doubles as the content item.
+ * Creates a new content item (draft).
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error('User not authenticated');
+    if (!user) throw new Error('User not authenticated');
+
+    const { mediaPlanItemId, ...restOfInput } = input;
+
+    // Handle media uploads before any other processing
+    if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
+        restOfInput.imageUrl = await uploadBase64Image(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId);
     }
-
-    const { 
-        mediaPlanItemId, 
-        contentBody, 
-        imageUrl, 
-        carouselSlides, 
-        videoScript, 
-        landingPageHtml, 
-        status, 
-        scheduledAt,
-        offeringId,
-        media_format,
-        aspect_ratio,
-    } = input;
-
-    let currentMediaPlanItemId = mediaPlanItemId;
-
-    if (!currentMediaPlanItemId && status !== 'draft') {
-        // If it's a new custom item, it should start as a draft.
-        // We'll create the record first.
-        const { data: newMediaItem, error: createError } = await supabase.from('media_plan_items').insert({
-            user_id: user.id,
-            offering_id: offeringId,
-            status: 'draft',
-            concept: 'Custom Content'
-        }).select().single();
-
-        if (createError) {
-            throw new Error(`Could not create a new draft item. DB Error: ${createError.message}`);
-        }
-        currentMediaPlanItemId = newMediaItem.id;
-    }
-
-
-    let finalImageUrl = imageUrl;
-    if (imageUrl && imageUrl.startsWith('data:image')) {
-        finalImageUrl = await uploadBase64Image(supabase, imageUrl, user.id, offeringId);
-    }
-    
-    let finalCarouselSlides = carouselSlides;
-    if (carouselSlides) {
-        finalCarouselSlides = await Promise.all(
-            carouselSlides.map(async (slide) => {
+    if (restOfInput.carouselSlides) {
+        restOfInput.carouselSlides = await Promise.all(
+            restOfInput.carouselSlides.map(async (slide) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, offeringId);
-                    return { ...slide, imageUrl: newUrl };
+                    slide.imageUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, restOfInput.offeringId);
                 }
                 return slide;
             })
         );
     }
 
-        const payload: any = {
-            copy: contentBody?.primary,
-            content_body: contentBody ? JSON.stringify(contentBody) : null,
-            image_url: finalImageUrl,
-            carousel_slides: finalCarouselSlides ? JSON.stringify(finalCarouselSlides) : null,
-            video_script: videoScript ? JSON.stringify(videoScript) : null,
-            landing_page_html: landingPageHtml,
-            status: status,
-            scheduled_at: scheduledAt || null,
-            updated_at: new Date().toISOString(),
-            media_format: media_format,
-            aspect_ratio: aspect_ratio,
-        };
+    // Convert the bulk of the object to snake_case
+    const dbPayload = toSnakeCase(restOfInput);
+
+    // Manually set special-case fields
+    dbPayload.user_id = user.id;
+    if (mediaPlanItemId) {
+        const { data } = await supabase.from('media_plan_items').select('media_plan_id').eq('id', mediaPlanItemId).single();
+        dbPayload.media_plan_id = data?.media_plan_id || null;
+    }
+
+    // JSON stringification for fields that need it
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
+
+    const { data: newMediaItem, error: createError } = await supabase
+        .from('media_plan_items')
+        .insert(dbPayload)
+        .select(`*, offerings(*), user_channel_settings(channel_name)`)
+        .single();
     
+    if (createError) {
+        console.error("Error creating content:", createError);
+        throw new Error(`Could not create new draft item. DB Error: ${createError.message}`);
+    }
+    
+    revalidatePath('/artisan');
+    revalidatePath('/calendar');
+    return newMediaItem as unknown as ContentItem;
+}
+
+/**
+ * Updates an existing content item.
+ */
+export async function updateContent(mediaPlanItemId: string, updates: Partial<SaveContentInput>): Promise<ContentItem> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { mediaPlanItemId: itemIdToIgnore, ...restOfUpdates } = updates;
+
+    // Handle media uploads before any other processing
+    if (restOfUpdates.imageUrl && restOfUpdates.imageUrl.startsWith('data:image')) {
+        restOfUpdates.imageUrl = await uploadBase64Image(supabase, restOfUpdates.imageUrl, user.id, restOfUpdates.offeringId!);
+    }
+    if (restOfUpdates.carouselSlides) {
+        restOfUpdates.carouselSlides = await Promise.all(
+            restOfUpdates.carouselSlides.map(async (slide) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    slide.imageUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, restOfUpdates.offeringId!);
+                }
+                return slide;
+            })
+        );
+    }
+
+    // Convert the bulk of the object to snake_case
+    const dbPayload = toSnakeCase(restOfUpdates);
+    dbPayload.updated_at = new Date().toISOString();
+
+    // JSON stringification for fields that need it
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
+
     const { data, error } = await supabase
         .from('media_plan_items')
-        .update(payload)
-        .eq('id', currentMediaPlanItemId!)
-        .select(`
-            *, 
-            offerings(*), 
-            user_channel_settings(channel_name)
-        `)
+        .update(dbPayload)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .select(`*, offerings(*), user_channel_settings(channel_name)`)
         .single();
 
     if (error) {
-        throw new Error(`Failed to save content to database. DB Error: ${error.message}`);
+        console.error("Error updating content:", error);
+        throw new Error(`Failed to update content. DB Error: ${error.message}`);
     }
-    
-    revalidatePath('/calendar');
+
     revalidatePath('/artisan');
-    
+    revalidatePath('/calendar');
     return data as unknown as ContentItem;
 }
+
+
+/**
+ * Deletes a content item and its associated media from storage.
+ */
+export async function deleteContent(mediaPlanItemId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // 1. Fetch the item to get media URLs
+    const { data: itemToDelete, error: fetchError } = await supabase
+        .from('media_plan_items')
+        .select('image_url, carousel_slides')
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (fetchError) {
+        console.error("Error fetching content to delete:", fetchError);
+        throw new Error(`Failed to find content to delete. It may have already been removed. DB Error: ${fetchError.message}`);
+    }
+    
+    // 2. Collect all file paths from storage
+    const filePathsToDelete: string[] = [];
+    const bucketUrlPart = `/storage/v1/object/public/${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma'}/`;
+
+    if (itemToDelete.image_url && itemToDelete.image_url.includes(bucketUrlPart)) {
+        filePathsToDelete.push(itemToDelete.image_url.split(bucketUrlPart)[1]);
+    }
+    
+    if (itemToDelete.carousel_slides) {
+        const slides = typeof itemToDelete.carousel_slides === 'string'
+            ? JSON.parse(itemToDelete.carousel_slides)
+            : itemToDelete.carousel_slides;
+        
+        if (Array.isArray(slides)) {
+            for (const slide of slides) {
+                if (slide.imageUrl && slide.imageUrl.includes(bucketUrlPart)) {
+                    filePathsToDelete.push(slide.imageUrl.split(bucketUrlPart)[1]);
+                }
+            }
+        }
+    }
+
+    // 3. Delete files from Supabase Storage if any exist
+    if (filePathsToDelete.length > 0) {
+        console.log(`[ACTION: deleteContent] Deleting ${filePathsToDelete.length} files from storage...`);
+        const { error: storageError } = await supabase.storage
+            .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma')
+            .remove(filePathsToDelete);
+
+        if (storageError) {
+            // Log the error but proceed with DB deletion to not block the user.
+            console.error("Error deleting files from storage:", storageError);
+        }
+    }
+
+    // 4. Delete the database row
+    const { error: deleteError } = await supabase
+        .from('media_plan_items')
+        .delete()
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id);
+
+    if (deleteError) {
+        console.error("Error deleting content from database:", deleteError);
+        throw new Error(`Failed to delete content. DB Error: ${deleteError.message}`);
+    }
+
+    revalidatePath('/artisan');
+    revalidatePath('/calendar');
+    return { message: 'Content item and associated media deleted successfully.' };
+}
+
 
 
 /**
@@ -297,5 +399,9 @@ export async function editImageWithInstruction(input: EditImageInput): Promise<E
 export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
     return regenerateSlideFlow(input);
 }
+
+    
+
+    
 
     

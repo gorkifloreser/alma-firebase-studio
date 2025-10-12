@@ -76,8 +76,8 @@ const LandingPagePreview = ({ htmlContent, onCodeEditorToggle, isCodeEditorOpen 
         <div className="w-full bg-zinc-900 shadow-2xl overflow-hidden border border-zinc-700 rounded-2xl flex flex-col">
             <div className="flex-shrink-0 bg-zinc-800 p-2">
                 <div className="w-full h-8 bg-zinc-700 rounded-md flex items-center px-2 text-sm text-zinc-400 gap-2">
-                    <button onClick={goBack} className="hover:text-white"><ArrowLeft size={16} /></button>
-                    <button onClick={goForward} className="hover:text-white"><ArrowRight size={16} /></button>
+                    <button onClick={goBack} className="hover:text-white" title="Go back"><ArrowLeft size={16} /></button>
+                    <button onClick={goForward} className="hover:text-white" title="Go forward"><ArrowRight size={16} /></button>
                     <div className="flex-1 text-center bg-zinc-800 rounded-sm p-1 truncate text-zinc-300">
                         alma-ai.app/preview
                     </div>
@@ -126,12 +126,8 @@ export const PostPreview = ({
     isLoading,
     selectedCreativeType,
     creative,
-    editableContent,
-    secondaryLangName,
     isCodeEditorOpen,
     onCodeEditorToggle,
-    handleContentChange,
-    handleCarouselSlideChange,
     onImageEdit,
     onRegenerateClick,
     onCurrentSlideChange,
@@ -146,12 +142,8 @@ export const PostPreview = ({
     isLoading: boolean,
     selectedCreativeType: CreativeType,
     creative: GenerateCreativeOutput | null,
-    editableContent: GenerateCreativeOutput['content'] | null,
-    secondaryLangName: string | null,
     isCodeEditorOpen: boolean,
     onCodeEditorToggle: () => void,
-    handleContentChange: (language: 'primary' | 'secondary', value: string) => void,
-    handleCarouselSlideChange: (index: number, field: 'title' | 'body', value: string) => void;
     onImageEdit: (imageUrl: string, slideIndex?: number) => void;
     onRegenerateClick: () => void;
     onCurrentSlideChange: (index: number) => void;
@@ -161,8 +153,12 @@ export const PostPreview = ({
     onEditPost: () => void;
     isSaved: boolean;
 }) => {
-    console.log('[PostPreview] Rendering... isLoading:', isLoading);
-    console.log('[PostPreview] Received creative prop:', { ...creative, videoUrl: creative?.videoUrl ? `data:video/mp4;base64,...[${creative.videoUrl.length}]` : null });
+    console.log('[PostPreview] Rendering...');
+    console.log('[PostPreview] Full creative prop:', JSON.stringify(creative, null, 2));
+    if (creative) {
+        console.log('[PostPreview] Single imageUrl:', creative.imageUrl);
+        console.log('[PostPreview] Carousel slides:', JSON.stringify(creative.carouselSlides, null, 2));
+    }
 
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -216,7 +212,7 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => (
-                  <CarouselItem key={index} className={cn("relative group", aspectRatioClass)}>
+                  <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
                     {slide.imageUrl ? (
                       <Image
                         src={slide.imageUrl}
@@ -299,17 +295,8 @@ export const PostPreview = ({
                          {renderVisualContent()}
                     </div>
                     
-                    {/* Action buttons */}
-                    <div className="absolute top-4 right-4 z-10">
-                        {isSaved && (
-                            <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full shadow-lg" onClick={onEditPost}>
-                                <Edit className="h-5 w-5" />
-                            </Button>
-                        )}
-                    </div>
-                    
-                     {hasVisuals && (
-                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {hasVisuals && (
+                        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="secondary" size="icon" className="h-10 w-10 rounded-full" onClick={() => onImageEdit(imageUrlToEdit!, current)}>
@@ -359,25 +346,9 @@ export const PostPreview = ({
                                     </div>
                                 )}
                             </div>
-                             <button className="p-2 pointer-events-auto">
+                             <button className="p-2 pointer-events-auto" title="Close Story">
                                  <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" />
                             </button>
-                        </div>
-                        
-                        {/* Editable Text Area at the bottom */}
-                         <div className="flex-1 flex flex-col justify-end p-4">
-                            <Textarea
-                                value={currentSlideData ? currentSlideData.body : (editableContent?.primary || '')}
-                                onChange={(e) => {
-                                    if (currentSlideData) {
-                                        handleCarouselSlideChange(current, 'body', e.target.value)
-                                    } else {
-                                        handleContentChange('primary', e.target.value)
-                                    }
-                                }}
-                                className="w-full text-lg text-center border-none focus-visible:ring-0 p-2 h-auto resize-none bg-black/30 rounded-lg shadow-lg [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)] pointer-events-auto"
-                                placeholder="Your story text..."
-                            />
                         </div>
                     </div>
                 </div>
@@ -388,13 +359,6 @@ export const PostPreview = ({
     return (
         <TooltipProvider>
             <div className="relative">
-                {isSaved && (
-                    <div className="absolute top-2 right-2 z-10">
-                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={onEditPost}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
                 <Card className="w-full max-w-md mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         <Avatar>
@@ -447,34 +411,6 @@ export const PostPreview = ({
                                 <Send className="h-6 w-6 cursor-pointer hover:text-primary" />
                             </div>
                             <Bookmark className="h-6 w-6 cursor-pointer hover:text-primary" />
-                        </div>
-                         <div className="w-full space-y-2">
-                            {currentSlideData ? (
-                                <Textarea
-                                    value={currentSlideData.body}
-                                    onChange={(e) => handleCarouselSlideChange(current, 'body', e.target.value)}
-                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                    placeholder={`Text for slide ${current + 1}...`}
-                                />
-                            ) : (
-                                <Textarea 
-                                    value={editableContent?.primary || ''}
-                                    onChange={(e) => handleContentChange('primary', e.target.value)}
-                                    className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent"
-                                    placeholder="Your post copy will appear here..."
-                                />
-                            )}
-                            {secondaryLangName && editableContent?.secondary && !currentSlideData && (
-                                <>
-                                    <Separator className="my-2"/>
-                                    <Textarea 
-                                        value={editableContent.secondary}
-                                        onChange={(e) => handleContentChange('secondary', e.target.value)}
-                                        className="w-full text-sm border-none focus-visible:ring-0 p-0 h-auto resize-none bg-transparent text-muted-foreground"
-                                        placeholder={`Your ${secondaryLangName} post copy...`}
-                                    />
-                                </>
-                            )}
                         </div>
                     </CardFooter>
                 </Card>

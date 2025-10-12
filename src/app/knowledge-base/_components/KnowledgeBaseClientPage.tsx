@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState, useTransition, useRef, useCallback } from 'react';
+import React, { useState, useTransition, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 
 import type { getBrandDocuments, deleteBrandDocument, uploadBrandDocument, askRag, generateAndStoreEmbeddings } from '../actions';
@@ -32,7 +33,6 @@ interface ChatMessage {
 type BrandDocument = Awaited<ReturnType<typeof getBrandDocuments>>[0];
 
 export interface KnowledgeBaseClientPageProps {
-    initialDocuments: BrandDocument[];
     getBrandDocumentsAction: typeof getBrandDocuments;
     deleteBrandDocumentAction: typeof deleteBrandDocument;
     uploadBrandDocumentAction: typeof uploadBrandDocument;
@@ -42,15 +42,14 @@ export interface KnowledgeBaseClientPageProps {
 
 
 export function KnowledgeBaseClientPage({
-    initialDocuments,
     getBrandDocumentsAction,
     deleteBrandDocumentAction,
     uploadBrandDocumentAction,
     askRagAction,
     generateAndStoreEmbeddingsAction,
 }: KnowledgeBaseClientPageProps) {
-    const [documents, setDocuments] = useState(initialDocuments);
-    const [isLoading, setIsLoading] = useState(false);
+    const [documents, setDocuments] = useState<BrandDocument[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isUploading, startUploading] = useTransition();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [isDeleting, startDeletingTransition] = useTransition();
@@ -68,7 +67,7 @@ export function KnowledgeBaseClientPage({
     const [parsingResult, setParsingResult] = useState<{chunks: string[], documentGroupId: string} | null>(null);
     const [isStoring, startStoring] = useTransition();
 
-    const fetchAllData = async () => {
+    const fetchAllData = useCallback(async () => {
         setIsLoading(true);
         try {
             const documentsData = await getBrandDocumentsAction();
@@ -82,7 +81,11 @@ export function KnowledgeBaseClientPage({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [getBrandDocumentsAction, toast]);
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] || null;
@@ -434,3 +437,5 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
+    

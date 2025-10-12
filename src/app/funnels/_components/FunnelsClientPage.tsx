@@ -74,6 +74,7 @@ interface FunnelsClientPageProps {
         generateAndGetAdaptedValueStrategies: () => Promise<{ topStrategies: AdaptedValueStrategy[] }>;
         updateAdaptedValueStrategy: typeof updateAdaptedValueStrategy;
         deleteAdaptedValueStrategy: typeof deleteAdaptedValueStrategy;
+        [key: string]: Function; // Allow for additional actions
     }
 }
 
@@ -647,6 +648,7 @@ export function FunnelsClientPage({
                         await handleDataRefresh();
                         setFunnelToOrchestrate(newFunnelData);
                     }}
+                    actions={actions}
                 />
             )}
             <CustomizePresetDialog

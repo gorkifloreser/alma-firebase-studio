@@ -148,6 +148,11 @@ export function EditContentDialog({
   const [analysisResult, setAnalysisResult] = useState<PostAnalysis | null>(null);
   const [suggestedRewrite, setSuggestedRewrite] = useState<string | null>(null);
 
+  // --- FIX: Local draft state to prevent data loss on re-render ---
+  const [draftContent, setDraftContent] = useState(contentItem?.copy || '');
+  const [draftHashtags, setDraftHashtags] = useState(contentItem?.hashtags || '');
+  // --- END FIX ---
+
   const { toast } = useToast();
   const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
@@ -180,6 +185,11 @@ export function EditContentDialog({
 
   useEffect(() => {
     if (contentItem) {
+        // --- FIX: Initialize draft state only when the item ID changes ---
+        setDraftContent(contentItem.copy || '');
+        setDraftHashtags(contentItem.hashtags || '');
+        // --- END FIX ---
+        
         setEditableContent(getInitialContent());
         setEditableHashtags(contentItem.hashtags || '');
         setEditableSlides(parseCarouselSlides(contentItem.carousel_slides));
@@ -188,7 +198,7 @@ export function EditContentDialog({
         setAnalysisResult(null);
         setSuggestedRewrite(null);
     }
-  }, [contentItem]);
+  }, [contentItem?.id]); // Depend only on the ID
   
   if (!contentItem) return null;
 
@@ -229,8 +239,11 @@ export function EditContentDialog({
     startSaving(async () => {
       try {
         const updatedItem = {
+          // --- FIX: Use draft state for saving ---
+          copy: draftContent,
+          hashtags: draftHashtags,
+          // --- END FIX ---
           content_body: editableContent,
-          hashtags: editableHashtags,
           carousel_slides: editableSlides,
           status: editableScheduledAt ? 'scheduled' : contentItem.status === 'scheduled' ? 'approved' : contentItem.status,
           scheduled_at: editableScheduledAt?.toISOString(),
@@ -288,14 +301,14 @@ export function EditContentDialog({
   };
   
   const handleAnalyzePost = () => {
-    if (!editableContent?.primary) {
+    if (!draftContent) {
         toast({ variant: 'destructive', title: 'Cannot Analyze', description: 'There is no primary content to analyze.'});
         return;
     }
     startAnalyzing(async () => {
         setAnalysisResult(null);
         try {
-            const result = await analyzePost({ postText: editableContent.primary!, hashtags: editableHashtags || '' });
+            const result = await analyzePost({ postText: draftContent, hashtags: draftHashtags || '' });
             setAnalysisResult(result);
             toast({ title: 'Analysis Complete', description: "The AI has provided feedback on your post."});
         } catch (error: any) {
@@ -305,13 +318,13 @@ export function EditContentDialog({
   };
   
     const handleRewritePost = () => {
-        if (!editableContent?.primary || !analysisResult?.suggestions) return;
+        if (!draftContent || !analysisResult?.suggestions) return;
         
         startRewriting(async () => {
             setSuggestedRewrite(null);
             try {
                 const result = await rewritePost({
-                    originalText: editableContent.primary!,
+                    originalText: draftContent,
                     suggestions: analysisResult.suggestions.map(s => s.point),
                 });
                 setSuggestedRewrite(result.rewrittenText);
@@ -323,9 +336,15 @@ export function EditContentDialog({
     
     const acceptRewrite = () => {
         if (!suggestedRewrite) return;
-        handleContentChange('primary', suggestedRewrite);
+        setDraftContent(suggestedRewrite);
         setSuggestedRewrite(null);
-        handleAnalyzePost();
+        // Re-analyze the new content
+        startAnalyzing(async () => {
+            try {
+                const result = await analyzePost({ postText: suggestedRewrite, hashtags: draftHashtags || '' });
+                setAnalysisResult(result);
+            } catch (e) { /* ignore */ }
+        });
     };
 
     const renderVisualContent = () => {
@@ -421,8 +440,8 @@ export function EditContentDialog({
                     <Label htmlFor="post-copy">Post Copy</Label>
                     <Textarea 
                         id="post-copy"
-                        value={editableContent?.primary || ''}
-                        onChange={(e) => handleContentChange('primary', e.target.value)}
+                        value={draftContent}
+                        onChange={(e) => setDraftContent(e.target.value)}
                         className="w-full text-sm min-h-[150px]"
                         placeholder="Your post copy will appear here..."
                     />
@@ -431,8 +450,8 @@ export function EditContentDialog({
                     <Label htmlFor="hashtags">Hashtags</Label>
                     <Input
                         id="hashtags"
-                        value={editableHashtags || ''}
-                        onChange={(e) => setEditableHashtags(e.target.value)}
+                        value={draftHashtags}
+                        onChange={(e) => setDraftHashtags(e.target.value)}
                         placeholder="#hashtags #go #here"
                         className="text-sm"
                     />

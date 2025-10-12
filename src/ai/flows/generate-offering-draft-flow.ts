@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -10,6 +11,7 @@ import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+import { languages } from '@/lib/languages';
 import {
     OfferingDraftSchema,
     GenerateOfferingDraftInputSchema,
@@ -36,6 +38,8 @@ const routeOfferingTypePrompt = ai.definePrompt({
 
 const basePrompt = `You are an expert brand strategist and copywriter for conscious creators. Your task is to expand a simple idea into a draft for a new offering, aligning it with the user's core brand identity.
 
+**CRITICAL INSTRUCTION: You MUST generate all text content in the following language: {{primaryLanguage}}**
+
 **Brand Heart (The User's Brand Identity):**
 - Brand Name: {{brandHeart.brand_name}}
 - Brand Brief: {{brandHeart.brand_brief.primary}}
@@ -53,29 +57,29 @@ Based on the user's idea and their Brand Heart, generate the requested fields. F
 const generateEventDraftPrompt = ai.definePrompt({
     name: 'generateEventDraftPrompt',
     model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
-    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string() }) },
+    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
 
 Generate a full offering draft for an EVENT. You must extract event-specific details.
 - **schedules**: Create one entry for EACH distinct event date or time. For each entry, extract:
-  - event_date (in ISO 8601 format), duration, frequency.
-  - location_label, location_address, location_gmaps_url. If not specified, these MUST be null.
-  - price, price_label, currency. If not specified, these MUST be null.`
+  - event_date (in ISO 8601 format), duration (as a string), frequency (as a string, e.g., "One-time", "Weekly").
+  - location_label (as a string), location_address (as a string), location_gmaps_url (as a string). If not specified, these MUST be null.
+  - price (as a number), price_label (as a string), currency (as a string). If not specified, these MUST be null.`
 });
 
 // Specialist for Products/Services
 const generateProductServiceDraftPrompt = ai.definePrompt({
     name: 'generateProductServiceDraftPrompt',
     model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
-    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string() }) },
+    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
 
 Generate a full offering draft for a PRODUCT or SERVICE. You must extract pricing information.
 - **schedules**: Create one entry for EACH distinct product variant or price point. For each entry, extract:
-  - price_label (e.g., "Cacao Nibs 100g", "Standard Tier"). THIS IS CRITICAL.
-  - price, currency. If not specified, these MUST be null.
+  - price_label (as a string, e.g., "Cacao Nibs 100g", "Standard Tier"). THIS IS CRITICAL.
+  - price (as a number), currency (as a string). If not specified, these MUST be null.
   - You MUST NOT generate event-related fields like event_date, duration, or location.`
 });
 
@@ -83,7 +87,7 @@ Generate a full offering draft for a PRODUCT or SERVICE. You must extract pricin
 const generateValueContentDraftPrompt = ai.definePrompt({
     name: 'generateValueContentDraftPrompt',
     model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
-    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string() }) },
+    input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
 
@@ -107,13 +111,16 @@ const generateOfferingDraftFlow = ai.defineFlow(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
-    const { data: brandHeart, error: brandHeartError } = await supabase
-        .from('brand_hearts')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+    const [
+        { data: brandHeart, error: brandHeartError },
+        { data: profile, error: profileError }
+    ] = await Promise.all([
+        supabase.from('brand_hearts').select('*').eq('user_id', user.id).single(),
+        supabase.from('profiles').select('primary_language').eq('id', user.id).single()
+    ]);
 
     if (brandHeartError || !brandHeart) throw new Error('Brand Heart not found. Please define your brand heart first.');
+    if (profileError || !profile) throw new Error('User profile not found. Please set a primary language.');
     
     // Step 1: Route to determine the type
     const { output: routeOutput } = await routeOfferingTypePrompt({ offeringPrompt });
@@ -122,21 +129,25 @@ const generateOfferingDraftFlow = ai.defineFlow(
 
     console.log(`Routing to specialist for type: ${offeringType}`);
 
+    const languageNames = new Map(languages.map(l => [l.value, l.label]));
+    const primaryLanguage = languageNames.get(profile.primary_language) || profile.primary_language;
+
     // Step 2: Call the appropriate specialist
     let finalOutput: OfferingDraft | undefined;
+    const promptPayload = { brandHeart, offeringPrompt, primaryLanguage };
 
     switch (offeringType) {
         case 'Event':
-            const { output: eventOutput } = await generateEventDraftPrompt({ brandHeart, offeringPrompt });
+            const { output: eventOutput } = await generateEventDraftPrompt(promptPayload);
             finalOutput = eventOutput;
             break;
         case 'Product':
         case 'Service':
-            const { output: productOutput } = await generateProductServiceDraftPrompt({ brandHeart, offeringPrompt });
+            const { output: productOutput } = await generateProductServiceDraftPrompt(promptPayload);
             finalOutput = productOutput;
             break;
         case 'Value Content':
-            const { output: valueOutput } = await generateValueContentDraftPrompt({ brandHeart, offeringPrompt });
+            const { output: valueOutput } = await generateValueContentDraftPrompt(promptPayload);
             finalOutput = valueOutput;
             break;
         default:

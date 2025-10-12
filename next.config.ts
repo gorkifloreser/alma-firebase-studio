@@ -52,6 +52,5 @@ const nextConfig: NextConfig = {
 
 export default () => {
   require('dotenv').config({ path: './.env.local' });
-  process.env.TURBOPACK_MEMORY_LIMIT = '0.1';
   return withBundleAnalyzer(nextConfig);
 };

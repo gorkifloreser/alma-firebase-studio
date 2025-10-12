@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
-import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, getValueStrategies, getAdaptedValueStrategies } from './actions';
+import { getFunnels, deleteFunnel, getFunnelPresets, deleteCustomFunnelPreset, getValueStrategies, getAdaptedValueStrategies, getStrategy, updateAdaptedValueStrategy, deleteAdaptedValueStrategy } from './actions';
 import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankViralHooks, generateAndGetAdaptedHooks, getAdaptedHooks, createAdaptedHook, updateAdaptedHook, deleteAdaptedHook } from '../viral-hooks/actions';
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 import { adaptAndSaveValueStrategies } from '@/ai/flows/adapt-value-strategies-flow';
+import { saveMediaPlan, archiveMediaPlan, deleteMediaPlan, generateMediaPlan, regeneratePlanItem, addMultipleToArtisanQueue, getUserChannels } from './actions';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
     const supabase = createClient();
@@ -54,6 +55,16 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                     updateAdaptedHook,
                     deleteAdaptedHook,
                     generateAndGetAdaptedValueStrategies: adaptAndSaveValueStrategies,
+                    updateAdaptedValueStrategy,
+                    deleteAdaptedValueStrategy,
+                    getStrategy,
+                    saveMediaPlan,
+                    archiveMediaPlan,
+                    deleteMediaPlan,
+                    generateMediaPlan,
+                    regeneratePlanItem,
+                    addMultipleToArtisanQueue,
+                    getUserChannels,
                 }}
             />
         </DashboardLayout>

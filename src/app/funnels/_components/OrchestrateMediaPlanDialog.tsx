@@ -1,3 +1,4 @@
+
 // GEMINI_SAFE_START
 // @functional: This component and its related features (funnels, presets, media orchestration) are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -48,7 +49,7 @@ import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { getProfile } from '@/app/settings/actions';
 import { languages as languageList } from '@/lib/languages';
-import { mediaFormatConfig } from '@/lib/media-formats';
+import { mediaFormatConfig, getAvailableAspectRatios } from '@/lib/media-formats';
 
 type Profile = Awaited<ReturnType<typeof getProfile>>;
 
@@ -143,7 +144,7 @@ export function OrchestrateMediaPlanDialog({
                 setSelectedLanguage(p?.primary_language || 'en');
             });
 
-            if (!planIdToEdit && !currentPlan) {
+            if (view !== 'generate' && !planIdToEdit && !currentPlan) {
                 const hasActivePlans = fullFunnelData.media_plans?.some(p => (p.status || 'active') === 'active');
                 const newViewState = hasActivePlans ? 'list' : 'generate';
                 setView(newViewState);
@@ -481,7 +482,11 @@ export function OrchestrateMediaPlanDialog({
                             <TabsTrigger value="archived">Archived</TabsTrigger>
                         </TabsList>
                     </Tabs>
-                    <Button onClick={() => setView('generate')} className="flex-shrink-0">
+                    <Button type="button" onClick={() => {
+                        setCurrentPlan(null);
+                        setPlanIdToEdit(null);
+                        setView('generate');
+                    }} className="flex-shrink-0">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Create New Campaign
                     </Button>
@@ -682,8 +687,54 @@ export function OrchestrateMediaPlanDialog({
                                                 <div className="space-y-1"><Label htmlFor={`objective-${item.id}`}>Purpose / Objective</Label><Input id={`objective-${item.id}`} value={item.objective || ''} onChange={(e) => handleItemChange(item.id, 'objective', e.target.value)} placeholder="e.g., Build social proof"/></div>
                                                 <div className="space-y-1"><Label htmlFor={`concept-${item.id}`}>Concept</Label><Textarea id={`concept-${item.id}`} value={item.concept || ''} onChange={(e) => handleItemChange(item.id, 'concept', e.target.value)} rows={2}/></div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1"><Label htmlFor={`media_format-${item.id}`}>Format</Label><Select value={item.media_format} onValueChange={(v) => handleItemChange(item.id, 'media_format', v)}><SelectTrigger id={`media_format-${item.id}`} className="font-semibold"><SelectValue placeholder="Select a format" /></SelectTrigger><SelectContent>{mediaFormatConfig.map(g => { const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || '')); if (channelFormats.length === 0) return null; return (<SelectGroup key={g.label}><SelectLabel>{g.label}</SelectLabel>{channelFormats.map(f => (<SelectItem key={f.value} value={f.value}>{f.value}</SelectItem>))}</SelectGroup>) })}</SelectContent></Select></div>
-                                                    <div className="space-y-1"><Label htmlFor={`aspect_ratio-${item.id}`}>Aspect Ratio</Label><Select value={item.aspect_ratio || ''} onValueChange={(v) => handleItemChange(item.id, 'aspect_ratio', v)}><SelectTrigger id={`aspect_ratio-${item.id}`}><SelectValue placeholder="Select ratio..." /></SelectTrigger><SelectContent><SelectItem value="1:1">1:1 (Square)</SelectItem><SelectItem value="4:5">4:5 (Portrait)</SelectItem><SelectItem value="9:16">9:16 (Story/Reel)</SelectItem><SelectItem value="16:9">16:9 (Landscape)</SelectItem></SelectContent></Select></div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`media_format-${item.id}`}>Format</Label>
+                                                        <Select
+                                                            value={item.media_format}
+                                                            onValueChange={(v) => {
+                                                                handleItemChange(item.id, 'media_format', v);
+                                                                const newRatios = getAvailableAspectRatios(v);
+                                                                if (!newRatios.find(r => r.value === item.aspect_ratio)) {
+                                                                    handleItemChange(item.id, 'aspect_ratio', newRatios[0]?.value || '');
+                                                                }
+                                                            }}
+                                                        >
+                                                            <SelectTrigger id={`media_format-${item.id}`} className="font-semibold">
+                                                                <SelectValue placeholder="Select a format" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {mediaFormatConfig.map(g => {
+                                                                    const channelFormats = g.formats.filter(f => f.channels.includes(item.user_channel_settings?.channel_name?.toLowerCase() || ''));
+                                                                    if (channelFormats.length === 0) return null;
+                                                                    return (
+                                                                        <SelectGroup key={g.label}>
+                                                                            <SelectLabel>{g.label}</SelectLabel>
+                                                                            {channelFormats.map(f => (
+                                                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                                                            ))}
+                                                                        </SelectGroup>
+                                                                    )
+                                                                })}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor={`aspect_ratio-${item.id}`}>Aspect Ratio</Label>
+                                                        <Select
+                                                            value={item.aspect_ratio || ''}
+                                                            onValueChange={(v) => handleItemChange(item.id, 'aspect_ratio', v)}
+                                                            disabled={getAvailableAspectRatios(item.media_format).length === 0}
+                                                        >
+                                                            <SelectTrigger id={`aspect_ratio-${item.id}`}>
+                                                                <SelectValue placeholder="Select ratio..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {getAvailableAspectRatios(item.media_format).map(r => (
+                                                                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1"><Label htmlFor={`hashtags-${item.id}`}>Hashtags / Keywords</Label><Input id={`hashtags-${item.id}`} value={item.hashtags} onChange={(e) => handleItemChange(item.id, 'hashtags', e.target.value)} /></div>
                                                 <div className="space-y-1"><Label htmlFor={`copy-${item.id}`}>Copy</Label><Textarea id={`copy-${item.id}`} value={item.copy} onChange={(e) => handleItemChange(item.id, 'copy', e.target.value)} className="text-sm" rows={4} /></div>
