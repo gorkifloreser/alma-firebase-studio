@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar } from '@/components/auth/Avatar';
 import { BilingualFormField } from './BilingualFormField';
 import { MultiContactEditor } from './MultiContactEditor';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import type { getProfile, updateBrandHeart, translateText, BrandHeartData, ContactInfo, AudiencePersona } from '../actions';
 
 
@@ -173,71 +174,79 @@ export function BrandHeartForm({
                 </div>
             </div>
 
-            <BilingualFormField 
-                id="brand_brief" 
-                label="Brand Brief" 
-                value={brandHeart.brand_brief}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-            <BilingualFormField 
-                id="mission" 
-                label="Mission" 
-                value={brandHeart.mission}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-            <BilingualFormField 
-                id="vision" 
-                label="Vision" 
-                value={brandHeart.vision}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-             <BilingualFormField 
-                id="values" 
-                label="Values" 
-                value={brandHeart.values}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-             <BilingualFormField 
-                id="tone_of_voice" 
-                label="Tone of Voice" 
-                value={brandHeart.tone_of_voice}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-            <BilingualFormField 
-                id="visual_identity" 
-                label="Visual Identity" 
-                value={brandHeart.visual_identity}
-                onFieldChange={handleFieldChange}
-                profile={profile} 
-                isTranslating={isTranslating} 
-                languageNames={languageNames} 
-                handleAutoTranslate={handleAutoTranslate}
-            />
-
-            <MultiContactEditor 
-                contacts={brandHeart.contact_info}
-                onContactsChange={handleContactInfoChange}
-            />
+            <Accordion type="multiple" className="w-full space-y-4" defaultValue={['brand_brief', 'mission', 'vision', 'values', 'tone_of_voice', 'visual_identity', 'contact_info']}>
+                <BilingualFormField 
+                    id="brand_brief" 
+                    label="Brand Brief" 
+                    value={brandHeart.brand_brief}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                <BilingualFormField 
+                    id="mission" 
+                    label="Mission" 
+                    value={brandHeart.mission}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                <BilingualFormField 
+                    id="vision" 
+                    label="Vision" 
+                    value={brandHeart.vision}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                 <BilingualFormField 
+                    id="values" 
+                    label="Values" 
+                    value={brandHeart.values}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                 <BilingualFormField 
+                    id="tone_of_voice" 
+                    label="Tone of Voice" 
+                    value={brandHeart.tone_of_voice}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                <BilingualFormField 
+                    id="visual_identity" 
+                    label="Visual Identity" 
+                    value={brandHeart.visual_identity}
+                    onFieldChange={handleFieldChange}
+                    profile={profile} 
+                    isTranslating={isTranslating} 
+                    languageNames={languageNames} 
+                    handleAutoTranslate={handleAutoTranslate}
+                />
+                <AccordionItem value="contact_info">
+                    <AccordionTrigger>
+                        <Label className="text-lg font-semibold cursor-pointer">Contact Information</Label>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4">
+                        <MultiContactEditor 
+                            contacts={brandHeart.contact_info}
+                            onContactsChange={handleContactInfoChange}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
             
             <Button type="submit" disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Brand Heart'}
