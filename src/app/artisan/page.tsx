@@ -539,17 +539,13 @@ export default function ArtisanPage() {
             }
     
             setIsLoading(true);
+            // Keep existing text, only clear the creative assets
             setCreative(null);
             setEditableHtml(null);
-            setEditableCopy('');
-            setEditableHashtags('');
     
             try {
                 console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
                 const creativeTypes: CreativeType[] = [selectedCreativeType];
-                if (!['video', 'landing_page'].includes(selectedCreativeType) && !regeneratePrompt) {
-                    creativeTypes.push('text');
-                }
                 
                 const result = await generateCreativeForOffering({
                     offeringId: selectedOfferingId,
@@ -560,7 +556,8 @@ export default function ArtisanPage() {
                 });
                 
                 setCreative(result);
-                if (result.content) {
+                // Only update copy if a text type was explicitly requested
+                if (selectedCreativeType === 'text' && result.content) {
                     setEditableCopy(result.content.primary || '');
                 }
                 if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
@@ -591,7 +588,6 @@ export default function ArtisanPage() {
             startSaving(async () => {
                 try {
                     const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-                    const draft = selectedArtisanItemId ? draftChanges[selectedArtisanItemId] : {};
     
                     // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
                     const payload: any = {
@@ -604,31 +600,30 @@ export default function ArtisanPage() {
                         scheduledAt: scheduleDate?.toISOString(),
                         media_format: selectedCreativeFormat,
                         aspect_ratio: dimension,
-                        ...draft,
                     };
     
                     // 1. Start with existing media from the last saved state to ensure we don't lose anything.
                     if (savedContent) {
-                        payload.imageUrl = savedContent.image_url;
-                        payload.carouselSlides = savedContent.carousel_slides;
-                        payload.videoScript = savedContent.video_script;
-                        payload.landingPageHtml = savedContent.landing_page_html;
+                        payload.image_url = savedContent.image_url;
+                        payload.carousel_slides = savedContent.carousel_slides;
+                        payload.video_script = savedContent.video_script;
+                        payload.landing_page_html = savedContent.landing_page_html;
                     }
                     
                     // 2. Layer the newly generated media on top, overwriting only what's new.
                     switch (selectedCreativeType) {
                         case 'image':
-                            payload.imageUrl = creative?.imageUrl || payload.imageUrl;
+                            payload.image_url = creative?.imageUrl || payload.image_url;
                             break;
                         case 'carousel':
-                            payload.carouselSlides = creative?.carouselSlides || payload.carouselSlides;
+                            payload.carousel_slides = creative?.carouselSlides || payload.carousel_slides;
                             break;
     
                         case 'video':
-                            payload.videoScript = creative?.videoScript || payload.videoScript;
+                            payload.video_script = creative?.videoScript || payload.video_script;
                             break;
                         case 'landing_page':
-                            payload.landingPageHtml = editableHtml || payload.landingPageHtml;
+                            payload.landing_page_html = editableHtml || payload.landing_page_html;
                             break;
                     }
     
@@ -639,7 +634,10 @@ export default function ArtisanPage() {
                         const itemId = savedContent?.id || selectedArtisanItemId!;
                         updatedItem = await updateContent(itemId, payload);
                         setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
-                        toast({ title: 'Content Updated!', description: 'Your changes have been saved.' });
+                        toast({
+                            title: status === 'scheduled' ? 'Content Scheduled!' : 'Content Updated!',
+                            description: status === 'scheduled' ? 'Your post was successfully added to the calendar.' : 'Your changes have been saved.'
+                        });
                     } else {
                         updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
                         if (selectedArtisanItemId && !savedContent) {
@@ -650,14 +648,6 @@ export default function ArtisanPage() {
                     }
                     
                     setSavedContent(updatedItem as unknown as CalendarItem);
-    
-                    if (selectedArtisanItemId) {
-                        setDraftChanges(prev => {
-                            const newDrafts = { ...prev };
-                            delete newDrafts[selectedArtisanItemId];
-                            return newDrafts;
-                        });
-                    }
                     
                 } catch (error: any) {
                     toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
