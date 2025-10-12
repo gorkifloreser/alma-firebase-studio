@@ -4,8 +4,8 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
-// Set up the worker source for pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`;
+// Set the workerSrc to the local copy.
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 
 // A simple text splitter for chunking

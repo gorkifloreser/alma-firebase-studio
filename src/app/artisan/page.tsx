@@ -106,6 +106,7 @@ const ImageChatDialog = ({
 
   useEffect(() => {
     if (isOpen) {
+      console.log('[ImageChatDialog] Opened.');
       setHistory([]);
       setCurrentPrompt('');
     }
@@ -115,6 +116,7 @@ const ImageChatDialog = ({
 
   const handleEdit = async () => {
     if (!currentPrompt.trim() || !lastImageUrl) return;
+    console.log(`[ImageChatDialog] handleEdit: Starting edit with prompt "${currentPrompt}" on image:`, lastImageUrl);
 
     startEditing(async () => {
       try {
@@ -122,9 +124,11 @@ const ImageChatDialog = ({
           imageUrl: lastImageUrl,
           instruction: currentPrompt,
         });
+        console.log('[ImageChatDialog] handleEdit: Received new image URL:', editedImageUrl);
         setHistory(prev => [...prev, { instruction: currentPrompt, resultUrl: editedImageUrl }]);
         setCurrentPrompt('');
       } catch (error: any) {
+        console.error('[ImageChatDialog] handleEdit: Error during edit:', error);
         toast({ variant: 'destructive', title: 'Editing Failed', description: error.message });
       }
     });
@@ -136,6 +140,14 @@ const ImageChatDialog = ({
     } else {
         setHistory(prev => prev.slice(0, index + 1));
     }
+  };
+
+  const handleSubmit = () => {
+    console.log('[ImageChatDialog] handleSubmit: "Use This Image" clicked. lastImageUrl:', lastImageUrl);
+    if (lastImageUrl) {
+      onImageUpdate(lastImageUrl);
+    }
+    onOpenChange(false);
   };
 
   if (!imageUrl) return null;
@@ -205,7 +217,7 @@ const ImageChatDialog = ({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => { if(lastImageUrl) onImageUpdate(lastImageUrl); onOpenChange(false); }} disabled={history.length === 0}>Use This Image</Button>
+          <Button onClick={handleSubmit} disabled={history.length === 0}>Use This Image</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -453,18 +465,17 @@ export default function ArtisanPage() {
     }, [selectedArtisanItemId, loadDataForArtisanItem]);
     
     useEffect(() => {
-        async function fetchData() {
+        async function initialLoad() {
             setIsLoading(true);
             try {
-                const [profileData, artisanItemsData, offeringsData, mediaPlansData] = await Promise.all([
+                // Fetch only the data needed for the initial setup and workflow selection.
+                const [profileData, offeringsData, mediaPlansData] = await Promise.all([
                     getProfile(),
-                    getArtisanItems(),
                     getOfferings(),
                     getMediaPlans(),
                 ]);
-
+    
                 setProfile(profileData);
-                setAllArtisanItems(artisanItemsData);
                 setOfferings(offeringsData);
                 setMediaPlans(mediaPlansData);
             } catch (error: any) {
@@ -473,36 +484,10 @@ export default function ArtisanPage() {
                 setIsLoading(false);
             }
         }
-        fetchData();
+        initialLoad();
         const storedTheme = localStorage.getItem('theme');
         if (storedTheme) setGlobalTheme(storedTheme as 'light' | 'dark');
     }, [toast]);
-    
-        useEffect(() => {
-            async function fetchData() {
-                setIsLoading(true);
-                try {
-                    const [profileData, artisanItemsData, offeringsData, mediaPlansData] = await Promise.all([
-                        getProfile(),
-                        getArtisanItems(),
-                        getOfferings(),
-                        getMediaPlans(),
-                    ]);
-    
-                    setProfile(profileData);
-                    setAllArtisanItems(artisanItemsData);
-                    setOfferings(offeringsData);
-                    setMediaPlans(mediaPlansData);
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: 'Error fetching data', description: error.message });
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-            fetchData();
-            const storedTheme = localStorage.getItem('theme');
-            if (storedTheme) setGlobalTheme(storedTheme as 'light' | 'dark');
-        }, [toast]);
     
         const handleGenerate = async (regeneratePrompt?: string) => {
             if (!selectedOfferingId) {

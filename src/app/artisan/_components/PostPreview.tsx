@@ -153,8 +153,12 @@ export const PostPreview = ({
     onEditPost: () => void;
     isSaved: boolean;
 }) => {
-    console.log('[PostPreview] Rendering... isLoading:', isLoading);
-    console.log('[PostPreview] Received creative prop:', { ...creative, videoUrl: creative?.videoUrl ? `data:video/mp4;base64,...[${creative.videoUrl.length}]` : null });
+    console.log('[PostPreview] Rendering...');
+    console.log('[PostPreview] Full creative prop:', JSON.stringify(creative, null, 2));
+    if (creative) {
+        console.log('[PostPreview] Single imageUrl:', creative.imageUrl);
+        console.log('[PostPreview] Carousel slides:', JSON.stringify(creative.carouselSlides, null, 2));
+    }
 
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
@@ -208,7 +212,7 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => (
-                  <CarouselItem key={index} className={cn("relative group", aspectRatioClass)}>
+                  <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
                     {slide.imageUrl ? (
                       <Image
                         src={slide.imageUrl}

@@ -118,7 +118,7 @@ Your task is to combine all the information below to create a single, detailed, 
 **FINAL TASK:**
 Combine all the information above to create a single, unified, detailed, and visually rich prompt for an image generation model. The final output prompt must be a fusion of the Brand's Soul, the Offering's subject, and the specific Creative Brief.
 
-**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, earthy tones, soft natural light, film grain{{#if aspectRatio}}, ar {{aspectRatio}}{{/if}}"
+**Example output:** "A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, embodying a soulful and authentic feeling, earthy tones, soft natural light, film grain"
 
 Output only the final prompt string.`,
 });
@@ -180,7 +180,7 @@ Generate a 3-5 slide carousel script. For each slide, provide the following fiel
     - Explicitly instruct the model to overlay the **'title'** text at the **top center** of the image in a clear, stylish font.
     - Explicitly instruct the model to overlay the footer text **'@floreserLosCabos'** at the **bottom** of the image.
 
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, with the text 'Nourish Your Soul' at the top center. The image should embody a soulful, authentic feeling, with earthy tones and soft natural light. Footer text '@floreserLosCabos' at the bottom.{{#if aspectRatio}} ar {{aspectRatio}}{{/if}}"
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, with the text 'Nourish Your Soul' at the top center. The image should embody a soulful, authentic feeling, with earthy tones and soft natural light. Footer text '@floreserLosCabos' at the bottom."
 
 Generate the carousel slides in the specified JSON format.
 `,
@@ -290,7 +290,7 @@ ${videoBasePrompt}
 Create a storyboard with 3-5 scenes. For each scene, you must generate:
 
 1.  **scene_description:** A brief (1-2 sentence) description of the action or mood of this scene.
-2.  **video_prompt:** A detailed, ready-to-use prompt for an AI video generator (like Veo) to create a **2-3 second video clip**. This prompt must be visually rich, include the aspect ratio, and be consistent with the brand's **Visual Identity**.
+2.  **video_prompt:** A detailed, ready-to-use prompt for an AI video generator (like Veo) to create a **2-3 second video clip**. This prompt must be visually rich, include the aspect ratio, and be consistent with the brand's **Visual Identity**. The aspect ratio for the video MUST be **${aspectRatio || '16:9'}**.
 3.  **cover_image_prompt:** A detailed, ready-to-use prompt for an AI image generator (like Imagen) to create the **first frame or cover image** for this scene. This must be visually consistent with the video prompt and the brand's identity.
 
 **CRITICAL RULE FOR ALL PROMPTS:** Maintain a consistent artistic style, color palette, and mood across all scenes. Use the brand's **Visual Identity** as the primary guide. The entire video must feel like a single, unified piece.
@@ -357,6 +357,7 @@ Generate the storyboard in the specified JSON format.
                 generationResult = await ai.generate({
                     model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
                     prompt: finalImagePrompt,
+                    config: { aspectRatio },
                 });
             }
             return { imageUrl: generationResult.media?.url, finalPrompt: finalImagePrompt };
@@ -380,6 +381,7 @@ Generate the storyboard in the specified JSON format.
                     const { media } = await ai.generate({
                         model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-3.0-generate-002'), // Using Imagen 3 for text on image
                         prompt: finalSlidePrompt,
+                        config: { aspectRatio },
                     });
                     
                     return { ...slide, imageUrl: media?.url, finalPrompt: finalSlidePrompt };
