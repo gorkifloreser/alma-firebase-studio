@@ -10,8 +10,6 @@ Ownership and Accountability: Take pride in your work. Every line of code should
 
 Async First: As a modern web application, all asynchronous operations must be handled gracefully using async/await patterns. Non-blocking code is the standard.
 
-Lazy-Loading First: To ensure a fast and responsive user experience, components, images, and routes should be lazy-loaded whenever possible. Prioritize loading only the essential resources for the initial view, deferring other assets until they are needed. This improves initial page load times and reduces the overall data footprint.
-
 Continuous Improvement: We are committed to iterative improvement. Regularly refactor and enhance the codebase to maintain a high standard of quality.
 
 Research First: When having a complex task be commited to make a deep research in the code base and the documentation to have the best workflow done, with production ready quality code and following the Clarity and Simplicity principle. Respect functional code by adding a comment everytime a function or workflow is functional, that way you'll know what to avoid manupulate in the future, just focusing on the current tasks.
@@ -80,17 +78,6 @@ Utility-First: Embrace the utility-first approach of Tailwind CSS.
 
 Theme Customization: Define all custom colors, fonts, and spacing in the tailwind.config.js file to ensure brand consistency.
 
-Commit Hygiene
-
-Atomic Commits: After every successful and verified change (e.g., a bug fix, a feature implementation), create a Git commit. This ensures a clean history and provides a reliable rollback point if issues arise later.
-
-Autonomous Commit Workflow: When asked to make a commit, I will handle the entire process autonomously. This includes:
-1.  Reviewing file status and diffs.
-2.  Staging the relevant, changed files.
-3.  Generating a comprehensive and descriptive commit message.
-4.  Executing the commit.
-5.  I will only notify you once the commit is successfully completed, without asking for authorization at each step.
-
 3. Testing Protocol
 A rigorous testing protocol is mandatory. No story is considered complete until it is accompanied by the appropriate tests.
 
@@ -153,7 +140,7 @@ ALWAYS write a new test that captures the bug before fixing it. This ensures the
 
 ALWAYS write code to get the best performance on the website, no actions should take more than 2 seconds.
 
-if a fix is not found after three focused attempts, HALT and escalate with a summary of the actions taken.
+If a fix is not found after three focused attempts, HALT and escalate with a summary of the actions taken.
 
 5. Social Media & Third-Party API Integration Workflow
 Authentication MUST use OAuth 2.0: The authentication flow must be server-driven. The client redirects the user to the provider, but the exchange of the temporary code for an access token (which requires a client_secret) MUST happen in a server-side Next.js API Route (e.g., /app/api/auth/callback/meta).
@@ -168,83 +155,18 @@ API Keys MUST be in Next.js Environment Variables: All platform-specific credent
 
 Permitted API Usage for Content Publishing: The primary and explicitly permitted use of integrated social media APIs is for publishing content to the user's connected accounts.
 
-### **Hard Server Restart (Next.js)** 🛠️
+## 6. Storage and Media File Management
 
-#### **When to Perform a Hard Restart:**
+**CRITICAL: To prevent orphaned files and ensure data integrity, the following rules for handling media and file storage are mandatory and must be followed without exception.**
 
-* After changing configuration files (e.g., `next.config.ts`, `tsconfig.json`).
-* After installing, updating, or removing dependencies (`npm install`, `npm update`, `npm uninstall`).
-* If the development server becomes unresponsive, unusually slow, or you suspect it's serving stale content.
+1.  **All Files Must Be Uploaded to Storage:**
+    *   Any user-generated or system-generated file (e.g., images, videos, PDFs, documents) **MUST** be uploaded to the designated Supabase Storage bucket.
+    *   The database record associated with the content (e.g., a user profile, a marketing creative) **MUST** store a reference to the file's path or URL in storage, not the file itself.
 
-***
+2.  **Updates Must Overwrite Existing Files:**
+    *   When a user updates a file, the new file **MUST** overwrite the existing file in the storage bucket to avoid accumulating unused old versions.
 
-#### **Procedure:**
-
-1.  **Stop the Server:** Forcefully stop all Next.js development server processes.
-    ```bash
-    pkill -f 'next dev'
-    ```
-
-2.  **Clear Cache & Restart:** Permanently remove the `.next` cache directory and restart the server in the background.
-    ```bash
-    rm -rf .next && npm run dev &
-    ```
-
-
-## 6. Data Naming Conventions: snake_case vs. camelCase
-
-**CRITICAL:** To prevent data-related errors, a strict separation of naming conventions must be maintained between the database/server and the client.
-
-*   **Database & Server Actions (`snake_case`):**
-    *   All database table columns **MUST** use `snake_case` (e.g., `user_id`, `landing_page_html`).
-    *   Data objects returned from or passed directly into Supabase queries within server actions (`actions.ts`) **MUST** use `snake_case`.
-
-*   **Client-Side React (`camelCase`):**
-    *   All client-side variables, state, props, and object keys within React components (`.tsx` files) **MUST** use `camelCase` (e.g., `userId`, `landingPageHtml`).
-
----
-
-### **The Boundary: Transformation**
-
-The transformation from `snake_case` to `camelCase` (and vice-versa) is the responsibility of the code at the boundary between the server and client.
-
-*   **Data to Client (Server Action -> Component):** When a server action fetches data from the database, it should return a `snake_case` object. The client component that calls the action is responsible for transforming the keys to `camelCase` before storing them in state or passing them as props.
-
-*   **Data to Server (Component -> Server Action):** When a client component sends data to a server action (e.g., for an update or insert), it sends a `camelCase` object. The server action is then responsible for transforming the keys to `snake_case` before sending the data to the database. A utility function (like the `toSnakeCase` function in `artisan/actions.ts`) should be used for this.
-
-**Example (Client-Side Fetching & State Update):**
-
-```typescript
-// 1. Server Action (e.g., /app/artisan/actions.ts)
-// Returns data directly from Supabase, which is in snake_case.
-export async function getContentItem(mediaPlanItemId: string) {
-  // ... Supabase query ...
-  // return data; // e.g., { id: '123', landing_page_html: '<h1>Hi</h1>', user_id: 'abc' }
-}
-
-// 2. Client Component (e.g., /app/artisan/_components/SomeEditor.tsx)
-'use client';
-import { useState, useEffect } from 'react';
-import { getContentItem } from '../actions';
-
-function SomeEditor({ itemId }) {
-  const [creative, setCreative] = useState({ landingPageHtml: '' }); // State is camelCase
-
-  useEffect(() => {
-    const fetchContent = async () => {
-      const dbData = await getContentItem(itemId); // Receives snake_case data
-
-      // CORRECT: Transform the data before setting state
-      const clientData = {
-        landingPageHtml: dbData.landing_page_html // Manual or utility-based transform
-      };
-      setCreative(clientData);
-    };
-
-    fetchContent();
-  }, [itemId]);
-
-  // ... component JSX ...
-}
-```
-This strict convention prevents `undefined` property errors in React and ensures data integrity with the database.
+3.  **Deletions MUST Cascade to Storage:**
+    *   When a database record linked to a stored file is deleted, the corresponding file in Supabase Storage **MUST** be deleted automatically and immediately.
+    *   This **MUST** be implemented as a cascading delete, preferably using a database trigger (e.g., a PostgreSQL function in Supabase) that is invoked upon row deletion and calls a Supabase edge function to delete the file from storage.
+    *   This is non-negotiable. No orphaned files should ever be left in the storage bucket.
