@@ -158,3 +158,25 @@ Frontend Invocation MUST use Server Actions: The Next.js frontend will use Serve
 API Keys MUST be in Next.js Environment Variables: All platform-specific credentials (App ID, App Secret, API Key) must be stored as environment variables for the Next.js runtime. For production, these MUST be managed in the hosting provider's secret management system (e.g., Vercel Environment Variables, AWS Secrets Manager). They must never be hardcoded or exposed to the client.
 
 Permitted API Usage for Content Publishing: The primary and explicitly permitted use of integrated social media APIs is for publishing content to the user's connected accounts.
+
+### **Hard Server Restart (Next.js)** 🛠️
+
+#### **When to Perform a Hard Restart:**
+
+* After changing configuration files (e.g., `next.config.ts`, `tsconfig.json`).
+* After installing, updating, or removing dependencies (`npm install`, `npm update`, `npm uninstall`).
+* If the development server becomes unresponsive, unusually slow, or you suspect it's serving stale content.
+
+***
+
+#### **Procedure:**
+
+1.  **Stop the Server:** Forcefully stop all Next.js development server processes.
+    ```bash
+    pkill -f 'next dev'
+    ```
+
+2.  **Clear Cache & Restart:** Permanently remove the `.next` cache directory and restart the server in the background.
+    ```bash
+    rm -rf .next && npm run dev &
+    ```

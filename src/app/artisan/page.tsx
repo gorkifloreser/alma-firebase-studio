@@ -783,7 +783,7 @@ export default function ArtisanPage() {
                              <div className="space-y-4">
                                  <h3 className="font-semibold flex items-center gap-2 text-foreground">
                                      <Sparkles className="w-5 h-5 text-primary" />
-                                     From a Media Plan
+                                     From Campaign
                                 </h3>
                                  <p className="text-sm text-muted-foreground">
                                     Select one of your AI-generated media plans to work on its content queue.
