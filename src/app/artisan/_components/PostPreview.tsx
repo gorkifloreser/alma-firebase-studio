@@ -76,8 +76,8 @@ const LandingPagePreview = ({ htmlContent, onCodeEditorToggle, isCodeEditorOpen 
         <div className="w-full bg-zinc-900 shadow-2xl overflow-hidden border border-zinc-700 rounded-2xl flex flex-col">
             <div className="flex-shrink-0 bg-zinc-800 p-2">
                 <div className="w-full h-8 bg-zinc-700 rounded-md flex items-center px-2 text-sm text-zinc-400 gap-2">
-                    <button onClick={goBack} className="hover:text-white"><ArrowLeft size={16} /></button>
-                    <button onClick={goForward} className="hover:text-white"><ArrowRight size={16} /></button>
+                    <button onClick={goBack} className="hover:text-white" title="Go back"><ArrowLeft size={16} /></button>
+                    <button onClick={goForward} className="hover:text-white" title="Go forward"><ArrowRight size={16} /></button>
                     <div className="flex-1 text-center bg-zinc-800 rounded-sm p-1 truncate text-zinc-300">
                         alma-ai.app/preview
                     </div>
@@ -346,8 +346,8 @@ export const PostPreview = ({
                                     </div>
                                 )}
                             </div>
-                             <button className="p-2 pointer-events-auto">
-                                 <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" title="Close Story" />
+                             <button className="p-2 pointer-events-auto" title="Close Story">
+                                 <X className="h-6 w-6 text-white [filter:drop-shadow(0_1px_1px_rgb(0_0_0_/_0.5))]" />
                             </button>
                         </div>
                     </div>

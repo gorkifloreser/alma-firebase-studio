@@ -50,6 +50,7 @@ const GenerateCreativeOutputSchema = z.object({
   finalPrompt: z.string().optional().describe("The final, full prompt that was sent to the image generation model."),
   carouselSlides: z.array(CarouselSlideSchema).optional().describe('An array of generated carousel slides, each with text and an image.'),
   videoScript: z.array(VideoSceneSchema).optional().describe("A storyboard of video scenes, each with prompts and generated URLs."),
+  videoUrl: z.string().optional().describe('The URL of the generated video file.'),
   landingPageHtml: z.string().optional().describe('The generated HTML content for the landing page.'),
 });
 export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema>;
