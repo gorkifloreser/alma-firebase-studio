@@ -5,8 +5,10 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TextContentEditorProps {
+    isLoading: boolean;
     editableContent: string;
     editableHashtags: string;
     onContentChange: (value: string) => void;
@@ -14,12 +16,32 @@ interface TextContentEditorProps {
 }
 
 export const TextContentEditor: React.FC<TextContentEditorProps> = ({
+    isLoading,
     editableContent,
     editableHashtags,
     onContentChange,
     onHashtagsChange,
 }) => {
-    console.log('[DEBUG] TextContentEditor received props:', { editableContent, editableHashtags });
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Post Text & Hashtags</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-16 w-full" />
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card>
             <CardHeader>

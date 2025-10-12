@@ -323,6 +323,7 @@ export default function ArtisanPage() {
     const [dimension, setDimension] = useState<string>('1:1');
     const [creativePrompt, setCreativePrompt] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
     const languageNames = new Map(languages.map(l => [l.value, l.label]));
@@ -400,8 +401,8 @@ export default function ArtisanPage() {
                 carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                 videoScript: sourceOfTruth.video_script || null,
                 landingPageHtml: sourceOfTruth.landing_page_html || null,
-                content: sourceOfTruth.content_body || null,
-                finalPrompt: sourceOfTruth.creative_prompt || null
+                contentBody: sourceOfTruth.content_body || null,
+                creativePrompt: sourceOfTruth.creative_prompt || null
             });
 
             if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
@@ -509,7 +510,7 @@ export default function ArtisanPage() {
                             setCreative(prev => {
                                 if (!prev || !prev.carouselSlides) return prev;
                                 const newSlides = [...prev.carouselSlides];
-                                newSlides[currentCarouselSlide] = { ...newSlides[currentCarouselSlide], imageUrl, finalPrompt };
+                                newSlides[currentCarouselSlide] = { ...newSlides[currentCarouselSlide], imageUrl, creativePrompt: finalPrompt };
                                 return { ...prev, carouselSlides: newSlides };
                             });
                             
@@ -523,7 +524,7 @@ export default function ArtisanPage() {
                 }
             }
     
-            setIsLoading(true);
+            setIsGenerating(true);
             // Keep existing text, only clear the creative assets
             setCreative(null);
             setEditableHtml(null);
@@ -540,20 +541,31 @@ export default function ArtisanPage() {
                     referenceImageUrl: referenceImageUrl || undefined,
                 });
                 
-                setCreative(result);
+                // Map camelCase from server to camelCase for client state (ensures consistency)
+                const mappedCreative = {
+                    imageUrl: result.imageUrl || null,
+                    carouselSlides: result.carouselSlides || [],
+                    videoScript: result.videoScript || null,
+                    landingPageHtml: result.landingPageHtml || null,
+                    contentBody: result.content || null,
+                    creativePrompt: result.finalPrompt || null,
+                };
+
+                setCreative(mappedCreative);
+                
                 // Only update copy if a text type was explicitly requested
-                if (selectedCreativeType === 'text' && result.content) {
-                    setEditableCopy(result.content.primary || '');
+                if (selectedCreativeType === 'text' && mappedCreative.contentBody) {
+                    setEditableCopy((mappedCreative.contentBody as any).primary || '');
                 }
-                if (result.landingPageHtml) setEditableHtml(result.landingPageHtml);
-                if (result.finalPrompt) setCreativePrompt(result.finalPrompt);
+                if (mappedCreative.landingPageHtml) setEditableHtml(mappedCreative.landingPageHtml);
+                if (mappedCreative.creativePrompt) setCreativePrompt(mappedCreative.creativePrompt);
     
                 toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
             } catch (error: any) {
                 console.error('[handleGenerate] -- ERROR --', error);
                 toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
             } finally {
-                setIsLoading(false);
+                setIsGenerating(false);
             }
         };
     
@@ -586,6 +598,7 @@ export default function ArtisanPage() {
                         scheduledAt: scheduleDate?.toISOString(),
                         media_format: selectedCreativeFormat,
                         aspect_ratio: dimension,
+                        creativePrompt: creativePrompt, // Ensure the latest prompt is saved
                     };
 
     
@@ -702,9 +715,9 @@ export default function ArtisanPage() {
         const finalPromptForCurrentVisual = useMemo(() => {
             if (!creative) return null;
             if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
-                return creative.carouselSlides[currentCarouselSlide]?.finalPrompt;
+                return creative.carouselSlides[currentCarouselSlide]?.creativePrompt;
             }
-            return creative.finalPrompt;
+            return creative.creativePrompt;
         }, [creative, selectedCreativeType, currentCarouselSlide]);
     
         const handleDownload = (url: string, filename: string) => {
@@ -743,7 +756,7 @@ export default function ArtisanPage() {
             return [...new Set(itemsForSelectedCampaign.map(item => item.user_channel_settings?.channel_name).filter(Boolean) as string[])];
         }, [itemsForSelectedCampaign]);
     
-        const isGenerateDisabled = isLoading || isSaving || !selectedOfferingId;
+        const isGenerateDisabled = isLoading || isSaving || isGenerating || !selectedOfferingId;
         const hasContent = !!(editableCopy || editableHtml || creative?.imageUrl || (creative?.carouselSlides && creative.carouselSlides.length > 0) || creative?.videoScript);
         const currentOffering = offerings.find(o => o.id === selectedOfferingId);
         
@@ -914,6 +927,7 @@ export default function ArtisanPage() {
                                         doneCount={doneCount}
                                         totalCampaignItems={totalCampaignItems}
                                         isLoading={isLoading}
+                                        isGenerating={isGenerating}
                                         selectedArtisanItemId={selectedArtisanItemId}
                                         handleArtisanItemSelect={setSelectedArtisanItemId} // Directly set the ID
                                         filteredArtisanItems={filteredArtisanItems}
@@ -968,7 +982,7 @@ export default function ArtisanPage() {
                                     <PostPreview
                                         profile={profile}
                                         dimension={dimension}
-                                        isLoading={isLoading}
+                                        isLoading={isLoading || isGenerating}
                                         selectedCreativeType={selectedCreativeType}
                                         creative={{
                                             ...creative,
@@ -998,6 +1012,7 @@ export default function ArtisanPage() {
                                     )}
                                     {workflowMode && (
                                         <TextContentEditor
+                                            isLoading={isLoading}
                                             editableContent={editableCopy}
                                             editableHashtags={editableHashtags}
                                             onContentChange={(value) => {

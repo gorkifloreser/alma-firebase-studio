@@ -13,6 +13,20 @@ import { regenerateCarouselSlide as regenerateSlideFlow, type RegenerateCarousel
 import type { MediaPlanItem } from '@/app/funnels/actions';
 import type { CalendarItem as ContentItem } from '../calendar/actions';
 
+// Utility to convert camelCase keys to snake_case
+function toSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toSnakeCase(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      (acc as any)[snakeKey] = toSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
 export type ArtisanItem = MediaPlanItem & {
     offerings: {
         title: { primary: string | null };
@@ -168,49 +182,37 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    console.log('[SERVER: saveContent] 1. Action initiated, user authenticated.');
-    console.log('[SERVER: saveContent] 2. Received Input:', input);
 
-    // --- UPLOAD MEDIA LOGIC ---
-    let finalImageUrl = input.imageUrl;
-    if (input.imageUrl && input.imageUrl.startsWith('data:image')) {
-        finalImageUrl = await uploadBase64Image(supabase, input.imageUrl, user.id, input.offeringId);
+    const { mediaPlanItemId, ...restOfInput } = input;
+
+    // Handle media uploads before any other processing
+    if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
+        restOfInput.imageUrl = await uploadBase64Image(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId);
     }
-    
-    let finalCarouselSlides = input.carouselSlides;
-    if (input.carouselSlides) {
-        finalCarouselSlides = await Promise.all(
-            input.carouselSlides.map(async (slide) => {
+    if (restOfInput.carouselSlides) {
+        restOfInput.carouselSlides = await Promise.all(
+            restOfInput.carouselSlides.map(async (slide) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, input.offeringId);
-                    return { ...slide, imageUrl: newUrl };
+                    slide.imageUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, restOfInput.offeringId);
                 }
                 return slide;
             })
         );
     }
-    // --- END UPLOAD MEDIA LOGIC ---
 
-    const dbPayload = {
-        user_id: user.id,
-        offering_id: input.offeringId,
-        media_plan_id: input.mediaPlanItemId ? (await supabase.from('media_plan_items').select('media_plan_id').eq('id', input.mediaPlanItemId).single()).data?.media_plan_id : null,
-        status: input.status || 'draft',
-        copy: input.copy,
-        hashtags: input.hashtags,
-        creative_prompt: input.creative_prompt,
-        concept: input.concept,
-        objective: input.objective,
-        image_url: finalImageUrl,
-        carousel_slides: finalCarouselSlides ? JSON.stringify(finalCarouselSlides) : null,
-        video_script: input.videoScript ? JSON.stringify(input.videoScript) : null,
-        landing_page_html: input.landingPageHtml,
-        scheduled_at: input.scheduledAt || null,
-        media_format: input.media_format,
-        aspect_ratio: input.aspect_ratio,
-    };
+    // Convert the bulk of the object to snake_case
+    const dbPayload = toSnakeCase(restOfInput);
 
-    console.log('[SERVER: saveContent] 3. Final payload for DB insert:', dbPayload);
+    // Manually set special-case fields
+    dbPayload.user_id = user.id;
+    if (mediaPlanItemId) {
+        const { data } = await supabase.from('media_plan_items').select('media_plan_id').eq('id', mediaPlanItemId).single();
+        dbPayload.media_plan_id = data?.media_plan_id || null;
+    }
+
+    // JSON stringification for fields that need it
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
 
     const { data: newMediaItem, error: createError } = await supabase
         .from('media_plan_items')
@@ -223,7 +225,6 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         throw new Error(`Could not create new draft item. DB Error: ${createError.message}`);
     }
     
-    console.log('[SERVER: saveContent] 4. DB insert successful. Result:', newMediaItem);
     revalidatePath('/artisan');
     revalidatePath('/calendar');
     return newMediaItem as unknown as ContentItem;
@@ -236,61 +237,31 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    console.log(`[SERVER: updateContent] 1. Action initiated for item ID: ${mediaPlanItemId}`);
-    console.log('[SERVER: updateContent] 2. Received Updates:', updates);
 
-    const dbPayload: { [key: string]: any } = { updated_at: new Date().toISOString() };
+    const { mediaPlanItemId: itemIdToIgnore, ...restOfUpdates } = updates;
 
-    // --- SMART PAYLOAD CONSTRUCTION ---
-    const fields: (keyof SaveContentInput)[] = [
-        'offeringId', 'copy', 'hashtags', 'creative_prompt', 'concept',
-        'objective', 'landingPageHtml', 'status', 'scheduledAt',
-        'media_format', 'aspect_ratio'
-    ];
-    
-    const columnMapping: { [key in keyof SaveContentInput]?: string } = {
-        offeringId: 'offering_id',
-        scheduledAt: 'scheduled_at',
-    };
-
-    for (const field of fields) {
-        if (updates[field] !== undefined) {
-            const dbField = columnMapping[field] || field;
-            dbPayload[dbField] = updates[field];
-        }
+    // Handle media uploads before any other processing
+    if (restOfUpdates.imageUrl && restOfUpdates.imageUrl.startsWith('data:image')) {
+        restOfUpdates.imageUrl = await uploadBase64Image(supabase, restOfUpdates.imageUrl, user.id, restOfUpdates.offeringId!);
     }
-    
-    // --- UPLOAD MEDIA LOGIC (only if media is provided) ---
-    if (updates.imageUrl !== undefined) {
-        if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
-            dbPayload.image_url = await uploadBase64Image(supabase, updates.imageUrl, user.id, updates.offeringId!);
-        } else {
-            dbPayload.image_url = updates.imageUrl;
-        }
+    if (restOfUpdates.carouselSlides) {
+        restOfUpdates.carouselSlides = await Promise.all(
+            restOfUpdates.carouselSlides.map(async (slide) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    slide.imageUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, restOfUpdates.offeringId!);
+                }
+                return slide;
+            })
+        );
     }
 
-    if (updates.carouselSlides !== undefined) {
-        if (updates.carouselSlides) {
-            const finalCarouselSlides = await Promise.all(
-                updates.carouselSlides.map(async (slide) => {
-                    if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                        const newUrl = await uploadBase64Image(supabase, slide.imageUrl, user.id, updates.offeringId!);
-                        return { ...slide, imageUrl: newUrl };
-                    }
-                    return slide;
-                })
-            );
-            dbPayload.carousel_slides = JSON.stringify(finalCarouselSlides);
-        } else {
-             dbPayload.carousel_slides = null;
-        }
-    }
+    // Convert the bulk of the object to snake_case
+    const dbPayload = toSnakeCase(restOfUpdates);
+    dbPayload.updated_at = new Date().toISOString();
 
-    if (updates.videoScript !== undefined) {
-        dbPayload.video_script = updates.videoScript ? JSON.stringify(updates.videoScript) : null;
-    }
-    
-    console.log('[SERVER: updateContent] 3. Final payload for DB update:', dbPayload);
+    // JSON stringification for fields that need it
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -305,11 +276,11 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
         throw new Error(`Failed to update content. DB Error: ${error.message}`);
     }
 
-    console.log('[SERVER: updateContent] 4. DB update successful. Result:', data);
     revalidatePath('/artisan');
     revalidatePath('/calendar');
     return data as unknown as ContentItem;
 }
+
 
 /**
  * Deletes a content item and its associated media from storage.

@@ -180,3 +180,62 @@ Permitted API Usage for Content Publishing: The primary and explicitly permitted
     ```bash
     rm -rf .next && npm run dev &
     ```
+
+
+## 6. Data Naming Conventions: snake_case vs. camelCase
+
+**CRITICAL:** To prevent data-related errors, a strict separation of naming conventions must be maintained between the database/server and the client.
+
+*   **Database & Server Actions (`snake_case`):**
+    *   All database table columns **MUST** use `snake_case` (e.g., `user_id`, `landing_page_html`).
+    *   Data objects returned from or passed directly into Supabase queries within server actions (`actions.ts`) **MUST** use `snake_case`.
+
+*   **Client-Side React (`camelCase`):**
+    *   All client-side variables, state, props, and object keys within React components (`.tsx` files) **MUST** use `camelCase` (e.g., `userId`, `landingPageHtml`).
+
+---
+
+### **The Boundary: Transformation**
+
+The transformation from `snake_case` to `camelCase` (and vice-versa) is the responsibility of the code at the boundary between the server and client.
+
+*   **Data to Client (Server Action -> Component):** When a server action fetches data from the database, it should return a `snake_case` object. The client component that calls the action is responsible for transforming the keys to `camelCase` before storing them in state or passing them as props.
+
+*   **Data to Server (Component -> Server Action):** When a client component sends data to a server action (e.g., for an update or insert), it sends a `camelCase` object. The server action is then responsible for transforming the keys to `snake_case` before sending the data to the database. A utility function (like the `toSnakeCase` function in `artisan/actions.ts`) should be used for this.
+
+**Example (Client-Side Fetching & State Update):**
+
+```typescript
+// 1. Server Action (e.g., /app/artisan/actions.ts)
+// Returns data directly from Supabase, which is in snake_case.
+export async function getContentItem(mediaPlanItemId: string) {
+  // ... Supabase query ...
+  // return data; // e.g., { id: '123', landing_page_html: '<h1>Hi</h1>', user_id: 'abc' }
+}
+
+// 2. Client Component (e.g., /app/artisan/_components/SomeEditor.tsx)
+'use client';
+import { useState, useEffect } from 'react';
+import { getContentItem } from '../actions';
+
+function SomeEditor({ itemId }) {
+  const [creative, setCreative] = useState({ landingPageHtml: '' }); // State is camelCase
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      const dbData = await getContentItem(itemId); // Receives snake_case data
+
+      // CORRECT: Transform the data before setting state
+      const clientData = {
+        landingPageHtml: dbData.landing_page_html // Manual or utility-based transform
+      };
+      setCreative(clientData);
+    };
+
+    fetchContent();
+  }, [itemId]);
+
+  // ... component JSX ...
+}
+```
+This strict convention prevents `undefined` property errors in React and ensures data integrity with the database.

@@ -84,6 +84,7 @@ type CreativeControlsProps = {
     doneCount: number;
     totalCampaignItems: number;
     isLoading: boolean;
+    isGenerating: boolean;
     selectedArtisanItemId: string | null;
     handleArtisanItemSelect: (id: string | null) => void;
     filteredArtisanItems: ArtisanItem[];
@@ -121,6 +122,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     doneCount,
     totalCampaignItems,
     isLoading,
+    isGenerating,
     selectedArtisanItemId,
     handleArtisanItemSelect,
     filteredArtisanItems,
@@ -147,6 +149,43 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
     isUpdate,
     currentChannel,
 }) => {
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Creative Controls</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardFooter>
+            </Card>
+        );
+    }
     const availableFormats = React.useMemo(() => {
         if (!currentChannel && workflowMode !== 'custom') return [];
         const allFormats = mediaFormatConfig.flatMap(cat => cat.formats);
@@ -340,7 +379,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
             <CardFooter className="flex flex-col gap-4">
                 <Button onClick={() => handleGenerate(creativePrompt)} className="w-full" disabled={isGenerateDisabled}>
                     <Wand2 className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Generating...' : 'Generate with AI'}
+                    {isGenerating ? 'Generating...' : 'Generate with AI'}
                 </Button>
 
                 <Separator />

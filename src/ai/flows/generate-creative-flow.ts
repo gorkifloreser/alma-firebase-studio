@@ -306,7 +306,7 @@ Generate the storyboard in the specified JSON format.
                 const videoGenPromise = ai.generate({
                     model: googleAI.model(process.env.GENKIT_VIDEO_GEN_MODEL || 'veo-2.0-generate-001'),
                     prompt: [{ text: scene.video_prompt }],
-                    config: { aspectRatio },
+                    aspect_ratio: aspectRatio,
                 });
 
                 const imageGenPromise = ai.generate({
@@ -357,7 +357,7 @@ Generate the storyboard in the specified JSON format.
                 generationResult = await ai.generate({
                     model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
                     prompt: finalImagePrompt,
-                    config: { aspectRatio },
+                    aspect_ratio: aspectRatio,
                 });
             }
             return { imageUrl: generationResult.media?.url, finalPrompt: finalImagePrompt };
@@ -381,7 +381,7 @@ Generate the storyboard in the specified JSON format.
                     const { media } = await ai.generate({
                         model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-3.0-generate-002'), // Using Imagen 3 for text on image
                         prompt: finalSlidePrompt,
-                        config: { aspectRatio },
+                        aspect_ratio: aspectRatio,
                     });
                     
                     return { ...slide, imageUrl: media?.url, finalPrompt: finalSlidePrompt };
