@@ -1,4 +1,3 @@
-
 'use client';
 // GEMINI_SAFE_START
 import { useState, useEffect } from 'react';
@@ -6,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BrandHeartForm } from "@/app/brand-heart/_components/BrandHeartForm";
-// import { KnowledgeBaseClientPage } from "@/app/knowledge-base/_components/KnowledgeBaseClientPage";
 import { AccountsClientPage } from "@/app/accounts/_components/AccountsClientPage";
 import { AudienceForm } from './AudienceForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +31,7 @@ interface BrandTabsProps {
     data: {
         brandHeart: BrandHeartFormProps;
         audience: AudienceFormProps;
-        knowledgeBase: KnowledgeBaseClientPageProps;
+        knowledgeBase: Omit<KnowledgeBaseClientPageProps, 'initialDocuments'>;
         accounts: AccountsClientPageProps;
     };
 }
@@ -140,9 +138,7 @@ declare module "@/app/brand/_components/AudienceForm" {
     export interface AudienceFormProps {
         profile: any;
         brandHeart: any;
-        languageNames: Map<string, string>;
         updateBrandHeartAction: any;
-        translateTextAction: any;
         generateAudienceAction: any;
     }
 }
@@ -150,7 +146,6 @@ declare module "@/app/brand/_components/AudienceForm" {
 
 declare module "@/app/knowledge-base/_components/KnowledgeBaseClientPage" {
     export interface KnowledgeBaseClientPageProps {
-        initialDocuments: any[];
         getBrandDocumentsAction: any;
         deleteBrandDocumentAction: any;
         uploadBrandDocumentAction: any;
