@@ -591,6 +591,7 @@ export default function ArtisanPage() {
     
                     // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
                     const payload: any = {
+                        ...creative,
                         offeringId: selectedOfferingId,
                         copy: editableCopy,
                         hashtags: editableHashtags,
@@ -601,6 +602,7 @@ export default function ArtisanPage() {
                         media_format: selectedCreativeFormat,
                         aspect_ratio: dimension,
                     };
+
     
                     // 1. Start with existing media from the last saved state to ensure we don't lose anything.
                     if (savedContent) {
@@ -611,20 +613,21 @@ export default function ArtisanPage() {
                     }
                     
                     // 2. Layer the newly generated media on top, overwriting only what's new.
-                    switch (selectedCreativeType) {
-                        case 'image':
-                            payload.image_url = creative?.imageUrl || payload.image_url;
-                            break;
-                        case 'carousel':
-                            payload.carousel_slides = creative?.carouselSlides || payload.carousel_slides;
-                            break;
-    
-                        case 'video':
-                            payload.video_script = creative?.videoScript || payload.video_script;
-                            break;
-                        case 'landing_page':
-                            payload.landing_page_html = editableHtml || payload.landing_page_html;
-                            break;
+                    if (creative) {
+                        switch (selectedCreativeType) {
+                            case 'image':
+                                payload.image_url = creative.imageUrl;
+                                break;
+                            case 'carousel':
+                                payload.carousel_slides = creative.carouselSlides;
+                                break;
+                            case 'video':
+                                payload.video_script = creative.videoScript;
+                                break;
+                            case 'landing_page':
+                                payload.landing_page_html = editableHtml;
+                                break;
+                        }
                     }
     
                     let updatedItem: CalendarItem;
