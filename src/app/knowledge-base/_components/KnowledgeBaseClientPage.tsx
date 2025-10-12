@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition, useRef, useCallback, useEffect } from 'react';
@@ -424,6 +425,7 @@ export function KnowledgeBaseClientPage({
                     </Button>
                 </DialogFooter>
             </DialogContent>
+        </Dialog>
         </>
     );
 }
@@ -435,3 +437,5 @@ const Avatar = ({ children, className }: { children: React.ReactNode, className?
 );
 
 const AvatarFallback = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
+    
