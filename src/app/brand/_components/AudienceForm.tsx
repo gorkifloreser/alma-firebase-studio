@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/accordion"
 
 import type { getProfile, updateBrandHeart, BrandHeartData, AudiencePersona } from '@/app/brand-heart/actions';
-import { generateAudienceSuggestion } from '@/ai/flows/generate-aud-flow';
+import { generateAudienceSuggestion } from '@/ai/flows/generate-audience-flow';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 type UpdateBrandHeartAction = typeof updateBrandHeart;
@@ -129,34 +129,34 @@ export function AudienceForm({
             <Accordion type="single" collapsible className="w-full space-y-4">
                 {personas.map((persona, index) => (
                     <AccordionItem value={`item-${index}`} key={persona.id} className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                             <div className="flex justify-between items-center w-full">
+                         <div className="flex justify-between items-center w-full p-4">
+                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
                                 <Input 
                                     value={persona.title}
                                     onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => handlePersonaChange(persona.id, 'title', e.target.value)}
                                     className="text-lg font-bold border-0 shadow-none -ml-3 focus-visible:ring-1 focus-visible:ring-primary h-auto p-2"
                                 />
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 hover:opacity-100 transition-opacity">
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Persona?</AlertDialogTitle>
-                                            <AlertDialogDescription>Are you sure you want to delete the "{persona.title}" persona?</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleRemovePersona(persona.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-6 pt-0">
+                            </AccordionTrigger>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0">
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Persona?</AlertDialogTitle>
+                                        <AlertDialogDescription>Are you sure you want to delete the "{persona.title}" persona?</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleRemovePersona(persona.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                        <AccordionContent className="px-6 pb-6">
                             <Textarea 
                                 value={persona.content}
                                 onChange={(e) => handlePersonaChange(persona.id, 'content', e.target.value)}
