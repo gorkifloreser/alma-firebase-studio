@@ -78,6 +78,10 @@ Utility-First: Embrace the utility-first approach of Tailwind CSS.
 
 Theme Customization: Define all custom colors, fonts, and spacing in the tailwind.config.js file to ensure brand consistency.
 
+Commit Hygiene
+
+Atomic Commits: After every successful and verified change (e.g., a bug fix, a feature implementation), create a Git commit. This ensures a clean history and provides a reliable rollback point if issues arise later.
+
 3. Testing Protocol
 A rigorous testing protocol is mandatory. No story is considered complete until it is accompanied by the appropriate tests.
 
