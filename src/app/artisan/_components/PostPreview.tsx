@@ -153,13 +153,6 @@ export const PostPreview = ({
     onEditPost: () => void;
     isSaved: boolean;
 }) => {
-    console.log('[PostPreview] Rendering...');
-    console.log('[PostPreview] Full creative prop:', JSON.stringify(creative, null, 2));
-    if (creative) {
-        console.log('[PostPreview] Single imageUrl:', creative.imageUrl);
-        console.log('[PostPreview] Carousel slides:', JSON.stringify(creative.carouselSlides, null, 2));
-    }
-
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const aspectRatioClass = dimensionMap[dimension];
@@ -211,22 +204,27 @@ export const PostPreview = ({
           return (
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
-                {creative.carouselSlides.map((slide, index) => (
-                  <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
-                    {slide.imageUrl ? (
-                      <Image
-                        src={slide.imageUrl}
-                        alt={slide.title || `Slide ${index}`}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-secondary flex items-center justify-center">
-                        {/* Placeholder for when image is not available */}
-                      </div>
-                    )}
-                  </CarouselItem>
-                ))}
+                {creative.carouselSlides.map((slide, index) => {
+                    const imageUrl = slide.imageUrl || '';
+                    const isBase64 = imageUrl.startsWith('data:image');
+                    
+                    return (
+                        <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
+                            {slide.imageUrl ? (
+                            <Image
+                                src={imageUrl}
+                                alt={slide.title || `Slide ${index}`}
+                                fill
+                                className="object-cover"
+                            />
+                            ) : (
+                            <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                {/* Placeholder for when image is not available */}
+                            </div>
+                            )}
+                      </CarouselItem>
+                    );
+                })}
               </CarouselContent>
               {creative.carouselSlides.length > 1 && (
                 <>
@@ -239,11 +237,12 @@ export const PostPreview = ({
         }
       
         if (selectedCreativeType === 'image' && creative?.imageUrl) {
-          return <Image src={creative.imageUrl} alt="Generated creative" fill className="object-cover" />;
+          const imageUrl = creative.imageUrl;
+          const isBase64 = imageUrl.startsWith('data:image');
+          return <Image src={imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
       
         if (selectedCreativeType === 'video' && creative?.videoUrl) {
-            console.log('[PostPreview] Rendering video with URL:', creative.videoUrl);
             return (
                 <div className="relative w-full h-full">
                 <video

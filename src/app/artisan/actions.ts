@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -134,6 +135,7 @@ type SaveContentInput = {
 
 
 async function uploadBase64Media(supabase: any, base64: string, userId: string, offeringId: string, mediaType: 'image' | 'video'): Promise<string> {
+    console.log(`[DEBUG_MODE] uploadBase64Media: Uploading ${mediaType}...`);
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
     const extension = mediaType === 'image' ? 'png' : 'mp4';
     const contentType = mediaType === 'image' ? 'image/png' : 'video/mp4';
@@ -141,6 +143,7 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
 
     const base64Data = base64.split(';base64,').pop();
     if (!base64Data) {
+        console.error('[DEBUG_MODE] uploadBase64Media ERROR: Invalid Base64 data.');
         throw new Error('Invalid Base64 media data. Cannot extract content.');
     }
 
@@ -154,11 +157,12 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
         });
 
     if (uploadError) {
-        console.error(`[uploadBase64Media] -- ERROR -- Upload to Supabase Storage failed for ${mediaType}:`, uploadError);
+        console.error(`[DEBUG_MODE] uploadBase64Media ERROR: Supabase Storage upload failed for ${mediaType}:`, uploadError);
         throw new Error(`${mediaType} upload failed: ${uploadError.message}`);
     }
 
     const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+    console.log(`[DEBUG_MODE] uploadBase64Media SUCCESS: File uploaded. Public URL: ${publicUrl}`);
     return publicUrl;
 }
 
@@ -169,7 +173,6 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
     console.log('[DEBUG_MODE] --- saveContent START ---');
     console.log('[DEBUG_MODE] Input received:', input);
-
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -181,23 +184,16 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
 
     try {
         if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
-            console.log('[DEBUG_MODE] Uploading new base64 image...');
             restOfInput.imageUrl = await uploadBase64Media(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId, 'image');
-            console.log('[DEBUG_MODE] Image uploaded. New URL:', restOfInput.imageUrl);
         }
         if (restOfInput.videoUrl && restOfInput.videoUrl.startsWith('data:video')) {
-            console.log('[DEBUG_MODE] Uploading new base64 video...');
             restOfInput.videoUrl = await uploadBase64Media(supabase, restOfInput.videoUrl, user.id, restOfInput.offeringId, 'video');
-            console.log('[DEBUG_MODE] Video uploaded. New URL:', restOfInput.videoUrl);
         }
         if (restOfInput.carouselSlides) {
-            console.log('[DEBUG_MODE] Processing carousel slides for upload...');
             restOfInput.carouselSlides = await Promise.all(
-                restOfInput.carouselSlides.map(async (slide, index) => {
+                restOfInput.carouselSlides.map(async (slide) => {
                     if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                        console.log(`[DEBUG_MODE] Uploading new image for slide ${index}...`);
                         slide.imageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, restOfInput.offeringId, 'image');
-                        console.log(`[DEBUG_MODE] Slide ${index} image uploaded. New URL:`, slide.imageUrl);
                     }
                     return slide;
                 })
