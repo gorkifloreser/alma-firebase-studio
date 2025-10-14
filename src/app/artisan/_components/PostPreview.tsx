@@ -211,7 +211,7 @@ export const PostPreview = ({
                     const imageUrl = slide.imageUrl || '';
                     
                     return (
-                        <CarouselItem key={`${index}-${slide.creativePrompt || ''}`} className={cn("relative group", aspectRatioClass)}>
+                        <CarouselItem key={`${slide.creativePrompt}-${index}`} className={cn("relative group", aspectRatioClass)}>
                             {slide.imageUrl ? (
                             <Image
                                 src={imageUrl}
