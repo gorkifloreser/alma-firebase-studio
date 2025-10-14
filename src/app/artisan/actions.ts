@@ -98,10 +98,13 @@ export async function getContentItem(mediaPlanItemId: string): Promise<ContentIt
  * Invokes the Genkit creative generation flow.
  */
 export async function generateCreativeForOffering(input: GenerateCreativeInput): Promise<GenerateCreativeOutput> {
+    console.log('[ACTION: generateCreativeForOffering] -- START --', input);
     try {
-        return await genCreativeFlow(input);
+        const result = await genCreativeFlow(input);
+        console.log('[ACTION: generateCreativeForOffering] -- SUCCESS -- Result from flow:', result);
+        return result;
     } catch (error: any) {
-        console.error("Creative generation action failed:", error);
+        console.error("[ACTION: generateCreativeForOffering] -- ERROR -- Creative generation action failed:", error);
         throw new Error(`Failed to generate creative. Please try again. ${error.message}`);
     }
 }
@@ -135,7 +138,7 @@ type SaveContentInput = {
 
 
 async function uploadBase64Media(supabase: any, base64: string, userId: string, offeringId: string, mediaType: 'image' | 'video'): Promise<string> {
-    console.log(`[DEBUG_MODE] uploadBase64Media: Uploading ${mediaType}...`);
+    console.log(`[uploadBase64Media] -- START -- Uploading ${mediaType} for user ${userId}, offering ${offeringId}`);
     const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET_NAME || 'Alma';
     const extension = mediaType === 'image' ? 'png' : 'mp4';
     const contentType = mediaType === 'image' ? 'image/png' : 'video/mp4';
@@ -143,7 +146,6 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
 
     const base64Data = base64.split(';base64,').pop();
     if (!base64Data) {
-        console.error('[DEBUG_MODE] uploadBase64Media ERROR: Invalid Base64 data.');
         throw new Error('Invalid Base64 media data. Cannot extract content.');
     }
 
@@ -157,12 +159,12 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
         });
 
     if (uploadError) {
-        console.error(`[DEBUG_MODE] uploadBase64Media ERROR: Supabase Storage upload failed for ${mediaType}:`, uploadError);
+        console.error(`[uploadBase64Media] -- ERROR -- Upload to Supabase Storage failed for ${mediaType}:`, uploadError);
         throw new Error(`${mediaType} upload failed: ${uploadError.message}`);
     }
 
     const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-    console.log(`[DEBUG_MODE] uploadBase64Media SUCCESS: File uploaded. Public URL: ${publicUrl}`);
+    console.log(`[uploadBase64Media] -- SUCCESS -- File uploaded. Public URL: ${publicUrl}`);
     return publicUrl;
 }
 
@@ -171,170 +173,152 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
  * Creates a new content item (draft).
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
-    console.log('[DEBUG_MODE] --- saveContent START ---');
-    console.log('[DEBUG_MODE] Input received:', input);
+    console.log('[ACTION: saveContent] -- START --');
+    console.log('[ACTION: saveContent] -- INPUT --', input);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        console.error('[DEBUG_MODE] saveContent ERROR: User not authenticated.');
-        throw new Error('User not authenticated');
-    }
+    if (!user) throw new Error('User not authenticated');
 
     const { mediaPlanItemId, ...restOfInput } = input;
 
-    try {
-        if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
-            restOfInput.imageUrl = await uploadBase64Media(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId, 'image');
-        }
-        if (restOfInput.videoUrl && restOfInput.videoUrl.startsWith('data:video')) {
-            restOfInput.videoUrl = await uploadBase64Media(supabase, restOfInput.videoUrl, user.id, restOfInput.offeringId, 'video');
-        }
-        if (restOfInput.carouselSlides) {
-            restOfInput.carouselSlides = await Promise.all(
-                restOfInput.carouselSlides.map(async (slide) => {
-                    if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                        slide.imageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, restOfInput.offeringId, 'image');
-                    }
-                    return slide;
-                })
-            );
-        }
-
-        const dbPayload = toSnakeCase(restOfInput);
-        dbPayload.user_id = user.id;
-        if (mediaPlanItemId) {
-            const { data } = await supabase.from('media_plan_items').select('media_plan_id').eq('id', mediaPlanItemId).single();
-            dbPayload.media_plan_id = data?.media_plan_id || null;
-        }
-
-        if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
-        if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
-
-        console.log('[DEBUG_MODE] Final payload for DB insert:', dbPayload);
-        const { data: newMediaItem, error: createError } = await supabase
-            .from('media_plan_items')
-            .insert(dbPayload)
-            .select(`*, offerings(*), user_channel_settings(channel_name)`)
-            .single();
-
-        if (createError) {
-            console.error("[DEBUG_MODE] saveContent DB ERROR:", createError);
-            throw new Error(`Could not create new draft item. DB Error: ${createError.message}`);
-        }
-
-        console.log('[DEBUG_MODE] saveContent SUCCESS. New item ID:', newMediaItem.id);
-        revalidatePath('/artisan');
-        revalidatePath('/calendar');
-        return newMediaItem as unknown as ContentItem;
-    } finally {
-        console.log('[DEBUG_MODE] --- saveContent END ---');
+    if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
+        restOfInput.imageUrl = await uploadBase64Media(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId, 'image');
     }
+    if (restOfInput.videoUrl && restOfInput.videoUrl.startsWith('data:video')) {
+        restOfInput.videoUrl = await uploadBase64Media(supabase, restOfInput.videoUrl, user.id, restOfInput.offeringId, 'video');
+    }
+    if (restOfInput.carouselSlides) {
+        restOfInput.carouselSlides = await Promise.all(
+            restOfInput.carouselSlides.map(async (slide) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    slide.imageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, restOfInput.offeringId, 'image');
+                }
+                return slide;
+            })
+        );
+    }
+
+    const dbPayload = toSnakeCase(restOfInput);
+    dbPayload.user_id = user.id;
+    if (mediaPlanItemId) {
+        const { data } = await supabase.from('media_plan_items').select('media_plan_id').eq('id', mediaPlanItemId).single();
+        dbPayload.media_plan_id = data?.media_plan_id || null;
+    }
+
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
+
+    console.log('[ACTION: saveContent] -- PAYLOAD for DB Insert --', dbPayload);
+    const { data: newMediaItem, error: createError } = await supabase
+        .from('media_plan_items')
+        .insert(dbPayload)
+        .select(`*, offerings(*), user_channel_settings(channel_name)`)
+        .single();
+
+    if (createError) {
+        console.error("[ACTION: saveContent] -- ERROR -- Error creating content:", createError);
+        throw new Error(`Could not create new draft item. DB Error: ${createError.message}`);
+    }
+
+    console.log('[ACTION: saveContent] -- SUCCESS -- New item created:', newMediaItem);
+    revalidatePath('/artisan');
+    revalidatePath('/calendar');
+    return newMediaItem as unknown as ContentItem;
 }
 
 /**
  * Updates an existing content item using a strict 'whitelist' approach.
  */
 export async function updateContent(mediaPlanItemId: string, updates: Partial<SaveContentInput>): Promise<ContentItem> {
-    console.log(`[DEBUG_MODE] --- updateContent START --- | Item ID: ${mediaPlanItemId}`);
-    console.log('[DEBUG_MODE] Updates received:', updates);
-
+    console.log(`[ACTION: updateContent] -- START -- Updating item ID: ${mediaPlanItemId}`);
+    console.log('[ACTION: updateContent] -- INPUT --', updates);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        console.error('[DEBUG_MODE] updateContent ERROR: User not authenticated.');
-        throw new Error('User not authenticated');
+    if (!user) throw new Error('User not authenticated');
+
+    const { data: existingItem, error: fetchError } = await supabase
+        .from('media_plan_items')
+        .select('offering_id')
+        .eq('id', mediaPlanItemId)
+        .single();
+
+    if (fetchError || !existingItem) {
+        console.error(`[ACTION: updateContent] -- ERROR -- Could not fetch existing item:`, fetchError);
+        throw new Error('Failed to find the content item to update.');
+    }
+    const offeringId = updates.offeringId || existingItem.offering_id;
+    if (!offeringId) {
+        throw new Error('FATAL: offering_id is missing and could not be retrieved.');
+    }
+    console.log(`[ACTION: updateContent] -- INFO -- Using offering_id: ${offeringId}`);
+
+    const payloadForDb: { [key: string]: any } = {};
+
+    const allowedFields: (keyof SaveContentInput)[] = [
+        'copy', 'hashtags', 'creative_prompt', 'concept', 'objective',
+        'status', 'scheduledAt', 'media_format', 'aspect_ratio', 'landingPageHtml',
+        'videoScript'
+    ];
+
+    allowedFields.forEach(key => {
+        if (updates[key] !== undefined) {
+            payloadForDb[key] = updates[key];
+        }
+    });
+
+    if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
+        console.log('[ACTION: updateContent] -- MEDIA -- Uploading new base64 image for update...');
+        payloadForDb.imageUrl = await uploadBase64Media(supabase, updates.imageUrl, user.id, offeringId, 'image');
+    } else if (updates.imageUrl !== undefined) {
+        payloadForDb.imageUrl = updates.imageUrl;
     }
 
-    try {
-        const { data: existingItem, error: fetchError } = await supabase
-            .from('media_plan_items')
-            .select('offering_id')
-            .eq('id', mediaPlanItemId)
-            .single();
-
-        if (fetchError || !existingItem) {
-            console.error(`[DEBUG_MODE] updateContent ERROR: Could not fetch existing item:`, fetchError);
-            throw new Error('Failed to find the content item to update.');
-        }
-        const offeringId = updates.offeringId || existingItem.offering_id;
-        if (!offeringId) {
-            throw new Error('FATAL: offering_id is missing and could not be retrieved.');
-        }
-        console.log(`[DEBUG_MODE] updateContent INFO: Using offering_id: ${offeringId}`);
-
-        const payloadForDb: { [key: string]: any } = {};
-
-        const allowedFields: (keyof SaveContentInput)[] = [
-            'copy', 'hashtags', 'creative_prompt', 'concept', 'objective',
-            'status', 'scheduledAt', 'media_format', 'aspect_ratio', 'landingPageHtml',
-            'videoScript'
-        ];
-
-        allowedFields.forEach(key => {
-            if (updates[key] !== undefined) {
-                payloadForDb[key] = updates[key];
-            }
-        });
-
-        if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
-            console.log('[DEBUG_MODE] Uploading new base64 image for update...');
-            payloadForDb.imageUrl = await uploadBase64Media(supabase, updates.imageUrl, user.id, offeringId, 'image');
-            console.log('[DEBUG_MODE] Image uploaded. New URL:', payloadForDb.imageUrl);
-        } else if (updates.imageUrl !== undefined) {
-            payloadForDb.imageUrl = updates.imageUrl;
-        }
-
-        if (updates.videoUrl && updates.videoUrl.startsWith('data:video')) {
-            console.log('[DEBUG_MODE] Uploading new base64 video for update...');
-            payloadForDb.videoUrl = await uploadBase64Media(supabase, updates.videoUrl, user.id, offeringId, 'video');
-            console.log('[DEBUG_MODE] Video uploaded. New URL:', payloadForDb.videoUrl);
-        } else if (updates.videoUrl !== undefined) {
-            payloadForDb.videoUrl = updates.videoUrl;
-        }
-
-        if (updates.carouselSlides) {
-            console.log('[DEBUG_MODE] Processing carousel slides for update...');
-            payloadForDb.carouselSlides = await Promise.all(
-                updates.carouselSlides.map(async (slide, index) => {
-                    if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                        console.log(`[DEBUG_MODE] Uploading new image for slide ${index}...`);
-                        const newImageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, offeringId, 'image');
-                        console.log(`[DEBUG_MODE] Slide ${index} image uploaded. New URL:`, newImageUrl);
-                        return { ...slide, imageUrl: newImageUrl };
-                    }
-                    return slide;
-                })
-            );
-        }
-
-        const dbPayload = toSnakeCase(payloadForDb);
-        dbPayload.updated_at = new Date().toISOString();
-
-        if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
-        if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
-
-        console.log('[DEBUG_MODE] Final payload for DB update:', JSON.stringify(dbPayload, null, 2));
-
-        const { data, error } = await supabase
-            .from('media_plan_items')
-            .update(dbPayload)
-            .eq('id', mediaPlanItemId)
-            .eq('user_id', user.id)
-            .select(`*, offerings(*), user_channel_settings(channel_name)`)
-            .single();
-
-        if (error) {
-            console.error("[DEBUG_MODE] updateContent DB ERROR:", error);
-            throw new Error(`Failed to update content. DB Error: ${error.message}`);
-        }
-
-        console.log(`[DEBUG_MODE] updateContent SUCCESS: Item ${mediaPlanItemId} updated successfully.`);
-        revalidatePath('/artisan');
-        revalidatePath('/calendar');
-        return data as unknown as ContentItem;
-    } finally {
-        console.log(`[DEBUG_MODE] --- updateContent END --- | Item ID: ${mediaPlanItemId}`);
+    if (updates.videoUrl && updates.videoUrl.startsWith('data:video')) {
+        console.log('[ACTION: updateContent] -- MEDIA -- Uploading new base64 video for update...');
+        payloadForDb.videoUrl = await uploadBase64Media(supabase, updates.videoUrl, user.id, offeringId, 'video');
+    } else if (updates.videoUrl !== undefined) {
+        payloadForDb.videoUrl = updates.videoUrl;
     }
+
+    if (updates.carouselSlides) {
+        console.log('[ACTION: updateContent] -- MEDIA -- Processing carousel slides for update...');
+        payloadForDb.carouselSlides = await Promise.all(
+            updates.carouselSlides.map(async (slide, index) => {
+                if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
+                    console.log(`[ACTION: updateContent] -- MEDIA -- Uploading new image for slide ${index}...`);
+                    const newImageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, offeringId, 'image');
+                    return { ...slide, imageUrl: newImageUrl };
+                }
+                return slide;
+            })
+        );
+    }
+
+    const dbPayload = toSnakeCase(payloadForDb);
+    dbPayload.updated_at = new Date().toISOString();
+
+    if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
+    if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
+
+    console.log('[ACTION: updateContent] -- PAYLOAD for DB Update --', JSON.stringify(dbPayload, null, 2));
+
+    const { data, error } = await supabase
+        .from('media_plan_items')
+        .update(dbPayload)
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id)
+        .select(`*, offerings(*), user_channel_settings(channel_name)`)
+        .single();
+
+    if (error) {
+        console.error("[ACTION: updateContent] -- ERROR -- Error during Supabase update:", error);
+        throw new Error(`Failed to update content. DB Error: ${error.message}`);
+    }
+
+    console.log(`[ACTION: updateContent] -- SUCCESS -- Item ${mediaPlanItemId} updated successfully. Result:`, data);
+    revalidatePath('/artisan');
+    revalidatePath('/calendar');
+    return data as unknown as ContentItem;
 }
 
 
@@ -342,33 +326,26 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
  * Deletes a content item. The associated media cleanup is handled by a database trigger.
  */
 export async function deleteContent(mediaPlanItemId: string): Promise<{ message: string }> {
-    console.log(`[DEBUG_MODE] --- deleteContent START --- | Item ID: ${mediaPlanItemId}`);
+    console.log(`[ACTION: deleteContent] -- START -- Deleting item ID: ${mediaPlanItemId}`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        console.error('[DEBUG_MODE] deleteContent ERROR: User not authenticated.');
-        throw new Error('User not authenticated');
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+        .from('media_plan_items')
+        .delete()
+        .eq('id', mediaPlanItemId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error("[ACTION: deleteContent] -- ERROR -- Error during Supabase delete:", error);
+        throw new Error(`Failed to delete content. DB Error: ${error.message}`);
     }
 
-    try {
-        const { error } = await supabase
-            .from('media_plan_items')
-            .delete()
-            .eq('id', mediaPlanItemId)
-            .eq('user_id', user.id);
-
-        if (error) {
-            console.error("[DEBUG_MODE] deleteContent DB ERROR:", error);
-            throw new Error(`Failed to delete content. DB Error: ${error.message}`);
-        }
-
-        console.log(`[DEBUG_MODE] deleteContent SUCCESS: Item ${mediaPlanItemId} deleted from DB.`);
-        revalidatePath('/artisan');
-        revalidatePath('/calendar');
-        return { message: 'Content item deleted successfully. Associated media will be cleaned up automatically.' };
-    } finally {
-        console.log(`[DEBUG_MODE] --- deleteContent END --- | Item ID: ${mediaPlanItemId}`);
-    }
+    console.log(`[ACTION: deleteContent] -- SUCCESS -- Item ${mediaPlanItemId} deleted.`);
+    revalidatePath('/artisan');
+    revalidatePath('/calendar');
+    return { message: 'Content item deleted successfully. Associated media will be cleaned up automatically.' };
 }
 
 
@@ -376,7 +353,7 @@ export async function deleteContent(mediaPlanItemId: string): Promise<{ message:
 /**
  * Updates the status of a media plan item.
  */
-export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStatus: 'ready_for_review' | 'queued_for_generation' | 'draft' | 'scheduled' | 'published'): Promise<{ message: string }> {
+export async function updateMediaPlanItemStatus(mediaPlanItemId: string, newStatus: 'ready_for_review' | 'queued_for_generation' | 'draft' | 'scheduled' | 'published' ): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -408,3 +385,5 @@ export async function editImageWithInstruction(input: EditImageInput): Promise<E
 export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
     return regenerateSlideFlow(input);
 }
+
+    

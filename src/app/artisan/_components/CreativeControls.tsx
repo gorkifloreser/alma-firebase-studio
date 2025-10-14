@@ -377,7 +377,10 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                 </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-                <Button onClick={() => handleGenerate(creativePrompt)} className="w-full" disabled={isGenerateDisabled}>
+                 <Button onClick={() => {
+                    console.log(`[DEBUG_MODE] 'Generate with AI' clicked. selectedOfferingId: ${selectedOfferingId}, creativePrompt: "${creativePrompt}", selectedCreativeType: "${selectedCreativeFormat}", dimension: "${dimension}"`);
+                    handleGenerate(creativePrompt);
+                 }} className="w-full" disabled={isGenerateDisabled}>
                     <Wand2 className="mr-2 h-4 w-4" />
                     {isGenerating ? 'Generating...' : 'Generate with AI'}
                 </Button>
@@ -388,7 +391,10 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                     {/* Show "Save" only for NEW custom content */}
                     {workflowMode === 'custom' && !isUpdate && (
                         <Button 
-                            onClick={() => handleSave('ready_for_review')} 
+                            onClick={() => {
+                                console.log('[DEBUG_MODE] "Save Draft" for custom content clicked.');
+                                handleSave('ready_for_review');
+                            }} 
                             className="flex-grow" 
                             disabled={isSaving || !hasContent}
                         >
@@ -423,7 +429,10 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                                 </AlertDialog>
                             )}
                             <Button 
-                                onClick={() => handleSave('ready_for_review')} 
+                                onClick={() => {
+                                    console.log('[DEBUG_MODE] "Update Draft" for campaign/saved content clicked.');
+                                    handleSave('ready_for_review');
+                                }} 
                                 variant="secondary"
                                 className="flex-grow" 
                                 disabled={isSaving || !hasContent}
@@ -434,7 +443,10 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
                         </>
                     )}
 
-                    <Button onClick={() => handleSave('scheduled', scheduledAt)} className="flex-grow" disabled={isSaving || !hasContent || !scheduledAt}>
+                    <Button onClick={() => {
+                        console.log('[DEBUG_MODE] "Schedule Post" clicked.');
+                        handleSave('scheduled', scheduledAt);
+                    }} className="flex-grow" disabled={isSaving || !hasContent || !scheduledAt}>
                         Schedule Post
                     </Button>
                 </div>
@@ -444,4 +456,6 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
 };
     
     
+    
+
     
