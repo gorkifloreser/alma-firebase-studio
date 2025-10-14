@@ -206,8 +206,8 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => {
+                    if (!slide) return null; // Added null check
                     const imageUrl = slide.imageUrl || '';
-                    const isBase64 = imageUrl.startsWith('data:image');
                     
                     return (
                         <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
@@ -220,7 +220,7 @@ export const PostPreview = ({
                             />
                             ) : (
                             <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                {/* Placeholder for when image is not available */}
+                                <ImageIcon className="w-16 h-16 text-muted-foreground" />
                             </div>
                             )}
                       </CarouselItem>
@@ -239,7 +239,6 @@ export const PostPreview = ({
       
         if (selectedCreativeType === 'image' && creative?.imageUrl) {
           const imageUrl = creative.imageUrl;
-          const isBase64 = imageUrl.startsWith('data:image');
           return <Image src={imageUrl} alt="Generated creative" fill className="object-cover" />;
         }
       
