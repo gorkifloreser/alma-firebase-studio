@@ -156,6 +156,7 @@ export const PostPreview = ({
     console.log("[DEBUG] PostPreview received creative prop:", creative);
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
+    const postUserAvatar = profile?.avatar_url;
     const aspectRatioClass = dimensionMap[dimension];
     const isStory = dimension === '9:16';
     const [api, setApi] = useState<CarouselApi>()
@@ -206,11 +207,11 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => {
-                    if (!slide) return null; // Added null check
+                    if (!slide) return null; // My previous fix
                     const imageUrl = slide.imageUrl || '';
                     
                     return (
-                        <CarouselItem key={slide.imageUrl || index} className={cn("relative group", aspectRatioClass)}>
+                        <CarouselItem key={`${index}-${slide.creativePrompt || ''}`} className={cn("relative group", aspectRatioClass)}>
                             {slide.imageUrl ? (
                             <Image
                                 src={imageUrl}
@@ -329,7 +330,7 @@ export const PostPreview = ({
                         <div className="flex items-center justify-between p-2">
                             <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                                    <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
                                     <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm font-semibold [text-shadow:_0_1px_2px_rgb(0_0_0_/_60%)]">{postUserHandle}</span>
@@ -361,7 +362,7 @@ export const PostPreview = ({
                 <Card className="w-full max-w-md mx-auto">
                     <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                         <Avatar>
-                            <AvatarImage src={profile?.avatar_url || undefined} alt={postUser} />
+                            <AvatarImage src={postUserAvatar || undefined} alt={postUser} />
                             <AvatarFallback>{postUser.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="grid gap-0.5">
