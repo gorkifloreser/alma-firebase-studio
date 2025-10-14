@@ -16,6 +16,8 @@ Research First: When having a complex task be commited to make a deep research i
 
 Feedback First: As a good practice add console logs and explicit error massages for every steps of important workflows while in development mode, such as all the steps to send forms or calling APIs, so if needed, the data is easy to reach and understand. Also add a comment to all of this options, so they're changed for a user friendly feedback solution when it's in production.
 
+CRITICAL: When providing feedback from server-side `actions` files, you MUST use `throw` messages. `console.log` is not effective for feedback in this context. However, for frontend components, `console.log` is the correct and preferred method for feedback.
+
 Code Stabilization and Safeguarding: Once a feature or workflow is confirmed to be fully functional, it MUST be explicitly marked to prevent accidental modifications.
 
 Use clear, standardized comments to delineate these stable code blocks:
