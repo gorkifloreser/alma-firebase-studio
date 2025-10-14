@@ -1,4 +1,3 @@
-
 // GEMINI_SAFE_START
 // @functional: This component and its related features are considered functionally complete.
 // Avoid unnecessary modifications unless a new feature or bug fix is explicitly requested for this area.
@@ -391,6 +390,7 @@ export default function ArtisanPage() {
             setEditableCopy(sourceOfTruth.copy || '');
             setEditableHashtags(sourceOfTruth.hashtags || '');
             
+            console.log("[DEBUG_MODE] Data from DB for carousel:", sourceOfTruth.carousel_slides, "Type:", typeof sourceOfTruth.carousel_slides);
             let parsedSlides = sourceOfTruth.carousel_slides;
             if (typeof parsedSlides === 'string') {
                 try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
