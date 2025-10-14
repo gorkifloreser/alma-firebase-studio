@@ -347,6 +347,7 @@ export default function ArtisanPage() {
     // --- REFACTORED LOGIC TO PREVENT INFINITE LOOPS & RELY ON DB AS SOURCE OF TRUTH ---
 
     const loadDataForArtisanItem = useCallback(async (artisanItemId: string | null) => {
+        console.log(`[DEBUG] loadDataForArtisanItem called with ID: ${artisanItemId}`);
         setCreative(null);
         setEditableCopy('');
         setEditableHashtags('');
@@ -385,25 +386,30 @@ export default function ArtisanPage() {
                 }
             }
             
+            console.log("[DEBUG] Raw carousel_slides data from DB:", sourceOfTruth.carousel_slides);
+            console.log("[DEBUG] Type of carousel_slides:", typeof sourceOfTruth.carousel_slides);
+
             setCreativePrompt(sourceOfTruth.creative_prompt || '');
             setSelectedOfferingId(sourceOfTruth.offering_id ?? undefined);
             setEditableCopy(sourceOfTruth.copy || '');
             setEditableHashtags(sourceOfTruth.hashtags || '');
             
-            console.log("[DEBUG_MODE] Data from DB for carousel:", sourceOfTruth.carousel_slides, "Type:", typeof sourceOfTruth.carousel_slides);
             let parsedSlides = sourceOfTruth.carousel_slides;
             if (typeof parsedSlides === 'string') {
                 try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
             }
-
-            setCreative({
+            
+            const finalCreativeState = {
                 imageUrl: sourceOfTruth.image_url || null,
                 carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                 videoScript: sourceOfTruth.video_script || null,
                 landingPageHtml: sourceOfTruth.landing_page_html || null,
                 contentBody: sourceOfTruth.content_body || null,
                 creativePrompt: sourceOfTruth.creative_prompt || null
-            });
+            };
+
+            console.log("[DEBUG] Final creative state being set:", finalCreativeState);
+            setCreative(finalCreativeState);
 
             if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
 
@@ -586,7 +592,6 @@ export default function ArtisanPage() {
             startSaving(async () => {
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
                 
-                // Whitelisted payload to prevent sending extra client-side state
                 const payload = {
                     offeringId: selectedOfferingId,
                     copy: editableCopy,

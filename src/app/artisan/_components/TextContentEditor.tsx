@@ -1,4 +1,4 @@
-
+// This is a new file created by refactoring src/app/artisan/page.tsx
 'use client';
 
 import * as React from 'react';

@@ -49,7 +49,7 @@ type Profile = {
 } | null;
 
 type CreativeType = 'image' | 'carousel' | 'video' | 'landing_page' | 'text';
-const dimensionMap = {
+const dimensionMap: {[key: string]: string} = {
     '1:1': 'aspect-square',
     '4:5': 'aspect-[4/5]',
     '9:16': 'aspect-[9/16]',
@@ -138,7 +138,7 @@ export const PostPreview = ({
     isSaved,
 }: {
     profile: Profile,
-    dimension: keyof typeof dimensionMap,
+    dimension: string,
     isLoading: boolean,
     selectedCreativeType: CreativeType,
     creative: GenerateCreativeOutput | null,
@@ -157,7 +157,7 @@ export const PostPreview = ({
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const postUserAvatar = profile?.avatar_url;
-    const aspectRatioClass = dimensionMap[dimension];
+    const aspectRatioClass = dimensionMap[dimension] || 'aspect-square';
     const isStory = dimension === '9:16';
     const [api, setApi] = useState<CarouselApi>()
     const [current, setCurrent] = useState(0)
@@ -207,7 +207,7 @@ export const PostPreview = ({
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => {
-                    if (!slide) return null; // My previous fix
+                    if (!slide) return null;
                     const imageUrl = slide.imageUrl || '';
                     
                     return (
@@ -221,7 +221,7 @@ export const PostPreview = ({
                             />
                             ) : (
                             <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                                <Images className="w-16 h-16 text-muted-foreground" />
                             </div>
                             )}
                       </CarouselItem>
