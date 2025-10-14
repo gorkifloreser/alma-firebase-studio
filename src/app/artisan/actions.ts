@@ -232,15 +232,14 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
 }
 
 /**
- * Updates an existing content item using a strict 'whitelist' approach.
+ * Updates an existing content item by overwriting fields from the updates object.
  */
 export async function updateContent(mediaPlanItemId: string, updates: Partial<SaveContentInput>): Promise<ContentItem> {
     console.log(`[ACTION: updateContent] -- START -- Updating item ID: ${mediaPlanItemId}`);
-    console.log('[ACTION: updateContent] Received updates object:', updates);
-    
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+    console.log('[ACTION: updateContent] Received updates from client:', updates);
 
     const { data: existingItem, error: fetchError } = await supabase
         .from('media_plan_items')
@@ -249,47 +248,34 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
         .single();
 
     if (fetchError || !existingItem) {
+        console.error(`[ACTION: updateContent] -- ERROR -- Could not fetch existing item:`, fetchError);
         throw new Error('Failed to find the content item to update.');
     }
     const offeringId = updates.offeringId || existingItem.offering_id;
     if (!offeringId) {
         throw new Error('FATAL: offering_id is missing and could not be retrieved.');
     }
-    
-    const payloadForDb: { [key: string]: any } = {};
+    console.log(`[ACTION: updateContent] -- INFO -- Using offering_id: ${offeringId}`);
 
-    const allowedFields: (keyof SaveContentInput)[] = [
-        'copy', 'hashtags', 'creative_prompt', 'concept', 'objective',
-        'status', 'scheduledAt', 'media_format', 'aspect_ratio', 'landingPageHtml',
-        'videoScript'
-    ];
+    // Start with the provided updates
+    const payloadForDb: { [key: string]: any } = { ...updates };
 
-    allowedFields.forEach(key => {
-        if (updates[key] !== undefined) {
-            payloadForDb[key] = updates[key];
-        }
-    });
-
-    if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
+    // Process media uploads, replacing base64 with URLs
+    if (payloadForDb.imageUrl && payloadForDb.imageUrl.startsWith('data:image')) {
         console.log('[ACTION: updateContent] Found new base64 image. Uploading...');
-        payloadForDb.imageUrl = await uploadBase64Media(supabase, updates.imageUrl, user.id, offeringId, 'image');
-    } else if (updates.imageUrl !== undefined) {
-        console.log('[ACTION: updateContent] Image URL is present but not base64. Assuming it is a public URL.');
-        payloadForDb.imageUrl = updates.imageUrl;
+        payloadForDb.imageUrl = await uploadBase64Media(supabase, payloadForDb.imageUrl, user.id, offeringId, 'image');
     }
 
-    if (updates.videoUrl && updates.videoUrl.startsWith('data:video')) {
-        payloadForDb.videoUrl = await uploadBase64Media(supabase, updates.videoUrl, user.id, offeringId, 'video');
-    } else if (updates.videoUrl !== undefined) {
-        payloadForDb.videoUrl = updates.videoUrl;
+    if (payloadForDb.videoUrl && payloadForDb.videoUrl.startsWith('data:video')) {
+        console.log('[ACTION: updateContent] Found new base64 video. Uploading...');
+        payloadForDb.videoUrl = await uploadBase64Media(supabase, payloadForDb.videoUrl, user.id, offeringId, 'video');
     }
 
-    if (updates.carouselSlides) {
-        console.log('[ACTION: updateContent] Processing carousel slides...');
+    if (payloadForDb.carouselSlides) {
+        console.log('[ACTION: updateContent] Processing carousel slides for upload...');
         payloadForDb.carouselSlides = await Promise.all(
-            updates.carouselSlides.map(async (slide, index) => {
+            payloadForDb.carouselSlides.map(async (slide: CarouselSlide) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    console.log(`[ACTION: updateContent] Uploading image for slide ${index}...`);
                     const newImageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, offeringId, 'image');
                     return { ...slide, imageUrl: newImageUrl };
                 }
@@ -297,6 +283,10 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
             })
         );
     }
+    
+    // Remove client-specific or irrelevant properties before sending to DB
+    delete payloadForDb.offeringId;
+    delete payloadForDb.mediaPlanItemId;
 
     const dbPayload = toSnakeCase(payloadForDb);
     dbPayload.updated_at = new Date().toISOString();
@@ -304,7 +294,7 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
     if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
 
-    console.log('[ACTION: updateContent] Final payload for DB update:', JSON.stringify(dbPayload, null, 2));
+    console.log('[ACTION: updateContent] -- PAYLOAD -- Final payload for DB update:', JSON.stringify(dbPayload, null, 2));
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -315,7 +305,7 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
         .single();
 
     if (error) {
-        console.error("[ACTION: updateContent] -- ERROR --", error);
+        console.error("[ACTION: updateContent] -- ERROR -- Error during Supabase update:", error);
         throw new Error(`Failed to update content. DB Error: ${error.message}`);
     }
 
@@ -342,7 +332,7 @@ export async function deleteContent(mediaPlanItemId: string): Promise<{ message:
         .eq('user_id', user.id);
 
     if (error) {
-        console.error("[ACTION: deleteContent] -- ERROR --", error);
+        console.error("[ACTION: deleteContent] -- ERROR -- Error during Supabase delete:", error);
         throw new Error(`Failed to delete content. DB Error: ${error.message}`);
     }
 
@@ -386,9 +376,9 @@ export async function editImageWithInstruction(input: EditImageInput): Promise<E
 /**
  * Invokes the Genkit flow to regenerate a single carousel slide image.
  */
-export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<RegenerateCarouselSlideOutput> {
+export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInput): Promise<
+       RegenerateCarouselSlideOutput> {
     return regenerateSlideFlow(input);
 }
 
-    
     

@@ -400,8 +400,8 @@ export default function ArtisanPage() {
                 carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                 videoScript: sourceOfTruth.video_script || null,
                 landingPageHtml: sourceOfTruth.landing_page_html || null,
-                contentBody: sourceOfTruth.content_body || null,
-                creativePrompt: sourceOfTruth.creative_prompt || null
+                content: sourceOfTruth.content_body || null,
+                finalPrompt: sourceOfTruth.creative_prompt || null,
             });
 
             if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
@@ -490,6 +490,7 @@ export default function ArtisanPage() {
     }, [toast]);
     
         const handleGenerate = async (regeneratePrompt?: string) => {
+            console.log(`[CLIENT - handleGenerate] Start. Offering ID: ${selectedOfferingId}`);
             if (!selectedOfferingId) {
                 toast({ variant: 'destructive', title: 'Please select an offering.' });
                 return;
@@ -529,7 +530,6 @@ export default function ArtisanPage() {
             setEditableHtml(null);
     
             try {
-                console.log('[CLIENT: handleGenerate] -- START -- Calling generateCreativeForOffering...');
                 const creativeTypes: CreativeType[] = [selectedCreativeType];
                 
                 const result = await generateCreativeForOffering({
@@ -539,31 +539,28 @@ export default function ArtisanPage() {
                     creativePrompt: regeneratePrompt || creativePrompt,
                     referenceImageUrl: referenceImageUrl || undefined,
                 });
+                console.log('[CLIENT - handleGenerate] Received from server:', result);
                 
-                console.log('[CLIENT: handleGenerate] -- SUCCESS -- Received from server action:', result);
-
-                // Map camelCase from server to camelCase for client state (ensures consistency)
                 const mappedCreative = {
                     imageUrl: result.imageUrl || null,
                     carouselSlides: result.carouselSlides || [],
                     videoScript: result.videoScript || null,
                     landingPageHtml: result.landingPageHtml || null,
-                    contentBody: result.content || null,
-                    creativePrompt: result.finalPrompt || null,
+                    content: result.content || null,
+                    finalPrompt: result.finalPrompt || null,
                 };
 
                 setCreative(mappedCreative);
                 
-                // Only update copy if a text type was explicitly requested
-                if (selectedCreativeType === 'text' && mappedCreative.contentBody) {
-                    setEditableCopy((mappedCreative.contentBody as any).primary || '');
+                if (selectedCreativeType === 'text' && mappedCreative.content) {
+                    setEditableCopy((mappedCreative.content as any).primary || '');
                 }
                 if (mappedCreative.landingPageHtml) setEditableHtml(mappedCreative.landingPageHtml);
-                if (mappedCreative.creativePrompt) setCreativePrompt(mappedCreative.creativePrompt);
+                if (mappedCreative.finalPrompt) setCreativePrompt(mappedCreative.finalPrompt);
     
                 toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
             } catch (error: any) {
-                console.error('[CLIENT: handleGenerate] -- ERROR --', error);
+                console.error('[CLIENT - handleGenerate] Error:', error);
                 toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
             } finally {
                 setIsGenerating(false);
@@ -571,10 +568,10 @@ export default function ArtisanPage() {
         };
     
         const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
-            console.log('[CLIENT: handleSave] -- START --');
+            console.log(`[CLIENT - handleSave] Start. Status: ${status}, Item ID: ${selectedArtisanItemId}`);
+            
             if (!selectedOfferingId) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
-                console.log('[CLIENT: handleSave] -- ABORT -- No offeringId');
                 return;
             }
     
@@ -582,41 +579,39 @@ export default function ArtisanPage() {
     
             if (!hasContentToSave) {
                  toast({ variant: 'destructive', title: 'Cannot Save', description: 'Please generate some content before saving.' });
-                 console.log('[CLIENT: handleSave] -- ABORT -- No content to save');
                 return;
             }
             
             startSaving(async () => {
+                const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
+                
+                // Whitelisted payload to prevent sending extra client-side state
+                const payload = {
+                    offeringId: selectedOfferingId,
+                    copy: editableCopy,
+                    hashtags: editableHashtags,
+                    creative_prompt: creativePrompt,
+                    concept: currentItemDetails?.concept || 'Custom Content',
+                    objective: currentItemDetails?.objective || null,
+                    status: status,
+                    scheduledAt: scheduleDate?.toISOString() || null,
+                    media_format: selectedCreativeFormat,
+                    aspect_ratio: dimension,
+                    imageUrl: creative?.imageUrl || null,
+                    carouselSlides: creative?.carouselSlides || null,
+                    videoScript: creative?.videoScript || null,
+                    landingPageHtml: editableHtml || null,
+                };
+                console.log('[CLIENT - handleSave] Constructed payload:', payload);
+
                 try {
-                    const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-                    console.log('[CLIENT: handleSave] -- INFO -- Found current item details:', currentItemDetails);
-    
-                    const payload: any = {
-                        offeringId: selectedOfferingId,
-                        copy: editableCopy,
-                        hashtags: editableHashtags,
-                        creative_prompt: creativePrompt,
-                        concept: currentItemDetails?.concept || 'Custom Content',
-                        objective: currentItemDetails?.objective || null,
-                        status: status,
-                        scheduledAt: scheduleDate?.toISOString(),
-                        media_format: selectedCreativeFormat,
-                        aspect_ratio: dimension,
-                        imageUrl: creative?.imageUrl || null,
-                        carouselSlides: creative?.carouselSlides || null,
-                        videoScript: creative?.videoScript || null,
-                        landingPageHtml: editableHtml,
-                    };
-    
-                    console.log('[CLIENT: handleSave] -- INFO -- Constructed payload:', payload);
-                    
                     let updatedItem: CalendarItem;
                     const isUpdate = (workflowMode === 'campaign' && !!selectedArtisanItemId) || (workflowMode === 'custom' && !!savedContent);
-                    console.log(`[CLIENT: handleSave] -- INFO -- Is this an update? ${isUpdate}`);
+                    console.log(`[CLIENT - handleSave] Is Update: ${isUpdate}`);
                     
                     if (isUpdate && (savedContent || selectedArtisanItemId)) {
                         const itemId = savedContent?.id || selectedArtisanItemId!;
-                        console.log(`[CLIENT: handleSave] -- ACTION -- Calling updateContent for item ID: ${itemId}`);
+                        console.log(`[CLIENT - handleSave] Calling updateContent for ID: ${itemId}`);
                         updatedItem = await updateContent(itemId, payload);
                         setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
                         toast({
@@ -624,7 +619,7 @@ export default function ArtisanPage() {
                             description: status === 'scheduled' ? 'Your post was successfully added to the calendar.' : 'Your changes have been saved.'
                         });
                     } else {
-                        console.log('[CLIENT: handleSave] -- ACTION -- Calling saveContent (new item).');
+                        console.log('[CLIENT - handleSave] Calling saveContent for new item.');
                         updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
                         if (selectedArtisanItemId && !savedContent) {
                              await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
@@ -633,34 +628,32 @@ export default function ArtisanPage() {
                         toast({ title: status === 'scheduled' ? 'Scheduled!' : 'Approved!', description: `The content has been saved.` });
                     }
                     
-                    console.log('[CLIENT: handleSave] -- SUCCESS -- Server returned updated item:', updatedItem);
+                    console.log('[CLIENT - handleSave] Success. Server returned:', updatedItem);
                     setSavedContent(updatedItem as unknown as CalendarItem);
                     
                 } catch (error: any)
                 {
-                    console.error('[CLIENT: handleSave] -- ERROR --', error);
+                    console.error('[CLIENT - handleSave] Error:', error);
                     toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
                 }
             });
         };
     
         const handleDelete = () => {
-            console.log('[CLIENT: handleDelete] -- START --');
+            console.log(`[CLIENT - handleDelete] Start. Item ID: ${savedContent?.id}`);
             if (!savedContent) {
                 toast({ variant: 'destructive', title: 'Error', description: 'No saved content to delete.' });
-                console.log('[CLIENT: handleDelete] -- ABORT -- No savedContent.');
                 return;
             }
             startSaving(async () => {
                 try {
-                    console.log(`[CLIENT: handleDelete] -- ACTION -- Calling deleteContent for item ID: ${savedContent.id}`);
                     await deleteContent(savedContent.id);
                     toast({ title: 'Content Deleted', description: 'The post has been successfully deleted.' });
                     const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
                     setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
                     // The useEffect hooks will handle selecting the next item automatically
                 } catch (error: any) {
-                    console.error('[CLIENT: handleDelete] -- ERROR --', error);
+                    console.error('[CLIENT - handleDelete] Error:', error);
                     toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
                 }
             });
@@ -708,7 +701,7 @@ export default function ArtisanPage() {
             if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
                 return creative.carouselSlides[currentCarouselSlide]?.creativePrompt;
             }
-            return creative.creativePrompt;
+            return creative.finalPrompt;
         }, [creative, selectedCreativeType, currentCarouselSlide]);
     
         const handleDownload = (url: string, filename: string) => {
@@ -1028,3 +1021,5 @@ export default function ArtisanPage() {
     // GEMINI_SAFE_END
     
             
+
+    

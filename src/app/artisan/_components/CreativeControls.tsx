@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -378,12 +379,7 @@ export const CreativeControls: React.FC<CreativeControlsProps> = ({
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
                  <Button onClick={() => {
-                    console.log(`[CLIENT - CreativeControls] 'Generate with AI' clicked. Payload:`, {
-                        selectedOfferingId,
-                        creativePrompt,
-                        selectedCreativeFormat,
-                        dimension,
-                    });
+                    console.log(`[CLIENT - CreativeControls] 'Generate with AI' clicked. selectedOfferingId: ${selectedOfferingId}, creativePrompt: "${creativePrompt}", selectedCreativeType: "${selectedCreativeFormat}", dimension: "${dimension}"`);
                     handleGenerate(creativePrompt);
                  }} className="w-full" disabled={isGenerateDisabled}>
                     <Wand2 className="mr-2 h-4 w-4" />
