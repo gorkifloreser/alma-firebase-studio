@@ -347,6 +347,7 @@ export default function ArtisanPage() {
     // --- REFACTORED LOGIC TO PREVENT INFINITE LOOPS & RELY ON DB AS SOURCE OF TRUTH ---
 
     const loadDataForArtisanItem = useCallback(async (artisanItemId: string | null) => {
+        console.log(`[DEBUG] loadDataForArtisanItem called with ID: ${artisanItemId}`);
         setCreative(null);
         setEditableCopy('');
         setEditableHashtags('');
@@ -385,6 +386,9 @@ export default function ArtisanPage() {
                 }
             }
             
+            console.log("[DEBUG] Raw carousel_slides data from DB:", sourceOfTruth.carousel_slides);
+            console.log("[DEBUG] Type of carousel_slides:", typeof sourceOfTruth.carousel_slides);
+
             setCreativePrompt(sourceOfTruth.creative_prompt || '');
             setSelectedOfferingId(sourceOfTruth.offering_id ?? undefined);
             setEditableCopy(sourceOfTruth.copy || '');
@@ -394,15 +398,18 @@ export default function ArtisanPage() {
             if (typeof parsedSlides === 'string') {
                 try { parsedSlides = JSON.parse(parsedSlides); } catch (e) { parsedSlides = []; }
             }
-
-            setCreative({
+            
+            const finalCreativeState = {
                 imageUrl: sourceOfTruth.image_url || null,
                 carouselSlides: Array.isArray(parsedSlides) ? parsedSlides : [],
                 videoScript: sourceOfTruth.video_script || null,
                 landingPageHtml: sourceOfTruth.landing_page_html || null,
-                content: sourceOfTruth.content_body || null,
-                finalPrompt: sourceOfTruth.creative_prompt || null,
-            });
+                contentBody: sourceOfTruth.content_body || null,
+                creativePrompt: sourceOfTruth.creative_prompt || null
+            };
+
+            console.log("[DEBUG] Final creative state being set:", finalCreativeState);
+            setCreative(finalCreativeState);
 
             if (sourceOfTruth.landing_page_html) setEditableHtml(sourceOfTruth.landing_page_html);
 
@@ -546,17 +553,17 @@ export default function ArtisanPage() {
                     carouselSlides: result.carouselSlides || [],
                     videoScript: result.videoScript || null,
                     landingPageHtml: result.landingPageHtml || null,
-                    content: result.content || null,
-                    finalPrompt: result.finalPrompt || null,
+                    contentBody: result.content || null,
+                    creativePrompt: result.finalPrompt || null,
                 };
 
                 setCreative(mappedCreative);
                 
-                if (selectedCreativeType === 'text' && mappedCreative.content) {
-                    setEditableCopy((mappedCreative.content as any).primary || '');
+                if (selectedCreativeType === 'text' && mappedCreative.contentBody) {
+                    setEditableCopy((mappedCreative.contentBody as any).primary || '');
                 }
                 if (mappedCreative.landingPageHtml) setEditableHtml(mappedCreative.landingPageHtml);
-                if (mappedCreative.finalPrompt) setCreativePrompt(mappedCreative.finalPrompt);
+                if (mappedCreative.creativePrompt) setCreativePrompt(mappedCreative.creativePrompt);
     
                 toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
             } catch (error: any) {
@@ -568,7 +575,7 @@ export default function ArtisanPage() {
         };
     
         const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
-            console.log(`[CLIENT - handleSave] Start. Status: ${status}, Item ID: ${selectedArtisanItemId}`);
+            console.log(`[DEBUG_MODE] handleSave clicked. Status: ${status}, Item ID: ${selectedArtisanItemId}`);
             
             if (!selectedOfferingId) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
@@ -585,7 +592,6 @@ export default function ArtisanPage() {
             startSaving(async () => {
                 const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
                 
-                // Whitelisted payload to prevent sending extra client-side state
                 const payload = {
                     offeringId: selectedOfferingId,
                     copy: editableCopy,
@@ -602,7 +608,7 @@ export default function ArtisanPage() {
                     videoScript: creative?.videoScript || null,
                     landingPageHtml: editableHtml || null,
                 };
-                console.log('[CLIENT - handleSave] Constructed payload:', payload);
+                console.log('[DEBUG_MODE] Payload constructed in handleSave:', payload);
 
                 try {
                     let updatedItem: CalendarItem;
@@ -701,7 +707,7 @@ export default function ArtisanPage() {
             if (selectedCreativeType === 'carousel' && creative.carouselSlides && creative.carouselSlides.length > currentCarouselSlide) {
                 return creative.carouselSlides[currentCarouselSlide]?.creativePrompt;
             }
-            return creative.finalPrompt;
+            return creative.creativePrompt;
         }, [creative, selectedCreativeType, currentCarouselSlide]);
     
         const handleDownload = (url: string, filename: string) => {

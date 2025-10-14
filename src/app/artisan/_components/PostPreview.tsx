@@ -153,6 +153,7 @@ export const PostPreview = ({
     onEditPost: () => void;
     isSaved: boolean;
 }) => {
+    console.log("[DEBUG] PostPreview received creative prop:", creative);
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const aspectRatioClass = dimensionMap[dimension];
