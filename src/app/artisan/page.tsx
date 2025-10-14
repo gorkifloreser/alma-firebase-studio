@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getOfferings, uploadSingleOfferingMedia, deleteOfferingMedia } from '../offerings/actions';
 import { generateCreativeForOffering, saveContent, getArtisanItems, updateMediaPlanItemStatus, generateCreativePrompt, editImageWithInstruction, regenerateCarouselSlide, getContentItem, updateContent, deleteContent } from './actions';
-import { getMediaPlans, getMediaPlanItems } from '../funnels/actions';
+import { getMediaPlans, getMediaPlanItems } from '@/app/funnels/actions';
 import type { CalendarItem } from '../calendar/actions';
 import type { Offering, OfferingMedia } from '../offerings/actions';
 import type { ArtisanItem } from './actions';
@@ -491,6 +491,7 @@ export default function ArtisanPage() {
     }, [toast]);
     
         const handleGenerate = async (regeneratePrompt?: string) => {
+            console.log(`[CLIENT - handleGenerate] Start. Offering ID: ${selectedOfferingId}`);
             if (!selectedOfferingId) {
                 toast({ variant: 'destructive', title: 'Please select an offering.' });
                 return;
@@ -530,7 +531,6 @@ export default function ArtisanPage() {
             setEditableHtml(null);
     
             try {
-                console.log('[handleGenerate] -- START -- Calling generateCreativeForOffering...');
                 const creativeTypes: CreativeType[] = [selectedCreativeType];
                 
                 const result = await generateCreativeForOffering({
@@ -540,8 +540,8 @@ export default function ArtisanPage() {
                     creativePrompt: regeneratePrompt || creativePrompt,
                     referenceImageUrl: referenceImageUrl || undefined,
                 });
+                console.log('[CLIENT - handleGenerate] Received from server:', result);
                 
-                // Map camelCase from server to camelCase for client state (ensures consistency)
                 const mappedCreative = {
                     imageUrl: result.imageUrl || null,
                     carouselSlides: result.carouselSlides || [],
@@ -553,7 +553,6 @@ export default function ArtisanPage() {
 
                 setCreative(mappedCreative);
                 
-                // Only update copy if a text type was explicitly requested
                 if (selectedCreativeType === 'text' && mappedCreative.contentBody) {
                     setEditableCopy((mappedCreative.contentBody as any).primary || '');
                 }
@@ -562,7 +561,7 @@ export default function ArtisanPage() {
     
                 toast({ title: 'Content Generated!', description: 'You can now edit and approve the drafts.' });
             } catch (error: any) {
-                console.error('[handleGenerate] -- ERROR --', error);
+                console.error('[CLIENT - handleGenerate] Error:', error);
                 toast({ variant: 'destructive', title: 'Generation Failed', description: error.message });
             } finally {
                 setIsGenerating(false);
@@ -570,6 +569,8 @@ export default function ArtisanPage() {
         };
     
         const handleSave = (status: 'ready_for_review' | 'scheduled', scheduleDate?: Date | null) => {
+            console.log(`[CLIENT - handleSave] Start. Status: ${status}, Item ID: ${selectedArtisanItemId}`);
+            
             if (!selectedOfferingId) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Offering ID is missing.' });
                 return;
@@ -583,56 +584,35 @@ export default function ArtisanPage() {
             }
             
             startSaving(async () => {
-                try {
-                    const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
-    
-                    // --- NON-DESTRUCTIVE PAYLOAD CONSTRUCTION ---
-                    const payload: any = {
-                        ...creative,
-                        offeringId: selectedOfferingId,
-                        copy: editableCopy,
-                        hashtags: editableHashtags,
-                        concept: currentItemDetails?.concept || 'Custom Content',
-                        objective: currentItemDetails?.objective || null,
-                        status: status,
-                        scheduledAt: scheduleDate?.toISOString(),
-                        media_format: selectedCreativeFormat,
-                        aspect_ratio: dimension,
-                        creativePrompt: creativePrompt, // Ensure the latest prompt is saved
-                    };
+                const currentItemDetails = allArtisanItems.find(i => i.id === selectedArtisanItemId);
+                
+                // Whitelisted payload to prevent sending extra client-side state
+                const payload = {
+                    offeringId: selectedOfferingId,
+                    copy: editableCopy,
+                    hashtags: editableHashtags,
+                    creative_prompt: creativePrompt,
+                    concept: currentItemDetails?.concept || 'Custom Content',
+                    objective: currentItemDetails?.objective || null,
+                    status: status,
+                    scheduledAt: scheduleDate?.toISOString() || null,
+                    media_format: selectedCreativeFormat,
+                    aspect_ratio: dimension,
+                    imageUrl: creative?.imageUrl || null,
+                    carouselSlides: creative?.carouselSlides || null,
+                    videoScript: creative?.videoScript || null,
+                    landingPageHtml: editableHtml || null,
+                };
+                console.log('[CLIENT - handleSave] Constructed payload:', payload);
 
-    
-                    // 1. Start with existing media from the last saved state to ensure we don't lose anything.
-                    if (savedContent) {
-                        payload.image_url = savedContent.image_url;
-                        payload.carousel_slides = savedContent.carousel_slides;
-                        payload.video_script = savedContent.video_script;
-                        payload.landing_page_html = savedContent.landing_page_html;
-                    }
-                    
-                    // 2. Layer the newly generated media on top, overwriting only what's new.
-                    if (creative) {
-                        switch (selectedCreativeType) {
-                            case 'image':
-                                payload.image_url = creative.imageUrl;
-                                break;
-                            case 'carousel':
-                                payload.carousel_slides = creative.carouselSlides;
-                                break;
-                            case 'video':
-                                payload.video_script = creative.videoScript;
-                                break;
-                            case 'landing_page':
-                                payload.landing_page_html = editableHtml;
-                                break;
-                        }
-                    }
-    
+                try {
                     let updatedItem: CalendarItem;
                     const isUpdate = (workflowMode === 'campaign' && !!selectedArtisanItemId) || (workflowMode === 'custom' && !!savedContent);
+                    console.log(`[CLIENT - handleSave] Is Update: ${isUpdate}`);
                     
                     if (isUpdate && (savedContent || selectedArtisanItemId)) {
                         const itemId = savedContent?.id || selectedArtisanItemId!;
+                        console.log(`[CLIENT - handleSave] Calling updateContent for ID: ${itemId}`);
                         updatedItem = await updateContent(itemId, payload);
                         setAllArtisanItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updatedItem } : i));
                         toast({
@@ -640,6 +620,7 @@ export default function ArtisanPage() {
                             description: status === 'scheduled' ? 'Your post was successfully added to the calendar.' : 'Your changes have been saved.'
                         });
                     } else {
+                        console.log('[CLIENT - handleSave] Calling saveContent for new item.');
                         updatedItem = await saveContent({ ...payload, mediaPlanItemId: selectedArtisanItemId });
                         if (selectedArtisanItemId && !savedContent) {
                              await updateMediaPlanItemStatus(selectedArtisanItemId, 'ready_for_review');
@@ -648,15 +629,19 @@ export default function ArtisanPage() {
                         toast({ title: status === 'scheduled' ? 'Scheduled!' : 'Approved!', description: `The content has been saved.` });
                     }
                     
+                    console.log('[CLIENT - handleSave] Success. Server returned:', updatedItem);
                     setSavedContent(updatedItem as unknown as CalendarItem);
                     
-                } catch (error: any) {
+                } catch (error: any)
+                {
+                    console.error('[CLIENT - handleSave] Error:', error);
                     toast({ variant: 'destructive', title: 'Failed to Save', description: error.message });
                 }
             });
         };
     
         const handleDelete = () => {
+            console.log(`[CLIENT - handleDelete] Start. Item ID: ${savedContent?.id}`);
             if (!savedContent) {
                 toast({ variant: 'destructive', title: 'Error', description: 'No saved content to delete.' });
                 return;
@@ -665,11 +650,11 @@ export default function ArtisanPage() {
                 try {
                     await deleteContent(savedContent.id);
                     toast({ title: 'Content Deleted', description: 'The post has been successfully deleted.' });
-                    // Reset the UI
                     const nextItemIndex = allArtisanItems.findIndex(i => i.id === selectedArtisanItemId);
                     setAllArtisanItems(prev => prev.filter(i => i.id !== selectedArtisanItemId));
                     // The useEffect hooks will handle selecting the next item automatically
                 } catch (error: any) {
+                    console.error('[CLIENT - handleDelete] Error:', error);
                     toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
                 }
             });
@@ -1037,3 +1022,5 @@ export default function ArtisanPage() {
     // GEMINI_SAFE_END
     
             
+
+    

@@ -174,20 +174,24 @@ async function uploadBase64Media(supabase: any, base64: string, userId: string, 
  */
 export async function saveContent(input: SaveContentInput): Promise<ContentItem> {
     console.log('[ACTION: saveContent] -- START --');
-    console.log('[ACTION: saveContent] -- INPUT --', input);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+    console.log('[ACTION: saveContent] User authenticated:', user.id);
 
     const { mediaPlanItemId, ...restOfInput } = input;
+    console.log('[ACTION: saveContent] Input received:', restOfInput);
 
     if (restOfInput.imageUrl && restOfInput.imageUrl.startsWith('data:image')) {
+        console.log('[ACTION: saveContent] Found base64 image, starting upload...');
         restOfInput.imageUrl = await uploadBase64Media(supabase, restOfInput.imageUrl, user.id, restOfInput.offeringId, 'image');
+        console.log('[ACTION: saveContent] Image upload complete, URL:', restOfInput.imageUrl);
     }
     if (restOfInput.videoUrl && restOfInput.videoUrl.startsWith('data:video')) {
         restOfInput.videoUrl = await uploadBase64Media(supabase, restOfInput.videoUrl, user.id, restOfInput.offeringId, 'video');
     }
     if (restOfInput.carouselSlides) {
+        console.log('[ACTION: saveContent] Found carousel slides, processing...');
         restOfInput.carouselSlides = await Promise.all(
             restOfInput.carouselSlides.map(async (slide) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
@@ -196,6 +200,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
                 return slide;
             })
         );
+        console.log('[ACTION: saveContent] Carousel processing complete.');
     }
 
     const dbPayload = toSnakeCase(restOfInput);
@@ -208,7 +213,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
     if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
     if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
 
-    console.log('[ACTION: saveContent] -- PAYLOAD for DB Insert --', dbPayload);
+    console.log('[ACTION: saveContent] Final DB payload for insert:', dbPayload);
     const { data: newMediaItem, error: createError } = await supabase
         .from('media_plan_items')
         .insert(dbPayload)
@@ -216,7 +221,7 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
         .single();
 
     if (createError) {
-        console.error("[ACTION: saveContent] -- ERROR -- Error creating content:", createError);
+        console.error("[ACTION: saveContent] -- ERROR --", createError);
         throw new Error(`Could not create new draft item. DB Error: ${createError.message}`);
     }
 
@@ -231,7 +236,8 @@ export async function saveContent(input: SaveContentInput): Promise<ContentItem>
  */
 export async function updateContent(mediaPlanItemId: string, updates: Partial<SaveContentInput>): Promise<ContentItem> {
     console.log(`[ACTION: updateContent] -- START -- Updating item ID: ${mediaPlanItemId}`);
-    console.log('[ACTION: updateContent] -- INPUT --', updates);
+    console.log('[ACTION: updateContent] Received updates object:', updates);
+    
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -243,15 +249,13 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
         .single();
 
     if (fetchError || !existingItem) {
-        console.error(`[ACTION: updateContent] -- ERROR -- Could not fetch existing item:`, fetchError);
         throw new Error('Failed to find the content item to update.');
     }
     const offeringId = updates.offeringId || existingItem.offering_id;
     if (!offeringId) {
         throw new Error('FATAL: offering_id is missing and could not be retrieved.');
     }
-    console.log(`[ACTION: updateContent] -- INFO -- Using offering_id: ${offeringId}`);
-
+    
     const payloadForDb: { [key: string]: any } = {};
 
     const allowedFields: (keyof SaveContentInput)[] = [
@@ -267,25 +271,25 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     });
 
     if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
-        console.log('[ACTION: updateContent] -- MEDIA -- Uploading new base64 image for update...');
+        console.log('[ACTION: updateContent] Found new base64 image. Uploading...');
         payloadForDb.imageUrl = await uploadBase64Media(supabase, updates.imageUrl, user.id, offeringId, 'image');
     } else if (updates.imageUrl !== undefined) {
+        console.log('[ACTION: updateContent] Image URL is present but not base64. Assuming it is a public URL.');
         payloadForDb.imageUrl = updates.imageUrl;
     }
 
     if (updates.videoUrl && updates.videoUrl.startsWith('data:video')) {
-        console.log('[ACTION: updateContent] -- MEDIA -- Uploading new base64 video for update...');
         payloadForDb.videoUrl = await uploadBase64Media(supabase, updates.videoUrl, user.id, offeringId, 'video');
     } else if (updates.videoUrl !== undefined) {
         payloadForDb.videoUrl = updates.videoUrl;
     }
 
     if (updates.carouselSlides) {
-        console.log('[ACTION: updateContent] -- MEDIA -- Processing carousel slides for update...');
+        console.log('[ACTION: updateContent] Processing carousel slides...');
         payloadForDb.carouselSlides = await Promise.all(
             updates.carouselSlides.map(async (slide, index) => {
                 if (slide.imageUrl && slide.imageUrl.startsWith('data:image')) {
-                    console.log(`[ACTION: updateContent] -- MEDIA -- Uploading new image for slide ${index}...`);
+                    console.log(`[ACTION: updateContent] Uploading image for slide ${index}...`);
                     const newImageUrl = await uploadBase64Media(supabase, slide.imageUrl, user.id, offeringId, 'image');
                     return { ...slide, imageUrl: newImageUrl };
                 }
@@ -300,7 +304,7 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
     if (dbPayload.carousel_slides) dbPayload.carousel_slides = JSON.stringify(dbPayload.carousel_slides);
     if (dbPayload.video_script) dbPayload.video_script = JSON.stringify(dbPayload.video_script);
 
-    console.log('[ACTION: updateContent] -- PAYLOAD for DB Update --', JSON.stringify(dbPayload, null, 2));
+    console.log('[ACTION: updateContent] Final payload for DB update:', JSON.stringify(dbPayload, null, 2));
 
     const { data, error } = await supabase
         .from('media_plan_items')
@@ -311,11 +315,11 @@ export async function updateContent(mediaPlanItemId: string, updates: Partial<Sa
         .single();
 
     if (error) {
-        console.error("[ACTION: updateContent] -- ERROR -- Error during Supabase update:", error);
+        console.error("[ACTION: updateContent] -- ERROR --", error);
         throw new Error(`Failed to update content. DB Error: ${error.message}`);
     }
 
-    console.log(`[ACTION: updateContent] -- SUCCESS -- Item ${mediaPlanItemId} updated successfully. Result:`, data);
+    console.log(`[ACTION: updateContent] -- SUCCESS -- Item ${mediaPlanItemId} updated successfully.`);
     revalidatePath('/artisan');
     revalidatePath('/calendar');
     return data as unknown as ContentItem;
@@ -338,7 +342,7 @@ export async function deleteContent(mediaPlanItemId: string): Promise<{ message:
         .eq('user_id', user.id);
 
     if (error) {
-        console.error("[ACTION: deleteContent] -- ERROR -- Error during Supabase delete:", error);
+        console.error("[ACTION: deleteContent] -- ERROR --", error);
         throw new Error(`Failed to delete content. DB Error: ${error.message}`);
     }
 
@@ -386,4 +390,5 @@ export async function regenerateCarouselSlide(input: RegenerateCarouselSlideInpu
     return regenerateSlideFlow(input);
 }
 
+    
     
