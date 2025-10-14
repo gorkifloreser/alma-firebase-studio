@@ -136,6 +136,7 @@ export const PostPreview = ({
     onAddText,
     onEditPost,
     isSaved,
+    selectedArtisanItemId,
 }: {
     profile: Profile,
     dimension: string,
@@ -152,6 +153,7 @@ export const PostPreview = ({
     onAddText: (imageUrl: string, slideIndex?: number) => void;
     onEditPost: () => void;
     isSaved: boolean;
+    selectedArtisanItemId: string | null;
 }) => {
     console.log("[DEBUG] PostPreview received creative prop:", creative);
     const postUser = profile?.full_name || 'Your Brand';
@@ -193,8 +195,8 @@ export const PostPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
     
-    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.imageUrl) || (selectedCreativeType === 'video' && creative?.videoUrl);
-    const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.imageUrl : creative?.imageUrl;
+    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.image_url) || (selectedCreativeType === 'video' && creative?.videoUrl);
+    const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.image_url : creative?.imageUrl;
     const urlToDownload = selectedCreativeType === 'video' ? creative?.videoUrl : imageUrlToEdit;
 
     const renderVisualContent = () => {
@@ -208,11 +210,11 @@ export const PostPreview = ({
               <CarouselContent>
                 {creative.carouselSlides.map((slide, index) => {
                     if (!slide) return null;
-                    const imageUrl = slide.imageUrl || '';
+                    const imageUrl = (slide as any).image_url || '';
                     
                     return (
-                        <CarouselItem key={`${slide.creativePrompt}-${index}`} className={cn("relative group", aspectRatioClass)}>
-                            {slide.imageUrl ? (
+                        <CarouselItem key={`${selectedArtisanItemId || 'item'}-${index}`} className={cn("relative group", aspectRatioClass)}>
+                            {imageUrl ? (
                             <Image
                                 src={imageUrl}
                                 alt={slide.title || `Slide ${index}`}
