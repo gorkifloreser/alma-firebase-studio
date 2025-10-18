@@ -8,6 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 const GenerateLandingPageInputSchema = z.object({
   offeringId: z.string(),
@@ -23,6 +24,7 @@ export type GenerateLandingPageOutput = z.infer<typeof GenerateLandingPageOutput
 
 const prompt = ai.definePrompt({
     name: 'generateLandingPagePrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
