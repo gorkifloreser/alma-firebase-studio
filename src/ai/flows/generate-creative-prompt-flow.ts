@@ -8,6 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 // Define schemas
 const GenerateCreativePromptInputSchema = z.object({
@@ -24,6 +25,7 @@ export type GenerateCreativePromptOutput = z.infer<typeof GenerateCreativePrompt
 
 const prompt = ai.definePrompt({
     name: 'generateCreativeAIPrompt',
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
