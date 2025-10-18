@@ -194,52 +194,64 @@ export const PostPreview = ({
     const progressCount = creative?.carouselSlides?.length || 1;
     const currentSlideData = (selectedCreativeType === 'carousel' && creative?.carouselSlides) ? creative.carouselSlides[current] : null;
     
-    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData?.image_url) || (selectedCreativeType === 'video' && creative?.videoUrl);
-    const imageUrlToEdit = selectedCreativeType === 'carousel' ? currentSlideData?.image_url : creative?.imageUrl;
+    const hasVisuals = (selectedCreativeType === 'image' && creative?.imageUrl) || (selectedCreativeType === 'carousel' && currentSlideData && ((currentSlideData as any).imageUrl || (currentSlideData as any).image_url)) || (selectedCreativeType === 'video' && creative?.videoUrl);
+    const imageUrlToEdit = selectedCreativeType === 'carousel' ? ((currentSlideData as any)?.imageUrl || (currentSlideData as any)?.image_url) : creative?.imageUrl;
     const urlToDownload = selectedCreativeType === 'video' ? creative?.videoUrl : imageUrlToEdit;
 
     const renderVisualContent = () => {
-        if (isLoading && selectedCreativeType !== 'carousel') {
-          return <Skeleton className="w-full h-full rounded-none" />;
-        }
-      
-        if (selectedCreativeType === 'carousel' && (isLoading || (creative?.carouselSlides && creative.carouselSlides.length > 0))) {
-          // If we are loading, create a dummy array for skeleton UI
-          const slides = isLoading && !creative?.carouselSlides?.length ? [null, null, null] : creative!.carouselSlides;
+      if (selectedCreativeType === 'carousel') {
+          const slides = isLoading ? [null, null, null] : creative?.carouselSlides || [];
+          
+          if (slides.length === 0 && !isLoading) {
+              return (
+                  <div className="w-full h-full bg-secondary flex items-center justify-center">
+                      <Images className="w-16 h-16 text-muted-foreground" />
+                  </div>
+              );
+          }
 
           return (
-            <Carousel setApi={setApi} className="w-full h-full">
-              <CarouselContent>
-                {slides.map((slide, index) => {
-                    const imageUrl = (slide as any)?.image_url || '';
-                    return (
-                        <CarouselItem key={`${selectedArtisanItemId || 'item'}-${index}`} className={cn("relative group", aspectRatioClass)}>
-                            {imageUrl ? (
-                                <Image
-                                    src={imageUrl}
-                                    alt={slide?.title || `Slide ${index}`}
-                                    fill
-                                    className="object-cover"
-                                />
-                            ) : isLoading ? (
-                                <Skeleton className="w-full h-full rounded-none" />
-                            ) : (
-                                <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                    <Images className="w-16 h-16 text-muted-foreground" />
-                                </div>
-                            )}
-                      </CarouselItem>
-                    );
-                })}
-              </CarouselContent>
-              {slides.length > 1 && (
-                <>
-                  <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
-                  <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
-                </>
-              )}
-            </Carousel>
+              <Carousel setApi={setApi} className="w-full h-full">
+                  <CarouselContent>
+                      {slides.map((slide, index) => {
+                          if (!slide) {
+                              return (
+                                  <CarouselItem key={`skeleton-${index}`} className={cn("relative group", aspectRatioClass)}>
+                                      <Skeleton className="w-full h-full rounded-none" />
+                                  </CarouselItem>
+                              );
+                          }
+                          const imageUrl = (slide as any).imageUrl || (slide as any).image_url;
+                          return (
+                              <CarouselItem key={`${selectedArtisanItemId || 'item'}-${index}`} className={cn("relative group", aspectRatioClass)}>
+                                  {imageUrl ? (
+                                      <Image
+                                          src={imageUrl}
+                                          alt={(slide as any).title || `Slide ${index}`}
+                                          fill
+                                          className="object-cover"
+                                      />
+                                  ) : (
+                                      <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                          <Images className="w-16 h-16 text-muted-foreground" />
+                                      </div>
+                                  )}
+                              </CarouselItem>
+                          );
+                      })}
+                  </CarouselContent>
+                  {slides.length > 1 && (
+                      <>
+                          <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
+                          <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
+                      </>
+                  )}
+              </Carousel>
           );
+      }
+      
+        if (isLoading) {
+          return <Skeleton className="w-full h-full rounded-none" />;
         }
       
         if (selectedCreativeType === 'image' && creative?.imageUrl) {
@@ -273,7 +285,7 @@ export const PostPreview = ({
       
         return (
           <div className="w-full h-full bg-secondary flex items-center justify-center">
-            {/* Placeholder */}
+             <Images className="w-16 h-16 text-muted-foreground" />
           </div>
         );
     };
