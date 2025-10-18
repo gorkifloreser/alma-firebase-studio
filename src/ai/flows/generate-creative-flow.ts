@@ -139,25 +139,24 @@ const carouselPrompt = ai.definePrompt({
     output: {
         schema: z.object({
             slides: z.array(z.object({
-                title: z.string().describe("The short, catchy title text to be overlaid on the image."),
-                body: z.string().describe("The descriptive text for the social media post's caption, NOT for the image."),
-                creativePrompt: z.string().describe("A detailed, final, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. This prompt must instruct the model to generate the background image AND overlay the 'title' text prominently at the top, and a footer with '@floreserLosCabos' at the bottom."),
-            })).describe('An array of 3-5 carousel slides, each with a title for the image, a body for the post copy, and a complete, final creative prompt for generating the image with overlaid text.'),
+                title: z.string().describe("The short, catchy title text for this slide (not for the image)."),
+                body: z.string().describe("The descriptive text for the social media post's caption (not for the image)."),
+                creativePrompt: z.string().describe("A detailed, final, ready-to-use prompt for an AI image generator to create a PURELY VISUAL image for THIS SPECIFIC SLIDE. This prompt MUST NOT contain any instructions to add text."),
+            })).describe('An array of 3-5 carousel slides, each with a title, a body for the post copy, and a complete, final creative prompt for generating a purely visual image.'),
         })
     },
   prompt: `You are an expert marketing strategist and AI prompt engineer specializing in creating visually cohesive and highly engaging social media carousels.
 
 **Your Goal:** Deconstruct the user's Creative Brief into a sequence of 3-5 slides. For each slide, you must generate:
-1. A short **title** (for the image overlay).
+1. A short **title** (for the post text, not the image).
 2. A longer **body** (for the social media post's description text).
-3. A **complete, final, detailed creativePrompt** that instructs an image model to generate a beautiful background AND overlay the 'title' and footer text.
+3. A **complete, final, detailed creativePrompt** that instructs an image model to generate a beautiful, on-brand background image.
 
 ---
 **1. THE BRAND's SOUL (Tone & Visuals):**
 - Tone of Voice: {{brandHeart.tone_of_voice.primary}}
 - Values: {{brandHeart.values.primary}}
 - **Visual Identity (The North Star for ALL Images):** {{brandHeart.visual_identity.primary}}
-- **Handle/Footer:** @floreserLosCabos
 
 **2. THE OFFERING (The Subject):**
 - Title: {{offering.title.primary}}
@@ -174,14 +173,13 @@ const carouselPrompt = ai.definePrompt({
 **YOUR TASK:**
 
 Generate a 3-5 slide carousel script. For each slide, provide the following fields:
-1.  **title:** A short, punchy title. This text will be overlaid on the image.
+1.  **title:** A short, punchy title. This text does NOT go on the image.
 2.  **body:** The descriptive text for the post's caption. This text does NOT go on the image. It should expand on the slide's title.
 3.  **creativePrompt:** This is the most important part. Create a **final, complete, and detailed prompt** for an image generation model like Imagen. This prompt must:
     - Describe a beautiful, on-brand background image based on the brand's **Visual Identity** and the slide's concept.
-    - Explicitly instruct the model to overlay the **'title'** text at the **top center** of the image in a clear, stylish font.
-    - Explicitly instruct the model to overlay the footer text **'@floreserLosCabos'** at the **bottom** of the image.
+    - **CRITICAL RULE: The prompt MUST NOT include any instructions to add, overlay, or burn-in text of any kind. The image must be purely visual.**
 
-   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, with the text 'Nourish Your Soul' at the top center. The image should embody a soulful, authentic feeling, with earthy tones and soft natural light. Footer text '@floreserLosCabos' at the bottom."
+   **Example of a good \`creativePrompt\`:** "A serene, minimalist photo of a steaming mug of cacao on a rustic wooden table, embodying a soulful, authentic feeling, with earthy tones and soft natural light. Highly detailed, photographic, 4k."
 
 Generate the carousel slides in the specified JSON format.
 `,
