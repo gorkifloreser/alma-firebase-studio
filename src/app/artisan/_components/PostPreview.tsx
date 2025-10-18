@@ -155,7 +155,6 @@ export const PostPreview = ({
     isSaved: boolean;
     selectedArtisanItemId: string | null;
 }) => {
-    console.log("[DEBUG] PostPreview received creative prop:", creative);
     const postUser = profile?.full_name || 'Your Brand';
     const postUserHandle = postUser.toLowerCase().replace(/\s/g, '');
     const postUserAvatar = profile?.avatar_url;
@@ -200,37 +199,40 @@ export const PostPreview = ({
     const urlToDownload = selectedCreativeType === 'video' ? creative?.videoUrl : imageUrlToEdit;
 
     const renderVisualContent = () => {
-        if (isLoading) {
+        if (isLoading && selectedCreativeType !== 'carousel') {
           return <Skeleton className="w-full h-full rounded-none" />;
         }
       
-        if (selectedCreativeType === 'carousel' && creative?.carouselSlides && creative.carouselSlides.length > 0) {
+        if (selectedCreativeType === 'carousel' && (isLoading || (creative?.carouselSlides && creative.carouselSlides.length > 0))) {
+          // If we are loading, create a dummy array for skeleton UI
+          const slides = isLoading && !creative?.carouselSlides?.length ? [null, null, null] : creative!.carouselSlides;
+
           return (
             <Carousel setApi={setApi} className="w-full h-full">
               <CarouselContent>
-                {creative.carouselSlides.map((slide, index) => {
-                    if (!slide) return null;
-                    const imageUrl = (slide as any).image_url || '';
-                    
+                {slides.map((slide, index) => {
+                    const imageUrl = (slide as any)?.image_url || '';
                     return (
                         <CarouselItem key={`${selectedArtisanItemId || 'item'}-${index}`} className={cn("relative group", aspectRatioClass)}>
                             {imageUrl ? (
-                            <Image
-                                src={imageUrl}
-                                alt={slide.title || `Slide ${index}`}
-                                fill
-                                className="object-cover"
-                            />
+                                <Image
+                                    src={imageUrl}
+                                    alt={slide?.title || `Slide ${index}`}
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : isLoading ? (
+                                <Skeleton className="w-full h-full rounded-none" />
                             ) : (
-                            <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                <Images className="w-16 h-16 text-muted-foreground" />
-                            </div>
+                                <div className="w-full h-full bg-secondary flex items-center justify-center">
+                                    <Images className="w-16 h-16 text-muted-foreground" />
+                                </div>
                             )}
                       </CarouselItem>
                     );
                 })}
               </CarouselContent>
-              {creative.carouselSlides.length > 1 && (
+              {slides.length > 1 && (
                 <>
                   <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2 z-10" />
                   <CarouselNext className="right-4 top-1/2 -translate-y-1/2 z-10" />
