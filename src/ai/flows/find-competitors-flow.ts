@@ -6,10 +6,12 @@ import { z } from 'genkit';
 import { getBrandContext } from './utils';
 import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const prompt = ai.definePrompt({
   name: 'findCompetitorsPrompt',
-  model: process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash',
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-pro-latest'),
+  tools: [],
   input: {
     schema: z.object({
       marketSummary: z.string(),

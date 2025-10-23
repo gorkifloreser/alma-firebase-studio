@@ -37,7 +37,7 @@ export type AnalyzePostInput = z.infer<typeof AnalyzePostInputSchema>;
 
 const analysisPrompt = ai.definePrompt({
     name: 'analyzePostPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-pro-latest'),
     input: {
         schema: z.object({
             postText: z.string(),

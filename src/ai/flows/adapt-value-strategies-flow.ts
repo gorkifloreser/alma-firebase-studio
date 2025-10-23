@@ -29,7 +29,7 @@ const AdaptStrategiesOutputSchema = z.object({
 
 const adapterPrompt = ai.definePrompt({
     name: 'valueStrategyAdapterPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-pro-latest'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
