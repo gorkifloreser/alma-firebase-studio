@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const ConceptualStepSchema = z.object({
     step: z.number().describe('The step number in the sequence.'),
@@ -134,7 +134,7 @@ const generateFunnelFlow = ai.defineFlow(
     if (offeringError || !offering) throw new Error('Offering not found.');
 
     const languages = await import('@/lib/languages');
-    const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
+    const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     const promptContext = {
         primaryLanguage: languageNames.get(profile.primary_language) || profile.primary_language,

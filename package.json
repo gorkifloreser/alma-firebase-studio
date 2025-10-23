@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
-    "@genkit-ai/googleai": "^1.14.1",
+    "@genkit-ai/google-genai": "^1.14.1",
     "@genkit-ai/next": "^1.14.1",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^4.1.3",

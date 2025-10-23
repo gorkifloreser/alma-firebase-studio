@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
 import { GenerateFunnelOutput, ConceptualStep } from './generate-funnel-flow';
 import { mediaFormatConfig, type MediaFormatCategory, type AspectRatio } from '@/lib/media-formats';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 
 const PlanItemSchema = z.object({

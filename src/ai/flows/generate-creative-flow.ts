@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 import type { MediaPart } from 'genkit';
 import { generateLandingPage } from './generate-landing-page-flow';
 
@@ -246,7 +246,7 @@ export const generateCreativeFlow = ai.defineFlow(
     let output: GenerateCreativeOutput = {};
 
     const languages = await import('@/lib/languages');
-    const languageNames = new Map(languages.languages.map(l => [l.value, l.label]));
+    const languageNames = new Map(languages.map(l => [l.value, l.label]));
 
     // Generate text content in parallel
     const contentPromise = creativeTypes.includes('text') 

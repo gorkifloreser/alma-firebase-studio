@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { createClient } from '@/lib/supabase/server';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 // Define the output schema for a detailed audience profile
 const AudienceProfileSchema = z.object({

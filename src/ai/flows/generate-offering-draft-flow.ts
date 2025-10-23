@@ -10,7 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 import { languages } from '@/lib/languages';
 import {
     OfferingDraftSchema,

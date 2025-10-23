@@ -10,7 +10,7 @@ import { z } from 'genkit';
 import { getBrandHeart, BrandHeartData } from '@/app/brand-heart/actions';
 import { getViralHooks, type ViralHook } from '@/app/viral-hooks/actions';
 import { createClient } from '@/lib/supabase/server';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 
 const AdaptedHookSchema = z.object({

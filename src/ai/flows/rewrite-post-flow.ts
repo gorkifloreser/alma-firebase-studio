@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const RewritePostInputSchema = z.object({
   originalText: z.string().describe('The original text of the social media post.'),

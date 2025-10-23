@@ -10,7 +10,7 @@ import { z } from 'genkit';
 import { getBrandHeart } from '@/app/brand-heart/actions';
 import { getValueStrategies, type ValueStrategy } from '@/app/funnels/actions';
 import { createClient } from '@/lib/supabase/server';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const AdaptedStrategySchema = z.object({
   original_id: z.number().describe('The ID of the original strategy.'),
