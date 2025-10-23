@@ -1,8 +1,13 @@
 
 import { z } from 'zod';
 
-// This schema is shared between the AI flow and the frontend components.
+// --- COMMON ---
+const ContactPointSchema = z.object({
+  type: z.enum(['Website', 'Instagram', 'Facebook', 'TikTok', 'X', 'LinkedIn', 'Other']),
+  url: z.string().url(),
+});
 
+// --- GENERATE OFFERING DRAFT ---
 export const OfferingScheduleDraftSchema = z.object({
   price_label: z.string().optional().describe("The descriptive label for this specific price point (e.g., 'Cacao Nibs 100g', 'Early Bird')."),
   price: z.number().optional().describe("A suggested price for this specific schedule/variant."),
@@ -29,7 +34,7 @@ export const GenerateOfferingDraftInputSchema = z.object({
 });
 export type GenerateOfferingDraftInput = z.infer<typeof GenerateOfferingDraftInputSchema>;
 
-
+// --- VALUE CONTENT ---
 export const GenerateValueContentInputSchema = z.object({
   offeringTitle: z.string().describe("The title of the main offering for context."),
   offeringDescription: z.string().describe("The description of the main offering for context."),
@@ -42,3 +47,42 @@ export const GenerateValueContentOutputSchema = z.object({
   developedContent: z.string().describe("The fully developed content, written in the brand's voice."),
 });
 export type GenerateValueContentOutput = z.infer<typeof GenerateValueContentOutputSchema>;
+
+// --- MARKET RESEARCH ---
+export const MarketReportSchema = z.object({
+  marketSummary: z.string().describe("A 2-3 paragraph summary of the current market state, including size, growth, and key players."),
+  keyTrends: z.array(z.string()).describe("A list of 3-5 key trends shaping the market."),
+  opportunities: z.array(z.string()).describe("A list of 2-3 potential opportunities for the brand."),
+  threats: z.array(z.string()).describe("A list of 2-3 potential threats or challenges."),
+  strategicRecommendations: z.string().describe("A concluding paragraph with high-level strategic recommendations."),
+});
+export type MarketReport = z.infer<typeof MarketReportSchema>;
+
+export const GenerateMarketReportInputSchema = z.object({
+  topic: z.string().optional().describe("A specific topic or question for the market research."),
+});
+export type GenerateMarketReportInput = z.infer<typeof GenerateMarketReportInputSchema>;
+
+export const SummarizeMarketOutputSchema = z.object({
+  marketSummaryPhrase: z.string().describe("A concise, single-sentence summary of the brand's target market."),
+});
+export type SummarizeMarketOutput = z.infer<typeof SummarizeMarketOutputSchema>;
+
+export const CompetitorSchema = z.object({
+  brandName: z.string(),
+  description: z.string().describe("A brief description of the brand and why it's a good benchmark."),
+  contactPoints: z.array(ContactPointSchema),
+});
+
+export const FindCompetitorsOutputSchema = z.object({
+  competitors: z.array(CompetitorSchema).describe("A list of 3-5 competitor or inspirational brands."),
+});
+export type FindCompetitorsOutput = z.infer<typeof FindCompetitorsOutputSchema>;
+
+export const AutomatedMarketAnalysisSchema = z.object({
+  marketSummary: z.string().describe("A 2-3 paragraph summary of the current market state, including size, growth, and key players."),
+  keyTrends: z.array(z.string()).describe("A list of 3-5 key trends shaping the market."),
+  customerProfile: z.string().describe("A brief paragraph describing the typical customer in this market."),
+  strategicSuggestions: z.array(z.string()).describe("A list of 3-4 actionable strategic suggestions for the brand."),
+});
+export type AutomatedMarketAnalysis = z.infer<typeof AutomatedMarketAnalysisSchema>;

@@ -1,175 +1,129 @@
+
 'use client';
 
-import React, { useState, useTransition, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import React, { useState, useTransition } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Slider } from '@/components/ui/slider';
-import { Lightbulb } from 'lucide-react';
-import type { MarketAnalysisData, updateMarketAnalysisData } from '../actions';
+import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb } from 'lucide-react';
+import { generateAutomatedMarketAnalysis } from '../actions';
+import type { AutomatedMarketAnalysis } from '@/ai/flows/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface MarketAnalysisClientPageProps {
-    initialData: MarketAnalysisData | null;
-    updateAction: typeof updateMarketAnalysisData;
-}
-
-/**
- * Generates a business suggestion based on market data.
- * @param data The market analysis data.
- * @returns A string containing the business suggestion.
- */
-function getBusinessSuggestion(data: MarketAnalysisData | null): string {
-    console.log('[CLIENT] getBusinessSuggestion called with data:', data);
-    if (!data) {
-        return "Enter your market data to receive a strategic suggestion.";
-    }
-
-    const { indice_demanda_mensual, indice_oferta_competencia } = data;
-
-    // RULE 1: Low demand, high competition
-    if (indice_demanda_mensual <= 40 && indice_oferta_competencia >= 60) {
-        console.log('[CLIENT] Suggestion Rule 1 Triggered: Low demand, high competition.');
-        return "La demanda es baja y la competencia es alta. Es hora de ofertas o promociones agresivas para mover inventario.";
-    }
-
-    // RULE 2: High demand, low competition
-    if (indice_demanda_mensual >= 70 && indice_oferta_competencia <= 30) {
-        console.log('[CLIENT] Suggestion Rule 2 Triggered: High demand, low competition.');
-        return "Excelente oportunidad. La demanda es alta y la competencia es baja. Aumenta ligeramente los precios y prioriza la inversión en capacidad.";
-    }
-
-    // RULE 3: Stable market
-    if (
-        (indice_demanda_mensual > 40 && indice_demanda_mensual < 70) &&
-        (indice_oferta_competencia > 30 && indice_oferta_competencia < 60)
-    ) {
-        console.log('[CLIENT] Suggestion Rule 3 Triggered: Stable market.');
-        return "Mercado estable. Conserva tus precios, pero enfócate en aumentar la percepción de valor (ej. mejor servicio o empaque premium).";
-    }
-
-    // Default suggestion if no specific rule is met
-    console.log('[CLIENT] No specific rule triggered, returning default suggestion.');
-    return "El mercado presenta una dinámica mixta. Analiza en detalle cada variable antes de tomar decisiones estratégicas.";
-}
-
-export function MarketAnalysisClientPage({ initialData, updateAction }: MarketAnalysisClientPageProps) {
-    const [data, setData] = useState<MarketAnalysisData>(initialData || {
-        indice_demanda_mensual: 50,
-        indice_oferta_competencia: 50,
-        tendencia_precios_promedio: 0,
-        margen_ganancia_actual: 25,
-    });
-    const [isSaving, startSaving] = useTransition();
+export function MarketAnalysisClientPage() {
+    const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
+    const [isGenerating, startGenerating] = useTransition();
     const { toast } = useToast();
 
-    useEffect(() => {
-        console.log('[CLIENT] Initial data received:', initialData);
-        if (initialData) {
-            setData(initialData);
-        }
-    }, [initialData]);
-
-    const handleSliderChange = (field: keyof MarketAnalysisData, value: number[]) => {
-        console.log(`[CLIENT] Slider change: ${field} = ${value[0]}`);
-        setData(prev => ({ ...prev, [field]: value[0] }));
-    };
-
-    const handleInputChange = (field: keyof MarketAnalysisData, event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = Number(event.target.value);
-        console.log(`[CLIENT] Input change: ${field} = ${value}`);
-        if (!isNaN(value)) {
-            setData(prev => ({ ...prev, [field]: value }));
-        }
-    };
-    
-    const businessSuggestion = useMemo(() => getBusinessSuggestion(data), [data]);
-
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        console.log('[CLIENT] handleSubmit initiated. Saving data:', data);
-        startSaving(async () => {
+    const handleGenerate = () => {
+        console.log('[CLIENT] handleGenerate initiated.');
+        setAnalysisResult(null); // Clear previous results
+        startGenerating(async () => {
             try {
-                const result = await updateAction(data);
-                console.log('[CLIENT] Save successful, server responded:', result);
+                const result = await generateAutomatedMarketAnalysis();
+                console.log('[CLIENT] Analysis successful, received data:', result);
+                setAnalysisResult(result);
                 toast({
-                    title: '¡Guardado!',
-                    description: 'Tus datos de análisis de mercado han sido actualizados.',
+                    title: '¡Análisis Completo!',
+                    description: 'Tu reporte de mercado personalizado está listo.',
                 });
             } catch (error: any) {
-                console.error('[CLIENT] --- FATAL SAVE ERROR ---', error);
+                console.error('[CLIENT] --- FATAL ANALYSIS ERROR ---', error);
                 toast({
                     variant: 'destructive',
-                    title: 'Error al Guardar',
-                    description: `No se pudieron guardar los datos: ${error.message}`,
+                    title: 'Error al Generar Análisis',
+                    description: `No se pudo completar el análisis: ${error.message}`,
                 });
             }
         });
     };
 
-    return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-            <header>
-                <h1 className="text-3xl font-bold">Análisis de Tendencias de Mercado</h1>
-                <p className="text-muted-foreground">Ingresa los datos de tu mercado para recibir sugerencias estratégicas.</p>
-            </header>
+    const renderReport = () => {
+        if (!analysisResult) return null;
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        return (
+            <div className="space-y-6">
                 <Card>
-                    <form onSubmit={handleSubmit}>
-                        <CardHeader>
-                            <CardTitle>Entrada de Datos</CardTitle>
-                            <CardDescription>Ajusta los sliders para reflejar las condiciones actuales del mercado.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-8">
-                            <div className="space-y-4">
-                                <div className="flex justify-between">
-                                    <Label htmlFor="demanda">Índice de Demanda Mensual</Label>
-                                    <Input type="number" className="w-24 h-8" value={data.indice_demanda_mensual} onChange={(e) => handleInputChange('indice_demanda_mensual', e)} />
-                                </div>
-                                <Slider id="demanda" value={[data.indice_demanda_mensual]} onValueChange={(v) => handleSliderChange('indice_demanda_mensual', v)} max={100} step={1} />
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex justify-between">
-                                    <Label htmlFor="oferta">Índice de Oferta de la Competencia</Label>
-                                     <Input type="number" className="w-24 h-8" value={data.indice_oferta_competencia} onChange={(e) => handleInputChange('indice_oferta_competencia', e)} />
-                                </div>
-                                <Slider id="oferta" value={[data.indice_oferta_competencia]} onValueChange={(v) => handleSliderChange('indice_oferta_competencia', v)} max={100} step={1} />
-                            </div>
-                             <div className="space-y-4">
-                                <div className="flex justify-between">
-                                    <Label htmlFor="tendencia">Tendencia de Precios (%)</Label>
-                                     <Input type="number" className="w-24 h-8" value={data.tendencia_precios_promedio} onChange={(e) => handleInputChange('tendencia_precios_promedio', e)} />
-                                </div>
-                                <Slider id="tendencia" value={[data.tendencia_precios_promedio]} onValueChange={(v) => handleSliderChange('tendencia_precios_promedio', v)} min={-50} max={50} step={1} />
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex justify-between">
-                                    <Label htmlFor="margen">Margen de Ganancia Actual (%)</Label>
-                                    <Input type="number" className="w-24 h-8" value={data.margen_ganancia_actual} onChange={(e) => handleInputChange('margen_ganancia_actual', e)} />
-                                </div>
-                                <Slider id="margen" value={[data.margen_ganancia_actual]} onValueChange={(v) => handleSliderChange('margen_ganancia_actual', v)} max={100} step={1} />
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" disabled={isSaving}>
-                                {isSaving ? 'Guardando...' : 'Guardar Análisis'}
-                            </Button>
-                        </CardFooter>
-                    </form>
-                </Card>
-                 <Card className="bg-primary/5 sticky top-24">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Sugerencia de Negocio Clave</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><BarChart2 className="text-primary"/> Resumen del Mercado</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-lg font-medium text-foreground/90">
-                            {businessSuggestion}
-                        </p>
+                        <p className="text-muted-foreground">{analysisResult.marketSummary}</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><TrendingUp className="text-primary"/> Tendencias Clave</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                            {analysisResult.keyTrends.map((trend, index) => (
+                                <li key={index}>{trend}</li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Users className="text-primary"/> Perfil del Consumidor</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">{analysisResult.customerProfile}</p>
+                    </CardContent>
+                </Card>
+                 <Card className="bg-primary/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Sugerencias Estratégicas</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                         <ul className="list-disc pl-5 space-y-2 text-foreground/90 font-medium">
+                            {analysisResult.strategicSuggestions.map((suggestion, index) => (
+                                <li key={index}>{suggestion}</li>
+                            ))}
+                        </ul>
                     </CardContent>
                 </Card>
             </div>
+        );
+    }
+    
+    const renderContent = () => {
+        if (isGenerating) {
+            return (
+                <div className="space-y-6">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                </div>
+            );
+        }
+        if (analysisResult) {
+            return renderReport();
+        }
+        return (
+            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="text-xl font-semibold mt-4">Listo para analizar tu mercado</h3>
+                <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                    La IA utilizará tu Brand Heart y Offerings para investigar las tendencias actuales y darte sugerencias estratégicas.
+                </p>
+                <Button onClick={handleGenerate} disabled={isGenerating} className="mt-6">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {isGenerating ? 'Analizando...' : 'Generar Análisis de Mercado'}
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+            <header>
+                <h1 className="text-3xl font-bold">Análisis de Mercado Automatizado</h1>
+                <p className="text-muted-foreground">Obtén un reporte de mercado y sugerencias estratégicas generadas por IA.</p>
+            </header>
+            
+            {renderContent()}
         </div>
     );
 }
