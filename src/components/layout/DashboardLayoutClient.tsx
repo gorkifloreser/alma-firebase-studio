@@ -39,6 +39,7 @@ const menuItems = [
     { href: '/artisan', label: 'AI Artisan', icon: Wand2 },
     { href: '/calendar', label: 'AI Social Manager', icon: Users },
     { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
+    { href: '/market-analysis', label: 'Market Analysis', icon: BarChart2 },
 ];
 
 export function DashboardLayoutClient({
