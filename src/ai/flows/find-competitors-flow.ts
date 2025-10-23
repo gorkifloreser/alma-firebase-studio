@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI, webBrowser } from '@genkit-ai/google-genai';
+import { googleAI } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
@@ -28,7 +28,6 @@ const prompt = ai.definePrompt({
   output: {
     schema: FindCompetitorsOutputSchema,
   },
-  tools: [webBrowser],
   prompt: `You are a market research expert. Based on the following market summary, find 3 to 5 successful brands that operate in this space. They can be direct competitors or inspirational brands.
 
 For each brand, provide its name, a brief description of what it does and why it's a good benchmark, and a list of its key public contact points (Website, Instagram, etc.).
