@@ -3,7 +3,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { AutomatedMarketAnalysisSchema } from './types';
 import type { AutomatedMarketAnalysis } from './types';
@@ -11,8 +10,7 @@ import type { AutomatedMarketAnalysis } from './types';
 const prompt = ai.definePrompt(
   {
     name: 'automatedMarketAnalysisPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
-    tools: [googleAI.tool.webBrowser],
+    model: process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash',
     input: {
       schema: z.object({
         brandHeart: z.any(),
@@ -52,11 +50,11 @@ First, use your web browsing tool to research the current state of this brand's 
 Now, using ONLY the insights from your SWOT analysis, generate a concise report with the following sections:
 
 1.  **marketSummary:** A 2-3 paragraph overview of the market, its general size, and current state.
-2.  **marketTrends:** A list of 3-5 of the most important trends affecting this market right now.
+2.  **keyTrends:** A list of 3-5 of the most important trends affecting this market right now.
 3.  **customerProfile:** A brief paragraph describing the typical customer in this market.
 4.  **strategicSuggestions:** A list of 3-4 concrete, actionable strategic suggestions for the brand. **Each suggestion MUST directly leverage one or more identified Strengths or Opportunities, and/or mitigate a Weakness or Threat.** For example, "Leverage the Strength of [Strength] to capitalize on the Opportunity of [Opportunity] by..."
 
-Your final response must be a single JSON object containing all fields: \`strengths\`, \`weaknesses\`, \`opportunities\`, \`threats\`, \`marketSummary\`, \`marketTrends\`, \`customerProfile\`, and \`strategicSuggestions\`.`,
+Your final response must be a single JSON object containing all fields: \`strengths\`, \`weaknesses\`, \`opportunities\`, \`threats\`, \`marketSummary\`, \`keyTrends\`, \`customerProfile\`, and \`strategicSuggestions\`.`,
   },
 );
 

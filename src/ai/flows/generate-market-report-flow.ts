@@ -3,7 +3,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { MarketReportSchema } from './types';
 import type { MarketReport, GenerateMarketReportInput } from './types';
@@ -11,8 +10,7 @@ import type { MarketReport, GenerateMarketReportInput } from './types';
 const prompt = ai.definePrompt(
   {
     name: 'marketReportPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
-    tools: [googleAI.tool.webBrowser],
+    model: process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash',
     input: {
       schema: z.object({
         brandHeart: z.any(),
