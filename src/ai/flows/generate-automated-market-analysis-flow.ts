@@ -5,6 +5,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 import { getBrandContext } from './utils';
+import { AutomatedMarketAnalysisSchema } from './types';
 import type { AutomatedMarketAnalysis } from './types';
 
 const prompt = ai.definePrompt(
@@ -17,7 +18,7 @@ const prompt = ai.definePrompt(
         offerings: z.array(z.any()),
       }),
     },
-    output: { schema: AutomatedMarketAnalysis },
+    output: { schema: AutomatedMarketAnalysisSchema },
     tools: [ai.tool.webBrowser()],
     prompt: `You are an expert market analyst for conscious and creative brands. Your task is to conduct an automated market analysis based *only* on the provided brand identity. Use your web browsing tool to find current, relevant information about the industry and niche.
 

@@ -4,6 +4,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
 
 const CompetitorSchema = z.object({
@@ -24,9 +25,7 @@ const prompt = ai.definePrompt({
     }),
   },
   output: {
-    schema: z.object({
-      competitors: z.array(CompetitorSchema).describe("A list of 3-5 competitor or inspirational brands."),
-    }),
+    schema: FindCompetitorsOutputSchema,
   },
   tools: [ai.tool.webBrowser()],
   prompt: `You are a market research expert. Based on the following market summary, find 3 to 5 successful brands that operate in this space. They can be direct competitors or inspirational brands.

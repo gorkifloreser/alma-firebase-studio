@@ -5,6 +5,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 import { getBrandContext } from './utils';
+import { MarketReportSchema } from './types';
 import type { MarketReport, GenerateMarketReportInput } from './types';
 
 const prompt = ai.definePrompt(
@@ -18,7 +19,7 @@ const prompt = ai.definePrompt(
         topic: z.string().optional(),
       }),
     },
-    output: { schema: MarketReport },
+    output: { schema: MarketReportSchema },
     tools: [ai.tool.webBrowser()],
     prompt: `Act as an expert market analyst. Your task is to generate a concise market report based on the provided brand identity and a specific topic. Use your web browsing tool to find current, relevant information.
 
