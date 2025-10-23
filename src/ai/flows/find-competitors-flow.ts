@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI, webBrowser } from '@genkit-ai/google-genai';
+import { googleAI } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
@@ -11,7 +11,7 @@ import type { FindCompetitorsOutput } from './types';
 const prompt = ai.definePrompt({
   name: 'findCompetitorsPrompt',
   model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
-  tools: [webBrowser],
+  tools: [googleAI.tool.webBrowser],
   input: {
     schema: z.object({
       marketSummary: z.string(),
