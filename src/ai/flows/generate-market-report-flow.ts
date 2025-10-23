@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { googleAI, webBrowser } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { MarketReportSchema } from './types';
 import type { MarketReport, GenerateMarketReportInput } from './types';
@@ -12,6 +12,7 @@ const prompt = ai.definePrompt(
   {
     name: 'marketReportPrompt',
     model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
+    tools: [webBrowser],
     input: {
       schema: z.object({
         brandHeart: z.any(),
@@ -78,6 +79,6 @@ export async function generateMarketReport(
     return output;
   } catch (error: any) {
     console.error('[FLOW: generateMarketReport] --- FATAL EXCEPTION ---', error);
-    throw new Error(`Failed during market report generation: ${error.message}`);
+    throw new Error(`Failed to generate market report: ${error.message}`);
   }
 }

@@ -3,23 +3,15 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { googleAI, webBrowser } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
 
-const CompetitorSchema = z.object({
-  brandName: z.string(),
-  description: z.string().describe("A brief description of the brand and why it's a good benchmark."),
-  contactPoints: z.array(z.object({
-    type: z.enum(['Website', 'Instagram', 'Facebook', 'TikTok', 'X', 'LinkedIn', 'Other']),
-    url: z.string().url(),
-  })),
-});
-
 const prompt = ai.definePrompt({
   name: 'findCompetitorsPrompt',
   model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
+  tools: [webBrowser],
   input: {
     schema: z.object({
       marketSummary: z.string(),

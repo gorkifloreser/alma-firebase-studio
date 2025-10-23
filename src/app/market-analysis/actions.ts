@@ -4,7 +4,12 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { generateAutomatedMarketAnalysis as generateAutomatedMarketAnalysisFlow } from '@/ai/flows/generate-automated-market-analysis-flow';
-import type { AutomatedMarketAnalysis } from '@/ai/flows/types';
+import { findCompetitors as findCompetitorsFlow } from '@/ai/flows/find-competitors-flow';
+import { generateMarketReport as generateMarketReportFlow } from '@/ai/flows/generate-market-report-flow';
+import { summarizeMarket as summarizeMarketFlow } from '@/ai/flows/summarize-market-flow';
+import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput } from '@/ai/flows/types';
+
+export type { MarketAnalysisReport };
 
 export type MarketAnalysisReport = {
     id: string;
@@ -16,24 +21,40 @@ export type MarketAnalysisReport = {
 
 /**
  * Invokes the Genkit flow to generate an automated market analysis report.
- * This function is designed to be called from the client.
- * It will implicitly use the user's Brand Heart and Offerings data.
- *
- * @returns {Promise<AutomatedMarketAnalysis>} The AI-generated market analysis report.
  */
 export async function generateAutomatedMarketAnalysis(): Promise<AutomatedMarketAnalysis> {
   console.log('[ACTION: generateAutomatedMarketAnalysis] --- Execution Start ---');
-  
   try {
     const result = await generateAutomatedMarketAnalysisFlow();
     console.log('[ACTION: generateAutomatedMarketAnalysis] --- Execution End --- Successfully received result from flow.');
     return result;
   } catch (error: any) {
     console.error('[ACTION: generateAutomatedMarketAnalysis] --- FATAL ERROR ---', error);
-    // Re-throw the error with a more specific message for the client
     throw new Error(`Failed to generate market analysis: ${error.message}`);
   }
 }
+
+/**
+ * Invokes the Genkit flow to summarize the user's market.
+ */
+export async function summarizeMarket(): Promise<SummarizeMarketOutput> {
+  return summarizeMarketFlow();
+}
+
+/**
+ * Invokes the Genkit flow to find competitors.
+ */
+export async function findCompetitors(marketSummary: string): Promise<FindCompetitorsOutput> {
+  return findCompetitorsFlow(marketSummary);
+}
+
+/**
+ * Invokes the Genkit flow to generate a specific market report.
+ */
+export async function generateMarketReport(input: GenerateMarketReportInput): Promise<MarketReport> {
+  return generateMarketReportFlow(input);
+}
+
 
 /**
  * Saves a new market analysis report to the database.

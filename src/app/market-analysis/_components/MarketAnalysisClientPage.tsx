@@ -5,9 +5,18 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye } from 'lucide-react';
-import { generateAutomatedMarketAnalysis, saveMarketAnalysisReport, getMarketAnalysisReports, deleteMarketAnalysisReport, type MarketAnalysisReport } from '../actions';
-import type { AutomatedMarketAnalysis } from '@/ai/flows/types';
+import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin } from 'lucide-react';
+import { 
+    generateAutomatedMarketAnalysis, 
+    saveMarketAnalysisReport, 
+    getMarketAnalysisReports, 
+    deleteMarketAnalysisReport, 
+    summarizeMarket, 
+    findCompetitors, 
+    generateMarketReport,
+    type MarketAnalysisReport 
+} from '../actions';
+import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport } from '@/ai/flows/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -32,6 +41,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ReportDownloader } from './ReportDownloader';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 
 const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport, onView: () => void, onDelete: () => void }) => (
     <Card>
@@ -105,44 +116,93 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
     </div>
 );
 
+const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['competitors'][0] }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <Briefcase/> {competitor.brandName}
+            </CardTitle>
+            <CardDescription>{competitor.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <h4 className="font-semibold text-sm mb-2">Find them online:</h4>
+            <div className="flex flex-wrap gap-2">
+                {competitor.contactPoints.map(point => (
+                     <Button key={point.url} variant="outline" size="sm" asChild>
+                        <a href={point.url} target="_blank" rel="noopener noreferrer">
+                            {point.type === 'Website' && <Globe className="mr-2 h-4 w-4" />}
+                            {point.type === 'Instagram' && <Instagram className="mr-2 h-4 w-4" />}
+                            {point.type === 'Facebook' && <Facebook className="mr-2 h-4 w-4" />}
+                            {point.type === 'TikTok' && <MessageSquare className="mr-2 h-4 w-4" />}
+                            {point.type === 'LinkedIn' && <Linkedin className="mr-2 h-4 w-4" />}
+                            {point.type} <ExternalLink className="ml-2 h-3 w-3" />
+                        </a>
+                     </Button>
+                ))}
+            </div>
+        </CardContent>
+    </Card>
+);
+
 export function MarketAnalysisClientPage({ initialReports }: { initialReports: MarketAnalysisReport[] }) {
     const [reports, setReports] = useState(initialReports);
     const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
+    const [competitorsResult, setCompetitorsResult] = useState<FindCompetitorsOutput | null>(null);
+    const [topicReportResult, setTopicReportResult] = useState<MarketReport | null>(null);
     const [reportTitle, setReportTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const [isDeleting, startDeleting] = useTransition();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [viewingReport, setViewingReport] = useState<MarketAnalysisReport | null>(null);
+    const [marketSummary, setMarketSummary] = useState('');
+    const [customQuery, setCustomQuery] = useState('');
+    const [activeTab, setActiveTab] = useState('auto-analysis');
     const { toast } = useToast();
 
-    const handleGenerate = () => {
-        console.log('[CLIENT] handleGenerate initiated.');
+    useEffect(() => {
+        if (activeTab === 'benchmarking' && !marketSummary && !isGenerating) {
+            startGenerating(async () => {
+                try {
+                    const { marketSummaryPhrase } = await summarizeMarket();
+                    setMarketSummary(marketSummaryPhrase);
+                    setCustomQuery(marketSummaryPhrase); // Pre-fill the custom query
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: 'Could not summarize market', description: error.message });
+                }
+            });
+        }
+    }, [activeTab, marketSummary, isGenerating, toast]);
+
+    const handleAutoGenerate = () => {
+        setIsDialogOpen(true);
         setAnalysisResult(null);
-        setReportTitle('');
         startGenerating(async () => {
             try {
                 const result = await generateAutomatedMarketAnalysis();
-                console.log('[CLIENT] Analysis successful, received data:', result);
                 setAnalysisResult(result);
-                setReportTitle(`Market Analysis - ${format(new Date(), 'PPP')}`);
+                setReportTitle(`Automated Market Analysis - ${format(new Date(), 'PPP')}`);
             } catch (error: any) {
-                console.error('[CLIENT] --- FATAL ANALYSIS ERROR ---', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error Generating Analysis',
-                    description: `Could not complete the analysis: ${error.message}`,
-                });
+                toast({ variant: 'destructive', title: 'Error Generating Analysis', description: error.message });
                 setIsDialogOpen(false);
+            }
+        });
+    };
+    
+    const handleFindCompetitors = () => {
+        setCompetitorsResult(null);
+        startGenerating(async () => {
+            try {
+                const result = await findCompetitors(customQuery);
+                setCompetitorsResult(result);
+            } catch (error: any) {
+                 toast({ variant: 'destructive', title: 'Error Finding Competitors', description: error.message });
             }
         });
     };
 
     const handleSaveReport = () => {
-        if (!analysisResult || !reportTitle.trim()) {
-            toast({ variant: 'destructive', title: 'Missing Data', description: 'Cannot save an empty report or a report without a title.' });
-            return;
-        }
+        if (!analysisResult || !reportTitle.trim()) return;
         startSaving(async () => {
             try {
                 const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult);
@@ -150,7 +210,7 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                 setIsDialogOpen(false);
                 setAnalysisResult(null);
                 setReportTitle('');
-                toast({ title: 'Report Saved!', description: 'Your market analysis has been saved.' });
+                toast({ title: 'Report Saved!' });
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -162,17 +222,12 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
             try {
                 await deleteMarketAnalysisReport(reportId);
                 setReports(prev => prev.filter(r => r.id !== reportId));
-                setViewingReport(null); // Close the view dialog if it's the one being deleted
-                toast({ title: 'Report Deleted', description: 'The report has been permanently removed.' });
+                setViewingReport(null);
+                toast({ title: 'Report Deleted' });
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
             }
         });
-    }
-
-    const openGenerateDialog = () => {
-        setIsDialogOpen(true);
-        handleGenerate();
     }
     
     const openViewDialog = (report: MarketAnalysisReport) => {
@@ -184,43 +239,101 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
             <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Automated Market Analysis</h1>
-                        <p className="text-muted-foreground">Get an AI-powered market report and strategic suggestions based on your Brand DNA.</p>
+                        <h1 className="text-3xl font-bold">Market Analysis</h1>
+                        <p className="text-muted-foreground">AI-powered reports and tools to understand your market and find inspiration.</p>
                     </div>
-                    <Button onClick={openGenerateDialog}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Generate New Report
-                    </Button>
                 </header>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Saved Reports</CardTitle>
-                        <CardDescription>Review your previously generated market analysis reports.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {reports.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {reports.map(report => (
-                                    <ReportCard 
-                                        key={report.id} 
-                                        report={report}
-                                        onView={() => openViewDialog(report)}
-                                        onDelete={() => handleDeleteReport(report.id)}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-16 border-2 border-dashed rounded-lg">
-                                <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <h3 className="text-xl font-semibold mt-4">No Reports Generated Yet</h3>
-                                <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                                    Click "Generate New Report" to get your first AI-powered market analysis.
-                                </p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList>
+                        <TabsTrigger value="auto-analysis">Automated Analysis</TabsTrigger>
+                        <TabsTrigger value="benchmarking">Benchmarking</TabsTrigger>
+                        <TabsTrigger value="reports">Saved Reports</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="auto-analysis" className="mt-6">
+                        <Card className="text-center">
+                            <CardHeader>
+                                <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <CardTitle className="mt-4">Automated Market Report</CardTitle>
+                                <CardDescription className="max-w-2xl mx-auto">
+                                    Click the button to get an instant, AI-powered market analysis based on your Brand Heart and Offerings. The AI will research your niche and provide a summary, key trends, and strategic suggestions.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button onClick={handleAutoGenerate}>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Generate Automated Report
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="benchmarking" className="mt-6 space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Find Competitors & Inspiration</CardTitle>
+                                <CardDescription>Use your auto-generated market summary or enter a custom query to find similar brands.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {isGenerating && !competitorsResult ? (
+                                    <Skeleton className="h-10 w-full" />
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            value={customQuery}
+                                            onChange={(e) => setCustomQuery(e.target.value)}
+                                            placeholder="e.g., 'sustainable fashion for yoga practitioners'"
+                                        />
+                                        <Button onClick={handleFindCompetitors} disabled={isGenerating}>
+                                            <Search className="mr-2 h-4 w-4" />
+                                            Search
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                            {competitorsResult && (
+                                <CardFooter className="flex flex-col items-start gap-4">
+                                    <Separator />
+                                    <h3 className="font-semibold mt-4">Research Results:</h3>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+                                        {competitorsResult.competitors.map(comp => (
+                                            <CompetitorCard key={comp.brandName} competitor={comp} />
+                                        ))}
+                                    </div>
+                                </CardFooter>
+                            )}
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="reports" className="mt-6">
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Saved Reports</CardTitle>
+                                <CardDescription>Review your previously generated market analysis reports.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {reports.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {reports.map(report => (
+                                            <ReportCard 
+                                                key={report.id} 
+                                                report={report}
+                                                onView={() => openViewDialog(report)}
+                                                onDelete={() => handleDeleteReport(report.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                                        <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                                        <h3 className="text-xl font-semibold mt-4">No Reports Saved Yet</h3>
+                                        <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                                            Go to the "Automated Analysis" tab to generate and save your first report.
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
 
             {/* Dialog for Generating and Saving */}
@@ -231,7 +344,7 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                         <DialogDescription>Review the AI-generated report below and save it for future reference.</DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
-                        {isGenerating ? (
+                        {isGenerating && !analysisResult ? (
                             <div className="space-y-6">
                                 <Skeleton className="h-24 w-full" />
                                 <Skeleton className="h-32 w-full" />
@@ -248,7 +361,7 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                         ) : (
                              <div className="text-center py-20">
                                 <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <p className="mt-4 text-muted-foreground">Click "Generate New Report" to start.</p>
+                                <p className="mt-4 text-muted-foreground">The AI is analyzing your brand and market...</p>
                             </div>
                         )}
                     </div>
