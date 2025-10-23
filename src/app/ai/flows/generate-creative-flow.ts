@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 import { Readable } from 'stream';
 import type { MediaPart } from 'genkit';
 import { generateLandingPage } from './generate-landing-page-flow';
@@ -87,7 +87,7 @@ const carouselPrompt = ai.definePrompt({
                 title: z.string(),
                 body: z.string(),
                 creativePrompt: z.string().describe("A detailed, ready-to-use prompt for an AI image generator to create the visual for THIS SPECIFIC SLIDE. The prompt must be descriptive and align with the brand's aesthetic (soulful, minimalist, calm, creative, authentic). Example: 'A serene, minimalist flat-lay of a journal, a steaming mug of tea, and a single green leaf on a soft, textured linen background, pastel colors, soft natural light, photo-realistic --ar 1:1'."),
-            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique creative prompt for its image.'),
+            })).describe('An array of 3-5 carousel slides, each with a title, body, and a unique, detailed creative prompt for its image.'),
         })
     },
   prompt: `You are a marketing expert specializing in creating engaging social media carousels.

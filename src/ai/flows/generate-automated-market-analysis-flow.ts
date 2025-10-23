@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI, webBrowser } from '@genkit-ai/googleai';
+import { googleAI, webBrowser } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { AutomatedMarketAnalysisSchema } from './types';
 import type { AutomatedMarketAnalysis } from './types';

@@ -1,5 +1,5 @@
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/google-genai';
 import { defineAction, action } from '@genkit-ai/core';
 import { z } from 'zod';
 import { embed } from '@genkit-ai/ai';
