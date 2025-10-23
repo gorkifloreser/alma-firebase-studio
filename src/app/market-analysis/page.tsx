@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { MarketAnalysisClientPage } from './_components/MarketAnalysisClientPage';
+import { getMarketAnalysisReports } from './actions';
 
 export default async function MarketAnalysisPage() {
     console.log('[PAGE: MarketAnalysis] --- Server Component Render ---');
@@ -16,10 +17,12 @@ export default async function MarketAnalysisPage() {
     }
     console.log(`[PAGE: MarketAnalysis] User ${user.id} authenticated.`);
 
+    const initialReports = await getMarketAnalysisReports();
+
     return (
         <DashboardLayout>
             <Toaster />
-            <MarketAnalysisClientPage />
+            <MarketAnalysisClientPage initialReports={initialReports} />
         </DashboardLayout>
     );
 }
