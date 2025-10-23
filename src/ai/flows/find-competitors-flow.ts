@@ -4,6 +4,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+import { getBrandContext } from './utils';
 import { FindCompetitorsOutputSchema } from './types';
 import type { FindCompetitorsOutput } from './types';
 
