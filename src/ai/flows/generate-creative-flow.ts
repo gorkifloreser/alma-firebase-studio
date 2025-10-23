@@ -58,7 +58,7 @@ export type GenerateCreativeOutput = z.infer<typeof GenerateCreativeOutputSchema
 // Prompt for generating main text content
 const contentPrompt = ai.definePrompt({
   name: 'generateContentOnlyPrompt',
-  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
   input: {
       schema: z.object({
           primaryLanguage: z.string(),
@@ -88,7 +88,7 @@ Return the result in the specified JSON format.`,
 
 const masterImagePrompt = ai.definePrompt({
     name: 'masterImagePromptGenerator',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
@@ -127,7 +127,7 @@ Output only the final prompt string.`,
 
 const carouselPrompt = ai.definePrompt({
     name: 'generateCarouselPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: {
         schema: z.object({
             brandHeart: z.any(),
@@ -296,7 +296,7 @@ Create a storyboard with 3-5 scenes. For each scene, you must generate:
 
 Generate the storyboard in the specified JSON format.
 `,
-            model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+            model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
             output: { schema: videoPlanPrompt },
         }).then(async ({ output: planOutput }) => {
             if (!planOutput?.scenes) throw new Error('Video plan generation failed.');
@@ -309,7 +309,7 @@ Generate the storyboard in the specified JSON format.
                 });
 
                 const imageGenPromise = ai.generate({
-                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
+                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-fast-generate-001'),
                     prompt: scene.cover_image_prompt,
                 });
 
@@ -354,7 +354,7 @@ Generate the storyboard in the specified JSON format.
                 });
             } else {
                 generationResult = await ai.generate({
-                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-generate-preview-06-06'),
+                    model: googleAI.model(process.env.GENKIT_IMAGE_GEN_MODEL || 'imagen-4.0-fast-generate-001'),
                     prompt: finalImagePrompt,
                     aspect_ratio: aspectRatio,
                 });

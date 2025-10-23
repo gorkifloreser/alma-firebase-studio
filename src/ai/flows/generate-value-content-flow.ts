@@ -8,6 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import {
   GenerateValueContentInputSchema,
   type GenerateValueContentInput,
@@ -18,6 +19,7 @@ import {
 
 const prompt = ai.definePrompt({
   name: 'generateValueContentPrompt',
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
   input: { schema: z.object({
         brandHeart: z.any(),
         offeringTitle: z.string(),

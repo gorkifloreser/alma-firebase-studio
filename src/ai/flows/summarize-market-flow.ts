@@ -10,7 +10,7 @@ import type { SummarizeMarketOutput } from './types';
 
 const prompt = ai.definePrompt({
   name: 'summarizeMarketPrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
   input: {
     schema: z.object({
       brandHeart: z.any(),

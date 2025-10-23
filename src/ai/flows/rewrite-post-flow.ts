@@ -24,7 +24,7 @@ export type RewritePostOutput = z.infer<typeof RewritePostOutputSchema>;
 
 const rewritePrompt = ai.definePrompt({
     name: 'rewritePostPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: {
         schema: z.object({
             originalText: z.string(),

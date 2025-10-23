@@ -24,7 +24,7 @@ export type GenerateLandingPageOutput = z.infer<typeof GenerateLandingPageOutput
 
 const prompt = ai.definePrompt({
     name: 'generateLandingPagePrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-pro'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: {
         schema: z.object({
             brandHeart: z.any(),

@@ -11,7 +11,7 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-const modelName = process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash-latest';
+const modelName = process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash';
 const model = genAI.getGenerativeModel({ model: modelName });
 
 function dataUriToGenerativePart(uri: string): Part {

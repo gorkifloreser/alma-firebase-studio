@@ -11,7 +11,7 @@ import type { AutomatedMarketAnalysis } from './types';
 const prompt = ai.definePrompt(
   {
     name: 'automatedMarketAnalysisPrompt',
-    model: googleAI.model('gemini-1.5-flash-latest'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: {
       schema: z.object({
         brandHeart: z.any(),

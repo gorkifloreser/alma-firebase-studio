@@ -26,7 +26,7 @@ import {
 
 const routeOfferingTypePrompt = ai.definePrompt({
     name: 'routeOfferingTypePrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: { schema: z.object({ offeringPrompt: z.string() }) },
     output: { schema: z.object({ type: z.enum(['Product', 'Service', 'Event', 'Value Content']) }) },
     prompt: `Based on the user's prompt, what type of offering is it? The user prompt is: "{{offeringPrompt}}". Respond with only one of the following words: 'Product', 'Service', 'Event', or 'Value Content'.`
@@ -56,7 +56,7 @@ Based on the user's idea and their Brand Heart, generate the requested fields. F
 // Specialist for Events
 const generateEventDraftPrompt = ai.definePrompt({
     name: 'generateEventDraftPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
@@ -71,7 +71,7 @@ Generate a full offering draft for an EVENT. You must extract event-specific det
 // Specialist for Products/Services
 const generateProductServiceDraftPrompt = ai.definePrompt({
     name: 'generateProductServiceDraftPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
@@ -86,7 +86,7 @@ Generate a full offering draft for a PRODUCT or SERVICE. You must extract pricin
 // Specialist for Value Content
 const generateValueContentDraftPrompt = ai.definePrompt({
     name: 'generateValueContentDraftPrompt',
-    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-2.5-flash'),
+    model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-flash'),
     input: { schema: z.object({ brandHeart: z.any(), offeringPrompt: z.string(), primaryLanguage: z.string() }) },
     output: { schema: OfferingDraftSchema },
     prompt: `${basePrompt}
