@@ -5,7 +5,7 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin } from 'lucide-react';
+import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope } from 'lucide-react';
 import { 
     generateAutomatedMarketAnalysis, 
     saveMarketAnalysisReport, 
@@ -71,8 +71,35 @@ const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport
     </Card>
 );
 
+const SwotCard = ({ title, items, icon: Icon, colorClass }: { title: string, items: string[], icon: React.ElementType, colorClass: string }) => (
+    <Card className={colorClass}>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-5 w-5"/> {title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <ul className="list-disc pl-5 space-y-2 text-sm">
+                {items.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+        </CardContent>
+    </Card>
+);
+
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis, reportId?: string }) => (
-    <div id={reportId || 'report-content'} className="space-y-6 bg-background p-4 rounded-lg">
+    <div id={reportId || 'report-content'} className="space-y-8 bg-background p-4 rounded-lg">
+        
+        {/* SWOT Analysis Section */}
+        <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-center">SWOT Analysis</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SwotCard title="Strengths" items={report.strengths} icon={Zap} colorClass="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800" />
+                <SwotCard title="Weaknesses" items={report.weaknesses} icon={ShieldOff} colorClass="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" />
+                <SwotCard title="Opportunities" items={report.opportunities} icon={Telescope} colorClass="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" />
+                <SwotCard title="Threats" items={report.threats} icon={Scale} colorClass="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" />
+            </div>
+        </div>
+
+        <Separator />
+
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><BarChart2 className="text-primary"/> Market Summary</CardTitle>
@@ -81,7 +108,7 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                 <p className="text-muted-foreground">{report.marketSummary}</p>
             </CardContent>
         </Card>
-            <Card>
+        <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><TrendingUp className="text-primary"/> Key Trends</CardTitle>
             </CardHeader>
@@ -93,7 +120,7 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                 </ul>
             </CardContent>
         </Card>
-            <Card>
+        <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Users className="text-primary"/> Customer Profile</CardTitle>
             </CardHeader>
@@ -101,12 +128,13 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                 <p className="text-muted-foreground">{report.customerProfile}</p>
             </CardContent>
         </Card>
-            <Card className="bg-primary/5">
+        <Card className="bg-primary/5 border-primary/20">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Strategic Suggestions</CardTitle>
+                 <CardDescription>Actionable advice based on the SWOT analysis above.</CardDescription>
             </CardHeader>
             <CardContent>
-                    <ul className="list-disc pl-5 space-y-2 text-foreground/90 font-medium">
+                <ul className="list-disc pl-5 space-y-4 text-foreground/90 font-medium">
                     {report.strategicSuggestions.map((suggestion, index) => (
                         <li key={index}>{suggestion}</li>
                     ))}
@@ -115,6 +143,7 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
         </Card>
     </div>
 );
+
 
 const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['competitors'][0] }) => (
     <Card>

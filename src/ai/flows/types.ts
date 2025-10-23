@@ -80,9 +80,13 @@ export const FindCompetitorsOutputSchema = z.object({
 export type FindCompetitorsOutput = z.infer<typeof FindCompetitorsOutputSchema>;
 
 export const AutomatedMarketAnalysisSchema = z.object({
-  marketSummary: z.string().describe("A 2-3 paragraph summary of the current market state, including size, growth, and key players."),
+  strengths: z.array(z.string()).describe("A list of 2-3 internal strengths of the brand."),
+  weaknesses: z.array(z.string()).describe("A list of 2-3 internal weaknesses of the brand."),
+  opportunities: z.array(z.string()).describe("A list of 2-3 external market opportunities."),
+  threats: z.array(z.string()).describe("A list of 2-3 external market threats."),
+  marketSummary: z.string().describe("A 2-3 paragraph summary of the current market state."),
   keyTrends: z.array(z.string()).describe("A list of 3-5 key trends shaping the market."),
   customerProfile: z.string().describe("A brief paragraph describing the typical customer in this market."),
-  strategicSuggestions: z.array(z.string()).describe("A list of 3-4 actionable strategic suggestions for the brand."),
+  strategicSuggestions: z.array(z.string()).describe("A list of 3-4 actionable strategic suggestions based on the SWOT analysis."),
 });
 export type AutomatedMarketAnalysis = z.infer<typeof AutomatedMarketAnalysisSchema>;

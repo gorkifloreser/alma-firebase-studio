@@ -12,7 +12,6 @@ const prompt = ai.definePrompt(
   {
     name: 'automatedMarketAnalysisPrompt',
     model: googleAI.model(process.env.GENKIT_TEXT_MODEL || 'gemini-1.5-pro-latest'),
-    tools: [],
     input: {
       schema: z.object({
         brandHeart: z.any(),
