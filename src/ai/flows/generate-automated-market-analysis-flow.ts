@@ -34,9 +34,7 @@ const prompt = ai.definePrompt(
 - **User's Location Hint (CRUCIAL for Domestic/Local context):** 
 {{#if brandHeart.contact_info}}
   {{#each brandHeart.contact_info}}
-    {{#if (eq this.type "location")}}
-      - Primary Business Address: {{this.address}}
-    {{/if}}
+    - Primary Business Address: {{this.address}}
   {{/each}}
 {{else}}
   - No specific location provided. Assume a major city in a developed country for domestic/local analysis.
