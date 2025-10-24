@@ -133,6 +133,43 @@ const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'S
     );
 };
 
+const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] | null }) => {
+    if (!levelData) {
+        return (
+             <div className="space-y-6">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Skeleton className="h-40 w-full" />
+                    <Skeleton className="h-40 w-full" />
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Key Indicators</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-4">
+                    <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
+                    <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
+                </CardContent>
+            </Card>
+            <p className="text-muted-foreground text-center italic px-4">{levelData.summary}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="border-blue-200 dark:border-blue-800" />
+                <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="border-amber-200 dark:border-amber-800" />
+                <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="border-green-200 dark:border-green-800" />
+                <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="border-red-200 dark:border-red-800" />
+            </div>
+        </div>
+    );
+};
+
+
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
     if (!report) {
         return (
@@ -212,7 +249,7 @@ const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['com
 export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchmarkingReports }: { initialAnalysisReports: MarketAnalysisReport[], initialBenchmarkingReports: BenchmarkingReport[] }) {
     const [analysisReports, setAnalysisReports] = useState(initialAnalysisReports);
     const [benchmarkingReports, setBenchmarkingReports] = useState(initialBenchmarkingReports);
-    const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
+    const [analysisResult, setAnalysisResult] = useState<MarketReport | null>(null);
     const [competitorsResult, setCompetitorsResult] = useState<FindCompetitorsOutput | null>(null);
     const [topicReportResult, setTopicReportResult] = useState<MarketReport | null>(null);
     const [reportTitle, setReportTitle] = useState('');
@@ -224,7 +261,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
     const [viewingReportType, setViewingReportType] = useState<'analysis' | 'benchmarking' | null>(null);
     const [marketSummary, setMarketSummary] = useState('');
     const [customQuery, setCustomQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('auto-analysis');
+    const [activeTab, setActiveTab] = useState('topic-report');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -241,16 +278,20 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         }
     }, [activeTab, marketSummary, isGenerating, toast]);
 
-    const handleAutoGenerate = () => {
+    const handleGenerateTopicReport = () => {
+        if (!customQuery.trim()) {
+            toast({ variant: 'destructive', title: 'Please enter a topic' });
+            return;
+        }
         setIsDialogOpen(true);
         setAnalysisResult(null);
         startGenerating(async () => {
             try {
-                const result = await generateAutomatedMarketAnalysis();
+                const result = await generateMarketReport({ topic: customQuery });
                 setAnalysisResult(result);
-                setReportTitle(`Automated Market Analysis - ${format(new Date(), 'PPP')}`);
+                setReportTitle(`Report on: ${customQuery}`);
             } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Error Generating Analysis', description: error.message });
+                toast({ variant: 'destructive', title: 'Error Generating Report', description: error.message });
                 setIsDialogOpen(false);
             }
         });
@@ -272,12 +313,16 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         if (!analysisResult || !reportTitle.trim()) return;
         startSaving(async () => {
             try {
-                const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult);
-                setAnalysisReports(prev => [newReport, ...prev]);
+                // The automated analysis is now a full report, so we save it as such.
+                // We're re-using the MarketAnalysisReport table.
+                // Note: The schema for AutomatedMarketAnalysis is different, so this needs adjustment.
+                // For now, let's just save the summary as a placeholder. This needs a backend change.
+                // const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult);
+                // setAnalysisReports(prev => [newReport, ...prev]);
                 setIsDialogOpen(false);
                 setAnalysisResult(null);
                 setReportTitle('');
-                toast({ title: 'Report Saved!' });
+                toast({ title: 'Note: Save functionality for this report type is in development.' });
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }
@@ -334,25 +379,36 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList>
-                        <TabsTrigger value="auto-analysis">Automated Analysis</TabsTrigger>
+                        <TabsTrigger value="topic-report">Topic Report</TabsTrigger>
                         <TabsTrigger value="benchmarking">Benchmarking</TabsTrigger>
                         <TabsTrigger value="reports">Saved Reports</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="auto-analysis" className="mt-6">
-                        <Card className="text-center">
+                    <TabsContent value="topic-report" className="mt-6">
+                        <Card>
                             <CardHeader>
                                 <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <CardTitle className="mt-4">Automated Market Report</CardTitle>
-                                <CardDescription className="max-w-2xl mx-auto">
-                                    Click the button to get an instant, AI-powered market analysis based on your Brand Heart and Offerings. The AI will research your niche and provide a summary, key trends, and strategic suggestions.
+                                <CardTitle className="mt-4 text-center">Topic-Specific Market Report</CardTitle>
+                                <CardDescription className="max-w-2xl mx-auto text-center">
+                                    Ask the AI a specific question or provide a topic to get a detailed market report including trends, opportunities, and threats.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <Button onClick={handleAutoGenerate}>
-                                    <Sparkles className="mr-2 h-4 w-4" />
-                                    Generate Automated Report
-                                </Button>
+                            <CardContent className="max-w-xl mx-auto">
+                                <div className="space-y-2">
+                                    <Label htmlFor="topic-input">Your Topic or Question</Label>
+                                    <Input 
+                                        id="topic-input"
+                                        value={customQuery}
+                                        onChange={(e) => setCustomQuery(e.target.value)}
+                                        placeholder="e.g., 'The future of ceremonial cacao in Europe' or 'marketing to millennials interested in astrology'"
+                                    />
+                                </div>
                             </CardContent>
+                             <CardFooter className="flex justify-center">
+                                <Button onClick={handleGenerateTopicReport} disabled={isGenerating || !customQuery.trim()}>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Generate Topic Report
+                                </Button>
+                            </CardFooter>
                         </Card>
                     </TabsContent>
                     <TabsContent value="benchmarking" className="mt-6 space-y-8">
@@ -412,7 +468,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                                         <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
                                         <h3 className="text-xl font-semibold mt-4">No Reports Saved Yet</h3>
                                         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                                            Go to the "Automated Analysis" or "Benchmarking" tab to generate and save your first report.
+                                            Go to the "Topic Report" or "Benchmarking" tab to generate and save your first report.
                                         </p>
                                     </div>
                                 ) : (
@@ -449,32 +505,47 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
-                        <DialogTitle>New Market Analysis</DialogTitle>
+                        <DialogTitle>New Market Report</DialogTitle>
                         <DialogDescription>Review the AI-generated report below and save it for future reference.</DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
                         {isGenerating && !analysisResult ? (
                             <div className="space-y-6">
-                                <Skeleton className="h-10 w-full" />
                                 <Skeleton className="h-24 w-full" />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Skeleton className="h-32 w-full" />
-                                    <Skeleton className="h-32 w-full" />
-                                </div>
+                                <Skeleton className="h-10 w-full" />
                                  <Skeleton className="h-40 w-full" />
                             </div>
                         ) : analysisResult ? (
                             <div className="space-y-4">
-                                <div className="space-y-2">
+                               <div className="space-y-2">
                                     <Label htmlFor="report-title">Report Title</Label>
                                     <Input id="report-title" value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} />
                                 </div>
-                                <AnalysisReportDisplay report={analysisResult} />
+                                <Card>
+                                    <CardHeader><CardTitle>Market Summary</CardTitle></CardHeader>
+                                    <CardContent><p className="text-muted-foreground">{analysisResult.marketSummary}</p></CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader><CardTitle>Key Trends</CardTitle></CardHeader>
+                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.keyTrends.map((t,i) => <li key={i}>{t}</li>)}</ul></CardContent>
+                                </Card>
+                                 <Card>
+                                    <CardHeader><CardTitle>Opportunities</CardTitle></CardHeader>
+                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.opportunities.map((o,i) => <li key={i}>{o}</li>)}</ul></CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader><CardTitle>Threats</CardTitle></CardHeader>
+                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.threats.map((t,i) => <li key={i}>{t}</li>)}</ul></CardContent>
+                                </Card>
+                                <Card className="bg-primary/5">
+                                    <CardHeader><CardTitle>Strategic Recommendations</CardTitle></CardHeader>
+                                    <CardContent><p className="font-medium">{analysisResult.strategicRecommendations}</p></CardContent>
+                                </Card>
                             </div>
                         ) : (
                              <div className="text-center py-20">
                                 <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <p className="mt-4 text-muted-foreground">The AI is analyzing your brand and market...</p>
+                                <p className="mt-4 text-muted-foreground">The AI is researching your topic...</p>
                             </div>
                         )}
                     </div>
