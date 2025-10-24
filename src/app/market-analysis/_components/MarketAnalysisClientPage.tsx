@@ -133,8 +133,8 @@ const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'S
     );
 };
 
-const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] | null }) => {
-    if (!levelData) {
+const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
+    if (!report) {
         return (
              <div className="space-y-6">
                 <Skeleton className="h-12 w-full" />
@@ -145,44 +145,6 @@ const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysi
                 </div>
             </div>
         )
-    }
-
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Key Indicators</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-4">
-                    <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
-                    <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
-                </CardContent>
-            </Card>
-            <p className="text-muted-foreground text-center italic px-4">{levelData.summary}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="border-blue-200 dark:border-blue-800" />
-                <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="border-amber-200 dark:border-amber-800" />
-                <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="border-green-200 dark:border-green-800" />
-                <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="border-red-200 dark:border-red-800" />
-            </div>
-        </div>
-    );
-};
-
-
-const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
-    if (!report) {
-        return (
-            <div className="space-y-6">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <div className="grid grid-cols-2 gap-4">
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
-                </div>
-                 <Skeleton className="h-40 w-full" />
-            </div>
-        );
     }
 
     return (
@@ -313,16 +275,12 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         if (!analysisResult || !reportTitle.trim()) return;
         startSaving(async () => {
             try {
-                // The automated analysis is now a full report, so we save it as such.
-                // We're re-using the MarketAnalysisReport table.
-                // Note: The schema for AutomatedMarketAnalysis is different, so this needs adjustment.
-                // For now, let's just save the summary as a placeholder. This needs a backend change.
-                // const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult);
-                // setAnalysisReports(prev => [newReport, ...prev]);
+                const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult as any);
+                setAnalysisReports(prev => [newReport, ...prev]);
                 setIsDialogOpen(false);
                 setAnalysisResult(null);
                 setReportTitle('');
-                toast({ title: 'Note: Save functionality for this report type is in development.' });
+                toast({ title: 'Success!', description: 'Your market report has been saved.'});
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
             }

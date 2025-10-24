@@ -8,6 +8,7 @@ import { findCompetitors as findCompetitorsFlow } from '@/ai/flows/find-competit
 import { generateMarketReport as generateMarketReportFlow } from '@/ai/flows/generate-market-report-flow';
 import { summarizeMarket as summarizeMarketFlow } from '@/ai/flows/summarize-market-flow';
 import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput, CompetitorSchema } from '@/ai/flows/types';
+import { z } from 'zod';
 
 export type { MarketAnalysisReport, BenchmarkingReport };
 
@@ -16,7 +17,7 @@ export type MarketAnalysisReport = {
     user_id: string;
     created_at: string;
     title: string;
-    report_data: AutomatedMarketAnalysis;
+    report_data: MarketReport;
 };
 
 export type BenchmarkingReport = {
@@ -68,7 +69,7 @@ export async function generateMarketReport(input: GenerateMarketReportInput): Pr
 /**
  * Saves a new market analysis report to the database.
  */
-export async function saveMarketAnalysisReport(title: string, reportData: AutomatedMarketAnalysis): Promise<MarketAnalysisReport> {
+export async function saveMarketAnalysisReport(title: string, reportData: MarketReport): Promise<MarketAnalysisReport> {
     console.log(`[ACTION: saveMarketAnalysisReport] --- Saving report titled: "${title}" ---`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
