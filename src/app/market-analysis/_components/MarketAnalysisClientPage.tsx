@@ -119,36 +119,52 @@ const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysi
 );
 
 
-const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis, reportId?: string }) => (
-    <div id={reportId || 'report-content'} className="space-y-8 bg-background p-4 rounded-lg">
-        <Tabs defaultValue="international" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="international">International</TabsTrigger>
-                <TabsTrigger value="domestic">Domestic</TabsTrigger>
-                <TabsTrigger value="local">Local</TabsTrigger>
-            </TabsList>
-            <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
-            <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
-            <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
-        </Tabs>
-        
-        <Separator />
+const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
+    if (!report) {
+        return (
+            <div className="space-y-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <div className="grid grid-cols-2 gap-4">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                </div>
+                 <Skeleton className="h-40 w-full" />
+            </div>
+        );
+    }
 
-        <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Strategic Suggestions</CardTitle>
-                <CardDescription>Actionable advice based on the combined analysis of all three market levels.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ul className="list-disc pl-5 space-y-4 text-foreground/90 font-medium">
-                    {report.strategicSuggestions.map((suggestion, index) => (
-                        <li key={index}>{suggestion}</li>
-                    ))}
-                </ul>
-            </CardContent>
-        </Card>
-    </div>
-);
+    return (
+        <div id={reportId || 'report-content'} className="space-y-8 bg-background p-4 rounded-lg">
+            <Tabs defaultValue="international" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="international">International</TabsTrigger>
+                    <TabsTrigger value="domestic">Domestic</TabsTrigger>
+                    <TabsTrigger value="local">Local</TabsTrigger>
+                </TabsList>
+                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
+                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
+                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
+            </Tabs>
+            
+            <Separator />
+
+            <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Strategic Suggestions</CardTitle>
+                    <CardDescription>Actionable advice based on the combined analysis of all three market levels.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ul className="list-disc pl-5 space-y-4 text-foreground/90 font-medium">
+                        {(report.strategicSuggestions || []).map((suggestion, index) => (
+                            <li key={index}>{suggestion}</li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
 
 
 const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['competitors'][0] }) => (
@@ -381,9 +397,13 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
                         {isGenerating && !analysisResult ? (
                             <div className="space-y-6">
+                                <Skeleton className="h-10 w-full" />
                                 <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-32 w-full" />
-                                <Skeleton className="h-24 w-full" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Skeleton className="h-32 w-full" />
+                                    <Skeleton className="h-32 w-full" />
+                                </div>
+                                 <Skeleton className="h-40 w-full" />
                             </div>
                         ) : analysisResult ? (
                             <div className="space-y-4">
