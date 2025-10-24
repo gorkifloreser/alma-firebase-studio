@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 // --- COMMON ---
-const ContactPointSchema = z.object({
+export const ContactPointSchema = z.object({
   type: z.enum(['Website', 'Instagram', 'Facebook', 'TikTok', 'X', 'LinkedIn', 'Other']),
   url: z.string().url(),
 });

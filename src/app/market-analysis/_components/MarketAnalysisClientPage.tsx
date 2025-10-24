@@ -5,7 +5,7 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope, ChevronsUp, ChevronsDown, Minus } from 'lucide-react';
+import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope, ChevronsUp, ChevronsDown, Minus, Save } from 'lucide-react';
 import { 
     generateAutomatedMarketAnalysis, 
     saveMarketAnalysisReport, 
@@ -14,7 +14,10 @@ import {
     summarizeMarket, 
     findCompetitors, 
     generateMarketReport,
-    type MarketAnalysisReport 
+    saveBenchmarkingReport,
+    deleteBenchmarkingReport,
+    type MarketAnalysisReport,
+    type BenchmarkingReport,
 } from '../actions';
 import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport } from '@/ai/flows/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,10 +50,10 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 
-const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport, onView: () => void, onDelete: () => void }) => (
+const AnalysisReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport, onView: () => void, onDelete: () => void }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{report.title}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><BarChart2 className="text-primary"/>{report.title}</CardTitle>
             <CardDescription>Generated on {format(new Date(report.created_at), 'PPP')}</CardDescription>
         </CardHeader>
         <CardFooter className="flex justify-end gap-2">
@@ -73,6 +76,37 @@ const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport
         </CardFooter>
     </Card>
 );
+
+const BenchmarkingReportCard = ({ report, onView, onDelete }: { report: BenchmarkingReport, onView: () => void, onDelete: () => void }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Users className="text-primary"/>{report.title}</CardTitle>
+            <CardDescription>Generated on {format(new Date(report.created_at), 'PPP')}</CardDescription>
+        </CardHeader>
+         <CardContent>
+            <p className="text-sm text-muted-foreground italic">Based on summary: "{report.market_summary}"</p>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={onView}><Eye className="mr-2 h-4 w-4"/> View</Button>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete the report titled "{report.title}".</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </CardFooter>
+    </Card>
+);
+
 
 const SwotCard = ({ title, items, icon: Icon, colorClass }: { title: string, items: string[], icon: React.ElementType, colorClass: string }) => (
     <Card className={cn("border-2", colorClass)}>
@@ -98,26 +132,6 @@ const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'S
         </Badge>
     );
 };
-
-const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] }) => (
-    <div className="space-y-6">
-        <div className="p-4 rounded-lg bg-muted/50 border">
-            <h4 className="font-semibold mb-3 text-center">Key Indicators for this Level</h4>
-            <div className="flex items-center justify-center gap-4">
-                <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
-                <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
-            </div>
-             <p className="text-center text-sm text-muted-foreground mt-4">{levelData.summary}</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800" />
-            <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" />
-            <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" />
-            <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" />
-        </div>
-    </div>
-);
-
 
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
     if (!report) {
@@ -195,8 +209,9 @@ const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['com
     </Card>
 );
 
-export function MarketAnalysisClientPage({ initialReports }: { initialReports: MarketAnalysisReport[] }) {
-    const [reports, setReports] = useState(initialReports);
+export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchmarkingReports }: { initialAnalysisReports: MarketAnalysisReport[], initialBenchmarkingReports: BenchmarkingReport[] }) {
+    const [analysisReports, setAnalysisReports] = useState(initialAnalysisReports);
+    const [benchmarkingReports, setBenchmarkingReports] = useState(initialBenchmarkingReports);
     const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
     const [competitorsResult, setCompetitorsResult] = useState<FindCompetitorsOutput | null>(null);
     const [topicReportResult, setTopicReportResult] = useState<MarketReport | null>(null);
@@ -205,7 +220,8 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
     const [isSaving, startSaving] = useTransition();
     const [isDeleting, startDeleting] = useTransition();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [viewingReport, setViewingReport] = useState<MarketAnalysisReport | null>(null);
+    const [viewingReport, setViewingReport] = useState<MarketAnalysisReport | BenchmarkingReport | null>(null);
+    const [viewingReportType, setViewingReportType] = useState<'analysis' | 'benchmarking' | null>(null);
     const [marketSummary, setMarketSummary] = useState('');
     const [customQuery, setCustomQuery] = useState('');
     const [activeTab, setActiveTab] = useState('auto-analysis');
@@ -252,12 +268,12 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
         });
     };
 
-    const handleSaveReport = () => {
+    const handleSaveAnalysisReport = () => {
         if (!analysisResult || !reportTitle.trim()) return;
         startSaving(async () => {
             try {
                 const newReport = await saveMarketAnalysisReport(reportTitle, analysisResult);
-                setReports(prev => [newReport, ...prev]);
+                setAnalysisReports(prev => [newReport, ...prev]);
                 setIsDialogOpen(false);
                 setAnalysisResult(null);
                 setReportTitle('');
@@ -267,12 +283,32 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
             }
         });
     }
+    
+    const handleSaveBenchmarkingReport = () => {
+        if (!competitorsResult || !reportTitle.trim()) return;
+        startSaving(async () => {
+            try {
+                const newReport = await saveBenchmarkingReport(reportTitle, customQuery, competitorsResult.competitors);
+                setBenchmarkingReports(prev => [newReport, ...prev]);
+                setCompetitorsResult(null); // Clear after saving
+                setReportTitle('');
+                toast({ title: 'Benchmarking Report Saved!' });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+            }
+        });
+    }
 
-    const handleDeleteReport = (reportId: string) => {
+    const handleDeleteReport = (reportId: string, type: 'analysis' | 'benchmarking') => {
         startDeleting(async () => {
             try {
-                await deleteMarketAnalysisReport(reportId);
-                setReports(prev => prev.filter(r => r.id !== reportId));
+                if (type === 'analysis') {
+                    await deleteMarketAnalysisReport(reportId);
+                    setAnalysisReports(prev => prev.filter(r => r.id !== reportId));
+                } else {
+                    await deleteBenchmarkingReport(reportId);
+                    setBenchmarkingReports(prev => prev.filter(r => r.id !== reportId));
+                }
                 setViewingReport(null);
                 toast({ title: 'Report Deleted' });
             } catch (error: any) {
@@ -281,8 +317,9 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
         });
     }
     
-    const openViewDialog = (report: MarketAnalysisReport) => {
+    const openViewDialog = (report: MarketAnalysisReport | BenchmarkingReport, type: 'analysis' | 'benchmarking') => {
         setViewingReport(report);
+        setViewingReportType(type);
     }
 
     return (
@@ -325,7 +362,7 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                                 <CardDescription>Use your auto-generated market summary or enter a custom query to find similar brands.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {isGenerating && !competitorsResult ? (
+                                {isGenerating && !competitorsResult && !marketSummary ? (
                                     <Skeleton className="h-10 w-full" />
                                 ) : (
                                     <div className="flex gap-2">
@@ -344,7 +381,16 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                             {competitorsResult && (
                                 <CardFooter className="flex flex-col items-start gap-4">
                                     <Separator />
-                                    <h3 className="font-semibold mt-4">Research Results:</h3>
+                                    <div className="flex justify-between items-center w-full pt-4">
+                                        <h3 className="font-semibold">Research Results:</h3>
+                                        <div className="flex gap-2 items-center">
+                                            <Input value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} placeholder="Enter report title to save..." />
+                                            <Button onClick={handleSaveBenchmarkingReport} disabled={isSaving || !reportTitle.trim()}>
+                                                <Save className="mr-2 h-4 w-4"/>
+                                                {isSaving ? 'Saving...' : 'Save Results'}
+                                            </Button>
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                                         {competitorsResult.competitors.map(comp => (
                                             <CompetitorCard key={comp.brandName} competitor={comp} />
@@ -358,27 +404,39 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                          <Card>
                             <CardHeader>
                                 <CardTitle>Saved Reports</CardTitle>
-                                <CardDescription>Review your previously generated market analysis reports.</CardDescription>
+                                <CardDescription>Review your previously generated market analysis and benchmarking reports.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {reports.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {reports.map(report => (
-                                            <ReportCard 
-                                                key={report.id} 
-                                                report={report}
-                                                onView={() => openViewDialog(report)}
-                                                onDelete={() => handleDeleteReport(report.id)}
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
+                                {(analysisReports.length === 0 && benchmarkingReports.length === 0) ? (
                                     <div className="text-center py-16 border-2 border-dashed rounded-lg">
                                         <BarChart2 className="mx-auto h-12 w-12 text-muted-foreground" />
                                         <h3 className="text-xl font-semibold mt-4">No Reports Saved Yet</h3>
                                         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                                            Go to the "Automated Analysis" tab to generate and save your first report.
+                                            Go to the "Automated Analysis" or "Benchmarking" tab to generate and save your first report.
                                         </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {analysisReports.length > 0 && (
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-4">Market Analysis Reports</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {analysisReports.map(report => (
+                                                        <AnalysisReportCard key={report.id} report={report} onView={() => openViewDialog(report, 'analysis')} onDelete={() => handleDeleteReport(report.id, 'analysis')} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {benchmarkingReports.length > 0 && (
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-4">Benchmarking Reports</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {benchmarkingReports.map(report => (
+                                                        <BenchmarkingReportCard key={report.id} report={report} onView={() => openViewDialog(report, 'benchmarking')} onDelete={() => handleDeleteReport(report.id, 'benchmarking')} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </CardContent>
@@ -422,7 +480,7 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSaveReport} disabled={isGenerating || isSaving || !analysisResult}>
+                        <Button onClick={handleSaveAnalysisReport} disabled={isGenerating || isSaving || !analysisResult}>
                             {isSaving ? 'Saving...' : 'Save Report'}
                         </Button>
                     </DialogFooter>
@@ -437,7 +495,20 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                         <DialogDescription>Generated on {viewingReport ? format(new Date(viewingReport.created_at), 'PPP') : ''}</DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
-                        {viewingReport && <AnalysisReportDisplay report={viewingReport.report_data} reportId={`report-${viewingReport.id}`} />}
+                        {viewingReport && viewingReportType === 'analysis' && <AnalysisReportDisplay report={(viewingReport as MarketAnalysisReport).report_data} reportId={`report-${viewingReport.id}`} />}
+                        {viewingReport && viewingReportType === 'benchmarking' && (
+                            <div className="space-y-4">
+                                <h4 className="font-semibold">Market Summary Searched:</h4>
+                                <p className="text-muted-foreground italic">"{(viewingReport as BenchmarkingReport).market_summary}"</p>
+                                <Separator />
+                                <h4 className="font-semibold">Competitors Found:</h4>
+                                 <div className="grid grid-cols-1 gap-4 w-full">
+                                    {(viewingReport as BenchmarkingReport).competitors.map(comp => (
+                                        <CompetitorCard key={comp.brandName} competitor={comp} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter className="justify-between">
                         <AlertDialog>
@@ -453,13 +524,15 @@ export function MarketAnalysisClientPage({ initialReports }: { initialReports: M
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteReport(viewingReport!.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => handleDeleteReport(viewingReport!.id, viewingReportType!)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                         <div>
                             <Button variant="outline" onClick={() => setViewingReport(null)}>Close</Button>
-                            <ReportDownloader reportId={`report-${viewingReport?.id}`} fileName={viewingReport?.title || 'market-analysis'} />
+                            {viewingReportType === 'analysis' && (
+                                <ReportDownloader reportId={`report-${viewingReport?.id}`} fileName={viewingReport?.title || 'market-analysis'} />
+                            )}
                         </div>
                     </DialogFooter>
                 </DialogContent>

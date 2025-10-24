@@ -7,9 +7,9 @@ import { generateAutomatedMarketAnalysis as generateAutomatedMarketAnalysisFlow 
 import { findCompetitors as findCompetitorsFlow } from '@/ai/flows/find-competitors-flow';
 import { generateMarketReport as generateMarketReportFlow } from '@/ai/flows/generate-market-report-flow';
 import { summarizeMarket as summarizeMarketFlow } from '@/ai/flows/summarize-market-flow';
-import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput } from '@/ai/flows/types';
+import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput, CompetitorSchema } from '@/ai/flows/types';
 
-export type { MarketAnalysisReport };
+export type { MarketAnalysisReport, BenchmarkingReport };
 
 export type MarketAnalysisReport = {
     id: string;
@@ -18,6 +18,15 @@ export type MarketAnalysisReport = {
     title: string;
     report_data: AutomatedMarketAnalysis;
 };
+
+export type BenchmarkingReport = {
+    id: string;
+    user_id: string;
+    created_at: string;
+    title: string;
+    market_summary: string;
+    competitors: z.infer<typeof CompetitorSchema>[];
+}
 
 /**
  * Invokes the Genkit flow to generate an automated market analysis report.
@@ -132,4 +141,65 @@ export async function deleteMarketAnalysisReport(reportId: string): Promise<{ me
     revalidatePath('/market-analysis');
     console.log('[ACTION: deleteMarketAnalysisReport] --- SUCCESS ---');
     return { message: 'Report deleted successfully.' };
+}
+
+
+// --- BENCHMARKING ACTIONS ---
+
+export async function saveBenchmarkingReport(title: string, marketSummary: string, competitors: z.infer<typeof CompetitorSchema>[]): Promise<BenchmarkingReport> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { data, error } = await supabase
+        .from('benchmarking_reports')
+        .insert({
+            user_id: user.id,
+            title,
+            market_summary: marketSummary,
+            competitors: competitors,
+        })
+        .select()
+        .single();
+    
+    if (error) {
+        throw new Error(`Failed to save benchmarking report: ${error.message}`);
+    }
+    revalidatePath('/market-analysis');
+    return data;
+}
+
+export async function getBenchmarkingReports(): Promise<BenchmarkingReport[]> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { data, error } = await supabase
+        .from('benchmarking_reports')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(`Failed to fetch benchmarking reports: ${error.message}`);
+    }
+    return data;
+}
+
+export async function deleteBenchmarkingReport(reportId: string): Promise<{ message: string }> {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { error } = await supabase
+        .from('benchmarking_reports')
+        .delete()
+        .eq('id', reportId)
+        .eq('user_id', user.id);
+
+    if (error) {
+        throw new Error(`Failed to delete benchmarking report: ${error.message}`);
+    }
+    revalidatePath('/market-analysis');
+    return { message: 'Benchmarking report deleted successfully.' };
 }
