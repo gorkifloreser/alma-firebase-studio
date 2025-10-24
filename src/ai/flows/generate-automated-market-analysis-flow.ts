@@ -3,10 +3,11 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 import { getBrandContext } from './utils';
 import { AutomatedMarketAnalysisSchema } from './types';
 import type { AutomatedMarketAnalysis } from './types';
-import { googleAI } from '@genkit-ai/google-genai';
+
 
 const prompt = ai.definePrompt(
   {
@@ -19,43 +20,38 @@ const prompt = ai.definePrompt(
       }),
     },
     output: { schema: AutomatedMarketAnalysisSchema },
-    prompt: `You are an expert market analyst and brand strategist for conscious and creative brands.
-Your task is to conduct a comprehensive market analysis based on the provided brand identity.
+    prompt: `You are an expert market analyst who explains complex topics in simple terms a 6th grader can understand. Your task is to conduct a comprehensive, three-level market analysis (International, Domestic, Local) for the provided brand.
 
-**Brand Identity & Context (Internal Factors):**
+**CRITICAL INSTRUCTION: All text in 'summary' and 'strategicSuggestions' fields MUST be written in simple, clear English, suitable for a 6th grader.**
+
+**Brand Identity & Context:**
 - **Brand Name:** {{brandHeart.brand_name}}
 - **Mission:** {{brandHeart.mission.primary}}
-- **Target Audience:** 
-{{#each brandHeart.audience}}
-  - **{{this.title}}**: {{this.content}}
-{{/each}}
-- **Core Offerings:**
+- **Offerings:**
 {{#each offerings}}
 - {{this.title.primary}} ({{this.type}}): {{this.description.primary}}
 {{/each}}
-- **Brand Values & Tone:** {{brandHeart.values.primary}}, {{brandHeart.tone_of_voice.primary}}
+- **User's Location Hint (for Domestic/Local context):** The user is likely based in a major city in a developed country (assume USA for domestic/local if no other info is available).
 
+**YOUR THREE-LEVEL ANALYSIS MISSION:**
 
-**YOUR TWO-PHASE MISSION:**
+For EACH of the three levels (International, Domestic, and Local), you MUST perform the following steps using your web browsing tool:
 
-**PHASE 1: SWOT ANALYSIS**
-First, use your web browsing tool to research the current state of this brand's specific market niche. Then, conduct a SWOT analysis by synthesizing your research with the provided Brand Identity.
+**1. SWOT Analysis:**
+   - **Strengths (Internal):** 2-3 key strengths of THIS brand. (This will be the same for all levels).
+   - **Weaknesses (Internal):** 2-3 potential weaknesses of THIS brand. (This will be the same for all levels).
+   - **Opportunities (External):** 2-3 current market trends or gaps at THIS specific level (International, Domestic, or Local) that the brand can use.
+   - **Threats (External):** 2-3 market threats at THIS specific level (e.g., competition, regulations).
 
-- **Strengths (Internal, Positive):** What are 2-3 key internal strengths of this specific brand based on its unique identity, mission, and offerings?
-- **Weaknesses (Internal, Negative):** What are 2-3 potential internal weaknesses or challenges for a brand with this profile? (e.g., small scale, niche focus).
-- **Opportunities (External, Positive):** Based on your web research, what are 2-3 current market trends or gaps that this brand is well-positioned to capitalize on?
-- **Threats (External, Negative):** Based on your web research, what are 2-3 external market threats or challenges (e.g., competition, market saturation, economic factors) that could impact this brand?
+**2. Key Indicators:**
+   - **marketGrowth:** Determine if the market at THIS level is 'Growing', 'Slowing', or 'Stable'.
+   - **economicOutlook:** Determine if the economy at THIS level is in 'Expansion', 'Recession', or 'Stable'.
+   - **summary:** Write a simple, 1-2 paragraph summary explaining these findings like you're talking to a 12-year-old.
 
+**3. Final Synthesis (Do this only ONCE, after analyzing all three levels):**
+   - **strategicSuggestions:** Based on ALL the information gathered from all three SWOT analyses, provide 3-4 concrete, actionable strategic suggestions. Each suggestion should be easy to understand and directly relate to the findings (e.g., "Use your Strength in [X] to take advantage of the local Opportunity of [Y]").
 
-**PHASE 2: STRATEGIC SUGGESTIONS**
-Now, using ONLY the insights from your SWOT analysis, generate a concise report with the following sections:
-
-1.  **marketSummary:** A 2-3 paragraph overview of the market, its general size, and current state.
-2.  **keyTrends:** A list of 3-5 of the most important trends affecting this market right now.
-3.  **customerProfile:** A brief paragraph describing the typical customer in this market.
-4.  **strategicSuggestions:** A list of 3-4 concrete, actionable strategic suggestions for the brand. **Each suggestion MUST directly leverage one or more identified Strengths or Opportunities, and/or mitigate a Weakness or Threat.** For example, "Leverage the Strength of [Strength] to capitalize on the Opportunity of [Opportunity] by..."
-
-Your final response must be a single JSON object containing all fields: \`strengths\`, \`weaknesses\`, \`opportunities\`, \`threats\`, \`marketSummary\`, \`keyTrends\`, \`customerProfile\`, and \`strategicSuggestions\`.`,
+Your final response must be a single JSON object with 'international', 'domestic', 'local', and 'strategicSuggestions' fields, following the required schema precisely.`,
   },
 );
 

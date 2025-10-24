@@ -5,7 +5,7 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope } from 'lucide-react';
+import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope, ChevronsUp, ChevronsDown, Minus } from 'lucide-react';
 import { 
     generateAutomatedMarketAnalysis, 
     saveMarketAnalysisReport, 
@@ -43,6 +43,9 @@ import { format } from 'date-fns';
 import { ReportDownloader } from './ReportDownloader';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
 
 const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport, onView: () => void, onDelete: () => void }) => (
     <Card>
@@ -72,7 +75,7 @@ const ReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport
 );
 
 const SwotCard = ({ title, items, icon: Icon, colorClass }: { title: string, items: string[], icon: React.ElementType, colorClass: string }) => (
-    <Card className={colorClass}>
+    <Card className={cn("border-2", colorClass)}>
         <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-5 w-5"/> {title}</CardTitle>
         </CardHeader>
@@ -84,54 +87,57 @@ const SwotCard = ({ title, items, icon: Icon, colorClass }: { title: string, ite
     </Card>
 );
 
+const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'Slowing' | 'Stable' | 'Expansion' | 'Recession' }) => {
+    const Icon = value === 'Growing' || value === 'Expansion' ? ChevronsUp : value === 'Slowing' || value === 'Recession' ? ChevronsDown : Minus;
+    const color = value === 'Growing' || value === 'Expansion' ? 'bg-green-100 text-green-800 border-green-200' : value === 'Slowing' || value === 'Recession' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-200';
+
+    return (
+        <Badge variant="outline" className={cn("text-sm py-1 px-3", color)}>
+            <Icon className="mr-2 h-4 w-4" />
+            <span className="font-semibold mr-1">{label}:</span> {value}
+        </Badge>
+    );
+};
+
+const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] }) => (
+    <div className="space-y-6">
+        <div className="p-4 rounded-lg bg-muted/50 border">
+            <h4 className="font-semibold mb-3 text-center">Key Indicators for this Level</h4>
+            <div className="flex items-center justify-center gap-4">
+                <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
+                <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
+            </div>
+             <p className="text-center text-sm text-muted-foreground mt-4">{levelData.summary}</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800" />
+            <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" />
+            <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" />
+            <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" />
+        </div>
+    </div>
+);
+
+
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis, reportId?: string }) => (
     <div id={reportId || 'report-content'} className="space-y-8 bg-background p-4 rounded-lg">
+        <Tabs defaultValue="international" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="international">International</TabsTrigger>
+                <TabsTrigger value="domestic">Domestic</TabsTrigger>
+                <TabsTrigger value="local">Local</TabsTrigger>
+            </TabsList>
+            <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
+            <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
+            <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
+        </Tabs>
         
-        {/* SWOT Analysis Section */}
-        <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-center">SWOT Analysis</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SwotCard title="Strengths" items={report.strengths} icon={Zap} colorClass="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800" />
-                <SwotCard title="Weaknesses" items={report.weaknesses} icon={ShieldOff} colorClass="bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800" />
-                <SwotCard title="Opportunities" items={report.opportunities} icon={Telescope} colorClass="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" />
-                <SwotCard title="Threats" items={report.threats} icon={Scale} colorClass="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800" />
-            </div>
-        </div>
-
         <Separator />
 
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><BarChart2 className="text-primary"/> Market Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">{report.marketSummary}</p>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><TrendingUp className="text-primary"/> Key Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
-                    {report.keyTrends.map((trend, index) => (
-                        <li key={index}>{trend}</li>
-                    ))}
-                </ul>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Users className="text-primary"/> Customer Profile</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">{report.customerProfile}</p>
-            </CardContent>
-        </Card>
         <Card className="bg-primary/5 border-primary/20">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Lightbulb className="text-primary"/> Strategic Suggestions</CardTitle>
-                 <CardDescription>Actionable advice based on the SWOT analysis above.</CardDescription>
+                <CardDescription>Actionable advice based on the combined analysis of all three market levels.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="list-disc pl-5 space-y-4 text-foreground/90 font-medium">
