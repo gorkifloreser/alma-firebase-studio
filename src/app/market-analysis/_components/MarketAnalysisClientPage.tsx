@@ -451,10 +451,10 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         })
     }
 
-    const handleSaveBrand = async (brandData: any) => {
+    const handleSaveBrand = async (brandData: Omit<BenchmarkingReport, 'id' | 'user_id' | 'created_at'>) => {
         startSaving(async () => {
              try {
-                if (brandToEdit) { // Update
+                if (brandToEdit && brandToEdit.id) { // Update
                     const updatedBrand = await updateBenchmarkingBrand(brandToEdit.id, brandData);
                     setBenchmarkingBrands(prev => prev.map(b => b.id === brandToEdit.id ? updatedBrand : b));
                     toast({title: "Brand Updated!"});
