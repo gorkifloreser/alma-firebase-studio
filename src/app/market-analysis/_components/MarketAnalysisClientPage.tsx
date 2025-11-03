@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles, Bot, BarChart2, TrendingUp, Users, Lightbulb, PlusCircle, Trash2, Download, Eye, Search, Briefcase, ExternalLink, Globe, Instagram, Facebook, MessageSquare, Linkedin, Zap, ShieldOff, Scale, Telescope, ChevronsUp, ChevronsDown, Minus, Save } from 'lucide-react';
 import { 
-    generateAutomatedMarketAnalysis, 
     saveMarketAnalysisReport, 
     getMarketAnalysisReports, 
     deleteMarketAnalysisReport, 
@@ -19,7 +18,7 @@ import {
     type MarketAnalysisReport,
     type BenchmarkingReport,
 } from '../actions';
-import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport } from '@/ai/flows/types';
+import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, CompetitorSchema } from '@/ai/flows/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -48,6 +47,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { z } from 'zod';
 
 
 const AnalysisReportCard = ({ report, onView, onDelete }: { report: MarketAnalysisReport, onView: () => void, onDelete: () => void }) => (
@@ -133,6 +133,36 @@ const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'S
     );
 };
 
+const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] }) => (
+    <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Key Indicators</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-4">
+                <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
+                <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Summary</CardTitle>
+                <CardDescription>A simple overview of this market level.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">{levelData.summary}</p>
+            </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="border-blue-500/50" />
+            <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="border-amber-500/50" />
+            <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="border-green-500/50" />
+            <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="border-red-500/50" />
+        </div>
+    </div>
+);
+
+
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
     if (!report) {
         return (
@@ -180,7 +210,7 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
 };
 
 
-const CompetitorCard = ({ competitor }: { competitor: FindCompetitorsOutput['competitors'][0] }) => (
+const CompetitorCard = ({ competitor }: { competitor: z.infer<typeof CompetitorSchema> }) => (
     <Card>
         <CardHeader>
             <CardTitle className="flex items-center gap-2">
