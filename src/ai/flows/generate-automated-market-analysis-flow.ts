@@ -18,6 +18,7 @@ const prompt = ai.definePrompt(
         brandHeart: z.any(),
         offerings: z.array(z.any()),
         topic: z.string().optional(),
+        location: z.string().optional(),
       }),
     },
     output: { schema: AutomatedMarketAnalysisSchema },
@@ -40,15 +41,12 @@ const prompt = ai.definePrompt(
 - {{this.title.primary}} ({{this.type}}): {{this.description.primary}}
 {{/each}}
 - **User's Location Hint (CRUCIAL for Domestic/Local context):** 
-{{#if brandHeart.contact_info.length}}
-  {{#each brandHeart.contact_info}}
-    {{#if (eq this.type "location")}}
-    - Primary Business Address: {{this.address}}
-    {{/if}}
-  {{/each}}
+{{#if location}}
+  - Primary Business Address: {{location}}
 {{else}}
   - No specific location provided. Assume a major city in a developed country for domestic/local analysis.
 {{/if}}
+
 
 **YOUR THREE-LEVEL ANALYSIS MISSION:**
 
@@ -79,7 +77,10 @@ export async function generateAutomatedMarketAnalysisFlow(topic?: string): Promi
     const { brandHeart, offerings } = await getBrandContext();
     console.log('[FLOW: generateAutomatedMarketAnalysis] Context fetched.');
 
-    const promptPayload = { brandHeart, offerings, topic };
+    const locationInfo = brandHeart.contact_info?.find((c: any) => c.type === 'location');
+    const location = locationInfo?.address;
+
+    const promptPayload = { brandHeart, offerings, topic, location };
      console.log('[FLOW: generateAutomatedMarketAnalysis] Calling AI prompt. Payload includes brand name:', brandHeart.brand_name);
     
     const { output } = await prompt(promptPayload);
