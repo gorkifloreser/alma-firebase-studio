@@ -281,9 +281,9 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                     <TabsTrigger value="domestic">Domestic</TabsTrigger>
                     <TabsTrigger value="local">Local</TabsTrigger>
                 </TabsList>
-                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
-                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
-                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
+                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international || {}} /></TabsContent>
+                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic || {}} /></TabsContent>
+                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local || {}} /></TabsContent>
             </Tabs>
             
             <Separator />
@@ -684,6 +684,12 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
             {/* Dialog for Editing/Adding a Brand */}
              <Dialog open={isBrandEditorOpen} onOpenChange={setIsBrandEditorOpen}>
                 <DialogContent>
+                     <DialogHeader>
+                        <DialogTitle>{brandToEdit?.id ? 'Edit Brand' : 'Add New Brand'}</DialogTitle>
+                        <DialogDescription>
+                            {brandToEdit?.id ? 'Update the details for this brand.' : 'Manually add a brand to your catalogue.'}
+                        </DialogDescription>
+                    </DialogHeader>
                     <BrandEditor
                         brand={brandToEdit || { brand_name: '', description: '', contact_points: [] }}
                         onSave={handleSaveBrand}
