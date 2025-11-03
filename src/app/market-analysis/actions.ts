@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { generateAutomatedMarketAnalysis as generateAutomatedMarketAnalysisFlow } from '@/ai/flows/generate-automated-market-analysis-flow';
+import { generateAutomatedMarketAnalysisFlow } from '@/ai/flows/generate-automated-market-analysis-flow';
 import { findCompetitors as findCompetitorsFlow } from '@/ai/flows/find-competitors-flow';
 import { generateMarketReport as generateMarketReportFlow } from '@/ai/flows/generate-market-report-flow';
 import { summarizeMarket as summarizeMarketFlow } from '@/ai/flows/summarize-market-flow';

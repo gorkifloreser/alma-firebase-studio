@@ -276,10 +276,6 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
     }, [activeTab, marketSummary, isGenerating, toast]);
 
     const handleGenerateTopicReport = () => {
-        if (!customQuery.trim()) {
-            toast({ variant: 'destructive', title: 'Please enter a topic' });
-            return;
-        }
         setIsDialogOpen(true);
         setAnalysisResult(null);
         startGenerating(async () => {
@@ -372,7 +368,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList>
-                        <TabsTrigger value="topic-report">Automated Analysis</TabsTrigger>
+                        <TabsTrigger value="topic-report">Topic Report</TabsTrigger>
                         <TabsTrigger value="benchmarking">Benchmarking</TabsTrigger>
                         <TabsTrigger value="reports">Saved Reports</TabsTrigger>
                     </TabsList>
