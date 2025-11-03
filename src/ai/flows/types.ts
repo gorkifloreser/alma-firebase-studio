@@ -46,7 +46,7 @@ export type GenerateValueContentInput = z.infer<typeof GenerateValueContentInput
 export const GenerateValueContentOutputSchema = z.object({
   developedContent: z.string().describe("The fully developed content, written in the brand's voice."),
 });
-export type GenerateValueContentOutput = z.infer<typeof GenerateValueContentOutputSchema>;
+export type GenerateValueContentOutput = zinfer<typeof GenerateValueContentOutputSchema>;
 
 // --- MARKET RESEARCH ---
 export const MarketReportSchema = z.object({
@@ -73,6 +73,7 @@ export const CompetitorSchema = z.object({
   description: z.string().describe("A brief description of the brand and why it's a good benchmark."),
   contactPoints: z.array(ContactPointSchema),
 });
+export type Competitor = z.infer<typeof CompetitorSchema>;
 
 export const FindCompetitorsOutputSchema = z.object({
   competitors: z.array(CompetitorSchema).describe("A list of 3-5 competitor or inspirational brands."),

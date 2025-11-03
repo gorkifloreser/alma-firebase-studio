@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/toaster';
 import { MarketAnalysisClientPage } from './_components/MarketAnalysisClientPage';
-import { getMarketAnalysisReports, getBenchmarkingReports } from './actions';
+import { getMarketAnalysisReports, getBenchmarkingBrands } from './actions';
 
 export default async function MarketAnalysisPage() {
     console.log('[PAGE: MarketAnalysis] --- Server Component Render ---');
@@ -17,9 +17,9 @@ export default async function MarketAnalysisPage() {
     }
     console.log(`[PAGE: MarketAnalysis] User ${user.id} authenticated.`);
 
-    const [initialAnalysisReports, initialBenchmarkingReports] = await Promise.all([
+    const [initialAnalysisReports, initialBenchmarkingBrands] = await Promise.all([
         getMarketAnalysisReports(),
-        getBenchmarkingReports(),
+        getBenchmarkingBrands(),
     ]);
 
     return (
@@ -27,7 +27,7 @@ export default async function MarketAnalysisPage() {
             <Toaster />
             <MarketAnalysisClientPage 
                 initialAnalysisReports={initialAnalysisReports}
-                initialBenchmarkingReports={initialBenchmarkingReports}
+                initialBenchmarkingBrands={initialBenchmarkingBrands}
             />
         </DashboardLayout>
     );

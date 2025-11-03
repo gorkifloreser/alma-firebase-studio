@@ -7,8 +7,9 @@ import { generateAutomatedMarketAnalysisFlow } from '@/ai/flows/generate-automat
 import { findCompetitors as findCompetitorsFlow } from '@/ai/flows/find-competitors-flow';
 import { generateMarketReport as generateMarketReportFlow } from '@/ai/flows/generate-market-report-flow';
 import { summarizeMarket as summarizeMarketFlow } from '@/ai/flows/summarize-market-flow';
-import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput, CompetitorSchema } from '@/ai/flows/types';
+import type { AutomatedMarketAnalysis, FindCompetitorsOutput, MarketReport, GenerateMarketReportInput, SummarizeMarketOutput, Competitor as CompetitorType } from '@/ai/flows/types';
 import { z } from 'zod';
+import { CompetitorSchema } from '@/ai/flows/types';
 
 export type { MarketAnalysisReport, BenchmarkingReport };
 
@@ -20,13 +21,14 @@ export type MarketAnalysisReport = {
     report_data: AutomatedMarketAnalysis;
 };
 
+// This type is now for the new table
 export type BenchmarkingReport = {
     id: string;
     user_id: string;
     created_at: string;
-    title: string;
-    market_summary: string;
-    competitors: z.infer<typeof CompetitorSchema>[];
+    brand_name: string;
+    description: string | null;
+    contact_points: z.infer<typeof CompetitorSchema>['contactPoints'];
 }
 
 /**
@@ -145,62 +147,77 @@ export async function deleteMarketAnalysisReport(reportId: string): Promise<{ me
 }
 
 
-// --- BENCHMARKING ACTIONS ---
+// --- NEW BENCHMARKING ACTIONS ---
 
-export async function saveBenchmarkingReport(title: string, marketSummary: string, competitors: z.infer<typeof CompetitorSchema>[]): Promise<BenchmarkingReport> {
+export async function addBenchmarkingBrand(brandData: Omit<BenchmarkingReport, 'id' | 'user_id' | 'created_at'>): Promise<BenchmarkingReport> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const { data, error } = await supabase
-        .from('benchmarking_reports')
-        .insert({
-            user_id: user.id,
-            title,
-            market_summary: marketSummary,
-            competitors: competitors,
-        })
+        .from('benchmarking_brands')
+        .insert({ ...brandData, user_id: user.id })
         .select()
         .single();
     
     if (error) {
-        throw new Error(`Failed to save benchmarking report: ${error.message}`);
+        throw new Error(`Failed to save brand: ${error.message}`);
     }
     revalidatePath('/market-analysis');
     return data;
 }
 
-export async function getBenchmarkingReports(): Promise<BenchmarkingReport[]> {
+export async function getBenchmarkingBrands(): Promise<BenchmarkingReport[]> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const { data, error } = await supabase
-        .from('benchmarking_reports')
+        .from('benchmarking_brands')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
     if (error) {
-        throw new Error(`Failed to fetch benchmarking reports: ${error.message}`);
+        throw new Error(`Failed to fetch brands: ${error.message}`);
     }
     return data;
 }
 
-export async function deleteBenchmarkingReport(reportId: string): Promise<{ message: string }> {
+export async function updateBenchmarkingBrand(brandId: string, brandData: Partial<Omit<BenchmarkingReport, 'id' | 'user_id' | 'created_at'>>): Promise<BenchmarkingReport> {
+     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated.');
+
+    const { data, error } = await supabase
+        .from('benchmarking_brands')
+        .update(brandData)
+        .eq('id', brandId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+    
+    if (error) {
+        throw new Error(`Failed to update brand: ${error.message}`);
+    }
+    revalidatePath('/market-analysis');
+    return data;
+}
+
+export async function deleteBenchmarkingBrand(brandId: string): Promise<{ message: string }> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated.');
 
     const { error } = await supabase
-        .from('benchmarking_reports')
+        .from('benchmarking_brands')
         .delete()
-        .eq('id', reportId)
+        .eq('id', brandId)
         .eq('user_id', user.id);
 
     if (error) {
-        throw new Error(`Failed to delete benchmarking report: ${error.message}`);
+        throw new Error(`Failed to delete brand: ${error.message}`);
     }
     revalidatePath('/market-analysis');
-    return { message: 'Benchmarking report deleted successfully.' };
+    return { message: 'Brand deleted successfully.' };
 }
