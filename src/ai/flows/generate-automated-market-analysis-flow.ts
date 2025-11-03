@@ -17,12 +17,20 @@ const prompt = ai.definePrompt(
       schema: z.object({
         brandHeart: z.any(),
         offerings: z.array(z.any()),
+        topic: z.string().optional(),
       }),
     },
     output: { schema: AutomatedMarketAnalysisSchema },
-    prompt: `You are an expert market analyst who explains complex topics in simple terms a 6th grader can understand. Your task is to conduct a comprehensive, three-level market analysis (International, Domestic, Local) for the provided brand.
+    prompt: `You are an expert market analyst who explains complex topics in simple terms a 6th grader can understand. Your task is to conduct a comprehensive, three-level market analysis (International, Domestic, Local) for the provided brand, focused on a specific topic.
 
-**CRITICAL INSTRUCTION: All text in 'summary' and 'strategicSuggestions' fields MUST be written in simple, clear English, suitable for a 6th grader.**
+**CRITICAL INSTRUCTION: All text in 'summary' and 'strategicSuggestions' fields MUST be written in simple, clear English, suitable for a 12-year-old.**
+
+**Research Topic (Your Main Focus):**
+{{#if topic}}
+"{{topic}}"
+{{else}}
+"Provide a general market overview for the niche this brand operates in."
+{{/if}}
 
 **Brand Identity & Context:**
 - **Brand Name:** {{brandHeart.brand_name}}
@@ -32,9 +40,11 @@ const prompt = ai.definePrompt(
 - {{this.title.primary}} ({{this.type}}): {{this.description.primary}}
 {{/each}}
 - **User's Location Hint (CRUCIAL for Domestic/Local context):** 
-{{#if brandHeart.contact_info}}
+{{#if brandHeart.contact_info.length}}
   {{#each brandHeart.contact_info}}
+    {{#if (eq this.type "location")}}
     - Primary Business Address: {{this.address}}
+    {{/if}}
   {{/each}}
 {{else}}
   - No specific location provided. Assume a major city in a developed country for domestic/local analysis.
@@ -42,7 +52,7 @@ const prompt = ai.definePrompt(
 
 **YOUR THREE-LEVEL ANALYSIS MISSION:**
 
-For EACH of the three levels (International, Domestic, and Local), you MUST perform the following steps using your web browsing tool:
+For EACH of the three levels (International, Domestic, and Local), you MUST perform the following steps using your web browsing tool, always keeping the **Research Topic** in mind:
 
 **1. SWOT Analysis:**
    - **Strengths (Internal):** 2-3 key strengths of THIS brand. (This will be the same for all levels).
@@ -62,14 +72,14 @@ Your final response must be a single JSON object with 'international', 'domestic
   },
 );
 
-export async function generateAutomatedMarketAnalysis(): Promise<AutomatedMarketAnalysis> {
+export async function generateAutomatedMarketAnalysisFlow(topic?: string): Promise<AutomatedMarketAnalysis> {
   console.log('[FLOW: generateAutomatedMarketAnalysis] --- Execution Start ---');
 
   try {
     const { brandHeart, offerings } = await getBrandContext();
     console.log('[FLOW: generateAutomatedMarketAnalysis] Context fetched.');
 
-    const promptPayload = { brandHeart, offerings };
+    const promptPayload = { brandHeart, offerings, topic };
      console.log('[FLOW: generateAutomatedMarketAnalysis] Calling AI prompt. Payload includes brand name:', brandHeart.brand_name);
     
     const { output } = await prompt(promptPayload);

@@ -17,7 +17,7 @@ export type MarketAnalysisReport = {
     user_id: string;
     created_at: string;
     title: string;
-    report_data: MarketReport;
+    report_data: AutomatedMarketAnalysis;
 };
 
 export type BenchmarkingReport = {
@@ -32,10 +32,10 @@ export type BenchmarkingReport = {
 /**
  * Invokes the Genkit flow to generate an automated market analysis report.
  */
-export async function generateAutomatedMarketAnalysis(): Promise<AutomatedMarketAnalysis> {
+export async function generateAutomatedMarketAnalysis(topic?: string): Promise<AutomatedMarketAnalysis> {
   console.log('[ACTION: generateAutomatedMarketAnalysis] --- Execution Start ---');
   try {
-    const result = await generateAutomatedMarketAnalysisFlow();
+    const result = await generateAutomatedMarketAnalysisFlow(topic);
     console.log('[ACTION: generateAutomatedMarketAnalysis] --- Execution End --- Successfully received result from flow.');
     return result;
   } catch (error: any) {
@@ -69,7 +69,7 @@ export async function generateMarketReport(input: GenerateMarketReportInput): Pr
 /**
  * Saves a new market analysis report to the database.
  */
-export async function saveMarketAnalysisReport(title: string, reportData: MarketReport): Promise<MarketAnalysisReport> {
+export async function saveMarketAnalysisReport(title: string, reportData: AutomatedMarketAnalysis): Promise<MarketAnalysisReport> {
     console.log(`[ACTION: saveMarketAnalysisReport] --- Saving report titled: "${title}" ---`);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();

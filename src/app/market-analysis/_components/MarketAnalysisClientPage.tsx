@@ -12,7 +12,7 @@ import {
     deleteMarketAnalysisReport, 
     summarizeMarket, 
     findCompetitors, 
-    generateMarketReport,
+    generateAutomatedMarketAnalysis,
     saveBenchmarkingReport,
     deleteBenchmarkingReport,
     type MarketAnalysisReport,
@@ -134,34 +134,39 @@ const IndicatorBadge = ({ label, value }: { label: string, value?: 'Growing' | '
     );
 };
 
-const AnalysisLevelDisplay = ({ levelData }: { levelData: AutomatedMarketAnalysis['international'] }) => (
-    <div className="space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle>Key Indicators</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-4">
-                <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
-                <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Summary</CardTitle>
-                <CardDescription>A simple overview of this market level.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">{levelData.summary}</p>
-            </CardContent>
-        </Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SwotCard title="Strengths" items={levelData.strengths} icon={Zap} colorClass="border-blue-500/50" />
-            <SwotCard title="Weaknesses" items={levelData.weaknesses} icon={ShieldOff} colorClass="border-amber-500/50" />
-            <SwotCard title="Opportunities" items={levelData.opportunities} icon={Telescope} colorClass="border-green-500/50" />
-            <SwotCard title="Threats" items={levelData.threats} icon={Scale} colorClass="border-red-500/50" />
+const AnalysisLevelDisplay = ({ levelData }: { levelData?: AutomatedMarketAnalysis['international'] }) => {
+    if (!levelData) {
+        return <Skeleton className="h-96 w-full" />;
+    }
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Key Indicators</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-4">
+                    <IndicatorBadge label="Market Growth" value={levelData.marketGrowth} />
+                    <IndicatorBadge label="Economic Outlook" value={levelData.economicOutlook} />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Summary</CardTitle>
+                    <CardDescription>A simple overview of this market level.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">{levelData.summary}</p>
+                </CardContent>
+            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SwotCard title="Strengths" items={levelData.strengths || []} icon={Zap} colorClass="border-blue-500/50" />
+                <SwotCard title="Weaknesses" items={levelData.weaknesses || []} icon={ShieldOff} colorClass="border-amber-500/50" />
+                <SwotCard title="Opportunities" items={levelData.opportunities || []} icon={Telescope} colorClass="border-green-500/50" />
+                <SwotCard title="Threats" items={levelData.threats || []} icon={Scale} colorClass="border-red-500/50" />
+            </div>
         </div>
-    </div>
-);
+    )
+};
 
 
 const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAnalysis | null, reportId?: string }) => {
@@ -186,9 +191,9 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                     <TabsTrigger value="domestic">Domestic</TabsTrigger>
                     <TabsTrigger value="local">Local</TabsTrigger>
                 </TabsList>
-                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international || {}} /></TabsContent>
-                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic || {}} /></TabsContent>
-                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local || {}} /></TabsContent>
+                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
+                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
+                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
             </Tabs>
             
             <Separator />
@@ -244,7 +249,6 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
     const [benchmarkingReports, setBenchmarkingReports] = useState(initialBenchmarkingReports);
     const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
     const [competitorsResult, setCompetitorsResult] = useState<FindCompetitorsOutput | null>(null);
-    const [topicReportResult, setTopicReportResult] = useState<MarketReport | null>(null);
     const [reportTitle, setReportTitle] = useState('');
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
@@ -280,7 +284,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         setAnalysisResult(null);
         startGenerating(async () => {
             try {
-                const result = await generateAutomatedMarketAnalysis();
+                const result = await generateAutomatedMarketAnalysis(customQuery);
                 setAnalysisResult(result);
                 setReportTitle(`Automated Report: ${new Date().toLocaleDateString()}`);
             } catch (error: any) {
@@ -378,9 +382,20 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                                 <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <CardTitle className="mt-4 text-center">Automated Market Analysis</CardTitle>
                                 <CardDescription className="max-w-2xl mx-auto text-center">
-                                    Generate a comprehensive market analysis report covering international, domestic, and local levels based on your brand's identity.
+                                    Generate a comprehensive market analysis report covering international, domestic, and local levels based on your brand's identity and an optional topic.
                                 </CardDescription>
                             </CardHeader>
+                             <CardContent>
+                                <div className="max-w-lg mx-auto space-y-2">
+                                    <Label htmlFor="custom-query">Your Question or Topic (Optional)</Label>
+                                    <Input 
+                                        id="custom-query"
+                                        value={customQuery}
+                                        onChange={(e) => setCustomQuery(e.target.value)}
+                                        placeholder="e.g., 'market for handmade cacao products'"
+                                    />
+                                </div>
+                            </CardContent>
                              <CardFooter className="flex justify-center">
                                 <Button onClick={handleGenerateTopicReport} disabled={isGenerating}>
                                     <Sparkles className="mr-2 h-4 w-4" />
