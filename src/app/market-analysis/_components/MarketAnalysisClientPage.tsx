@@ -115,13 +115,14 @@ const SwotCard = ({ title, items, icon: Icon, colorClass }: { title: string, ite
         </CardHeader>
         <CardContent>
             <ul className="list-disc pl-5 space-y-2 text-sm">
-                {items.map((item, index) => <li key={index}>{item}</li>)}
+                {(items || []).map((item, index) => <li key={index}>{item}</li>)}
             </ul>
         </CardContent>
     </Card>
 );
 
-const IndicatorBadge = ({ label, value }: { label: string, value: 'Growing' | 'Slowing' | 'Stable' | 'Expansion' | 'Recession' }) => {
+const IndicatorBadge = ({ label, value }: { label: string, value?: 'Growing' | 'Slowing' | 'Stable' | 'Expansion' | 'Recession' }) => {
+    if (!value) return null;
     const Icon = value === 'Growing' || value === 'Expansion' ? ChevronsUp : value === 'Slowing' || value === 'Recession' ? ChevronsDown : Minus;
     const color = value === 'Growing' || value === 'Expansion' ? 'bg-green-100 text-green-800 border-green-200' : value === 'Slowing' || value === 'Recession' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-gray-100 text-gray-800 border-gray-200';
 
@@ -185,9 +186,9 @@ const AnalysisReportDisplay = ({ report, reportId }: { report: AutomatedMarketAn
                     <TabsTrigger value="domestic">Domestic</TabsTrigger>
                     <TabsTrigger value="local">Local</TabsTrigger>
                 </TabsList>
-                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international} /></TabsContent>
-                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic} /></TabsContent>
-                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local} /></TabsContent>
+                <TabsContent value="international" className="mt-4"><AnalysisLevelDisplay levelData={report.international || {}} /></TabsContent>
+                <TabsContent value="domestic" className="mt-4"><AnalysisLevelDisplay levelData={report.domestic || {}} /></TabsContent>
+                <TabsContent value="local" className="mt-4"><AnalysisLevelDisplay levelData={report.local || {}} /></TabsContent>
             </Tabs>
             
             <Separator />
@@ -241,7 +242,7 @@ const CompetitorCard = ({ competitor }: { competitor: z.infer<typeof CompetitorS
 export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchmarkingReports }: { initialAnalysisReports: MarketAnalysisReport[], initialBenchmarkingReports: BenchmarkingReport[] }) {
     const [analysisReports, setAnalysisReports] = useState(initialAnalysisReports);
     const [benchmarkingReports, setBenchmarkingReports] = useState(initialBenchmarkingReports);
-    const [analysisResult, setAnalysisResult] = useState<MarketReport | null>(null);
+    const [analysisResult, setAnalysisResult] = useState<AutomatedMarketAnalysis | null>(null);
     const [competitorsResult, setCompetitorsResult] = useState<FindCompetitorsOutput | null>(null);
     const [topicReportResult, setTopicReportResult] = useState<MarketReport | null>(null);
     const [reportTitle, setReportTitle] = useState('');
@@ -279,9 +280,9 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
         setAnalysisResult(null);
         startGenerating(async () => {
             try {
-                const result = await generateMarketReport({ topic: customQuery });
+                const result = await generateAutomatedMarketAnalysis();
                 setAnalysisResult(result);
-                setReportTitle(`Report on: ${customQuery}`);
+                setReportTitle(`Automated Report: ${new Date().toLocaleDateString()}`);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error Generating Report', description: error.message });
                 setIsDialogOpen(false);
@@ -367,7 +368,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList>
-                        <TabsTrigger value="topic-report">Topic Report</TabsTrigger>
+                        <TabsTrigger value="topic-report">Automated Analysis</TabsTrigger>
                         <TabsTrigger value="benchmarking">Benchmarking</TabsTrigger>
                         <TabsTrigger value="reports">Saved Reports</TabsTrigger>
                     </TabsList>
@@ -375,26 +376,15 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                         <Card>
                             <CardHeader>
                                 <Bot className="mx-auto h-12 w-12 text-muted-foreground" />
-                                <CardTitle className="mt-4 text-center">Topic-Specific Market Report</CardTitle>
+                                <CardTitle className="mt-4 text-center">Automated Market Analysis</CardTitle>
                                 <CardDescription className="max-w-2xl mx-auto text-center">
-                                    Ask the AI a specific question or provide a topic to get a detailed market report including trends, opportunities, and threats.
+                                    Generate a comprehensive market analysis report covering international, domestic, and local levels based on your brand's identity.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="max-w-xl mx-auto">
-                                <div className="space-y-2">
-                                    <Label htmlFor="topic-input">Your Topic or Question</Label>
-                                    <Input 
-                                        id="topic-input"
-                                        value={customQuery}
-                                        onChange={(e) => setCustomQuery(e.target.value)}
-                                        placeholder="e.g., 'The future of ceremonial cacao in Europe' or 'marketing to millennials interested in astrology'"
-                                    />
-                                </div>
-                            </CardContent>
                              <CardFooter className="flex justify-center">
-                                <Button onClick={handleGenerateTopicReport} disabled={isGenerating || !customQuery.trim()}>
+                                <Button onClick={handleGenerateTopicReport} disabled={isGenerating}>
                                     <Sparkles className="mr-2 h-4 w-4" />
-                                    Generate Topic Report
+                                    {isGenerating ? 'Generating...' : 'Generate Automated Report'}
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -493,7 +483,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
-                        <DialogTitle>New Market Report</DialogTitle>
+                        <DialogTitle>New Automated Market Report</DialogTitle>
                         <DialogDescription>Review the AI-generated report below and save it for future reference.</DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[70vh] overflow-y-auto p-1 pr-4">
@@ -509,26 +499,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                                     <Label htmlFor="report-title">Report Title</Label>
                                     <Input id="report-title" value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} />
                                 </div>
-                                <Card>
-                                    <CardHeader><CardTitle>Market Summary</CardTitle></CardHeader>
-                                    <CardContent><p className="text-muted-foreground">{analysisResult.marketSummary}</p></CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader><CardTitle>Key Trends</CardTitle></CardHeader>
-                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.keyTrends.map((t,i) => <li key={i}>{t}</li>)}</ul></CardContent>
-                                </Card>
-                                 <Card>
-                                    <CardHeader><CardTitle>Opportunities</CardTitle></CardHeader>
-                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.opportunities.map((o,i) => <li key={i}>{o}</li>)}</ul></CardContent>
-                                </Card>
-                                <Card>
-                                    <CardHeader><CardTitle>Threats</CardTitle></CardHeader>
-                                    <CardContent><ul className="list-disc pl-5 space-y-2">{analysisResult.threats.map((t,i) => <li key={i}>{t}</li>)}</ul></CardContent>
-                                </Card>
-                                <Card className="bg-primary/5">
-                                    <CardHeader><CardTitle>Strategic Recommendations</CardTitle></CardHeader>
-                                    <CardContent><p className="font-medium">{analysisResult.strategicRecommendations}</p></CardContent>
-                                </Card>
+                               <AnalysisReportDisplay report={analysisResult} />
                             </div>
                         ) : (
                              <div className="text-center py-20">
