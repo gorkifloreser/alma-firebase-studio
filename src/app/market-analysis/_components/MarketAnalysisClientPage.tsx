@@ -112,10 +112,7 @@ const BrandEditor = ({ brand, onSave, onDelete, onCancel }: { brand: Omit<Benchm
 
     return (
         <Card className="w-full">
-            <CardHeader>
-                <CardTitle>Brand Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                     <Label htmlFor="brandName">Brand Name</Label>
                     <Input id="brandName" value={localBrand.brand_name} onChange={(e) => setLocalBrand(p => ({...p, brand_name: e.target.value}))} />
@@ -537,7 +534,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                         <Card>
                             <CardHeader>
                                 <CardTitle>Find Inspirational Brands</CardTitle>
-                                <CardDescription>Use your auto-generated market summary or enter a custom query to find similar brands.</CardDescription>
+                                <CardDescription>Describe a market category or search for a specific brand by name.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {(isGenerating && !competitorsResult && !marketSummary) ? (
@@ -547,7 +544,7 @@ export function MarketAnalysisClientPage({ initialAnalysisReports, initialBenchm
                                         <Input 
                                             value={customQuery}
                                             onChange={(e) => setCustomQuery(e.target.value)}
-                                            placeholder="e.g., 'sustainable fashion for yoga practitioners'"
+                                            placeholder="e.g., 'sustainable fashion' or 'Patagonia'"
                                         />
                                         <Button onClick={handleFindCompetitors} disabled={isGenerating}>
                                             <Search className="mr-2 h-4 w-4" />

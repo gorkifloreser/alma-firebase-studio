@@ -20,12 +20,20 @@ const prompt = ai.definePrompt({
   output: {
     schema: FindCompetitorsOutputSchema,
   },
-  prompt: `You are a market research expert. Based on the following market summary, find 3 to 5 successful brands that operate in this space. They can be direct competitors or inspirational brands.
+  prompt: `You are a market research expert. Analyze the user's query to determine their intent.
 
-For each brand, provide its name, a brief description of what it does and why it's a good benchmark, and a list of its key public contact points (Website, Instagram, etc.).
-
-**Target Market Summary:**
+**User Query:**
 "{{marketSummary}}"
+
+**YOUR TASK:**
+
+1.  **Determine Intent:** First, analyze the user's query. Is the user describing a general market or category (e.g., "sustainable clothing brands," "artisanal coffee roasters") OR are they asking for information about one or more specific, named brands (e.g., "Nike," "Apple Inc.")?
+
+2.  **Execute Search:**
+    *   **If the query is a market description:** Find 3 to 5 successful brands that operate in that space. They can be direct competitors or inspirational brands.
+    *   **If the query is a specific brand name (or a list of names):** Fetch the profile for each specific brand mentioned.
+
+3.  **Format Output:** For each brand you find, provide its name, a brief description of what it does and why it's a good benchmark, and a list of its key public contact points (Website, Instagram, etc.).
 
 Use your web browsing tool to find this information. Your response must be in the specified JSON format.`,
 });
