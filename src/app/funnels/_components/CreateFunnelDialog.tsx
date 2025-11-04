@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useMemo } from 'react';
@@ -76,6 +77,7 @@ export function CreateFunnelDialog({
     
     // Step 2 State
     const [generatedContent, setGeneratedContent] = useState<GenerateFunnelOutput | null>(null);
+    const [editableStrategy, setEditableStrategy] = useState<EditableStrategy | null>(null);
     const [isGenerating, startGenerating] = useTransition();
     const [isSaving, startSaving] = useTransition();
     const { toast } = useToast();
@@ -94,11 +96,13 @@ export function CreateFunnelDialog({
                 setMarketQuery(''); 
                 setSelectedReportId(null);
                 setGeneratedContent(funnelToEdit.strategy_brief);
+                setEditableStrategy(funnelToEdit.strategy_brief);
             } else {
                 // Reset all state for new funnel
                 setSelectedOfferingId(null);
                 setSelectedPresetId(null);
                 setGeneratedContent(null);
+                setEditableStrategy(null);
                 setGoal('');
                 setMarketQuery('');
                 setUsedContext(null);
@@ -161,6 +165,7 @@ export function CreateFunnelDialog({
                 });
                 
                 setGeneratedContent(result);
+                setEditableStrategy(result); // Set the editable state
                 toast({ title: 'Strategy Generated!', description: 'Review and refine the strategy below.' });
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Strategy Generation Failed', description: error.message });
@@ -174,7 +179,7 @@ export function CreateFunnelDialog({
         const presetName = funnelPresets.find(p => p.id === selectedPresetId)?.title || 'Custom';
         const finalName = `${offeringName}: ${presetName}`;
         
-        if (!selectedPresetId || !selectedOfferingId || !generatedContent) return;
+        if (!selectedPresetId || !selectedOfferingId || !editableStrategy) return;
 
         startSaving(async () => {
              try {
@@ -183,7 +188,7 @@ export function CreateFunnelDialog({
                     offeringId: selectedOfferingId,
                     name: finalName,
                     goal,
-                    strategyBrief: generatedContent,
+                    strategyBrief: editableStrategy,
                 };
 
                 if (isEditMode && funnelToEdit) {
@@ -199,7 +204,25 @@ export function CreateFunnelDialog({
         });
     };
 
-    // Other handlers for editing blueprint remain the same...
+    const handleStageChange = (stageIndex: number, field: 'stageName' | 'objective' | 'keyMessage', value: string) => {
+        if (!editableStrategy) return;
+        const newStrategy = [...editableStrategy.strategy];
+        (newStrategy[stageIndex] as any)[field] = value;
+        setEditableStrategy(prev => ({
+            ...prev!,
+            strategy: newStrategy,
+        }));
+    };
+    
+    const handleStepChange = (stageIndex: number, stepIndex: number, field: 'concept' | 'objective', value: string) => {
+         if (!editableStrategy) return;
+        const newStrategy = [...editableStrategy.strategy];
+        (newStrategy[stageIndex].conceptualSteps[stepIndex] as any)[field] = value;
+        setEditableStrategy(prev => ({
+            ...prev!,
+            strategy: newStrategy,
+        }));
+    };
 
     const globalPresets = funnelPresets.filter(p => p.user_id === null);
     const customPresets = funnelPresets.filter(p => p.user_id !== null);
@@ -304,26 +327,31 @@ export function CreateFunnelDialog({
                                         </CardHeader>
                                         <CardContent>
                                             <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                                                {generatedContent.campaignSuccessMetrics?.map((metric, i) => <li key={i}>{metric}</li>)}
+                                                {editableStrategy?.campaignSuccessMetrics?.map((metric, i) => <li key={i}>{metric}</li>)}
                                             </ul>
                                         </CardContent>
                                     </Card>
-                                    <Accordion type="multiple" className="w-full space-y-4">
-                                        {generatedContent.strategy?.map((stage, stageIndex) => (
+                                    <Accordion type="multiple" className="w-full space-y-4" defaultValue={editableStrategy?.strategy.map((_, i) => `stage-${i}`)}>
+                                        {editableStrategy?.strategy?.map((stage, stageIndex) => (
                                             <AccordionItem value={`stage-${stageIndex}`} key={stageIndex} className="border rounded-lg bg-card">
-                                                <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
-                                                    {stage.stageName}
+                                                <AccordionTrigger className="p-4 hover:no-underline">
+                                                    <Input
+                                                        value={stage.stageName}
+                                                        onChange={(e) => handleStageChange(stageIndex, 'stageName', e.target.value)}
+                                                        className="text-lg font-bold border-0 shadow-none -ml-3 focus-visible:ring-1 focus-visible:ring-primary h-auto p-2"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
                                                 </AccordionTrigger>
                                                 <AccordionContent className="p-4 pt-0 space-y-4">
-                                                    <div><p className="font-semibold text-sm">Objective:</p><p className="text-muted-foreground text-sm">{stage.objective}</p></div>
-                                                    <div><p className="font-semibold text-sm">Key Message:</p><p className="text-muted-foreground text-sm">{stage.keyMessage}</p></div>
+                                                    <div className="space-y-2"><Label>Objective:</Label><Textarea value={stage.objective} onChange={(e) => handleStageChange(stageIndex, 'objective', e.target.value)} /></div>
+                                                    <div className="space-y-2"><Label>Key Message:</Label><Textarea value={stage.keyMessage} onChange={(e) => handleStageChange(stageIndex, 'keyMessage', e.target.value)} /></div>
                                                     <div>
-                                                        <p className="font-semibold text-sm mb-2">Conceptual Steps:</p>
-                                                        <div className="space-y-2">
+                                                        <Label className="font-semibold text-sm mb-2">Conceptual Steps:</Label>
+                                                        <div className="space-y-2 mt-2">
                                                             {stage.conceptualSteps?.map((step, stepIndex) => (
-                                                                <div key={stepIndex} className="p-3 border rounded-md bg-secondary/50">
-                                                                    <p className="font-semibold">{step.objective}</p>
-                                                                    <p className="text-sm text-muted-foreground">{step.concept}</p>
+                                                                <div key={stepIndex} className="p-3 border rounded-md bg-secondary/50 space-y-2">
+                                                                    <Textarea value={step.objective} onChange={(e) => handleStepChange(stageIndex, stepIndex, 'objective', e.target.value)} className="font-semibold" />
+                                                                    <Textarea value={step.concept} onChange={(e) => handleStepChange(stageIndex, stepIndex, 'concept', e.target.value)} className="text-sm text-muted-foreground" rows={3}/>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -343,7 +371,7 @@ export function CreateFunnelDialog({
                         <Button variant="ghost" onClick={() => setGeneratedContent(null)}><ArrowLeft className="mr-2 h-4 w-4"/> Go Back</Button>
                     )}
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving || !generatedContent}>
+                    <Button onClick={handleSave} disabled={isSaving || !editableStrategy}>
                         {isSaving ? 'Saving...' : 'Save Strategy'}
                     </Button>
                 </DialogFooter>

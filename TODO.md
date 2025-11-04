@@ -4,3 +4,5 @@
   - **Issue:** Users are receiving an `error=access_denied&error_code=otp_expired` error after clicking the password reset link in the email.
 
 - [ ] Investigar por qué el parámetro `aspectRatio` en la generación de imágenes no funciona correctamente y solo produce imágenes 1:1.
+
+- [ ] Connect to Meta Analytics to get better KPI data for the AI Strategist instead of relying on generated numbers.
