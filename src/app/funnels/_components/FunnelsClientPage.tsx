@@ -46,6 +46,7 @@ import type { AdaptedHook } from '@/ai/flows/adapt-viral-hooks-flow';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import type { MarketAnalysisReport } from '@/app/market-analysis/actions';
 
 
 interface FunnelsClientPageProps {
@@ -55,6 +56,7 @@ interface FunnelsClientPageProps {
     initialAdaptedHooks: AdaptedHook[];
     initialValueStrategies: ValueStrategy[];
     initialAdaptedValueStrategies: AdaptedValueStrategy[];
+    initialMarketReports: MarketAnalysisReport[];
     offeringIdFilter: string | undefined;
     getViralHooks: typeof getViralHooks;
     actions: {
@@ -176,6 +178,7 @@ export function FunnelsClientPage({
     initialAdaptedHooks,
     initialValueStrategies,
     initialAdaptedValueStrategies,
+    initialMarketReports,
     offeringIdFilter,
     actions,
     getViralHooks,
@@ -636,6 +639,7 @@ export function FunnelsClientPage({
                     setIsCreateDialogOpen(open);
                 }}
                 funnelPresets={funnelPresets}
+                marketReports={initialMarketReports}
                 onFunnelSaved={handleFunnelSaved}
                 funnelToEdit={funnelToEdit}
             />

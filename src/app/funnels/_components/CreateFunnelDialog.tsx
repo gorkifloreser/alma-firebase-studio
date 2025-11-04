@@ -25,11 +25,14 @@ import type { GenerateFunnelOutput, ConceptualStep } from '@/ai/flows/generate-f
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
 import { summarizeMarket } from '@/app/market-analysis/actions';
+import type { MarketAnalysisReport } from '@/app/market-analysis/actions';
+
 
 interface CreateFunnelDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     funnelPresets: FunnelPreset[];
+    marketReports: MarketAnalysisReport[];
     onFunnelSaved: () => void;
     funnelToEdit: Funnel | null;
 }
@@ -57,6 +60,7 @@ export function CreateFunnelDialog({
     isOpen,
     onOpenChange,
     funnelPresets,
+    marketReports,
     onFunnelSaved,
     funnelToEdit,
 }: CreateFunnelDialogProps) {
@@ -64,6 +68,7 @@ export function CreateFunnelDialog({
     const [offerings, setOfferings] = useState<Offering[]>([]);
     const [selectedOfferingId, setSelectedOfferingId] = useState<string | null>(null);
     const [goal, setGoal] = useState('');
+    const [selectedReportId, setSelectedReportId] = useState<string | 'custom' | null>(null);
     const [marketQuery, setMarketQuery] = useState('');
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
     const [usedContext, setUsedContext] = useState<UsedContext>(null);
@@ -84,8 +89,9 @@ export function CreateFunnelDialog({
                 setSelectedOfferingId(funnelToEdit.offering_id);
                 setSelectedPresetId(funnelToEdit.preset_id);
                 setGoal(funnelToEdit.goal || '');
-                // In edit mode, we don't pre-fill market query.
+                // In edit mode, we don't pre-fill market context.
                 setMarketQuery(''); 
+                setSelectedReportId(null);
                 setGeneratedContent(funnelToEdit.strategy_brief);
             } else {
                 // Reset all state for new funnel
@@ -95,13 +101,20 @@ export function CreateFunnelDialog({
                 setGoal('');
                 setMarketQuery('');
                 setUsedContext(null);
+
+                // Pre-select the latest market report
+                if (marketReports && marketReports.length > 0) {
+                    setSelectedReportId(marketReports[0].id);
+                } else {
+                    setSelectedReportId(null);
+                }
             }
         }
-    }, [isOpen, funnelToEdit]);
+    }, [isOpen, funnelToEdit, marketReports]);
     
-    // Auto-summarize market when offering is selected
+    // Auto-summarize market for custom query when offering is selected
     useEffect(() => {
-        if (selectedOfferingId && !isEditMode) {
+        if (selectedOfferingId && !isEditMode && (!marketReports || marketReports.length === 0)) {
             startGenerating(async () => {
                 try {
                     const { marketSummaryPhrase } = await summarizeMarket();
@@ -112,7 +125,7 @@ export function CreateFunnelDialog({
                 }
             });
         }
-    }, [selectedOfferingId, isEditMode]);
+    }, [selectedOfferingId, isEditMode, marketReports]);
 
 
     const canGenerate = selectedPresetId !== null && selectedOfferingId !== null && goal.trim() !== '';
@@ -126,6 +139,10 @@ export function CreateFunnelDialog({
                 const offering = offerings.find(o => o.id === selectedOfferingId);
                 if (!preset || !offering) throw new Error("Selected preset or offering not found.");
                 
+                const marketContext = selectedReportId === 'custom' 
+                    ? marketQuery 
+                    : marketReports.find(r => r.id === selectedReportId)?.title;
+
                 setUsedContext({
                     offeringTitle: offering.title.primary,
                     funnelType: preset.title,
@@ -139,7 +156,7 @@ export function CreateFunnelDialog({
                     funnelType: preset.title,
                     funnelPrinciples: preset.principles,
                     goal,
-                    // marketContext: marketQuery, // This will be used by the new flow
+                    marketContext: marketContext,
                 });
                 
                 setGeneratedContent(result);
@@ -222,17 +239,33 @@ export function CreateFunnelDialog({
                             </div>
                             
                             {/* Step 3: Market Context */}
-                            <div className="space-y-4">
-                                <Label htmlFor="market-query" className="text-lg font-semibold flex items-center gap-2">
+                             <div className="space-y-4">
+                                <Label className="text-lg font-semibold flex items-center gap-2">
                                     <Search className="h-5 w-5" /> 3. Define Market Context
                                 </Label>
-                                <Textarea 
-                                    id="market-query" 
-                                    value={marketQuery}
-                                    onChange={(e) => setMarketQuery(e.target.value)} 
-                                    placeholder="Tell the AI what market to research, e.g., 'artisanal cacao products' or 'competitors like Brand X'"
-                                    rows={3}
-                                />
+                                <Select onValueChange={setSelectedReportId} value={selectedReportId || undefined}>
+                                    <SelectTrigger id="report-select" className="text-base">
+                                        <SelectValue placeholder="Select a saved market report..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="custom">Use Custom Query Below</SelectItem>
+                                        <Separator className="my-1"/>
+                                        {marketReports.map((report, index) => (
+                                            <SelectItem key={report.id} value={report.id}>
+                                                {report.title} {index === 0 && '(Latest)'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {(selectedReportId === 'custom' || marketReports.length === 0) && (
+                                    <Textarea 
+                                        id="market-query" 
+                                        value={marketQuery}
+                                        onChange={(e) => setMarketQuery(e.target.value)} 
+                                        placeholder="Tell the AI what market to research, e.g., 'artisanal cacao products' or 'competitors like Brand X'"
+                                        rows={3}
+                                    />
+                                )}
                                 {isGenerating && !marketQuery && <p className="text-sm text-muted-foreground animate-pulse">Getting market suggestions...</p>}
                             </div>
                             

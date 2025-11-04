@@ -9,6 +9,7 @@ import { getViralHooks, createViralHook, updateViralHook, deleteViralHook, rankV
 import { FunnelsClientPage } from './_components/FunnelsClientPage';
 import { adaptAndSaveValueStrategies } from '@/ai/flows/adapt-value-strategies-flow';
 import { saveMediaPlan, archiveMediaPlan, deleteMediaPlan, generateMediaPlan, regeneratePlanItem, addMultipleToArtisanQueue, getUserChannels } from './actions';
+import { getMarketAnalysisReports } from '@/app/market-analysis/actions';
 
 export default async function AiStrategistPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
     const supabase = createClient();
@@ -19,13 +20,14 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
 
     const offeringIdFilter = typeof searchParams.offeringId === 'string' ? searchParams.offeringId : undefined;
 
-    const [funnels, funnelPresets, viralHooks, adaptedHooks, valueStrategies, adaptedValueStrategies] = await Promise.all([
+    const [funnels, funnelPresets, viralHooks, adaptedHooks, valueStrategies, adaptedValueStrategies, marketReports] = await Promise.all([
         getFunnels(offeringIdFilter),
         getFunnelPresets(),
         getViralHooks(),
         getAdaptedHooks(),
         getValueStrategies(),
         getAdaptedValueStrategies(),
+        getMarketAnalysisReports(),
     ]);
 
     return (
@@ -38,6 +40,7 @@ export default async function AiStrategistPage({ searchParams }: { searchParams:
                 initialAdaptedHooks={adaptedHooks}
                 initialValueStrategies={valueStrategies}
                 initialAdaptedValueStrategies={adaptedValueStrategies}
+                initialMarketReports={marketReports}
                 offeringIdFilter={offeringIdFilter}
                 getViralHooks={getViralHooks}
                 actions={{
