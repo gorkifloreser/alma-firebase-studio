@@ -26,6 +26,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Textarea } from '@/components/ui/textarea';
 import { summarizeMarket } from '@/app/market-analysis/actions';
 import type { MarketAnalysisReport } from '@/app/market-analysis/actions';
+import { Separator } from '@/components/ui/separator';
 
 
 interface CreateFunnelDialogProps {
@@ -308,4 +309,3 @@ export function CreateFunnelDialog({
         </Dialog>
     );
 }
-
