@@ -288,10 +288,52 @@ export function CreateFunnelDialog({
                             </Button>
                         </div>
                    ) : (
-                        // This is the results view after generation, it remains largely the same
                         <div className="space-y-6">
-                             <h3 className="text-xl font-semibold border-b pb-2">Generated Strategy</h3>
-                             {/* The existing results view would go here... */}
+                            <h3 className="text-xl font-semibold border-b pb-2">Generated Strategy</h3>
+                            {isGenerating ? (
+                                <div className="space-y-4">
+                                    <Skeleton className="h-10 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                </div>
+                            ) : (
+                                <>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Overall Success Metrics</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+                                                {generatedContent.campaignSuccessMetrics?.map((metric, i) => <li key={i}>{metric}</li>)}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                    <Accordion type="multiple" className="w-full space-y-4">
+                                        {generatedContent.strategy?.map((stage, stageIndex) => (
+                                            <AccordionItem value={`stage-${stageIndex}`} key={stageIndex} className="border rounded-lg bg-card">
+                                                <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+                                                    {stage.stageName}
+                                                </AccordionTrigger>
+                                                <AccordionContent className="p-4 pt-0 space-y-4">
+                                                    <div><p className="font-semibold text-sm">Objective:</p><p className="text-muted-foreground text-sm">{stage.objective}</p></div>
+                                                    <div><p className="font-semibold text-sm">Key Message:</p><p className="text-muted-foreground text-sm">{stage.keyMessage}</p></div>
+                                                    <div>
+                                                        <p className="font-semibold text-sm mb-2">Conceptual Steps:</p>
+                                                        <div className="space-y-2">
+                                                            {stage.conceptualSteps?.map((step, stepIndex) => (
+                                                                <div key={stepIndex} className="p-3 border rounded-md bg-secondary/50">
+                                                                    <p className="font-semibold">{step.objective}</p>
+                                                                    <p className="text-sm text-muted-foreground">{step.concept}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                </>
+                            )}
                         </div>
                    )}
                 </div>
