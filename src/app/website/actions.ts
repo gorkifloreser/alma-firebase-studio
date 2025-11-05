@@ -3,14 +3,14 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { Data } from '@measured/puck';
+import type { PageData } from './edit/[slug]/components';
 
 export type WebPage = {
     id: string;
     user_id: string;
     slug: string;
     title: string;
-    puck_data: Data | null;
+    puck_data: PageData | null;
     created_at: string;
     updated_at: string;
 };
@@ -41,7 +41,7 @@ export async function getPageBySlug(slug: string): Promise<WebPage | null> {
 /**
  * Saves (creates or updates) a webpage's content.
  */
-export async function savePage(slug: string, data: Data): Promise<WebPage> {
+export async function savePage(slug: string, data: PageData): Promise<WebPage> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -49,7 +49,7 @@ export async function savePage(slug: string, data: Data): Promise<WebPage> {
     const pageData = {
         user_id: user.id,
         slug,
-        title: (data.root as any).title || slug,
+        title: (data.root as any).props.title || slug,
         puck_data: data,
         updated_at: new Date().toISOString(),
     };

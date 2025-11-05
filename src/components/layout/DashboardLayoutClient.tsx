@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -50,6 +51,11 @@ export function DashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+
+  // Hide sidebar for the new website editor
+  if (pathname.startsWith('/website/edit')) {
+    return <main>{children}</main>;
+  }
 
   return (
       <div className="flex min-h-screen bg-background">
