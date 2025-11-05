@@ -24,6 +24,7 @@ import {
   GitBranch,
   Wand2,
   Star,
+  Globe,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -40,6 +41,7 @@ const menuItems = [
     { href: '/calendar', label: 'AI Social Manager', icon: Users },
     { href: '/harvest-circle', label: 'Harvest Circle', icon: Star },
     { href: '/market-analysis', label: 'Market Analysis', icon: BarChart2 },
+    { href: '/website', label: 'Website', icon: Globe },
 ];
 
 export function DashboardLayoutClient({
